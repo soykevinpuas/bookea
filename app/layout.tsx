@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LeafReader",
+  title: "Bookea",
   description: "Tu biblioteca premium de E-books",
   manifest: "/manifest.json", // <--- Agrega esta línea
 };

@@ -3,7 +3,7 @@ import { login } from '@/app/auth/actions' // <--- Importante
 export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <h1 className="text-2xl font-bold mb-6">LeafReader</h1>
+      <h1 className="text-2xl font-bold mb-6">Bookea</h1>
       <form action={login} className="flex flex-col gap-4 w-full max-w-sm">
         <input 
           name="email" 

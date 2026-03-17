@@ -1,6 +1,6 @@
 {
-  "name": "LeafReader",
-  "short_name": "LeafReader",
+  "name": "Bookea",
+  "short_name": "Bookea",
   "description": "Tu biblioteca premium de E-books",
   "start_url": "/",
   "display": "standalone",
