@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { QueryProvider } from "@/lib/providers";
+import { Header } from "@/components/Header";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Bookea",
   description: "Tu biblioteca premium de E-books",
-  manifest: "/manifest.json", // <--- Agrega esta línea
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -24,14 +27,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-white transition-colors duration-300 dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100 flex flex-col`}
       >
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+        >
+          <QueryProvider>
+            <Header />
+            <main className="flex-1">
+              {children}
+            </main>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
-
-

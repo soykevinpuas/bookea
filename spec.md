@@ -314,5 +314,39 @@ Estos son los agentes que van a construir la app:
 
 ---
 
+---
+
+## 12. PWA (Progressive Web App)
+
+Bookea debe funcionar como PWA para que los usuarios la instalen en su celular como app nativa.
+
+### Funcionalidades PWA
+- Instalable en iOS y Android desde el browser
+- Ícono en pantalla de inicio
+- Splash screen con branding de Bookea
+- Lectura offline de libros ya descargados en caché
+- Notificaciones push (para alertas de wishlist, nuevos títulos, rachas)
+
+### Implementación
+- `next-pwa` o `@ducanh2912/next-pwa` como wrapper de Next.js
+- `manifest.json` con nombre, íconos, colores de la app
+- Service Worker para cachear EPUBs ya abiertos
+- Estrategia de caché: libros activos del usuario se cachean automáticamente
+
+### Archivos necesarios
+```
+public/
+├── manifest.json        # ya existe, completar
+├── icons/
+│   ├── icon-192.png
+│   └── icon-512.png
+└── sw.js                # generado por next-pwa
+```
+
+### Prioridad
+- Fase 2 — después del MVP funcional
+
+---
+
 *Documento generado: Marzo 2026*  
 *Proyecto: Bookea — bookea.mx*
