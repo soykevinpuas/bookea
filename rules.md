@@ -170,5 +170,38 @@ chore: add epubjs dependency
 
 ---
 
+## 12. DOCUMENTACIÓN Y COMENTARIOS — REGLAS
+
+Todo el código fuente debe estar rigurosamente documentado utilizando un sistema de **índice numérico jerárquico** para facilitar la generación futura de Documentos de Arquitectura y Construcción de Software.
+
+Antes de cada bloque funcional importante, hook, componente, o efecto, se debe añadir un comentario breve explicando qué hace, precedido por su índice correspondiente.
+
+**Índice de Módulos (Prefijos):**
+* **`1.x`** -> Configuraciones globales, Estructura base y Base de Datos (ej. `lib/`, `middleware.ts`, `globals.css`)
+* **`2.x`** -> Autenticación y Gestión de Usuarios (ej. `app/(auth)/`)
+* **`3.x`** -> Catálogo, Exploración y Hooks de Datos (ej. `app/(app)/catalog`, `hooks/`)
+* **`4.x`** -> Lector EPUB y Progreso de Lectura (ej. `app/(app)/reader/`, `lib/reading.ts`)
+* **`5.x`** -> Panel de Administrador e Inventario (ej. `app/admin/`)
+* **`6.x`** -> Componentes Compartidos de UI (ej. `components/ui/`)
+
+**Formato del comentario:**
+```typescript
+// 4.1 - Carga y configuración inicial del visor epubjs
+const initEpub = async () => {
+   // 4.1.1 - Registro de los temas base
+   rendition.themes.register("light", ...);
+}
+```
+
+Cualquier agente de IA o desarrollador que toque, cree o modifique código **ESTÁ OBLIGADO** a añadir, actualizar o respetar esta numeración.
+
+---
+
+## 13. BITÁCORA DE DESARROLLO
+
+Es obligatorio mantener actualizado el archivo `bitacora.md` en la raíz del proyecto. **CADA CAMBIO** estructural, nueva funcionalidad o corrección de bugs debe ser documentado en este archivo. Esto es fundamental para entender la evolución y lógica del sistema a lo largo del tiempo.
+
+---
+
 *Última actualización: Marzo 2026*
 *Proyecto: Bookea — bookea.mx*

@@ -1,6 +1,7 @@
 import { login } from '@/app/auth/actions'
 import Link from 'next/link'
 
+// 2.1 - LoginPage: Componente de formulario para inicio de sesión de usuarios existentes
 export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 bg-gray-50 dark:bg-[#0a0a0a] transition-colors duration-300">
@@ -15,8 +16,9 @@ export default function LoginPage() {
             Bienvenido de nuevo a tu biblioteca
           </p>
         </div>
-        
+        {/* 2.1.1 - Formulario conectado a la Subrutina Server Action 'login' externa */}
         <form action={login} className="flex flex-col gap-5">
+          {/* 2.1.2 - Campo de Email (Validado nativamente en navegador) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="email">
               Correo electrónico
@@ -31,6 +33,7 @@ export default function LoginPage() {
             />
           </div>
           
+          {/* 2.1.3 - Campo de Contraseña oculta */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="password">
               Contraseña

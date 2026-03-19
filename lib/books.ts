@@ -22,6 +22,7 @@ export const MOCK_BOOKS: Book[] = [
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isValidUUID = (id: string) => UUID_REGEX.test(id);
 
+// 3.3 - Configuración y Utilerías de Acceso a Supabase para la Entidad Books
 export async function getBooks(supabase: SupabaseClient): Promise<Book[]> {
   try {
     const { data, error } = await supabase
@@ -83,7 +84,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string): Pr
 
     return data
       .map((item: any) => {
-        // Handle Supabase potential nested array or object
+        // 3.3.1 - Aplanar matriz/objeto anidado devuelto por la API de Supabase para asegurar mapeo de Typescript
         const bookData = item.books;
         if (Array.isArray(bookData)) return bookData[0];
         return bookData;

@@ -8,6 +8,7 @@ export async function middleware(request: NextRequest) {
     },
   })
 
+// 1.3 - Middleware: Configuración del cliente Supabase (SSR)
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -40,6 +41,7 @@ export async function middleware(request: NextRequest) {
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
   const isAuthPath = pathname === '/login' || pathname === '/register'
 
+// 1.4 - Middleware: Protección de rutas y redirección de Autenticación
   if (!user && isProtectedPath) {
     return NextResponse.redirect(new URL('/login', request.url))
   }

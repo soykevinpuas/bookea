@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Book ID is required for purchases' }, { status: 400 });
     }
 
-    // Securely get the price from DB instead of trusting the client payload
+    // 6.1.1 - Obtener precio directamente desde la base de datos para prevenir manipulación (Spoofing) desde el cliente
     const { data: book, error: bookError } = await supabase
       .from('books')
       .select('title, price_digital, price_physical, price_bundle')
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       product_data: {
         name: `${book.title} - ${descriptionType}`,
       },
-      unit_amount: exactPrice * 100, // Stripe expects minimum units (cents)
+      unit_amount: exactPrice * 100, // 6.1.2 - Stripe procesa montos exclusivamente en centavos (unidades mínimas)
     };
 
     const session = await createCheckoutSession({

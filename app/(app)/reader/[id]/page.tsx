@@ -9,11 +9,13 @@ import ePub, { Book, Rendition } from "epubjs";
 import { Loader2, ArrowLeft, Sun, Moon, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
 import { createClientClient } from "@/lib/supabase";
 
+// 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 export default function ReaderPage() {
   const params = useParams();
   const router = useRouter();
   const bookId = params.id as string;
 
+  // 4.2.1 - Referencias mutables para almacenar la instancia del libro, el renderizador y temporizadores
   const bookRef = useRef<Book | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
@@ -21,6 +23,7 @@ export default function ReaderPage() {
 
   const { data: book, isLoading: loadingBook } = useBook(bookId);
 
+  // 4.2.2 - Estado React para gestionar preferencias visuales, cargas y UI del lector
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(18); // Default to a more readable 18px
@@ -35,6 +38,7 @@ export default function ReaderPage() {
   const fontRef = useRef<"sans" | "serif" | "mono">(fontFamily);
   const sizeRef = useRef<number>(fontSize);
 
+  // 4.2.3 - Efecto para la obtención robusta de la sesión del usuario para enrutar su progreso 
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createClientClient();
@@ -46,7 +50,7 @@ export default function ReaderPage() {
     fetchUser();
   }, []);
 
-  // Auto-hide controls after 4 seconds of inactivity
+  // 4.2.4 - Gestores del tiempo de inactividad para ocultar la interfaz HUD (Inactivity Timeout)
   const resetControlsTimeout = () => {
     setShowControls(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -76,6 +80,7 @@ export default function ReaderPage() {
     };
   }, []);
 
+  // 4.2.5 - Inicialización Central del Motor epub.js y configuración DOM
   useEffect(() => {
     if (!book?.epub_url || !viewerRef.current || !userId) return;
 
@@ -91,7 +96,8 @@ export default function ReaderPage() {
         bookRef.current = bookInstance;
 
         const viewerElement = viewerRef.current as Element;
-        // Rendition with responsive flow
+        
+        // 4.2.5.1 - Configuración base del Rendition con flujo responsivo nativo
         const rendition = bookInstance.renderTo(viewerElement, {
           width: "100%",
           height: "100%",
@@ -101,7 +107,7 @@ export default function ReaderPage() {
           allowScriptedContent: true,
         });
 
-        // Inject Custom Base CSS to override Publisher defaults
+        // 4.2.5.2 - Inyección de CSS interno (Hooks) para asegurar diseño base constante (saltando estilos del autor/epub original)
         if (rendition.hooks && rendition.hooks.content) {
           rendition.hooks.content.register((contents: any) => {
             if (!contents || !contents.document) return;
@@ -136,7 +142,7 @@ export default function ReaderPage() {
             `;
             contents.document.head.appendChild(style);
             
-            // Add click listener to toggle controls only (pagination via HUD only)
+            // 4.2.5.3 - Event Listener del Iframe: Detecta clicks en toda la hoja para accionar la interfaz HUD central, en lugar de pasar de página
             contents.document.documentElement.addEventListener('click', (e: MouseEvent) => {
               toggleControls();
             });
@@ -144,6 +150,7 @@ export default function ReaderPage() {
         }
 
 
+        // 4.2.6 - Gestor de inyección de estilos explícitos (overrides) para temas personalizados
         const updateTheme = () => {
           if (themeRef.current === "light") {
             rendition.themes.override("color", "#171717");
@@ -168,7 +175,7 @@ export default function ReaderPage() {
 
         await bookInstance.ready;
         
-        // Load reading progress
+        // 4.2.7 - Lógica asíncrona de restauración de localizaciones (CFI) y cálculo de porcentajes
         const savedProgress = await getReadingProgress(bookId, userId);
         
         if (savedProgress?.cfi_position) {
@@ -177,10 +184,8 @@ export default function ReaderPage() {
           await rendition.display();
         }
 
-        // Setup Locations for progress calculation
-        // Generating locations can take time on large books, we do it in background
+        // 4.2.7.1 - Generación asíncrona de la paginación global en background (Locations)
         bookInstance.locations.generate(1600).then((locations) => {
-            // Updated progress logic once locations are ready
             rendition.on("relocated", (location: { start: { cfi: string; percentage: number | string } }) => {
                 const percent = bookInstance.locations.percentageFromCfi(location.start.cfi);
                 setProgress(percent * 100);
@@ -188,11 +193,10 @@ export default function ReaderPage() {
             });
         }).catch(err => {
             console.warn("EPUB Location generation failed (structural error):", err);
-            // We don't set global error here to allow the user to keep reading if possible
         });
 
 
-        // Fallback progress update before locations are generated
+        // 4.2.7.2 - Fallback de rescate: Actualiza progreso inmediatamente incluso si las rutas largas (locations) no terminaron de indexarse
         rendition.on("relocated", (location: { start: { cfi: string; percentage: number | string } }) => {
             if (bookInstance.locations.length() === 0) {
                setProgress(Number(location.start.percentage || 0) * 100);
@@ -227,7 +231,7 @@ export default function ReaderPage() {
     };
   }, [book?.epub_url, bookId, userId]);
 
-  // Effect to handle keyboard navigation
+  // 4.2.8 - Efecto secundario (Side-effect) para capturar navegación con flechas del teclado
   useEffect(() => {
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
@@ -253,7 +257,7 @@ export default function ReaderPage() {
 
   const [mounted, setMounted] = useState(false);
 
-  // Load saved preferences on mount
+  // 4.2.9 - Efecto de montura para cargar preferencias de tema y tipografía previas del usuario desde localStorage
   useEffect(() => {
     const savedSize = localStorage.getItem("bookea-font-size");
     if (savedSize && !isNaN(parseInt(savedSize, 10))) {
@@ -305,6 +309,7 @@ export default function ReaderPage() {
     localStorage.setItem("bookea-font-family", fontFamily);
   }, [fontFamily, mounted]);
 
+  // 4.2.9.1 - Controladores de paginación explícitos (Adelante/Atrás) operados mediante los botones HUD
   const handlePrev = () => {
     renditionRef.current?.prev().catch(err => console.warn("EPUB prev error:", err));
     resetControlsTimeout();
@@ -348,7 +353,7 @@ export default function ReaderPage() {
     );
   }
 
-  // Dynamic UI colors based on theme
+  // 4.2.10 - Cálculo computado en tiempo real de paletas de color HUD y Glassmorphism (Basado en Modo Día, Noche, o Retro)
   const isDark = theme === 'dark';
   const isRetro = theme === 'retro';
   
@@ -360,7 +365,7 @@ export default function ReaderPage() {
   return (
     <div className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 ${bgColors}`}>
       
-      {/* Top Navigation Bar - Glassmorphism */}
+      {/* 4.2.11 - Barra de Navegación Superior (Top HUD) - Glassmorphism dinámico */}
       <div 
         className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 py-4 transition-all duration-300 pointer-events-auto ${
             showControls ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
@@ -397,7 +402,7 @@ export default function ReaderPage() {
               isRetro ? 'bg-[#0d1117]/95 border-[#3fb950]/30 text-[#3fb950]' : 
               'bg-white/95 border-black/5 text-gray-900'
             }`}>
-              {/* Tipografía */}
+              {/* 4.2.12 - Submenú Renderizado: Selector de Tipografías limpias y monoespaciadas */}
               <div className="mb-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Tipografía</h3>
                 <div className={`flex gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
@@ -407,7 +412,7 @@ export default function ReaderPage() {
                 </div>
               </div>
 
-              {/* Tamaño */}
+              {/* 4.2.13 - Submenú Renderizado: Controles A- / A+ incrementales */}
               <div className="mb-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Tamaño de texto</h3>
                 <div className={`flex items-center justify-between gap-2 p-1 rounded-lg ${panelBgClass}`}>
@@ -417,7 +422,7 @@ export default function ReaderPage() {
                 </div>
               </div>
 
-              {/* Tema */}
+              {/* 4.2.14 - Submenú Renderizado: Selectores de paletas de inyección CSS profunda */}
               <div>
                 <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Tema</h3>
                 <div className={`flex gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
@@ -431,7 +436,7 @@ export default function ReaderPage() {
         </div>
       </div>
 
-      {/* Main Reader Viewport */}
+      {/* 4.2.15 - Ventana principal de visualización del objeto renderizado (Viewport) */}
       <div 
         className="flex-1 relative w-full h-full pt-16 pb-16"
         onClick={() => toggleControls()}
@@ -459,11 +464,11 @@ export default function ReaderPage() {
           </div>
         )}
 
-        {/* EPUB Container */}
+        {/* 4.2.16 - Div nativo puro donde ePubJS monta su Iframe interno */}
         <div ref={viewerRef} className="absolute inset-0 w-full h-full cursor-pointer" />
       </div>
 
-      {/* Bottom Progress Bar - Glassmorphism */}
+      {/* 4.2.17 - Barra inferior central (Bottom HUD) de navegación de hojas y rastreo de progreso porcentual estricto */}
       <div 
         className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 py-4 transition-all duration-300 pointer-events-auto ${
             showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'

@@ -1,3 +1,4 @@
+/* 1.7 - Tailwind CSS Global Directives & Base Theme Variables */
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 

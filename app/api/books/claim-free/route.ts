@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Book ID requerido' }, { status: 400 });
     }
 
-    // 1. Verificar el precio del libro desde la base de datos (seguridad estricta)
+    // 6.2.1 - Verificar estricta de seguridad del precio del libro en la base de datos ($0)
     const { data: book, error: bookError } = await supabase
       .from('books')
       .select('price_digital')
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Este libro no es gratuito.' }, { status: 403 });
     }
 
-    // 2. Verificar si el usuario ya lo tiene
+    // 6.2.2 - Verificar si el usuario ya posee la licencia de este libro en la tabla user_books
     const { data: existingAccess } = await supabase
       .from('user_books')
       .select('id')
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ya tienes acceso a este libro' }, { status: 400 });
     }
 
-    // 3. Asignar el libro de forma gratuita al usuario
+    // 6.2.3 - Insertar licencia gratuita del libro en la cuenta del usuario
     const { error: insertError } = await supabase
       .from('user_books')
       .insert({

@@ -1,5 +1,4 @@
-// Standalone layout for the EPUB Reader — strips out the global Header and Footer
-// so they don't overlap the immersive full-screen reading experience.
+// 4.3 - Layout Aislado del Lector EPUB: Suprime el Header y Footer global para maximizar la inmersión a pantalla completa.
 export default function ReaderLayout({
   children,
 }: {

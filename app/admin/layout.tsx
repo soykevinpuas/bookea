@@ -23,6 +23,7 @@ const navItems = [
   { href: "/admin/inventory", label: "Inventario", icon: Package },
 ];
 
+// 5.1 - AdminLayout: Layout principal del panel de administración, incluye barra lateral y verificación de rol
 export default function AdminLayout({
   children,
 }: {
@@ -45,7 +46,7 @@ export default function AdminLayout({
 
       const authUser = sessionData.session.user;
 
-      // Use SECURITY DEFINER RPC to bypass RLS circular dependency on public.users
+      // 5.1.1 - Invocación RPC segurizada (SECURITY DEFINER) para evadir llamadas cíclicas al RLS en la tabla public.users
       const { data: roleData, error: rpcError } = await supabase.rpc("get_my_role");
 
       if (rpcError) {
@@ -85,9 +86,9 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white flex">
-      {/* Sidebar */}
+      {/* 5.1.2 - Barra lateral fija de navegación (Sidebar) */}
       <aside className="w-64 min-h-screen bg-[#111111] border-r border-white/5 flex flex-col fixed left-0 top-0 bottom-0 z-40">
-        {/* Logo */}
+        {/* 5.1.3 - Contenedor del Logotipo y Marca */}
         <div className="px-6 py-5 border-b border-white/5">
           <Link href="/admin" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-sm font-bold">B</div>
@@ -96,7 +97,7 @@ export default function AdminLayout({
           </Link>
         </div>
 
-        {/* Nav */}
+        {/* 5.1.4 - Mapeo iterativo de rutas de navegación principales (Nav) */}
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
             const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
@@ -118,7 +119,7 @@ export default function AdminLayout({
           })}
         </nav>
 
-        {/* Footer user info */}
+        {/* 5.1.5 - Sección inferior: Enlaces de egreso y datos de sesión activa */}
         <div className="px-3 py-4 border-t border-white/5 space-y-1">
           <Link
             href="/"
@@ -140,7 +141,7 @@ export default function AdminLayout({
         </div>
       </aside>
 
-      {/* Main content — offset by sidebar width */}
+      {/* 5.1.6 - Contenedor Principal Ajustado al desfase de la Barra Lateral (Main Content) */}
       <div className="ml-64 flex-1 min-h-screen">
         <main className="p-6 md:p-8">{children}</main>
       </div>

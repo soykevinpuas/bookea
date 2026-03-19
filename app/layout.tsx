@@ -5,6 +5,7 @@ import { QueryProvider } from "@/lib/providers";
 import { Header } from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
+// 1.5 - Configuración de fuentes y Metadata global
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -23,6 +24,7 @@ export const metadata: Metadata = {
 
 import { Toaster } from "sonner";
 
+// 1.6 - RootLayout: Proveedores de estado, tostadas y tema global
 export default function RootLayout({
   children,
 }: Readonly<{

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
+// 2.3 - Auth Actions: Endpoints del servidor (Server Actions) para Login y Registro
 export async function login(formData: FormData) {
   const supabase = await createClient()
 

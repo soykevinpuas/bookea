@@ -1,6 +1,7 @@
 import { register } from '@/app/auth/actions'
 import Link from 'next/link'
 
+// 2.2 - RegisterPage: Componente de formulario para creación de nuevas cuentas de usuario
 export default function RegisterPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 bg-gray-50 dark:bg-[#0a0a0a] transition-colors duration-300">
@@ -15,8 +16,9 @@ export default function RegisterPage() {
             Crea tu cuenta y empieza a leer
           </p>
         </div>
-
+        {/* 2.2.1 - Formulario conectado a la Subrutina Server Action 'register' externa */}
         <form action={register} className="flex flex-col gap-5">
+          {/* 2.2.2 - Campo de captura para el nuevo Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="email">
               Correo electrónico
@@ -31,6 +33,7 @@ export default function RegisterPage() {
             />
           </div>
           
+          {/* 2.2.3 - Campo de registro de Contraseña (con seguridad mínima requerida) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="password">
               Contraseña

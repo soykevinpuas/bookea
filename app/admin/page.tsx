@@ -29,13 +29,14 @@ async function getAdminStats() {
   return { totalBooks, activeBooks, totalOrders, pendingOrders, revenue, totalUsers };
 }
 
+// 5.2 - AdminDashboard: Vista principal del panel de control que muestra estadísticas globales del proyecto
 export default async function AdminDashboard() {
   let stats = { totalBooks: 0, activeBooks: 0, totalOrders: 0, pendingOrders: 0, revenue: 0, totalUsers: 0 };
 
   try {
     stats = await getAdminStats();
   } catch {
-    // If DB tables aren't created yet, show zeros
+    // 5.2.1 - Fallback de seguridad visual: Si la tabla aún no contiene campos, muestra ceros limpios
   }
 
   const cards = [

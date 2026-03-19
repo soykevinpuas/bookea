@@ -4,7 +4,9 @@ import { getBooks } from "@/lib/books";
 import Book3D from "@/components/Book3D";
 import { createClient } from "@/lib/server";
 
+// 3.1 - CatalogPage: Componente principal del catálogo que lista los libros disponibles
 export default async function CatalogPage() {
+  // 3.1.1 - Inicialización del cliente Supabase en servidor y obtención de la colección activa
   const supabase = await createClient();
   const books = await getBooks(supabase);
 
@@ -24,6 +26,7 @@ export default async function CatalogPage() {
           </div>
         </div>
 
+        {/* 3.1.2 - Renderizado condicional para estado vacío (Empty State) */}
         {books.length === 0 ? (
           <div className="text-center py-20 bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm">
             <span className="text-4xl block mb-4">📚</span>
@@ -34,6 +37,7 @@ export default async function CatalogPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+            {/* 3.1.3 - Mapeo renderizado de tarjetas de libro individuales en Grid interactivo */}
             {books.map((book) => (
               <div
                 key={book.id}
