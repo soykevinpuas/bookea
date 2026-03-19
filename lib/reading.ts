@@ -5,16 +5,20 @@ export async function getReadingProgress(
   bookId: string,
   userId: string
 ): Promise<ReadingProgress | null> {
-  const supabase = createClientClient();
-  const { data, error } = await supabase
-    .from("reading_progress")
-    .select("*")
-    .eq("book_id", bookId)
-    .eq("user_id", userId)
-    .single();
+  try {
+    const supabase = createClientClient();
+    const { data, error } = await supabase
+      .from("reading_progress")
+      .select("*")
+      .eq("book_id", bookId)
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  if (error) return null;
-  return data;
+    if (error) return null;
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 export async function saveReadingProgress(
@@ -23,48 +27,31 @@ export async function saveReadingProgress(
   cfiPosition: string,
   percentComplete: number
 ): Promise<void> {
-  const supabase = createClientClient();
-  
   try {
-    // Attempt to update first (safest method if unique constraints are missing)
-    const { data: existing, error: fetchError } = await supabase
-      .from("reading_progress")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("book_id", bookId)
-      .maybeSingle();
+    const supabase = createClientClient();
 
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.warn("Supabase check error (reading_progress might not exist):", fetchError.message);
-      return; 
-    }
+    const { error } = await supabase.from("reading_progress").upsert(
+      {
+        user_id: userId,
+        book_id: bookId,
+        cfi_position: cfiPosition,
+        percent_complete: percentComplete,
+        last_read_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "user_id,book_id",
+        ignoreDuplicates: false,
+      }
+    );
 
-    if (existing) {
-      const { error: updateError } = await supabase
-        .from("reading_progress")
-        .update({
-          cfi_position: cfiPosition,
-          percent_complete: percentComplete,
-          last_read_at: new Date().toISOString(),
-        })
-        .eq("user_id", userId)
-        .eq("book_id", bookId);
-        
-      if (updateError) console.warn("Error updating reading progress:", updateError.message);
-    } else {
-      const { error: insertError } = await supabase
-        .from("reading_progress")
-        .insert({
-          user_id: userId,
-          book_id: bookId,
-          cfi_position: cfiPosition,
-          percent_complete: percentComplete,
-          last_read_at: new Date().toISOString(),
-        });
-        
-      if (insertError) console.warn("Error inserting reading progress:", insertError.message);
+    if (error) {
+      // Silently skip if user record doesn't exist yet in public.users
+      // (happens on very first login before the DB trigger fires)
+      if (error.code !== "23503") {
+        console.warn("Reading progress save error:", error.message, "code:", error.code);
+      }
     }
-  } catch (e: any) {
-    console.error("Unexpected error saving reading progress:", e.message || e);
+  } catch {
+    // Never crash the reader over a progress save failure
   }
 }

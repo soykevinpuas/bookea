@@ -49,6 +49,10 @@ export const MOCK_BOOKS: Book[] = [
   },
 ];
 
+// UUID v4 format check — prevents sending non-UUID IDs to Supabase (which expects UUID columns)
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isValidUUID = (id: string) => UUID_REGEX.test(id);
+
 export async function getBooks(): Promise<Book[]> {
   try {
     const { data, error } = await supabase
@@ -61,7 +65,9 @@ export async function getBooks(): Promise<Book[]> {
       console.warn("Supabase error, using mock data:", error.message);
       return MOCK_BOOKS;
     }
-    return data || MOCK_BOOKS;
+
+    // If DB is empty (no books uploaded yet), fall back to mock data
+    return data && data.length > 0 ? data : MOCK_BOOKS;
   } catch (error) {
     console.warn("Using mock books data");
     return MOCK_BOOKS;
@@ -69,7 +75,13 @@ export async function getBooks(): Promise<Book[]> {
 }
 
 export async function getBook(id: string): Promise<Book | null> {
+  // Check mock array first — fast path for development IDs ("1", "2", "3")
   const mockBook = MOCK_BOOKS.find(b => b.id === id);
+
+  // If this is NOT a valid UUID, Supabase will 400. Serve mock directly.
+  if (!isValidUUID(id)) {
+    return mockBook || null;
+  }
   
   try {
     const { data, error } = await supabase

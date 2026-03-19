@@ -2,10 +2,11 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import { Package, CheckCircle2, Truck, Clock, Loader2 } from "lucide-react";
 
 interface Order {
   id: string;
+  user_id: string;
   book_id: string;
   status: "pending" | "shipped" | "delivered" | "cancelled";
   name: string;
@@ -17,122 +18,127 @@ interface Order {
   shipping_cost: number;
   total: number;
   created_at: string;
-  books?: { title: string; author: string };
+  books?: { title: string; author: string } | null;
 }
+
+const STATUS_LABELS: Record<Order["status"], { label: string; color: string }> = {
+  pending: { label: "Pendiente", color: "bg-amber-500/10 text-amber-400 border border-amber-500/20" },
+  shipped: { label: "Enviado", color: "bg-blue-500/10 text-blue-400 border border-blue-500/20" },
+  delivered: { label: "Entregado", color: "bg-green-500/10 text-green-400 border border-green-500/20" },
+  cancelled: { label: "Cancelado", color: "bg-red-500/10 text-red-400 border border-red-500/20" },
+};
+
+const STATUS_FLOW: Order["status"][] = ["pending", "shipped", "delivered", "cancelled"];
 
 export default function AdminOrdersPage() {
   const queryClient = useQueryClient();
   const supabase = createClientClient();
-  const [user, setUser] = useState<{ role?: string } | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (data.user) {
-        const { data: userData } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", data.user.id)
-          .single();
-        setUser(userData);
-      }
-    });
-  }, []);
-
-  const { data: orders, isLoading } = useQuery({
+  const { data: orders = [], isLoading } = useQuery<Order[]>({
     queryKey: ["admin-orders"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("orders_physical")
         .select("*, books(title, author)")
         .order("created_at", { ascending: false });
-      return data as Order[] || [];
+      if (error) throw error;
+      return (data ?? []) as Order[];
     },
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      await supabase.from("orders_physical").update({ status }).eq("id", id);
+    mutationFn: async ({ id, status }: { id: string; status: Order["status"] }) => {
+      const { error } = await supabase
+        .from("orders_physical")
+        .update({ status })
+        .eq("id", id);
+      if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-orders"] }),
   });
 
-  if (!user || user.role !== "admin") {
-    return <div className="p-4">No autorizado</div>;
-  }
-
-  if (isLoading) return <div className="p-4">Cargando...</div>;
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending": return "bg-yellow-100 text-yellow-800";
-      case "shipped": return "bg-blue-100 text-blue-800";
-      case "delivered": return "bg-green-100 text-green-800";
-      case "cancelled": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
+  const pending = orders.filter((o) => o.status === "pending").length;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Órdenes Físicas</h1>
-
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Fecha</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Libro</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Cliente</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Dirección</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Total</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Estado</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {orders?.map((order) => (
-              <tr key={order.id}>
-                <td className="px-4 py-3 text-sm">
-                  {new Date(order.created_at).toLocaleDateString("es-MX")}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="text-sm font-medium">{order.books?.title}</div>
-                  <div className="text-xs text-gray-500">{order.books?.author}</div>
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  <div>{order.name}</div>
-                  <div className="text-xs text-gray-500">{order.phone}</div>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-500">
-                  {order.city}, {order.state}
-                </td>
-                <td className="px-4 py-3 font-medium">${order.total}</td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-1 text-xs rounded ${getStatusColor(order.status)}`}>
-                    {order.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <select
-                    value={order.status}
-                    onChange={(e) =>
-                      updateStatus.mutate({ id: order.id, status: e.target.value })
-                    }
-                    className="text-sm border rounded px-2 py-1"
-                  >
-                    <option value="pending">Pendiente</option>
-                    <option value="shipped">Enviado</option>
-                    <option value="delivered">Entregado</option>
-                    <option value="cancelled">Cancelado</option>
-                  </select>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold">Órdenes físicas</h1>
+          <p className="text-white/40 text-sm mt-1">
+            {orders.length} orden{orders.length !== 1 ? "es" : ""} · {pending} pendiente{pending !== 1 ? "s" : ""}
+          </p>
+        </div>
       </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-white/20" />
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="text-center py-20 text-white/30">
+          <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p>No hay órdenes todavía.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {orders.map((order) => {
+            const statusInfo = STATUS_LABELS[order.status];
+            const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1];
+
+            return (
+              <div
+                key={order.id}
+                className="bg-white/5 border border-white/8 rounded-2xl p-5 hover:bg-white/7 transition-colors"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusInfo.color}`}>
+                        {statusInfo.label}
+                      </span>
+                      <span className="text-xs text-white/30">
+                        {new Date(order.created_at).toLocaleDateString("es-MX", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+
+                    <p className="font-semibold text-white truncate">
+                      {(order.books as any)?.title ?? "Libro desconocido"}
+                    </p>
+                    <p className="text-sm text-white/50 mt-0.5">
+                      {order.name} — {order.city}, {order.state} {order.zip}
+                    </p>
+                    <p className="text-xs text-white/30 mt-0.5">{order.address} · {order.phone}</p>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-3">
+                    <div className="text-right">
+                      <p className="font-bold text-white">${order.total} MXN</p>
+                      <p className="text-xs text-white/30">Envío: ${order.shipping_cost}</p>
+                    </div>
+
+                    {nextStatus && (
+                      <button
+                        onClick={() => updateStatus.mutate({ id: order.id, status: nextStatus })}
+                        disabled={updateStatus.isPending}
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-white/8 rounded-lg hover:bg-white/15 transition-colors border border-white/10 text-white/70"
+                      >
+                        {nextStatus === "shipped" && <Truck className="w-3.5 h-3.5" />}
+                        {nextStatus === "delivered" && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {nextStatus === "cancelled" && <Clock className="w-3.5 h-3.5" />}
+                        Marcar como {STATUS_LABELS[nextStatus].label}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
