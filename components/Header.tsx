@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "./ThemeToggle";
@@ -10,6 +11,7 @@ export function Header() {
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClientClient();
+  const pathname = usePathname();
 
   useEffect(() => {
     // 1. Fetch initial session
@@ -32,6 +34,10 @@ export function Header() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (pathname?.startsWith("/reader")) {
+    return null; // Ocultar el Header global en la vista del lector
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/80 dark:bg-black/60 border-b border-gray-200 dark:border-white/10 shadow-sm dark:shadow-[0_4px_30px_rgba(0,0,0,0.1)] transition-all">
