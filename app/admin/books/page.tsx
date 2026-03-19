@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { useState, useRef } from "react";
+import { toast } from "sonner";
 import {
   X,
   Upload,
@@ -22,6 +23,7 @@ interface Book {
   description: string | null;
   category: string | null;
   cover_url: string | null;
+  slug: string;
   epub_url: string | null;
   price_digital: number;
   price_physical: number;
@@ -35,6 +37,7 @@ type FormData = Omit<Book, "id" | "created_at"> & { id?: string };
 
 const EMPTY_FORM: FormData = {
   title: "",
+  slug: "",
   author: "",
   description: "",
   category: "",
@@ -58,45 +61,47 @@ export default function AdminBooksPage() {
   const [editingBook, setEditingBook] = useState<FormData>(EMPTY_FORM);
   const [uploading, setUploading] = useState<"cover" | "epub" | null>(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const epubInputRef = useRef<HTMLInputElement>(null);
 
-  const supabase = createClientClient();
-
-  const { data: books = [], isLoading } = useQuery<Book[]>({
+  const { data: books = [], isLoading } = useQuery({
     queryKey: ["admin-books"],
     queryFn: async () => {
+      const supabase = createClientClient();
       const { data, error } = await supabase
         .from("books")
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return data as Book[];
     },
   });
 
-  const toggleActive = useMutation({
+  const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const supabase = createClientClient();
       const { error } = await supabase.from("books").update({ is_active: isActive }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-books"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+      toast.success("Estado del libro actualizado");
+    },
+    onError: (err: any) => toast.error(`Error: ${err.message}`),
   });
 
   const openNew = () => {
     setEditingBook(EMPTY_FORM);
-    setError(null);
     setShowModal(true);
   };
 
   const openEdit = (book: Book) => {
     setEditingBook({ ...book });
-    setError(null);
     setShowModal(true);
   };
 
   const uploadFile = async (file: File, bucket: string, path: string): Promise<string> => {
+    const supabase = createClientClient();
     const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
     if (error) throw error;
     const { data } = supabase.storage.from(bucket).getPublicUrl(path);
@@ -108,7 +113,6 @@ export default function AdminBooksPage() {
     if (!file) return;
 
     setUploading(type);
-    setError(null);
 
     try {
       const ext = file.name.split(".").pop();
@@ -118,33 +122,37 @@ export default function AdminBooksPage() {
       if (type === "cover") {
         publicUrl = await uploadFile(file, "covers", uniqueName);
         setEditingBook((prev) => ({ ...prev, cover_url: publicUrl }));
+        toast.success("Portada subida");
       } else {
         publicUrl = await uploadFile(file, "epubs", uniqueName);
         setEditingBook((prev) => ({ ...prev, epub_url: publicUrl }));
+        toast.success("Archivo EPUB subido");
       }
     } catch (err: any) {
-      setError(`Error al subir ${type === "cover" ? "portada" : "EPUB"}: ${err.message}`);
+      toast.error(`Error al subir ${type === "cover" ? "portada" : "EPUB"}: ${err.message}`);
     } finally {
       setUploading(null);
     }
   };
 
   const handleSave = async () => {
-    setError(null);
     if (!editingBook.title || !editingBook.author) {
-      setError("El título y autor son obligatorios.");
+      toast.error("El título y autor son obligatorios.");
       return;
     }
 
     setSaving(true);
     try {
+      const supabase = createClientClient();
+      const slug = editingBook.slug || editingBook.title.toLowerCase().replace(/ /g, "-").replace(/[^\w-]/g, "");
+      
       const payload = {
         title: editingBook.title,
         author: editingBook.author,
-        description: editingBook.description || null,
-        category: editingBook.category || null,
-        cover_url: editingBook.cover_url || null,
-        epub_url: editingBook.epub_url || null,
+        description: editingBook.description,
+        category: editingBook.category,
+        cover_url: editingBook.cover_url,
+        epub_url: editingBook.epub_url,
         price_digital: Number(editingBook.price_digital),
         price_physical: Number(editingBook.price_physical),
         price_bundle: editingBook.price_bundle ? Number(editingBook.price_bundle) : null,
@@ -155,27 +163,32 @@ export default function AdminBooksPage() {
       if (editingBook.id) {
         const { error } = await supabase.from("books").update(payload).eq("id", editingBook.id);
         if (error) throw error;
+        toast.success("Libro actualizado con éxito");
       } else {
         const { error } = await supabase.from("books").insert(payload);
         if (error) throw error;
+        toast.success("Libro creado con éxito");
       }
 
       queryClient.invalidateQueries({ queryKey: ["admin-books"] });
       setShowModal(false);
     } catch (err: any) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div>
+    <div className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold">Libros</h1>
-          <p className="text-white/40 text-sm mt-1">{books.length} libro{books.length !== 1 ? "s" : ""} en el catálogo</p>
+          <p className="text-white/40 text-sm mt-1">
+            {(books || []).length} libro{(books || []).length !== 1 ? "s" : ""} en el catálogo
+          </p>
+
         </div>
         <button
           onClick={openNew}
@@ -243,7 +256,7 @@ export default function AdminBooksPage() {
                   <td className="px-5 py-4 text-white/70 hidden md:table-cell">{book.stock_physical}</td>
                   <td className="px-5 py-4">
                     <button
-                      onClick={() => toggleActive.mutate({ id: book.id, isActive: !book.is_active })}
+                      onClick={() => toggleActiveMutation.mutate({ id: book.id, isActive: !book.is_active })}
                       title={book.is_active ? "Desactivar" : "Activar"}
                     >
                       {book.is_active ? (
@@ -282,13 +295,6 @@ export default function AdminBooksPage() {
             </div>
 
             <div className="px-6 py-5 space-y-4">
-              {/* Error */}
-              {error && (
-                <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-                  {error}
-                </div>
-              )}
-
               {/* Title / Author */}
               <div className="grid grid-cols-2 gap-3">
                 <div>

@@ -82,49 +82,54 @@ export default function ReaderPage() {
         });
 
         // Inject Custom Base CSS to override Publisher defaults
-        rendition.hooks.content.register((contents: any) => {
-          const style = document.createElement("style");
-          style.innerHTML = `
-            body {
-              font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-              line-height: 1.8 !important;
-              padding: 0 5% !important;
-              max-width: 800px !important;
-              margin: 0 auto !important;
-              transition: color 0.3s ease, background-color 0.3s ease;
-            }
-            p {
-              margin-bottom: 1.5em !important;
-              text-align: justify !important;
-            }
-            h1, h2, h3, h4, h5, h6 {
-              font-family: 'Inter', sans-serif !important;
-              font-weight: 700 !important;
-              margin-top: 2em !important;
-              margin-bottom: 1em !important;
-            }
-            img {
-              max-width: 100% !important;
-              height: auto !important;
-              border-radius: 8px !important;
-            }
-          `;
-          contents.document.head.appendChild(style);
-          
-          // Add click listener to center to toggle controls, edges to paginate
-          contents.document.body.addEventListener('click', (e: MouseEvent) => {
-            const width = contents.document.body.clientWidth;
-            const x = e.clientX;
-            if (x < width * 0.2) {
-              rendition.prev();
-            } else if (x > width * 0.8) {
-              rendition.next();
-            } else {
-              setShowControls(prev => !prev);
-              resetControlsTimeout();
-            }
+        if (rendition.hooks && rendition.hooks.content) {
+          rendition.hooks.content.register((contents: any) => {
+            if (!contents || !contents.document) return;
+            
+            const style = contents.document.createElement("style");
+            style.innerHTML = `
+              body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+                line-height: 1.8 !important;
+                padding: 0 5% !important;
+                max-width: 800px !important;
+                margin: 0 auto !important;
+                transition: color 0.3s ease, background-color 0.3s ease;
+              }
+              p {
+                margin-bottom: 1.5em !important;
+                text-align: justify !important;
+              }
+              h1, h2, h3, h4, h5, h6 {
+                font-family: 'Inter', sans-serif !important;
+                font-weight: 700 !important;
+                margin-top: 2em !important;
+                margin-bottom: 1em !important;
+              }
+              img {
+                max-width: 100% !important;
+                height: auto !important;
+                border-radius: 8px !important;
+              }
+            `;
+            contents.document.head.appendChild(style);
+            
+            // Add click listener to center to toggle controls, edges to paginate
+            contents.document.body.addEventListener('click', (e: MouseEvent) => {
+              const width = contents.document.body.clientWidth;
+              const x = e.clientX;
+              if (x < width * 0.2) {
+                rendition.prev().catch((err: any) => console.warn("EPUB click prev error:", err));
+              } else if (x > width * 0.8) {
+                rendition.next().catch((err: any) => console.warn("EPUB click next error:", err));
+              } else {
+                setShowControls(prev => !prev);
+                resetControlsTimeout();
+              }
+            });
           });
-        });
+        }
+
 
         const updateTheme = (currentTheme: "light" | "dark") => {
           rendition.themes.register("light", {
@@ -160,7 +165,11 @@ export default function ReaderPage() {
                 setProgress(percent * 100);
                 saveReadingProgress(bookId, userId, location.start.cfi, percent * 100);
             });
+        }).catch(err => {
+            console.warn("EPUB Location generation failed (structural error):", err);
+            // We don't set global error here to allow the user to keep reading if possible
         });
+
 
         // Fallback progress update before locations are generated
         rendition.on("relocated", (location: { start: { cfi: string; percentage: number | string } }) => {
@@ -176,11 +185,18 @@ export default function ReaderPage() {
           setTimeout(() => setIsLoading(false), 300);
         });
 
+        bookInstance.on("openFailed", (err: any) => {
+          console.error("EPUB Open Failed:", err);
+          setError("No se pudo abrir el archivo EPUB. Es posible que el archivo esté dañado o el formato no sea compatible.");
+          setIsLoading(false);
+        });
+
       } catch (err) {
-        console.error("Error loading EPUB:", err);
+        console.error("Error loading EPUB (Catch Block):", err);
         setError("Error al cargar el libro digital. Es posible que el archivo esté corrupto o incompleto.");
         setIsLoading(false);
       }
+
     };
 
     initEpub();
@@ -194,11 +210,11 @@ export default function ReaderPage() {
   useEffect(() => {
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
-        renditionRef.current?.prev();
+        renditionRef.current?.prev().catch(err => console.warn("EPUB key prev error:", err));
         resetControlsTimeout();
       }
       if (e.key === 'ArrowRight') {
-        renditionRef.current?.next();
+        renditionRef.current?.next().catch(err => console.warn("EPUB key next error:", err));
         resetControlsTimeout();
       }
     };
@@ -219,12 +235,12 @@ export default function ReaderPage() {
   }, [theme]);
 
   const handlePrev = () => {
-    renditionRef.current?.prev();
+    renditionRef.current?.prev().catch(err => console.warn("EPUB prev error:", err));
     resetControlsTimeout();
   };
 
   const handleNext = () => {
-    renditionRef.current?.next();
+    renditionRef.current?.next().catch(err => console.warn("EPUB next error:", err));
     resetControlsTimeout();
   };
 
@@ -312,11 +328,15 @@ export default function ReaderPage() {
         {error && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 px-6 text-center ${theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-[#ffffff]'}`}>
             <div className="text-red-500 mb-2 text-2xl">⚠️</div>
-            <div className="text-lg font-medium mb-4">{error}</div>
-            <Link href={`/book/${bookId}`} className="px-6 py-2 bg-gray-200 dark:bg-gray-800 rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition">
-              Volver
+            <div className="text-lg font-medium mb-4">{typeof error === 'string' ? error : "Error al cargar el libro"}</div>
+            <Link 
+              href="/dashboard"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Volver a la biblioteca
             </Link>
           </div>
+
         )}
 
         {/* EPUB Container */}

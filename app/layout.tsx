@@ -21,6 +21,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
+import { Toaster } from "sonner";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -42,8 +44,15 @@ export default function RootLayout({
               {children}
             </main>
           </QueryProvider>
+          <Toaster 
+            position="bottom-right" 
+            richColors 
+            theme="system" 
+            closeButton
+          />
         </ThemeProvider>
       </body>
     </html>
   );
 }
+

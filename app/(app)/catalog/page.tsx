@@ -1,9 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getBooks } from "@/lib/books";
+import Book3D from "@/components/Book3D";
+import { createClient } from "@/lib/server";
 
 export default async function CatalogPage() {
-  const books = await getBooks();
+  const supabase = await createClient();
+  const books = await getBooks(supabase);
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] transition-colors duration-300">
@@ -14,8 +18,9 @@ export default async function CatalogPage() {
               Catálogo de Libros
             </h1>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              Explora nuestra colección premium. {books.length} títulos disponibles.
+              Explora nuestra colección premium. {(books || []).length} títulos disponibles.
             </p>
+
           </div>
         </div>
 
@@ -24,6 +29,8 @@ export default async function CatalogPage() {
             <span className="text-4xl block mb-4">📚</span>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Catálogo vacío</h3>
             <p className="text-gray-500 dark:text-gray-400">Pronto agregaremos nuevos y emocionantes títulos.</p>
+
+
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
@@ -32,23 +39,22 @@ export default async function CatalogPage() {
                 key={book.id}
                 className="group flex flex-col bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none hover:-translate-y-1 transition-all duration-300 overflow-hidden"
               >
-                <Link href={`/book/${book.id}`} className="block relative aspect-[2/3] bg-gray-100 dark:bg-black overflow-hidden">
+                <div className="relative aspect-[2/3] px-12 py-12 flex items-center justify-center bg-transparent overflow-visible">
                   {book.cover_url ? (
-                    <Image
-                      src={book.cover_url}
-                      alt={`Portada de ${book.title}`}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+                    <Link href={`/book/${book.id}`} className="w-full h-full">
+                      <Book3D 
+                        src={book.cover_url} 
+                        title={book.title} 
+                        className="w-full h-full"
+                      />
+                    </Link>
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-4xl text-gray-300 dark:text-white/10 bg-gray-50 dark:bg-white/5 font-serif italic">
+                    <Link href={`/book/${book.id}`} className="w-full h-full flex items-center justify-center text-4xl text-gray-300 dark:text-white/10 bg-gray-50 dark:bg-white/5 font-serif italic rounded-2xl border border-dashed border-white/20">
                       Bookea
-                    </div>
+                    </Link>
                   )}
-                  {/* Overlay gradiente para mejor legibilidad si hay texto sobre imagen */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </Link>
+                </div>
+
                 
                 <div className="flex flex-col flex-1 p-5">
                   <Link href={`/book/${book.id}`} className="mb-1">

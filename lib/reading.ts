@@ -21,21 +21,31 @@ export async function getReadingProgress(
   }
 }
 
+// UUID v4 format check
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isValidUUID = (id: string) => UUID_REGEX.test(id);
+
 export async function saveReadingProgress(
   bookId: string,
   userId: string,
   cfiPosition: string,
   percentComplete: number
 ): Promise<void> {
+  // If not a valid UUID (e.g. mock books "1", "2"), don't save to DB
+  if (!isValidUUID(bookId)) return;
+
   try {
     const supabase = createClientClient();
+
+    // Round to 2 decimal places to fit NUMERIC(5,2) in Postgres
+    const cleanPercent = Math.min(100, Math.max(0, Math.round(percentComplete * 100) / 100));
 
     const { error } = await supabase.from("reading_progress").upsert(
       {
         user_id: userId,
         book_id: bookId,
         cfi_position: cfiPosition,
-        percent_complete: percentComplete,
+        percent_complete: cleanPercent,
         last_read_at: new Date().toISOString(),
       },
       {
@@ -45,13 +55,12 @@ export async function saveReadingProgress(
     );
 
     if (error) {
-      // Silently skip if user record doesn't exist yet in public.users
-      // (happens on very first login before the DB trigger fires)
       if (error.code !== "23503") {
         console.warn("Reading progress save error:", error.message, "code:", error.code);
       }
     }
   } catch {
-    // Never crash the reader over a progress save failure
+    // Silently fail to not interrupt reading
   }
 }
+

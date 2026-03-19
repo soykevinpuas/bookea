@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export default function BookDetailPage() {
   const params = useParams();
@@ -16,14 +17,16 @@ export default function BookDetailPage() {
   const supabase = createClientClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(({ data }: { data: { user: any } }) => {
       if (data.user) setUserId(data.user.id);
     });
 
+
     if (searchParams.get('payment') === 'success') {
+      toast.success("¡Pago completado con éxito! El libro se está añadiendo a tu biblioteca.");
       router.replace(`/book/${id}`);
     }
-  }, []);
+  }, [searchParams, id, router]);
 
   const { data: book, isLoading, error } = useBook(id);
   const { data: userBooks, refetch } = useUserBooks(userId);
@@ -53,11 +56,11 @@ export default function BookDetailPage() {
       if (data.url) {
         window.location.href = data.url;
       } else if (data.error) {
-        alert(data.error);
+        toast.error(data.error);
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al procesar la compra');
+      toast.error('Error al procesar la compra');
     } finally {
       setLoading(null);
     }
@@ -65,6 +68,7 @@ export default function BookDetailPage() {
 
   const handleClaimFree = async () => {
     if (!userId) {
+      toast.error("Debes iniciar sesión para añadir libros gratis");
       router.push("/login?message=Debes iniciar sesión para añadir libros gratis");
       return;
     }
@@ -81,17 +85,19 @@ export default function BookDetailPage() {
       const data = await response.json();
 
       if (data.success) {
+        toast.success("¡Libro añadido a tu biblioteca!");
         refetch(); // Automatically upgrade the button UI to "Read"
       } else if (data.error) {
-        alert(data.error);
+        toast.error(data.error);
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al añadir el libro a tu biblioteca');
+      toast.error('Error al añadir el libro a tu biblioteca');
     } finally {
       setLoading(null);
     }
   };
+
 
   if (isLoading) {
     return (
