@@ -1,24 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Book } from "@/types/book";
 
-export const MOCK_BOOKS: Book[] = [
-  {
-    id: "1",
-    title: "El Principito",
-    author: "Antoine de Saint-Exupéry",
-    description: "Un clásico de la literatura francesa que cuenta la historia de un pequeño príncipe que visita diferentes planetas.",
-    category: "Clásico",
-    cover_url: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400",
-    epub_url: "https://s3.amazonaws.com/moby-dick/moby-dick.epub",
-    price_digital: 0,
-    price_physical: 199,
-    price_bundle: 229,
-    stock_physical: 10,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-];
-
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isValidUUID = (id: string) => UUID_REGEX.test(id);
 
@@ -32,24 +14,20 @@ export async function getBooks(supabase: SupabaseClient): Promise<Book[]> {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.warn("Supabase error, using mock data:", error.message);
-      return Array.isArray(MOCK_BOOKS) ? MOCK_BOOKS : [];
+      console.warn("Supabase error fetching books:", error.message);
+      return [];
     }
 
-    return Array.isArray(data) && data.length > 0 ? (data as Book[]) : MOCK_BOOKS;
+    return Array.isArray(data) ? (data as Book[]) : [];
   } catch (error) {
-    console.warn("Using mock books data due to exception");
-    return MOCK_BOOKS;
+    console.error("Exception fetching books:", error);
+    return [];
   }
 }
 
 export async function getBook(supabase: SupabaseClient, id: string): Promise<Book | null> {
   if (!id) return null;
-  const mockBook = MOCK_BOOKS.find(b => b.id === id);
-
-  if (!isValidUUID(id)) {
-    return mockBook || null;
-  }
+  if (!id || !isValidUUID(id)) return null;
   
   try {
     const { data, error } = await supabase
@@ -59,10 +37,10 @@ export async function getBook(supabase: SupabaseClient, id: string): Promise<Boo
       .eq("is_active", true)
       .single();
 
-    if (error) return mockBook || null;
-    return (data as Book) || mockBook || null;
+    if (error) return null;
+    return (data as Book) || null;
   } catch (error) {
-    return mockBook || null;
+    return null;
   }
 }
 

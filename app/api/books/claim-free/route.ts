@@ -26,11 +26,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (bookError || !book) {
-      // Como estamos enviando un mock al frontend si hay error, el backend va a fallar aquí.
-      // Permitir bypass SOLO si es el libro '1' mocking para desarrollo local:
-      if (bookId !== '1') {
-        return NextResponse.json({ error: 'Libro no encontrado en la base de datos' }, { status: 404 });
-      }
+      return NextResponse.json({ error: 'Libro no encontrado en la base de datos' }, { status: 404 });
     } else if (book.price_digital > 0) {
       return NextResponse.json({ error: 'Este libro no es gratuito.' }, { status: 403 });
     }

@@ -4,6 +4,7 @@ import "./globals.css";
 import { QueryProvider } from "@/lib/providers";
 import { Header } from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { PwaListener } from "@/components/PwaListener";
 
 // 1.5 - Configuración de fuentes y Metadata global
 const geistSans = Geist({
@@ -20,6 +21,23 @@ export const metadata: Metadata = {
   title: "Bookea",
   description: "Tu biblioteca premium de E-books",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Bookea",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport = {
+  themeColor: "#0a0a0a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 import { Toaster } from "sonner";
@@ -40,6 +58,7 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
         >
+          <PwaListener />
           <QueryProvider>
             <Header />
             <main className="flex-1">

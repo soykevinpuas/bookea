@@ -32,7 +32,7 @@ export async function saveReadingProgress(
   cfiPosition: string,
   percentComplete: number
 ): Promise<void> {
-  // 4.1.2 - Cancelar guardado si el identificador es provisto por mocking local de prueba ("1", "2")
+  // 4.1.2 - Cancelar guardado si el identificador no cumple estrictamente la firma UUIDv4 (Seguridad de DB)
   if (!isValidUUID(bookId)) return;
 
   try {
