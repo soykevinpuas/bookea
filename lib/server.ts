@@ -4,18 +4,16 @@ import { cookies } from 'next/headers'
 export async function createClient() {
   const cookieStore = await cookies()
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    // Durante el build de Vercel, a veces las variables no están disponibles en la fase de pre-render
-    // Devolvemos un cliente básico que no tronará el proceso, aunque no funcionará si se llama realmente.
-    console.warn("Supabase credentials missing in createClient (Server)")
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.warn("⚠️ ALERTA: Variables de Supabase ausentes durante el build (Server).")
   }
 
   return createServerClient(
-    supabaseUrl || '',
-    supabaseAnonKey || '',
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
