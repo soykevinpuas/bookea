@@ -4,6 +4,25 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-03-21] - Implementación de Pagos y Preparación para Producción
+
+### Añadido
+- **Sistema de Suscripciones**: Nueva página `/subscribe` con diseño premium para la membresía mensual de $99 MXN.
+- **Gestión de Perfil**: Nueva página `/profile` que muestra el estado de la suscripción y acceso al portal de facturación.
+- **Portal de Cliente de Stripe**: Ruta de API `/api/stripe/portal` para gestionar suscripciones de forma segura.
+- **UI de Navegación**: Menú de usuario dinámico que muestra el rol del usuario (Free vs Subscriber) y accesos rápidos.
+
+### Cambios y Mejoras
+- **Refactorización del Webhook de Stripe**: Implementación de manejo de errores robusto con Supabase. Ahora el webhook devuelve errores 500 para activar reintentos automáticos de Stripe en caso de fallos de base de datos.
+- **Idempotencia en Pagos**: Añadidas verificaciones para evitar duplicidad de registros en compras y créditos.
+- **Preparación para Producción**: Revisión y documentación de las 9 variables de entorno necesarias para Vercel.
+
+### Pruebas
+- Verificación completa del build local con `npm run build` (Exitoso).
+- Simulación visual de navegación con agente de explorador.
+
+---
+
 ## [Fase 1] - Inicio y Construcción del MVP (Febrero - Marzo 2026)
 
 ### Hitos Completados
