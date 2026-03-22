@@ -5,13 +5,26 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const isValidUUID = (id: string) => UUID_REGEX.test(id);
 
 // 3.3 - Configuración y Utilerías de Acceso a Supabase para la Entidad Books
-export async function getBooks(supabase: SupabaseClient): Promise<Book[]> {
+export async function getBooks(
+  supabase: SupabaseClient, 
+  filters?: { search?: string; category?: string }
+): Promise<Book[]> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from("books")
       .select("*")
-      .eq("is_active", true)
-      .order("created_at", { ascending: false });
+      .eq("is_active", true);
+
+    if (filters?.search) {
+      // Búsqueda simple en título o autor
+      query = query.or(`title.ilike.%${filters.search}%,author.ilike.%${filters.search}%`);
+    }
+
+    if (filters?.category && filters.category !== "all") {
+      query = query.eq("category", filters.category);
+    }
+
+    const { data, error } = await query.order("created_at", { ascending: false });
 
     if (error) {
       console.warn("Supabase error fetching books:", error.message);

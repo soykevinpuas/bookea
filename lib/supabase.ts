@@ -5,7 +5,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  console.warn("⚠️ ALERTA: Variables de Supabase ausentes durante el build. Usando placeholders para evitar errores de compilación.")
+  console.warn("⚠️ ALERTA: Variables de Supabase ausentes durante el build. Usando placeholders para evitar errores de compilación.");
+  
+  // En el navegador, esto es crítico:
+  if (typeof window !== 'undefined') {
+    console.error("❌ ERROR DE CONFIGURACIÓN: La aplicación se construyó sin las variables de Supabase. Revisa Vercel Settings -> Environment Variables y asegúrate de que NEXT_PUBLIC_SUPABASE_URL esté configurado para Production.");
+  }
 }
 
 // 1.1 - Cliente Supabase Estándar (SSG / Funciones Puras)
