@@ -42,12 +42,17 @@ export const viewport = {
 
 import { Toaster } from "sonner";
 
+import { createClient } from "@/lib/server";
+
 // 1.6 - RootLayout: Proveedores de estado, tostadas y tema global
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -60,8 +65,8 @@ export default function RootLayout({
         >
           <PwaListener />
           <QueryProvider>
-            <Header />
-            <main className="flex-1">
+            <Header initialUser={user ? { id: user.id, email: user.email } : null} />
+            <main className="flex-1 pb-safe px-safe">
               {children}
             </main>
           </QueryProvider>

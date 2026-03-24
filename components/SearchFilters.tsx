@@ -4,12 +4,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Search, LayoutGrid, List, SlidersHorizontal, X } from "lucide-react";
 import { useState, useEffect, useTransition } from "react";
 
+// ============================================
+// 6.3 - SearchFilters: Componente de búsqueda y filtrado para el catálogo de libros
+// Permite buscar por título/autor, filtrar por categoría y cambiar vista (grid/list)
+// ============================================
+
 interface SearchFiltersProps {
   initialSearch?: string;
   initialCategory?: string;
   initialView?: "grid" | "list";
 }
 
+// 6.3.1 - Componente de filtros con valores iniciales desde URL
 export function SearchFilters({ 
   initialSearch = "", 
   initialCategory = "all", 
@@ -17,17 +23,21 @@ export function SearchFilters({
 }: SearchFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // Estado de transición para navegación no bloqueante
   const [isPending, startTransition] = useTransition();
   
+  // Estados locales para búsqueda, categoría y vista
   const [search, setSearch] = useState(initialSearch);
   const [category, setCategory] = useState(initialCategory);
   const [view, setView] = useState(initialView);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  // Sync state with URL
+  // 6.3.2 - Función para sincronizar filtros con la URL
   const updateFilters = (updates: Record<string, string>) => {
     const params = new URLSearchParams(searchParams?.toString());
     Object.entries(updates).forEach(([key, value]) => {
+      // Limpiar parámetros vacíos o "all"
       if (value === "all" || value === "") {
         params.delete(key);
       } else {
@@ -35,11 +45,13 @@ export function SearchFilters({
       }
     });
 
+    // Navegación con transición para no bloquear UI
     startTransition(() => {
       router.push(`/catalog?${params.toString()}`);
     });
   };
 
+  // 6.3.3 - Debounce de búsqueda (500ms) para evitar demasiadas actualizaciones
   useEffect(() => {
     const timer = setTimeout(() => {
       if (search !== initialSearch) {
@@ -49,10 +61,13 @@ export function SearchFilters({
     return () => clearTimeout(timer);
   }, [search]);
 
+  // ============================================
+  // 6.3.4 - Renderizado de la barra de filtros
+  // ============================================
   return (
     <div className="mb-8 space-y-4">
       <div className="flex flex-col md:flex-row gap-4 items-center">
-        {/* Barra de Búsqueda */}
+        {/* 6.3.4.1 - Barra de búsqueda con ícono */}
         <div className="relative w-full md:flex-1 group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
           <input
@@ -64,8 +79,9 @@ export function SearchFilters({
           />
         </div>
 
+        {/* 6.3.4.2 - Controles de filtrado (Desktop) */}
         <div className="flex items-center gap-2 w-full md:w-auto">
-          {/* Selector de Categoría (Desktop) */}
+          {/* Selector de categoría (Dropdown) */}
           <select
             value={category}
             onChange={(e) => {
@@ -81,7 +97,7 @@ export function SearchFilters({
             <option value="Poesía">Poesía</option>
           </select>
 
-          {/* Toggle de Vista */}
+          {/* 6.3.4.2.1 - Toggle de vista (Grid/List) */}
           <div className="flex bg-gray-100 dark:bg-white/5 p-1 rounded-xl border border-gray-200 dark:border-white/10">
             <button
               onClick={() => {
@@ -111,7 +127,7 @@ export function SearchFilters({
             </button>
           </div>
 
-          {/* Botón Filtros Móvil */}
+          {/* 6.3.4.2.2 - Botón de filtros para móvil */}
           <button 
             onClick={() => setShowMobileFilters(true)}
             className="md:hidden flex-1 flex items-center justify-center gap-2 py-2.5 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white"
@@ -122,7 +138,7 @@ export function SearchFilters({
         </div>
       </div>
 
-      {/* Modal de Filtros Móvil */}
+      {/* 6.3.4.3 - Modal de filtros para dispositivos móviles */}
       {showMobileFilters && (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm md:hidden animate-in fade-in duration-200">
           <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 rounded-t-3xl p-6 pb-10 animate-in slide-in-from-bottom-full duration-300">
@@ -166,7 +182,7 @@ export function SearchFilters({
         </div>
       )}
 
-      {/* Indicador de Carga */}
+      {/* 6.3.4.4 - Indicador visual de carga durante transición */}
       {isPending && (
         <div className="h-0.5 w-full bg-blue-100 dark:bg-blue-900/30 overflow-hidden">
           <div className="h-full bg-blue-600 animate-progress origin-left" />

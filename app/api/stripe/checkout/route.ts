@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/server';
 import { createCheckoutSession, PRICE_IDS } from '@/lib/stripe';
 
+// ============================================
+// 7.1 - Stripe Checkout API: Endpoint para iniciar proceso de compra
+// Crea sesiones de checkout de Stripe para suscripciones y compras de libros
+// ============================================
+
 export async function POST(request: NextRequest) {
   try {
+    // 7.1.1 - Verificar autenticación del usuario
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -11,11 +17,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    // 7.1.2 - Extraer tipo de compra y ID del libro del body
     const body = await request.json();
     const { type, bookId } = body;
 
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
+    // 7.1.3 - Manejo de suscripción mensual
     if (type === 'subscription') {
       const session = await createCheckoutSession({
         priceId: PRICE_IDS.subscription,
@@ -28,11 +36,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: session.url });
     }
 
+    // 7.1.4 - Validación de bookId para compras de libros
     if (!bookId) {
-      return NextResponse.json({ error: 'Book ID is required for purchases' }, { status: 400 });
+      return NextResponse.json({ error: 'Book ID es requerido para compras' }, { status: 400 });
     }
 
-    // 6.1.1 - Obtener precio directamente desde la base de datos para prevenir manipulación (Spoofing) desde el cliente
+    // 7.1.5 - Obtener precio DESDE LA BASE DE DATOS para prevenir manipulación (anti-spoofing)
     const { data: book, error: bookError } = await supabase
       .from('books')
       .select('title, price_digital, price_physical, price_bundle')
@@ -43,6 +52,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Libro no encontrado' }, { status: 404 });
     }
 
+    // 7.1.6 - Determinar precio y descripción según tipo de compra
     let exactPrice = 0;
     let descriptionType = '';
 
@@ -63,14 +73,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Tipo de compra inválido' }, { status: 400 });
     }
 
+    // 7.1.7 - Crear datos del precio (Stripe requiere centavos)
     const priceData = {
       currency: 'mxn',
       product_data: {
         name: `${book.title} - ${descriptionType}`,
       },
-      unit_amount: exactPrice * 100, // 6.1.2 - Stripe procesa montos exclusivamente en centavos (unidades mínimas)
+      unit_amount: exactPrice * 100, // Importante: Stripe procesa en centavos
     };
 
+    // 7.1.8 - Crear sesión de checkout de Stripe
     const session = await createCheckoutSession({
       priceData,
       userId: user.id,
@@ -83,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error('Error creating checkout session:', error);
+    console.error('Error creando sesión de checkout:', error);
     return NextResponse.json(
       { error: 'Error al crear la sesión de pago' },
       { status: 500 }

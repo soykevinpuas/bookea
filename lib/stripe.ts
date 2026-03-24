@@ -1,10 +1,18 @@
 import Stripe from 'stripe';
 
+// ============================================
+// 6.7 - Stripe: Configuración y utilerías para integración con Stripe Payments
+// Maneja creación de sesiones de checkout y portal de facturación
+// ============================================
+
+// 6.7.1 - Instancia global del cliente Stripe
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-02-25.clover',
   typescript: true,
 });
 
+// 6.7.2 - Mapeo de IDs de precios de Stripe (desde variables de entorno)
+// Útiles para suscripciones y productos predefinidos
 export const PRICE_IDS = {
   subscription: process.env.STRIPE_SUBSCRIPTION_PRICE_ID || 'price_monthly_99',
   digital_permanent: process.env.STRIPE_DIGITAL_PERMANENT_PRICE_ID || 'price_digital_49',
@@ -12,6 +20,8 @@ export const PRICE_IDS = {
   bundle: process.env.STRIPE_BUNDLE_PRICE_ID || 'price_bundle_229',
 };
 
+// 6.7.3 - Función para crear sesión de checkout de Stripe
+// Soporta tanto pagos únicos como suscripciones
 export async function createCheckoutSession({
   priceId,
   priceData,
@@ -31,6 +41,7 @@ export async function createCheckoutSession({
   cancelUrl: string;
   mode?: 'payment' | 'subscription';
 }) {
+  // Crear sesión de checkout con metadata para webhook
   const session = await stripe.checkout.sessions.create({
     mode,
     payment_method_types: ['card'],
@@ -51,6 +62,8 @@ export async function createCheckoutSession({
   return session;
 }
 
+// 6.7.4 - Función para crear sesión del portal de facturación
+// Permite a usuarios gestionar sus suscripciones y métodos de pago
 export async function createPortalSession({
   customerId,
   returnUrl,

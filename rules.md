@@ -182,7 +182,8 @@ Antes de cada bloque funcional importante, hook, componente, o efecto, se debe a
 * **`3.x`** -> Catálogo, Exploración y Hooks de Datos (ej. `app/(app)/catalog`, `hooks/`)
 * **`4.x`** -> Lector EPUB y Progreso de Lectura (ej. `app/(app)/reader/`, `lib/reading.ts`)
 * **`5.x`** -> Panel de Administrador e Inventario (ej. `app/admin/`)
-* **`6.x`** -> Componentes Compartidos de UI (ej. `components/ui/`)
+* **`6.x`** -> Componentes Compartidos de UI y Utilerías (ej. `components/`, `lib/stripe.ts`)
+* **`7.x`** -> APIs de Integración Externa (ej. `app/api/stripe/`, `app/api/books/`)
 
 **Formato del comentario:**
 ```typescript

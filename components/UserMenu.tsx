@@ -1,21 +1,32 @@
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { User, LogOut, BookOpen, ChevronDown, Zap, Shield, CreditCard } from "lucide-react";
+import { User, LogOut, BookOpen, ChevronDown, Zap, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { createClientClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { InstallPWA } from "./InstallPWA";
+
+// ============================================
+// 6.5 - UserMenu: Menú desplegable de usuario autenticado
+// Muestra información del usuario, rol, navegación y opciones de cuenta
+// ============================================
+
 interface UserMenuProps {
   email: string | undefined;
 }
 
+// 6.5.1 - Componente principal del menú de usuario
 export function UserMenu({ email }: UserMenuProps) {
   const router = useRouter();
   const supabase = createClientClient();
+  
+  // Estado para almacenar el rol del usuario (free/subscriber)
   const [role, setRole] = useState<string>("free");
 
+  // 6.5.1.1 - Efecto para obtener el rol del usuario desde la base de datos
   useEffect(() => {
     async function getRole() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -31,34 +42,43 @@ export function UserMenu({ email }: UserMenuProps) {
     getRole();
   }, [supabase]);
 
+  // 6.5.1.2 - Handler para cerrar sesión
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
   };
 
+  // Determinación de si el usuario tiene suscripción activa
   const isSubscriber = role === 'subscriber';
 
+  // ============================================
+  // 6.5.2 - Renderizado del menú de usuario
+  // ============================================
   return (
     <DropdownMenu.Root>
+      {/* 6.5.2.1 - Botón trigger del menú (avatar de usuario) */}
       <DropdownMenu.Trigger asChild>
         <button
           className="flex items-center gap-2 px-2 py-1.5 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-label="Menú de usuario"
         >
           <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium shadow-sm">
+            {/* Inicial del email o icono genérico */}
             {email ? email.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
           </div>
           <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 mr-1" />
         </button>
       </DropdownMenu.Trigger>
 
+      {/* 6.5.2.2 - Contenido del menú desplegable */}
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           className="min-w-[240px] bg-white dark:bg-[#1a1a1a] rounded-xl p-2 shadow-xl border border-gray-200 dark:border-white/10 z-50 animate-in fade-in zoom-in-95 duration-200 mt-2"
           sideOffset={5}
           align="end"
         >
+          {/* 6.5.2.2.1 - Encabezado con email y badge de suscripción */}
           <div className="px-3 py-3 mb-2 border-b border-gray-100 dark:border-white/10">
             <p className="text-sm font-bold text-gray-900 dark:text-white truncate mb-1">
               {email || "Usuario"}
@@ -73,6 +93,7 @@ export function UserMenu({ email }: UserMenuProps) {
             </div>
           </div>
 
+          {/* 6.5.2.2.2 - Navegación a Biblioteca */}
           <DropdownMenu.Item asChild>
             <Link
               href="/dashboard"
@@ -83,6 +104,7 @@ export function UserMenu({ email }: UserMenuProps) {
             </Link>
           </DropdownMenu.Item>
 
+          {/* 6.5.2.2.3 - Navegación a Perfil */}
           <DropdownMenu.Item asChild>
             <Link
               href="/profile"
@@ -93,6 +115,7 @@ export function UserMenu({ email }: UserMenuProps) {
             </Link>
           </DropdownMenu.Item>
 
+          {/* 6.5.2.2.4 - Opción de upgrade para usuarios free */}
           {!isSubscriber && (
             <DropdownMenu.Item asChild>
               <Link
@@ -105,6 +128,7 @@ export function UserMenu({ email }: UserMenuProps) {
             </DropdownMenu.Item>
           )}
 
+          {/* 6.5.2.2.5 - Opción de facturación para suscriptores */}
           {isSubscriber && (
             <DropdownMenu.Item asChild>
               <Link
@@ -119,6 +143,14 @@ export function UserMenu({ email }: UserMenuProps) {
 
           <DropdownMenu.Separator className="h-px bg-gray-100 dark:bg-white/10 my-1" />
 
+          {/* 6.5.2.2.6 - Opción de instalación PWA */}
+          <DropdownMenu.Item asChild>
+            <InstallPWA variant="menuitem" />
+          </DropdownMenu.Item>
+
+          <DropdownMenu.Separator className="h-px bg-gray-100 dark:bg-white/10 my-1" />
+
+          {/* 6.5.2.2.7 - Botón de cerrar sesión */}
           <DropdownMenu.Item asChild>
             <button
               onClick={handleLogout}

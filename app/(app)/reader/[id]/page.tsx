@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useBook } from "@/hooks/useBooks";
+import { useUserId } from "@/hooks/useUser";
 import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, Sun, Moon, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
-import { createClientClient } from "@/lib/supabase";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 export default function ReaderPage() {
@@ -22,33 +22,21 @@ export default function ReaderPage() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: book, isLoading: loadingBook } = useBook(bookId);
+  const { userId } = useUserId();
 
   // 4.2.2 - Estado React para gestionar preferencias visuales, cargas y UI del lector
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [fontSize, setFontSize] = useState(18); // Default to a more readable 18px
+  const [fontSize, setFontSize] = useState(18);
   const [fontFamily, setFontFamily] = useState<"sans" | "serif" | "mono">("sans");
   const [theme, setTheme] = useState<"light" | "dark" | "retro">("light");
   const [progress, setProgress] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
 
   const themeRef = useRef<"light" | "dark" | "retro">(theme);
   const fontRef = useRef<"sans" | "serif" | "mono">(fontFamily);
   const sizeRef = useRef<number>(fontSize);
-
-  // 4.2.3 - Efecto para la obtención robusta de la sesión del usuario para enrutar su progreso 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const supabase = createClientClient();
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        setUserId(data.session.user.id);
-      }
-    };
-    fetchUser();
-  }, []);
 
   // 4.2.4 - Gestores del tiempo de inactividad para ocultar la interfaz HUD (Inactivity Timeout)
   const resetControlsTimeout = () => {
@@ -184,33 +172,31 @@ export default function ReaderPage() {
           await rendition.display();
         }
 
-        // 4.2.7.1 - Generación asíncrona de la paginación global en background (Locations)
-        bookInstance.locations.generate(1600).then((locations) => {
-            rendition.on("relocated", (location: { start: { cfi: string; percentage: number | string } }) => {
-                const percent = bookInstance.locations.percentageFromCfi(location.start.cfi);
-                setProgress(percent * 100);
-                saveReadingProgress(bookId, userId, location.start.cfi, percent * 100);
-            });
-        }).catch(err => {
-            console.warn("EPUB Location generation failed (structural error):", err);
-        });
-
-
-        // 4.2.7.2 - Fallback de rescate: Actualiza progreso inmediatamente incluso si las rutas largas (locations) no terminaron de indexarse
         rendition.on("relocated", (location: { start: { cfi: string; percentage: number | string } }) => {
-            if (bookInstance.locations.length() === 0) {
-               setProgress(Number(location.start.percentage || 0) * 100);
-               saveReadingProgress(bookId, userId, location.start.cfi, Number(location.start.percentage || 0) * 100);
-            }
+          const percent = bookInstance.locations.length() > 0
+            ? bookInstance.locations.percentageFromCfi(location.start.cfi)
+            : Number(location.start.percentage || 0);
+          setProgress(percent * 100);
+          saveReadingProgress(bookId, userId, location.start.cfi, percent * 100);
         });
+
+        const generateLocations = () => {
+          bookInstance.locations.generate(1600).catch((err: unknown) => {
+            console.warn("EPUB Location generation failed:", err);
+          });
+        };
+
+        if ('requestIdleCallback' in window) {
+          (window as Window & typeof globalThis & { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(generateLocations);
+        } else {
+          setTimeout(generateLocations, 1000);
+        }
 
         rendition.on("rendered", () => {
           setIsLoading(false);
-          // Wait a tiny bit extra to let iframe render clean
-          setTimeout(() => setIsLoading(false), 300);
         });
 
-        bookInstance.on("openFailed", (err: any) => {
+        bookInstance.on("openFailed", (err: unknown) => {
           console.error("EPUB Open Failed:", err);
           setError("No se pudo abrir el archivo EPUB. Es posible que el archivo esté dañado o el formato no sea compatible.");
           setIsLoading(false);
@@ -227,7 +213,11 @@ export default function ReaderPage() {
     initEpub();
 
     return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      renditionRef.current?.clear();
+      renditionRef.current = null;
       bookRef.current?.destroy();
+      bookRef.current = null;
     };
   }, [book?.epub_url, bookId, userId]);
 
@@ -328,7 +318,7 @@ export default function ReaderPage() {
     );
   }
 
-  if (error && !bookRef.current) {
+  if (error) {
     return (
       <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-[#0a0a0a] text-white px-4 text-center">
         <div className="text-red-500 mb-4 text-4xl">⚠️</div>
@@ -367,7 +357,7 @@ export default function ReaderPage() {
       
       {/* 4.2.11 - Barra de Navegación Superior (Top HUD) - Glassmorphism dinámico */}
       <div 
-        className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 py-4 transition-all duration-300 pointer-events-auto ${
+        className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 py-4 pt-safe transition-all duration-300 pointer-events-auto ${
             showControls ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
         } ${isDark ? 'bg-black/60 backdrop-blur-xl border-b border-white/10' : 
             isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-b border-[#3fb950]/20' : 
@@ -438,7 +428,7 @@ export default function ReaderPage() {
 
       {/* 4.2.15 - Ventana principal de visualización del objeto renderizado (Viewport) */}
       <div 
-        className="flex-1 relative w-full h-full pt-16 pb-16"
+        className="flex-1 relative w-full h-full pt-20 pb-20"
         onClick={() => toggleControls()}
       >
         {isLoading && (
@@ -470,7 +460,7 @@ export default function ReaderPage() {
 
       {/* 4.2.17 - Barra inferior central (Bottom HUD) de navegación de hojas y rastreo de progreso porcentual estricto */}
       <div 
-        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 py-4 transition-all duration-300 pointer-events-auto ${
+        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 py-4 pb-safe transition-all duration-300 pointer-events-auto ${
             showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
         } ${isDark ? 'bg-black/60 backdrop-blur-xl border-t border-white/10' : 
             isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-t border-[#3fb950]/20' : 

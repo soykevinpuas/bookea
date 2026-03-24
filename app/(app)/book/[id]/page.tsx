@@ -1,72 +1,73 @@
 "use client";
 
+// ============================================
+// 3.5 - BookDetailPage: Página de detalle del libro con información, compra y acceso al lector
+// ============================================
+
 import { useBook, useUserBooks } from "@/hooks/useBooks";
+import { useUserId } from "@/hooks/useUser";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+// 3.5.1 - Componente principal de la página de detalle
 export default function BookDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = params.id as string;
-  const [userId, setUserId] = useState<string>("");
+  
+  // 3.5.2 - Obtención del ID del usuario autenticado
+  const { userId } = useUserId();
+  
+  // 3.5.3 - Estado local para manejar estados de carga en operaciones asíncronas
   const [loading, setLoading] = useState<string | null>(null);
-  const supabase = createClientClient();
 
+  // 3.5.4 - Efecto para detectar retorno de pago exitoso desde Stripe
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }: { data: { user: any } }) => {
-      if (data.user) setUserId(data.user.id);
-    });
-
-
     if (searchParams.get('payment') === 'success') {
       toast.success("¡Pago completado con éxito! El libro se está añadiendo a tu biblioteca.");
       router.replace(`/book/${id}`);
     }
   }, [searchParams, id, router]);
 
+  // 3.5.5 - Consulta del libro por ID y verificación de acceso del usuario
   const { data: book, isLoading, error } = useBook(id);
   const { data: userBooks, refetch } = useUserBooks(userId);
 
+  // 3.5.6 - Determinación de si el usuario ya tiene acceso al libro
   const hasAccess = userBooks?.some((b) => b.id === id);
 
-  const handleBuy = async (type: string, price?: string) => {
+  // 3.5.7 - Handler para iniciar proceso de compra con Stripe Checkout
+  const handleBuy = async (type: string) => {
     setLoading(type);
     
-    const baseUrl = window.location.origin;
-    
     try {
-      const response = await fetch(`${baseUrl}/api/stripe/checkout`, {
+      const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type,
-          bookId: id,
-          price,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, bookId: id }),
       });
 
       const data = await response.json();
 
       if (data.url) {
+        // Redirección a Stripe Checkout
         window.location.href = data.url;
       } else if (data.error) {
         toast.error(data.error);
       }
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
       toast.error('Error al procesar la compra');
     } finally {
       setLoading(null);
     }
   };
 
+  // 3.5.8 - Handler para reclamar un libro gratuito (libros con price_digital = 0)
   const handleClaimFree = async () => {
+    // Verificación de autenticación antes de reclamar
     if (!userId) {
       toast.error("Debes iniciar sesión para añadir libros gratis");
       router.push("/login?message=Debes iniciar sesión para añadir libros gratis");
@@ -86,19 +87,21 @@ export default function BookDetailPage() {
 
       if (data.success) {
         toast.success("¡Libro añadido a tu biblioteca!");
-        refetch(); // Automatically upgrade the button UI to "Read"
+        refetch();
+      } else if (data.alreadyClaimed) {
+        toast.info("Ya tienes este libro en tu biblioteca");
+        refetch();
       } else if (data.error) {
         toast.error(data.error);
       }
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
       toast.error('Error al añadir el libro a tu biblioteca');
     } finally {
       setLoading(null);
     }
   };
 
-
+  // 3.5.9 - Estados de carga y error
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0a0a0a]">
@@ -118,9 +121,13 @@ export default function BookDetailPage() {
     );
   }
 
+  // ============================================
+  // 3.5.10 - Renderizado del layout principal
+  // ============================================
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* 3.5.10.1 - Enlace de navegación de retorno al catálogo */}
         <Link
           href="/catalog"
           className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors"
@@ -128,8 +135,10 @@ export default function BookDetailPage() {
           ← Volver al catálogo
         </Link>
 
+        {/* 3.5.10.2 - Contenedor principal con información del libro */}
         <div className="bg-white dark:bg-white/5 rounded-2xl shadow-sm border border-gray-100 dark:border-white/10 overflow-hidden transition-colors">
           <div className="md:flex">
+            {/* 3.5.10.2.1 - Sección de portada del libro */}
             <div className="md:w-1/3 lg:w-1/4">
               <div className="aspect-[2/3] bg-gray-100 dark:bg-black m-4 md:m-6 rounded-xl overflow-hidden shadow-sm relative group">
                 {book.cover_url ? (
@@ -147,18 +156,22 @@ export default function BookDetailPage() {
               </div>
             </div>
 
+            {/* 3.5.10.2.2 - Sección de información y opciones de compra */}
             <div className="md:w-2/3 lg:w-3/4 p-6 md:p-8">
+              {/* Etiqueta de categoría del libro */}
               {book.category && (
                 <span className="inline-block text-xs font-semibold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full mb-4 border border-blue-100 dark:border-blue-500/20">
                   {book.category}
                 </span>
               )}
               
+              {/* Título y autor del libro */}
               <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white mb-2 tracking-tight">
                 {book.title}
               </h1>
               <p className="text-lg text-gray-600 dark:text-gray-400 mb-6 font-medium">por {book.author}</p>
 
+              {/* Descripción del libro */}
               <div className="border-t border-b border-gray-100 dark:border-white/10 py-6 my-6">
                 <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-3">
                   Descripción
@@ -168,7 +181,9 @@ export default function BookDetailPage() {
                 </p>
               </div>
 
+              {/* 3.5.10.2.3 - Opciones de compra y acceso */}
               <div className="space-y-4 max-w-xl">
+                {/* 3.5.10.2.3.1 - Estado: Usuario tiene acceso al libro */}
                 {hasAccess && book.epub_url && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-xl gap-4">
                     <div>
@@ -188,6 +203,7 @@ export default function BookDetailPage() {
                   </div>
                 )}
 
+                {/* 3.5.10.2.3.2 - Estado: Usuario NO tiene acceso - Mostrar opciones de compra */}
                 {!hasAccess && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-white/5 rounded-xl gap-4">
                     <div>
@@ -205,6 +221,7 @@ export default function BookDetailPage() {
                       )}
                     </div>
                     
+                    {/* Botón condicional: Reclamar gratis o Comprar */}
                     {book.price_digital === 0 ? (
                       <button 
                         onClick={handleClaimFree}
@@ -225,6 +242,7 @@ export default function BookDetailPage() {
                   </div>
                 )}
 
+                {/* 3.5.10.2.3.3 - Estado: Libro físico disponible en inventario */}
                 {book.stock_physical > 0 && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-white/5 rounded-xl gap-4">
                     <div>
@@ -233,7 +251,7 @@ export default function BookDetailPage() {
                       </span>
                       <div className="flex items-baseline gap-2">
                         <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                          $199 <span className="text-lg font-normal text-gray-500 dark:text-gray-400">MXN</span>
+                          ${book.price_physical} <span className="text-lg font-normal text-gray-500 dark:text-gray-400">MXN</span>
                         </span>
                       </div>
                       <span className="inline-block mt-2 text-xs font-semibold bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-md">

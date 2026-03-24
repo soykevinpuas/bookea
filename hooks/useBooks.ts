@@ -4,12 +4,19 @@ import { useQuery } from "@tanstack/react-query";
 import { getBooks, getBook, getUserBooks } from "@/lib/books";
 import { createClientClient } from "@/lib/supabase";
 
+const BOOK_QUERY_OPTIONS = {
+  staleTime: 5 * 60 * 1000,
+  gcTime: 10 * 60 * 1000,
+  retry: 1,
+};
+
 // 3.2 - useBooks: Hooks de React Query para la gestión del estado global del Catálogo y Libros de Usuario
 export function useBooks() {
   const supabase = createClientClient();
   return useQuery({
     queryKey: ["books"],
     queryFn: () => getBooks(supabase),
+    ...BOOK_QUERY_OPTIONS,
   });
 }
 
@@ -19,6 +26,7 @@ export function useBook(id: string) {
     queryKey: ["book", id],
     queryFn: () => getBook(supabase, id),
     enabled: !!id,
+    ...BOOK_QUERY_OPTIONS,
   });
 }
 
@@ -28,6 +36,7 @@ export function useUserBooks(userId: string) {
     queryKey: ["userBooks", userId],
     queryFn: () => getUserBooks(supabase, userId),
     enabled: !!userId,
+    ...BOOK_QUERY_OPTIONS,
   });
 }
 

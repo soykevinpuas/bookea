@@ -41,7 +41,7 @@ export default function Home() {
               href="/login" 
               className="w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl font-semibold text-lg transition-all backdrop-blur-sm shadow-sm"
             >
-              Iniciar Sesión
+              Iniciar
             </Link>
           </div>
         </div>

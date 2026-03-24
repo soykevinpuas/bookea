@@ -3,6 +3,11 @@ import { headers } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@/lib/server';
 
+// ============================================
+// 7.2 - Stripe Webhook: Endpoint para recibir eventos de Stripe
+// Procesa pagos exitosos, suscripciones y cancelaciones
+// ============================================
+
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 export async function POST(request: NextRequest) {
@@ -11,17 +16,21 @@ export async function POST(request: NextRequest) {
 
   let event;
 
+  // 7.2.1 - Verificar firma del webhook para seguridad
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-  } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message);
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+  } catch (err) {
+    console.error('Verificación de firma webhook fallida:', err);
+    return NextResponse.json({ error: 'Firma inválida' }, { status: 400 });
   }
 
   const supabase = await createClient();
 
   try {
     switch (event.type) {
+      // ============================================
+      // 7.2.2 - Checkout completado: Procesar compra o suscripción
+      // ============================================
       case 'checkout.session.completed': {
         const session = event.data.object;
         const userId = session.metadata?.userId;
@@ -29,31 +38,32 @@ export async function POST(request: NextRequest) {
         const customerId = session.customer as string;
 
         if (!userId) {
-          console.error('Webhook error: No userId in session metadata');
+          console.error('Webhook error: No userId en metadata');
           return NextResponse.json({ error: 'No userId in metadata' }, { status: 400 });
         }
 
+        // 7.2.2.1 - Procesar suscripción mensual
         if (session.mode === 'subscription') {
-          // 1. Actualizar rol a suscriptor
+          // Actualizar rol a suscriptor
           const { error: roleError } = await supabase
             .from('users')
             .update({ role: 'subscriber' })
             .eq('id', userId);
 
           if (roleError) {
-            console.error('Error updating user role to subscriber:', roleError);
+            console.error('Error actualizando rol a suscriptor:', roleError);
             return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
           }
 
-          // 2. Manejar créditos de suscripción (Idempotente)
+          // Crear créditos de suscripción (5 libros/mes)
           const { data: existingSub, error: selectError } = await supabase
             .from('subscription_credits')
             .select('*')
             .eq('user_id', userId)
             .single();
 
-          if (selectError && selectError.code !== 'PGRST116') { // PGRST116 is "no rows found"
-            console.error('Error checking existing subscription credits:', selectError);
+          if (selectError && selectError.code !== 'PGRST116') {
+            console.error('Error verificando créditos existentes:', selectError);
             return NextResponse.json({ error: 'Database query failed' }, { status: 500 });
           }
 
@@ -65,14 +75,14 @@ export async function POST(request: NextRequest) {
             });
 
             if (insertCreditsError) {
-              console.error('Error inserting subscription credits:', insertCreditsError);
+              console.error('Error insertando créditos:', insertCreditsError);
               return NextResponse.json({ error: 'Database insert failed' }, { status: 500 });
             }
           }
         }
 
+        // 7.2.2.2 - Procesar compra de libro individual
         if (session.mode === 'payment' && bookId) {
-          // 3. Dar acceso permanente al libro (Evitar duplicados)
           const { data: existingAccess } = await supabase
             .from('user_books')
             .select('*')
@@ -88,29 +98,26 @@ export async function POST(request: NextRequest) {
             });
 
             if (insertAccessError) {
-              console.error('Error inserting book access:', insertAccessError);
+              console.error('Error insertando acceso:', insertAccessError);
               return NextResponse.json({ error: 'Database insert failed' }, { status: 500 });
             }
           }
         }
 
-        // 4. Guardar el Customer ID de Stripe
+        // 7.2.2.3 - Guardar Customer ID de Stripe para portal de facturación
         if (customerId) {
-          const { error: customerError } = await supabase
+          await supabase
             .from('users')
             .update({ stripe_customer_id: customerId })
             .eq('id', userId);
-
-          if (customerError) {
-            console.error('Error updating stripe_customer_id:', customerError);
-            // No retornamos 500 aquí para no bloquear el flujo si lo anterior salió bien, 
-            // pero lo ideal es loggearlo.
-          }
         }
 
         break;
       }
 
+      // ============================================
+      // 7.2.3 - Suscripción cancelada: Revocar acceso
+      // ============================================
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
         
@@ -121,37 +128,33 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (userSelectError) {
-          console.error('Error finding user for deleted subscription:', userSelectError);
+          console.error('Error encontrando usuario:', userSelectError);
           return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
         if (users) {
-          const { error: demoteError } = await supabase
+          await supabase
             .from('users')
             .update({ role: 'free' })
             .eq('id', users.id);
-
-          if (demoteError) {
-            console.error('Error demoting user to free role:', demoteError);
-            return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
-          }
         }
 
         break;
       }
 
+      // 7.2.4 - Pago fallido: Solo logging
       case 'invoice.payment_failed': {
-        console.warn('Payment failed for invoice:', event.data.object.id);
+        console.warn('Pago fallido:', event.data.object.id);
         break;
       }
 
       default:
-        console.log(`Unhandled event type ${event.type}`);
+        console.log(`Tipo de evento no manejado: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
-  } catch (err: any) {
-    console.error('Unexpected error in webhook handler:', err);
+  } catch (err) {
+    console.error('Error inesperado en webhook:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

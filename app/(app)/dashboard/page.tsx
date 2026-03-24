@@ -2,23 +2,19 @@
 
 import Link from "next/link";
 import { useUserBooks } from "@/hooks/useBooks";
-import { createClientClient } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import { useUserId } from "@/hooks/useUser";
 import Book3D from "@/components/Book3D";
 import { BookOpen, Trophy, Flame, Loader2, Compass } from "lucide-react";
 
+// 3.4 - DashboardPage: Panel principal del usuario que muestra su biblioteca personal y estadísticas de lectura
 export default function DashboardPage() {
-  const [userId, setUserId] = useState<string>("");
-  const supabase = createClientClient();
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setUserId(data.user.id);
-    });
-  }, []);
-
+  // 3.4.1 - Obtención del ID del usuario autenticado mediante el hook useUserId
+  const { userId } = useUserId();
+  
+  // 3.4.2 - Consulta de los libros adquiridos por el usuario mediante React Query
   const { data: books, isLoading } = useUserBooks(userId);
 
+  // 3.4.3 - Estado de carga inicial mientras se obtienen los datos del usuario
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
@@ -27,6 +23,7 @@ export default function DashboardPage() {
     );
   }
 
+  // 3.4.4 - Estadísticas de lectura del usuario (colección, libros terminados, racha actual)
   const stats = [
     { label: "Colección", value: books?.length || 0, icon: BookOpen, color: "text-blue-400" },
     { label: "Terminados", value: 0, icon: Trophy, color: "text-yellow-400" },
@@ -36,7 +33,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30">
       <main className="max-w-7xl mx-auto px-6 py-12">
-        {/* Stats Header */}
+        {/* 3.4.5 - Encabezado con estadísticas de lectura en cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
           {stats.map((stat) => (
             <div key={stat.label} className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
@@ -53,6 +50,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* 3.4.6 - Título de sección con enlace de navegación al catálogo completo */}
         <div className="flex items-center justify-between mb-10">
           <h1 className="text-3xl font-bold tracking-tight">Mi Biblioteca</h1>
           <Link href="/catalog" className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2">
@@ -60,6 +58,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        {/* 3.4.7 - Renderizado condicional: Estado vacío (Empty State) cuando el usuario no tiene libros */}
         {!books || books.length === 0 ? (
           <div className="bg-white/5 border border-dashed border-white/10 rounded-3xl p-16 text-center backdrop-blur-sm">
             <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -75,9 +74,11 @@ export default function DashboardPage() {
             </Link>
           </div>
         ) : (
+          // 3.4.8 - Grid de libros adquiridos con acceso directo al lector
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-16">
             {books.map((book) => (
               <div key={book.id} className="flex flex-col items-center">
+                {/* 3.4.8.1 - Tarjeta 3D del libro con portada flotante animada */}
                 <div className="w-full aspect-[2/3] mb-8 flex items-center justify-center">
                   <Link href={`/book/${book.id}`} className="w-48 h-72">
                     <Book3D 
@@ -88,6 +89,7 @@ export default function DashboardPage() {
                   </Link>
                 </div>
                 
+                {/* 3.4.8.2 - Información del libro y botón de acceso al lector */}
                 <div className="text-center w-full mt-4">
                   <h3 className="font-bold text-lg line-clamp-1 mb-1">{book.title}</h3>
                   <p className="text-sm text-white/40 mb-4">{book.author}</p>
