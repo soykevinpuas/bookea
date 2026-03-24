@@ -107,7 +107,9 @@ export default function ReaderPage() {
               }
               body {
                 line-height: 1.8 !important;
-                padding: 0 5% !important;
+                padding: 60px 5% !important;
+                padding-top: max(60px, env(safe-area-inset-top)) !important;
+                padding-bottom: max(60px, env(safe-area-inset-bottom)) !important;
                 max-width: 800px !important;
                 margin: 0 auto !important;
                 min-height: 100vh !important;
@@ -455,7 +457,7 @@ export default function ReaderPage() {
         )}
 
         {/* 4.2.16 - Div nativo puro donde ePubJS monta su Iframe interno */}
-        <div ref={viewerRef} className="absolute inset-0 w-full h-full cursor-pointer" />
+        <div ref={viewerRef} className="relative w-full h-full cursor-pointer" />
       </div>
 
       {/* 4.2.17 - Barra inferior central (Bottom HUD) de navegación de hojas y rastreo de progreso porcentual estricto */}

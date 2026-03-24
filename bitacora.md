@@ -13,7 +13,8 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - **UI de Navegación**: Menú de usuario dinámico que muestra el rol del usuario (Free vs Subscriber) y accesos rápidos.
 
 ### Cambios y Mejoras
-- **Soporte de Safe Areas (Notch)**: Implementadas utilidades CSS (`pt-safe`, `pb-safe`, `px-safe`) y aplicadas en el Header, RootLayout y el Lector para evitar recortes en dispositivos con notch o barras de gestos.
+- **Fix SafeZones en Lector**: Refactorización profunda de `ReaderPage` para inyectar márgenes de seguridad directamente en el contenido del libro (Iframe) y corregir el posicionamiento del contenedor del visor.
+- **Soporte de Safe Areas (Notch)**: Implementadas utilidades CSS (`pt-safe`, `pb-safe`, `px-safe`) y aplicadas en el Header y RootLayout.
 - **Refinamiento de UI**: Simplificación de etiquetas de navegación. "Ingresar" e "Iniciar Sesión" se consolidaron en el término más directo "**Iniciar**".
 - **Refactorización del Webhook de Stripe**: Implementación de manejo de errores robusto con Supabase. Ahora el webhook devuelve errores 500 para activar reintentos automáticos de Stripe en caso de fallos de base de datos.
 - **Idempotencia en Pagos**: Añadidas verificaciones para evitar duplicidad de registros en compras y créditos.
