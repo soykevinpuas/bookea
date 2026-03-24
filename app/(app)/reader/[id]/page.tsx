@@ -8,6 +8,7 @@ import { useUserId } from "@/hooks/useUser";
 import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
 import ePub, { Book, Rendition } from "epubjs";
 import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
+import { useTheme } from "next-themes";
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 export default function ReaderPage() {
@@ -29,12 +30,12 @@ export default function ReaderPage() {
   const [error, setError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(18);
   const [fontFamily, setFontFamily] = useState<"sans" | "serif" | "mono">("sans");
-  const [theme, setTheme] = useState<"light" | "dark" | "retro">("light");
+  const { theme, setTheme } = useTheme();
   const [progress, setProgress] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
 
-  const themeRef = useRef<"light" | "dark" | "retro">(theme);
+  const themeRef = useRef<string | undefined>(theme);
   const fontRef = useRef<"sans" | "serif" | "mono">(fontFamily);
   const sizeRef = useRef<number>(fontSize);
 
@@ -263,17 +264,11 @@ export default function ReaderPage() {
       fontRef.current = savedFont;
     }
 
-    const savedTheme = localStorage.getItem("bookea-theme");
-    if (savedTheme === "light" || savedTheme === "dark" || savedTheme === "retro") {
-      setTheme(savedTheme);
-      themeRef.current = savedTheme;
-    }
-
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || !theme) return;
     if (renditionRef.current) {
       if (theme === "light") {
         renditionRef.current.themes.override("color", "#171717");
@@ -287,7 +282,6 @@ export default function ReaderPage() {
       }
     }
     themeRef.current = theme;
-    localStorage.setItem("bookea-theme", theme);
   }, [theme, mounted]);
 
   useEffect(() => {

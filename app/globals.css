@@ -1,6 +1,7 @@
 /* 1.7 - Tailwind CSS Global Directives & Base Theme Variables */
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
+@custom-variant retro (&:where(.retro, .retro *));
 
 @theme {
   --font-sans: var(--font-geist-sans);
@@ -21,6 +22,96 @@
     --sar: env(safe-area-inset-right);
     --sab: env(safe-area-inset-bottom);
     --sal: env(safe-area-inset-left);
+  }
+
+  /* 1.7.2 - Retro Theme Global Overrides */
+  /* Redefining Tailwind 4 color variables for the retro theme */
+  :root[data-theme='retro'],
+  .retro {
+    background-color: #0d1117;
+    color: #3fb950;
+    
+    /* Variable overrides to catch all components using standard Tailwind colors */
+    --color-white: #0d1117;
+    --color-gray-50: #0d1117;
+    --color-gray-100: #161b22;
+    --color-gray-200: rgba(63, 185, 80, 0.2);
+    --color-gray-600: #3fb950;
+    --color-gray-800: #3fb950;
+    --color-gray-900: #3fb950;
+    --color-blue-600: #3fb950; /* Convert buttons to green too */
+    --color-blue-500: #3fb950;
+    --color-blue-400: #3fb950;
+    --color-indigo-400: #3fb950;
+  }
+
+  .retro body {
+    background-color: #0d1117;
+    color: #3fb950;
+  }
+
+  /* Specific fix for transparency and backdrop blur in Header */
+  .retro .bg-white\/80 {
+    background-color: rgba(13, 17, 23, 0.8) !important;
+  }
+
+  /* Fix for Hero Gradients and decorative elements */
+  .retro .bg-clip-text {
+    color: #3fb950 !important;
+    background-image: none !important;
+    -webkit-text-fill-color: #3fb950 !important;
+  }
+
+  .retro .text-gray-400,
+  .retro .text-gray-300,
+  .retro .text-gray-100 {
+    color: #3fb950 !important;
+    opacity: 0.8;
+  }
+
+  /* Aggressive catch-all for remaining blue elements in retro mode */
+  .retro [class*='blue-'],
+  .retro [class*='indigo-'],
+  .retro [class*='from-'],
+  .retro [class*='to-'] {
+    --tw-gradient-from: transparent !important;
+    --tw-gradient-to: transparent !important;
+    background-image: none !important;
+    border-color: rgba(63, 185, 80, 0.3) !important;
+  }
+
+  /* Specific buttons and badges (restore green where needed) */
+  .retro .bg-blue-600,
+  .retro .bg-blue-500,
+  .retro [class*='bg-blue-600'],
+  .retro [class*='bg-blue-500'] {
+    background-color: #3fb950 !important;
+    background-image: none !important;
+    color: #0d1117 !important;
+  }
+
+  .retro .bg-blue-950\/50,
+  .retro .bg-white\/5,
+  .retro .bg-white\/10 {
+    background-color: rgba(63, 185, 80, 0.1) !important;
+    border-color: rgba(63, 185, 80, 0.4) !important;
+    color: #3fb950 !important;
+    background-image: none !important;
+  }
+
+  /* Hide blue ambient glows completely */
+  .retro .blur-\[120px\],
+  .retro .from-blue-900\/20,
+  .retro .bg-blue-600\/10,
+  .retro .bg-indigo-600\/10 {
+    display: none !important;
+    opacity: 0 !important;
+  }
+
+  /* Global selection color in retro */
+  .retro ::selection {
+    background-color: rgba(63, 185, 80, 0.3) !important;
+    color: #ffffff !important;
   }
 }
 

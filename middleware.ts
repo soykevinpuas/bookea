@@ -47,7 +47,7 @@ export async function middleware(request: NextRequest) {
 
   const protectedPaths = ['/dashboard', '/reader']
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
-  const isAuthPath = pathname === '/login' || pathname === '/register'
+  const isAuthPath = pathname === '/login' || pathname === '/register' || pathname === '/'
 
 // 1.4 - Middleware: Protección de rutas y redirección de Autenticación
   if (!user && isProtectedPath) {

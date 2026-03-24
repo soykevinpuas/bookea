@@ -4,18 +4,22 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
-## [2026-03-21] - Implementación de Pagos y Preparación para Producción
+## [2026-03-23] - Unificación de Temas y Redirección Inteligente
 
 ### Añadido
-- **Sistema de Suscripciones**: Nueva página `/subscribe` con diseño premium para la membresía mensual de $99 MXN.
-- **Gestión de Perfil**: Nueva página `/profile` que muestra el estado de la suscripción y acceso al portal de facturación.
-- **Portal de Cliente de Stripe**: Ruta de API `/api/stripe/portal` para gestionar suscripciones de forma segura.
-- **UI de Navegación**: Menú de usuario dinámico que muestra el rol del usuario (Free vs Subscriber) y accesos rápidos.
+- **Tema Global "Retro"**: Expansión del modo retro (verde neón) a toda la aplicación.
+- **Ciclo de Temas**: Actualizado `ThemeToggle` para ciclar entre Claro -> Oscuro -> Retro.
+- **Redirección Auth**: Configurada redirección en `middleware.ts` para enviar usuarios logueados desde `/` a `/dashboard`.
 
 ### Cambios y Mejoras
+- **Sincronización de Lector**: Refactorización de `ReaderPage` para eliminar su estado de tema local y seguir estrictamente el tema global de `next-themes`.
 - **Fix SafeZones en Lector**: Refactorización profunda de `ReaderPage` para inyectar márgenes de seguridad directamente en el contenido del libro (Iframe) y corregir el posicionamiento del contenedor del visor.
 - **Soporte de Safe Areas (Notch)**: Implementadas utilidades CSS (`pt-safe`, `pb-safe`, `px-safe`) y aplicadas en el Header y RootLayout.
 - **Refinamiento de UI**: Simplificación de etiquetas de navegación. "Ingresar" e "Iniciar Sesión" se consolidaron en el término más directo "**Iniciar**".
+
+---
+
+## [2026-03-22] - Sincronización de Sesión y UX Móvil
 - **Refactorización del Webhook de Stripe**: Implementación de manejo de errores robusto con Supabase. Ahora el webhook devuelve errores 500 para activar reintentos automáticos de Stripe en caso de fallos de base de datos.
 - **Idempotencia en Pagos**: Añadidas verificaciones para evitar duplicidad de registros en compras y créditos.
 - **Preparación para Producción**: Revisión y documentación de las 9 variables de entorno necesarias para Vercel.
