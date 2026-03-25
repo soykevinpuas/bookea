@@ -51,16 +51,15 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] retro:bg-[#0d1117]">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500/50" />
       </div>
     );
   }
 
-  const isSubscriber = dbUser?.role === 'subscriber';
-
+  // 3.3.2 - Renderizado del perfil del usuario
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white py-12 px-6">
+    <div className="min-h-screen bg-[#0a0a0a] retro:bg-[#0d1117] text-white py-12 px-6">
       <div className="max-w-3xl mx-auto">
         <div className="mb-10 text-center sm:text-left">
           <h1 className="text-3xl font-bold mb-2">Mi Perfil</h1>

@@ -78,7 +78,7 @@ export function Header({ initialUser = null }: HeaderProps) {
   // 6.1.4 - Renderizado del Header
   // ============================================
   return (
-    <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/80 dark:bg-black/60 border-b border-gray-200 dark:border-white/10 shadow-sm dark:shadow-[0_4px_30px_rgba(0,0,0,0.1)] transition-all pt-safe">
+    <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/80 dark:bg-black/60 retro:bg-[#0d1117]/90 border-b border-gray-200 dark:border-white/10 retro:border-[#3fb950]/20 shadow-sm dark:shadow-[0_4px_30px_rgba(0,0,0,0.1)] transition-all pt-safe">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* 6.1.4.1 - Logo de Bookea con enlace al inicio */}
         <Link 

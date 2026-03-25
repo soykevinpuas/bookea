@@ -26,33 +26,53 @@
 
   /* 1.7.2 - Retro Theme Global Overrides */
   /* Redefining Tailwind 4 color variables for the retro theme */
-  :root[data-theme='retro'],
+  html.retro,
   .retro {
-    background-color: #0d1117;
-    color: #3fb950;
-    
-    /* Variable overrides to catch all components using standard Tailwind colors */
-    --color-white: #0d1117;
-    --color-gray-50: #0d1117;
-    --color-gray-100: #161b22;
-    --color-gray-200: rgba(63, 185, 80, 0.2);
-    --color-gray-600: #3fb950;
-    --color-gray-800: #3fb950;
-    --color-gray-900: #3fb950;
-    --color-blue-600: #3fb950; /* Convert buttons to green too */
-    --color-blue-500: #3fb950;
-    --color-blue-400: #3fb950;
-    --color-indigo-400: #3fb950;
+    background-color: #0d1117 !important;
+    color: #ffffff !important;
   }
 
+  html.retro body,
   .retro body {
-    background-color: #0d1117;
-    color: #3fb950;
+    background-color: #0d1117 !important;
+    color: #ffffff !important;
+  }
+
+  /* Neon Green Terminal Titles & High Contrast Text */
+  .retro h1, 
+  .retro h2, 
+  .retro h3, 
+  .retro .text-gray-900,
+  .retro .text-white {
+    color: #3fb950 !important;
+    text-shadow: 0 0 8px rgba(63, 185, 80, 0.4) !important;
+  }
+
+  /* Bright White for Body Text - no fading */
+  .retro p,
+  .retro h4,
+  .retro h5,
+  .retro h6,
+  .retro .text-gray-600,
+  .retro .text-gray-400,
+  .retro .text-gray-300,
+  .retro .text-gray-100,
+  .retro .text-gray-200 {
+    color: #e6edf3 !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+  }
+
+  /* Links in retro theme */
+  .retro a,
+  .retro .text-blue-600,
+  .retro .text-blue-500 {
+    color: #3fb950 !important;
   }
 
   /* Specific fix for transparency and backdrop blur in Header */
   .retro .bg-white\/80 {
-    background-color: rgba(13, 17, 23, 0.8) !important;
+    background-color: rgba(13, 17, 23, 0.95) !important;
   }
 
   /* Fix for Hero Gradients and decorative elements */
@@ -62,14 +82,7 @@
     -webkit-text-fill-color: #3fb950 !important;
   }
 
-  .retro .text-gray-400,
-  .retro .text-gray-300,
-  .retro .text-gray-100 {
-    color: #3fb950 !important;
-    opacity: 0.8;
-  }
-
-  /* Aggressive catch-all for remaining blue elements in retro mode */
+  /* Aggressive catch-all for remaining blue/green elements in retro mode */
   .retro [class*='blue-'],
   .retro [class*='indigo-'],
   .retro [class*='from-'],
@@ -77,29 +90,49 @@
     --tw-gradient-from: transparent !important;
     --tw-gradient-to: transparent !important;
     background-image: none !important;
-    border-color: rgba(63, 185, 80, 0.3) !important;
   }
 
-  /* Specific buttons and badges (restore green where needed) */
+  /* Specific buttons and badges */
   .retro .bg-blue-600,
   .retro .bg-blue-500,
   .retro [class*='bg-blue-600'],
   .retro [class*='bg-blue-500'] {
-    background-color: #3fb950 !important;
-    background-image: none !important;
-    color: #0d1117 !important;
+    background-color: #238636 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 10px rgba(63, 185, 80, 0.3) !important;
   }
 
   .retro .bg-blue-950\/50,
   .retro .bg-white\/5,
   .retro .bg-white\/10 {
     background-color: rgba(63, 185, 80, 0.1) !important;
-    border-color: rgba(63, 185, 80, 0.4) !important;
+    border-color: rgba(63, 185, 80, 0.3) !important;
     color: #3fb950 !important;
     background-image: none !important;
   }
 
-  /* Hide blue ambient glows completely */
+  /* Fix for green elements - keep them visible but muted */
+  .retro .bg-green-50,
+  .retro .bg-green-100,
+  .retro [class*='bg-green-'] {
+    background-color: rgba(63, 185, 80, 0.15) !important;
+    border-color: rgba(63, 185, 80, 0.3) !important;
+  }
+
+  .retro .text-green-600,
+  .retro .text-green-700,
+  .retro .text-green-800,
+  .retro .text-green-900,
+  .retro .text-green-400,
+  .retro .text-green-300 {
+    color: #3fb950 !important;
+  }
+
+  .retro .text-green-500 {
+    color: #2ea043 !important;
+  }
+
+  /* Hide distracting ambient glows */
   .retro .blur-\[120px\],
   .retro .from-blue-900\/20,
   .retro .bg-blue-600\/10,
@@ -110,8 +143,139 @@
 
   /* Global selection color in retro */
   .retro ::selection {
-    background-color: rgba(63, 185, 80, 0.3) !important;
+    background-color: rgba(63, 185, 80, 0.4) !important;
     color: #ffffff !important;
+  }
+
+  /* Ensure inputs and form elements look good in retro */
+  .retro input,
+  .retro textarea,
+  .retro select {
+    background-color: #0d1117 !important;
+    color: #e6edf3 !important;
+    border-color: rgba(63, 185, 80, 0.3) !important;
+  }
+
+  /* Cards and containers */
+  .retro .bg-white,
+  .retro .bg-gray-50,
+  .retro .bg-gray-100 {
+    background-color: #161b22 !important;
+    border-color: rgba(63, 185, 80, 0.2) !important;
+  }
+
+  /* Override min-h-screen backgrounds that use bg-gray-50 or hardcoded colors */
+  .retro .min-h-screen {
+    background-color: #0d1117 !important;
+  }
+
+  /* Dashboard/Biblioteca specific overrides */
+  .retro .bg-\[\#0a0a0a\],
+  .retro .bg-\[\#0a0a0a\]\! {
+    background-color: #0d1117 !important;
+  }
+
+  /* White opacity backgrounds in dashboard */
+  .retro .bg-white\/5,
+  .retro .bg-white\/10,
+  .retro .bg-white\/20 {
+    background-color: rgba(22, 27, 34, 0.8) !important;
+    border-color: rgba(63, 185, 80, 0.15) !important;
+  }
+
+  /* Border colors in retro */
+  .retro .border-white\/10,
+  .retro .border-white\/5 {
+    border-color: rgba(63, 185, 80, 0.15) !important;
+  }
+
+  /* Text colors that might appear in dashboard */
+  .retro .text-white\/40,
+  .retro .text-white\/60 {
+    color: rgba(230, 237, 243, 0.5) !important;
+  }
+
+  /* Category badges and special elements */
+  .retro .bg-blue-50 {
+    background-color: rgba(63, 185, 80, 0.1) !important;
+  }
+
+  .retro .text-blue-600,
+  .retro .text-blue-400 {
+    color: #3fb950 !important;
+  }
+
+  /* Buttons in retro */
+  .retro .bg-blue-700:hover,
+  .retro .hover\:bg-blue-600:hover {
+    background-color: #2ea043 !important;
+  }
+
+  /* Ensure all main containers have dark background in retro */
+  .retro main,
+  .retro > div {
+    background-color: #0d1117 !important;
+  }
+
+  /* Fix for catalog specific */
+  .retro [class*="bg-gray-50"],
+  .retro [class*="bg-gray-100"] {
+    background-color: #161b22 !important;
+  }
+
+  /* Override any remaining bright backgrounds */
+  .retro [class*="bg-white"],
+  .retro [class*="bg-gray-"] {
+    background-color: #161b22 !important;
+  }
+
+  /* Catch-all for any gradient backgrounds */
+  .retro [style*="background"],
+  .retro [class*="gradient"] {
+    background-color: #0d1117 !important;
+    background-image: none !important;
+  }
+
+  /* Force dark background on ALL elements in retro mode */
+  .retro * {
+    border-color: rgba(63, 185, 80, 0.15) !important;
+  }
+
+  /* Fix for Radix UI dropdown menus - force opaque background */
+  .retro [data-radix-popper-content-wrapper],
+  .retro [role="menu"],
+  .retro [role="dropdown"],
+  .retro [class*="DropdownMenu"],
+  .retro [class*="dropdown"],
+  .retro div[class*="DropdownMenu"],
+  .retro [data-state="open"] {
+    background-color: #0d1117 !important;
+    opacity: 1 !important;
+  }
+
+  /* Ensure backdrop-blur doesn't cause transparency issues */
+  .retro .backdrop-blur-md,
+  .retro .backdrop-blur-xl,
+  .retro .backdrop-blur-3xl {
+    background-color: rgba(13, 17, 23, 0.95) !important;
+  }
+
+  /* Reader custom text color - applied from localStorage */
+  .dark[data-reader-color],
+  .retro[data-reader-color] {
+    --reader-accent: var(--bookea-reader-color, #3fb950);
+  }
+
+  .dark[data-reader-color] .text-blue-500,
+  .dark[data-reader-color] .text-blue-400,
+  .retro[data-reader-color] .text-blue-500,
+  .retro[data-reader-color] .text-blue-400 {
+    color: var(--reader-accent) !important;
+  }
+
+  .dark[data-reader-color] .bg-blue-600,
+  .retro[data-reader-color] .bg-blue-600 {
+    background-color: var(--reader-accent) !important;
   }
 }
 

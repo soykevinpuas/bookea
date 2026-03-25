@@ -3,7 +3,7 @@ import { BookOpen, Zap, Shield, Sparkles } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-gray-100 overflow-hidden font-sans selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[#0a0a0a] retro:bg-[#0d1117] text-gray-100 overflow-hidden font-sans selection:bg-blue-500/30">
       
       {/* Decorative premium background elements */}
       <div className="absolute top-0 inset-x-0 h-[500px] bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none -z-10"></div>

@@ -57,7 +57,7 @@ export async function getBook(supabase: SupabaseClient, id: string): Promise<Boo
   }
 }
 
-export async function getUserBooks(supabase: SupabaseClient, userId: string): Promise<Book[]> {
+export async function getUserBooks(supabase: SupabaseClient, userId: string, options?: { search?: string; category?: string }): Promise<Book[]> {
   if (!userId) return [];
   
   try {
@@ -73,7 +73,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string): Pr
 
     if (!data || !Array.isArray(data)) return [];
 
-    return data
+    let books = data
       .map((item: any) => {
         // 3.3.1 - Aplanar matriz/objeto anidado devuelto por la API de Supabase para asegurar mapeo de Typescript
         const bookData = item.books;
@@ -81,6 +81,21 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string): Pr
         return bookData;
       })
       .filter((b): b is Book => !!b && typeof b === 'object' && 'id' in b);
+
+    // 3.4.1 - Aplicar filtros de búsqueda y categoría en los libros del usuario
+    if (options?.search) {
+      const searchLower = options.search.toLowerCase();
+      books = books.filter(book => 
+        book.title?.toLowerCase().includes(searchLower) || 
+        book.author?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (options?.category && options.category !== "all") {
+      books = books.filter(book => book.category === options.category);
+    }
+
+    return books;
   } catch (error) {
     console.warn("Error in getUserBooks logic");
     return [];

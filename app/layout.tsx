@@ -43,6 +43,7 @@ export const viewport = {
 import { Toaster } from "sonner";
 
 import { createClient } from "@/lib/server";
+import { ReaderColorSync } from "@/components/ReaderColorSync";
 
 // 1.6 - RootLayout: Proveedores de estado, tostadas y tema global
 export default async function RootLayout({
@@ -56,7 +57,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-white transition-colors duration-300 dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100 flex flex-col`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-white transition-colors duration-300 dark:bg-[#0a0a0a] retro:bg-[#0d1117] text-gray-900 dark:text-gray-100 retro:text-white flex flex-col`}
       >
         <ThemeProvider
           attribute="class"
@@ -64,6 +65,7 @@ export default async function RootLayout({
           enableSystem
           themes={["light", "dark", "retro"]}
         >
+          <ReaderColorSync />
           <PwaListener />
           <QueryProvider>
             <Header initialUser={user ? { id: user.id, email: user.email } : null} />

@@ -19,7 +19,7 @@ interface SearchFiltersProps {
 export function SearchFilters({ 
   initialSearch = "", 
   initialCategory = "all", 
-  initialView = "grid" 
+  initialView = "list" 
 }: SearchFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();

@@ -30,11 +30,11 @@ export function useBook(id: string) {
   });
 }
 
-export function useUserBooks(userId: string) {
+export function useUserBooks(userId: string, options?: { search?: string; category?: string }) {
   const supabase = createClientClient();
   return useQuery({
-    queryKey: ["userBooks", userId],
-    queryFn: () => getUserBooks(supabase, userId),
+    queryKey: ["userBooks", userId, options?.search, options?.category],
+    queryFn: () => getUserBooks(supabase, userId, options),
     enabled: !!userId,
     ...BOOK_QUERY_OPTIONS,
   });

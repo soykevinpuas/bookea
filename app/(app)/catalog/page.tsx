@@ -15,14 +15,14 @@ interface PageProps {
 
 // 3.1 - CatalogPage: Componente principal del catálogo que lista los libros disponibles
 export default async function CatalogPage({ searchParams }: PageProps) {
-  const { search, category, view = "grid" } = await searchParams;
+  const { search, category, view = "list" } = await searchParams;
   
   // 3.1.1 - Inicialización del cliente Supabase en servidor y obtención de la colección filtrada
   const supabase = await createClient();
   const books = await getBooks(supabase, { search, category });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div>

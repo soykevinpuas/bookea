@@ -30,6 +30,8 @@ export default function ReaderPage() {
   const [error, setError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(18);
   const [fontFamily, setFontFamily] = useState<"sans" | "serif" | "mono">("sans");
+  const [textAlign, setTextAlign] = useState<"left" | "center" | "right" | "justify">("justify");
+  const [textColor, setTextColor] = useState<string>("#ffffff");
   const { theme, setTheme } = useTheme();
   const [progress, setProgress] = useState(0);
   const [showControls, setShowControls] = useState(true);
@@ -38,6 +40,17 @@ export default function ReaderPage() {
   const themeRef = useRef<string | undefined>(theme);
   const fontRef = useRef<"sans" | "serif" | "mono">(fontFamily);
   const sizeRef = useRef<number>(fontSize);
+  const alignRef = useRef<"left" | "center" | "right" | "justify">(textAlign);
+  const colorRef = useRef<string>(textColor);
+
+  // 4.2.2.1 - Colores disponibles para el texto del lector
+  const textColors = [
+    { name: "Blanco", value: "#ffffff" },
+    { name: "Sepia", value: "#f4ecd8" },
+    { name: "Verde", value: "#3fb950" },
+    { name: "Azul", value: "#60a5fa" },
+    { name: "Rosa", value: "#f472b6" },
+  ];
 
   // 4.2.4 - Gestores del tiempo de inactividad para ocultar la interfaz HUD (Inactivity Timeout)
   const resetControlsTimeout = () => {
@@ -90,9 +103,9 @@ export default function ReaderPage() {
         const rendition = bookInstance.renderTo(viewerElement, {
           width: "100%",
           height: "100%",
-          spread: "none", // For a more modern scrolling or single-page feel on mobile
+          spread: "none",
           manager: "continuous",
-          flow: "paginated",
+          flow: "scrolled",
           allowScriptedContent: true,
         });
 
@@ -103,27 +116,43 @@ export default function ReaderPage() {
             
             const style = contents.document.createElement("style");
             style.innerHTML = `
-              html {
-                height: 100%;
+              html, body {
+                height: auto;
+                min-height: 100%;
               }
               body {
                 line-height: 1.8 !important;
-                padding: 60px 5% !important;
-                padding-top: max(60px, env(safe-area-inset-top)) !important;
-                padding-bottom: max(60px, env(safe-area-inset-bottom)) !important;
+                padding: 20px 5% 20px !important;
+                padding-left: max(5%, env(safe-area-inset-left)) !important;
+                padding-right: max(5%, env(safe-area-inset-right)) !important;
+                padding-top: max(20px, env(safe-area-inset-top)) !important;
+                padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
                 max-width: 800px !important;
                 margin: 0 auto !important;
-                min-height: 100vh !important;
                 transition: color 0.3s ease, background-color 0.3s ease;
+                color: var(--bookea-text-color, #ffffff) !important;
+                box-sizing: border-box;
+                overflow-x: hidden;
+              }
+              /* Ajuste responsive para pantallas grandes */
+              @media (min-width: 1024px) {
+                body {
+                  padding: 20px 10% 20px !important;
+                }
               }
               p {
                 margin-bottom: 1.5em !important;
-                text-align: justify !important;
+                text-align: var(--bookea-text-align, justify) !important;
+                color: var(--bookea-text-color, #ffffff) !important;
+                opacity: 0.9;
               }
               h1, h2, h3, h4, h5, h6 {
                 font-weight: 700 !important;
                 margin-top: 2em !important;
                 margin-bottom: 1em !important;
+                color: var(--bookea-text-color, #3fb950) !important;
+                text-shadow: 0 0 8px rgba(63, 185, 80, 0.4);
+                text-align: center !important;
               }
               img {
                 max-width: 100% !important;
@@ -150,7 +179,7 @@ export default function ReaderPage() {
             rendition.themes.override("color", "#ededed");
             rendition.themes.override("background", "#0a0a0a");
           } else if (themeRef.current === "retro") {
-            rendition.themes.override("color", "#3fb950");
+            rendition.themes.override("color", "#ffffff");
             rendition.themes.override("background", "#0d1117");
           }
         };
@@ -199,6 +228,16 @@ export default function ReaderPage() {
           setIsLoading(false);
         });
 
+        // 4.2.7.1 - Manejo de resize para actualizar el rendition al cambiar orientación o tamaño de ventana
+        const handleResize = () => {
+          if (renditionRef.current) {
+            const viewer = viewerRef.current;
+            if (viewer) {
+              renditionRef.current.resize(viewer.clientWidth, viewer.clientHeight);
+            }
+          }
+        };
+        
         bookInstance.on("openFailed", (err: unknown) => {
           console.error("EPUB Open Failed:", err);
           setError("No se pudo abrir el archivo EPUB. Es posible que el archivo esté dañado o el formato no sea compatible.");
@@ -240,6 +279,25 @@ export default function ReaderPage() {
     return () => document.removeEventListener('keyup', handleKeyUp);
   }, []);
 
+  // 4.2.8.1 - Efecto para manejar cambio de tamaño de ventana y orientación
+  useEffect(() => {
+    const handleResize = () => {
+      if (renditionRef.current && viewerRef.current) {
+        renditionRef.current.resize(viewerRef.current.clientWidth, viewerRef.current.clientHeight);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", () => {
+      setTimeout(handleResize, 150);
+    });
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+    };
+  }, []);
+
   useEffect(() => {
     if (renditionRef.current) {
       renditionRef.current.themes.fontSize(`${fontSize}px`);
@@ -264,6 +322,18 @@ export default function ReaderPage() {
       fontRef.current = savedFont;
     }
 
+    const savedAlign = localStorage.getItem("bookea-text-align");
+    if (savedAlign === "left" || savedAlign === "center" || savedAlign === "right" || savedAlign === "justify") {
+      setTextAlign(savedAlign);
+      alignRef.current = savedAlign;
+    }
+
+    const savedColor = localStorage.getItem("bookea-text-color");
+    if (savedColor) {
+      setTextColor(savedColor);
+      colorRef.current = savedColor;
+    }
+
     setMounted(true);
   }, []);
 
@@ -277,7 +347,7 @@ export default function ReaderPage() {
         renditionRef.current.themes.override("color", "#ededed");
         renditionRef.current.themes.override("background", "#0a0a0a");
       } else if (theme === "retro") {
-        renditionRef.current.themes.override("color", "#3fb950");
+        renditionRef.current.themes.override("color", "#ffffff");
         renditionRef.current.themes.override("background", "#0d1117");
       }
     }
@@ -295,6 +365,35 @@ export default function ReaderPage() {
     localStorage.setItem("bookea-font-family", fontFamily);
   }, [fontFamily, mounted]);
 
+  useEffect(() => {
+    if (!mounted) return;
+    if (renditionRef.current) {
+      renditionRef.current.themes.override("--bookea-text-align", textAlign);
+      renditionRef.current.themes.override("align", textAlign);
+      renditionRef.current.themes.override("textAlign", textAlign);
+    }
+    alignRef.current = textAlign;
+    localStorage.setItem("bookea-text-align", textAlign);
+  }, [textAlign, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (renditionRef.current) {
+      // Aplicar color de texto solo si no es el tema light
+      if (theme === "dark" || theme === "retro") {
+        renditionRef.current.themes.override("--bookea-text-color", textColor);
+        renditionRef.current.themes.override("color", textColor);
+      }
+    }
+    colorRef.current = textColor;
+    localStorage.setItem("bookea-text-color", textColor);
+    // Guardar también para uso global
+    localStorage.setItem("bookea-reader-color", textColor);
+    // Aplicar al documento global
+    document.documentElement.style.setProperty("--bookea-reader-color", textColor);
+    document.documentElement.setAttribute("data-reader-color", "true");
+  }, [textColor, mounted, theme]);
+
   // 4.2.9.1 - Controladores de paginación explícitos (Adelante/Atrás) operados mediante los botones HUD
   const handlePrev = () => {
     renditionRef.current?.prev().catch(err => console.warn("EPUB prev error:", err));
@@ -308,7 +407,7 @@ export default function ReaderPage() {
 
   if (loadingBook) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0a0a0a]">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117]">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
@@ -316,7 +415,7 @@ export default function ReaderPage() {
 
   if (error) {
     return (
-      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-[#0a0a0a] text-white px-4 text-center">
+      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-[#0a0a0a] retro:bg-[#0d1117] text-white px-4 text-center">
         <div className="text-red-500 mb-4 text-4xl">⚠️</div>
         <h2 className="text-xl font-bold mb-2">Error al cargar libro</h2>
         <p className="text-white/60 mb-6 max-w-md">{typeof error === 'string' ? error : "Ocurrió un error inesperado al inicializar epub.js"}</p>
@@ -329,7 +428,7 @@ export default function ReaderPage() {
 
   if (!book || !book.epub_url) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 dark:bg-[#0a0a0a]">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117]">
         <div className="text-xl text-gray-900 dark:text-gray-100 font-medium">Libro no disponible</div>
         <p className="text-gray-500 dark:text-gray-400">Este libro no pudo ser encontrado o no tiene versión digital.</p>
         <Link href={`/book/${bookId}`} className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition">
@@ -383,10 +482,10 @@ export default function ReaderPage() {
           </button>
 
           {showSettings && (
-            <div className={`absolute top-14 right-0 w-64 p-4 rounded-2xl shadow-2xl border backdrop-blur-3xl animate-in fade-in slide-in-from-top-4 duration-200 ${
-              isDark ? 'bg-[#121212]/90 border-white/10 text-white' : 
-              isRetro ? 'bg-[#0d1117]/95 border-[#3fb950]/30 text-[#3fb950]' : 
-              'bg-white/95 border-black/5 text-gray-900'
+            <div className={`absolute top-14 right-0 w-72 p-4 rounded-2xl shadow-2xl border animate-in fade-in slide-in-from-top-4 duration-200 ${
+              isDark ? 'bg-[#1a1a1a] border-white/10 text-white' : 
+              isRetro ? 'bg-[#0d1117] border-[#3fb950]/30 text-[#3fb950]' : 
+              'bg-white border-black/5 text-gray-900'
             }`}>
               {/* 4.2.12 - Submenú Renderizado: Selector de Tipografías limpias y monoespaciadas */}
               <div className="mb-4">
@@ -415,6 +514,50 @@ export default function ReaderPage() {
                   <button onClick={() => setTheme("light")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "light" ? "bg-white shadow-sm font-medium text-black" : "opacity-60 hover:opacity-100"}`}>Día</button>
                   <button onClick={() => setTheme("dark")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "dark" ? "bg-white/10 shadow-sm font-medium text-white" : "opacity-60 hover:opacity-100"}`}>Noche</button>
                   <button onClick={() => setTheme("retro")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors font-mono ${theme === "retro" ? "bg-[#3fb950]/20 shadow-sm font-medium text-[#3fb950]" : "opacity-60 hover:opacity-100"}`}>Retro</button>
+                </div>
+              </div>
+
+              {/* 4.2.15 - Submenú Renderizado: Selector de justificación del texto */}
+              <div className="mb-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Alineación</h3>
+                <div className={`flex gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
+                  <button onClick={() => setTextAlign("left")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${textAlign === "left" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Izq</button>
+                  <button onClick={() => setTextAlign("center")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${textAlign === "center" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Centro</button>
+                  <button onClick={() => setTextAlign("right")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${textAlign === "right" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Der</button>
+                  <button onClick={() => setTextAlign("justify")} className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${textAlign === "justify" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Just</button>
+                </div>
+              </div>
+
+              {/* 4.2.16 - Submenú Renderizado: Selector de color de texto */}
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Color de texto</h3>
+                <div className="flex gap-2 justify-between">
+                  {textColors.map((color) => (
+                    <button
+                      key={color.value}
+                      onClick={() => setTextColor(color.value)}
+                      className={`w-8 h-8 rounded-full transition-all border-2 ${
+                        textColor === color.value 
+                          ? isRetro 
+                            ? 'border-[#3fb950] scale-110' 
+                            : isDark
+                              ? 'border-white scale-110'
+                              : 'border-black scale-110'
+                          : 'border-transparent hover:border-gray-400'
+                      }`}
+                      style={{ 
+                        backgroundColor: color.value,
+                        boxShadow: textColor === color.value 
+                          ? isRetro 
+                            ? `0 0 0 2px #0d1117, 0 0 8px ${color.value}` 
+                            : isDark
+                              ? `0 0 0 2px #121212, 0 0 0 4px ${color.value}`
+                              : `0 0 0 2px #ffffff, 0 0 0 4px ${color.value}`
+                          : '0 2px 4px rgba(0,0,0,0.2)'
+                      }}
+                      title={color.name}
+                    />
+                  ))}
                 </div>
               </div>
             </div>

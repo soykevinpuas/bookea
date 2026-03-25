@@ -47,7 +47,7 @@ export default function SubscribePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30 overflow-hidden relative">
+    <div className="min-h-screen bg-[#0a0a0a] retro:bg-[#0d1117] text-white selection:bg-blue-500/30 overflow-hidden relative">
       {/* Background gradients */}
       <div className="absolute top-0 inset-x-0 h-[500px] bg-gradient-to-b from-blue-900/10 to-transparent pointer-events-none -z-10"></div>
       <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/5 blur-[120px] pointer-events-none"></div>

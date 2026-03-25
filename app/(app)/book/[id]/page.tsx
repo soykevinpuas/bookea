@@ -104,7 +104,7 @@ export default function BookDetailPage() {
   // 3.5.9 - Estados de carga y error
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0a0a0a]">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117]">
         <div className="text-lg text-gray-600 dark:text-gray-400">Cargando libro...</div>
       </div>
     );
@@ -112,7 +112,7 @@ export default function BookDetailPage() {
 
   if (error || !book) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 dark:bg-[#0a0a0a]">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117]">
         <div className="text-lg text-red-500 dark:text-red-400">Libro no encontrado</div>
         <Link href="/catalog" className="text-blue-600 dark:text-blue-400 hover:underline">
           Volver al catálogo
@@ -125,7 +125,7 @@ export default function BookDetailPage() {
   // 3.5.10 - Renderizado del layout principal
   // ============================================
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* 3.5.10.1 - Enlace de navegación de retorno al catálogo */}
         <Link
