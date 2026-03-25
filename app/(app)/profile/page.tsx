@@ -57,7 +57,10 @@ export default function ProfilePage() {
     );
   }
 
-  // 3.3.2 - Renderizado del perfil del usuario
+  // 3.3.2 - Determinar si el usuario tiene suscripción activa
+  const isSubscriber = dbUser?.role === 'subscriber';
+
+  // 3.3.3 - Renderizado del perfil del usuario
   return (
     <div className="min-h-screen bg-[#0a0a0a] retro:bg-[#0d1117] text-white py-12 px-6">
       <div className="max-w-3xl mx-auto">
