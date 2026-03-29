@@ -4,6 +4,15 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-03-29] - Solución de Build Estratégico (Vercel)
+**Objetivo:** Permitir el despliegue del proyecto ignorando la falta de claves de Stripe durante la compilación.
+
+### Arreglos Críticos
+- **Inicialización Segura de Stripe:** Modificado `lib/stripe.ts` para usar un placeholder en caso de ausencia de `STRIPE_SECRET_KEY`, evitando el crash `Neither apiKey nor config.authenticator provided` en Vercel.
+- **Documentación de Infraestructura:** Actualizado el Documento Maestro para marcar el módulo de pagos como "**Fase 2 (Listo para Integrar)**", permitiendo presentarlo como una funcionalidad planificada y estructurada.
+
+---
+
 ## [2026-03-29] - Migración a Next.js 15 Proxy API
 **Objetivo:** Resolver advertencia de depreciación de "middleware" y adoptar la nueva convención "proxy".
 

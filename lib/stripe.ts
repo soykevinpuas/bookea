@@ -5,8 +5,14 @@ import Stripe from 'stripe';
 // Maneja creación de sesiones de checkout y portal de facturación
 // ============================================
 
-// 6.7.1 - Instancia global del cliente Stripe
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+// 6.7.1 - Instancia global del cliente Stripe (con protección para el build)
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.warn("⚠️ ALERTA: STRIPE_SECRET_KEY ausente durante el build o ejecución.");
+}
+
+export const stripe = new Stripe(stripeSecretKey, {
   apiVersion: '2026-02-25.clover',
   typescript: true,
 });

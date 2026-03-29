@@ -20,7 +20,7 @@
 | **Base de Datos** | Supabase (PostgreSQL) | Escalabilidad, Row Level Security (RLS) y Realtime. |
 | **Estilos** | Tailwind CSS 4 | Diseño atómico y sistema de temas ultrarrápido. |
 | **IA** | Gemini 1.5 Flash | Procesamiento de lenguaje natural de baja latencia. |
-| **Pagos** | Stripe Billing | Estándar de la industria para cobros recurrentes. |
+| **Pagos (Fase 2)** | Stripe Billing | Estándar de la industria para cobros recurrentes (Integración preparada). |
 
 ---
 
@@ -43,6 +43,12 @@ Bookea ofrece una experiencia visual única con 4 identidades distintas:
 ### 🤖 IA Companion
 - **Tutor Contextual:** Capacidad de preguntar a la IA sobre fragmentos específicos del texto.
 - **Diccionario Inteligente:** Definiciones inmediatas y contextuales integradas en el flujo de lectura.
+
+### 🛒 E-commerce y Fidelización (Próxima Implementación)
+La infraestructura de datos está preparada para soportar el módulo de comercio electrónico:
+- **`public.orders_physical`:** Registro de pedidos de libros físicos.
+- **`public.discounts`:** Gestión de ofertas y cupones.
+- **`public.wishlist`:** Lista de deseos personal.
 
 ### 💳 Gestión SaaS & PWA
 - **Stripe Checkout:** Flujo de compra de libros físicos y digitales.

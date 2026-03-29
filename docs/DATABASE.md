@@ -18,8 +18,10 @@ Bookea utiliza **Supabase (PostgreSQL)** como motor de base de datos, aprovechan
 - **`public.highlights`:** Almacena subrayados y notas personales dentro del texto.
 - **`public.reviews` y `public.comments`:** Sistema social para calificar libros y comentar con soporte para "Likes".
 
-### 🛒 E-commerce y Fidelización
-- **`public.orders_physical`:** Registro de pedidos de libros físicos con integración de estado de envío.
+### 🛒 E-commerce y Fidelización (Próxima Implementación)
+La infraestructura de datos está preparada para soportar el módulo de comercio electrónico:
+- **`public.orders_physical`:** Registro de pedidos de libros físicos.
+- **`public.discounts`:** Gestión de ofertas y cupones.
 - **`public.wishlist`:** Lista de deseos personal.
 - **`public.badges` y `public.user_badges`:** Gamificación para recompensar hitos de lectura.
 
