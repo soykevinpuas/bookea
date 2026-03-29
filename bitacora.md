@@ -4,6 +4,21 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-03-29] - Estabilización del Lector y UX de Temas
+**Objetivo:** Refinar la legibilidad, accesibilidad y proteger la integridad visual de los temas especiales.
+
+### Añadido
+- **Tipografía Expandida:** Integración de Google Fonts (Nunito, Lora, Libre Baskerville) y OpenDyslexic directamente en el Iframe del lector.
+- **Validación de Contrastes:** Sistema de seguridad que impide texto ilegible y restringe el modo Claro a texto puramente negro.
+- **Protección de Estilo (`no-retro-override`):** Implementación de una clase CSS global para prevenir que los temas Retro/Navy sobrescriban elementos críticos como botones y avatares.
+
+### Cambios y Mejoras
+- **Diseño del Catálogo:** Rediseño de la vista de lista para que sea flexible (sin altura fija) y muestre más metadatos (autor y descripción extendida).
+- **Tematización Global:** Restaurado el ciclo completo de 4 temas (Día, Noche, Terminal, Marina) en el botón de cabecera.
+- **Modo Claro (Día):** Ajuste de paleta a grises suaves (`bg-gray-50`) para reducir la fatiga visual.
+
+---
+
 ## [2026-03-23] - Unificación de Temas y Redirección Inteligente
 
 ### Añadido

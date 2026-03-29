@@ -117,7 +117,7 @@ chore: add epubjs dependency
 
 ## 9. FASES DE DESARROLLO
 
-### Fase 1 — MVP (lanzar y cobrar)
+### Fase 1 — MVP (lanzar)
 - [ ] Auth completo (login/register)
 - [ ] Catálogo de libros
 - [ ] Página de detalle de libro
