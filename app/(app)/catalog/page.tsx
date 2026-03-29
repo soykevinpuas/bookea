@@ -58,12 +58,12 @@ export default async function CatalogPage({ searchParams }: PageProps) {
               <div
                 key={book.id}
                 className={`group bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none transition-all duration-300 overflow-hidden ${
-                  view === "list" ? "flex flex-row h-48" : "flex flex-col h-full hover:-translate-y-1"
+                  view === "list" ? "flex flex-col sm:flex-row min-h-[180px]" : "flex flex-col h-full hover:-translate-y-1"
                 }`}
               >
                 {/* Portada */}
                 <div className={`${
-                  view === "list" ? "w-32 sm:w-48 h-full" : "relative aspect-[2/3]"
+                  view === "list" ? "w-full sm:w-48 h-48 sm:h-auto shrink-0" : "relative aspect-[2/3]"
                 } px-4 py-4 flex items-center justify-center bg-transparent overflow-hidden`}>
                    {book.cover_url ? (
                     <Link href={`/book/${book.id}`} className="w-full h-full">
@@ -95,12 +95,12 @@ export default async function CatalogPage({ searchParams }: PageProps) {
                     )}
                   </div>
                   
-                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 mb-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-1 mb-3">
                     por {book.author}
                   </p>
 
                   {view === "list" && book.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4 hidden sm:block">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-4 hidden sm:block">
                       {book.description}
                     </p>
                   )}
@@ -115,7 +115,8 @@ export default async function CatalogPage({ searchParams }: PageProps) {
                     </span>
                     <Link
                       href={`/book/${book.id}`}
-                      className="text-sm font-medium bg-blue-600 dark:bg-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-600/30 text-white dark:text-blue-400 px-4 py-2 rounded-xl transition-all shadow-sm"
+                      className="text-sm font-medium bg-blue-600 dark:bg-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-600/30 text-white dark:text-blue-400 px-4 py-2 rounded-xl transition-all shadow-sm no-retro-override"
+                      style={{ '--dot-bg': '#2563eb' } as any}
                     >
                       {view === "list" ? "Ver detalles" : "Detalles"}
                     </Link>

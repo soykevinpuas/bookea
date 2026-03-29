@@ -63,9 +63,19 @@ export function UserMenu({ email }: UserMenuProps) {
           className="flex items-center gap-2 px-2 py-1.5 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-label="Menú de usuario"
         >
-          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium shadow-sm">
+          <div 
+            className="w-8 h-8 rounded-full flex items-center justify-center shadow-sm no-retro-override"
+            style={{ 
+              backgroundColor: '#2563eb', 
+              color: '#ffffff',
+              '--dot-bg': '#2563eb',
+              '--dot-text': '#ffffff'
+            } as any}
+          >
             {/* Inicial del email o icono genérico */}
-            {email ? email.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+            <span style={{ color: '#ffffff' }} className="font-bold">
+              {email ? email.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+            </span>
           </div>
           <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 mr-1" />
         </button>

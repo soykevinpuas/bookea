@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState, useMemo } from "react";
 import { ThemeToggle } from "./ThemeToggle";
@@ -18,56 +18,31 @@ interface HeaderProps {
 
 // 6.1.1 - Componente Header con autenticación en tiempo real
 export function Header({ initialUser = null }: HeaderProps) {
-  // Estado local del usuario y estado de carga
   const [user, setUser] = useState<{ id: string; email?: string } | null>(initialUser);
-  const [isLoading, setIsLoading] = useState(!initialUser);
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Memoización del cliente Supabase para evitar recreaciones innecesarias
   const supabase = useMemo(() => createClientClient(), []);
   const pathname = usePathname();
+  const router = useRouter();
 
-  // 6.1.2 - Efecto para sincronizar estado de autenticación con Supabase
+  // 6.1.2a - Cuando el RSC del layout se re-ejecuta (por router.refresh()),
+  // el prop `initialUser` cambia — este efecto lo sincroniza al state local.
   useEffect(() => {
-    let mounted = true;
-    
-    // Sincronizar con initialUser si cambia (ej. navegación entre páginas)
-    if (initialUser && !user) {
-        setUser(initialUser);
-        setIsLoading(false);
-    }
+    setUser(initialUser ?? null);
+  }, [initialUser]);
 
-    // Paso 1: Obtener sesión inicial (método más rápido para cliente)
-    const initAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (mounted) {
-          setUser(session?.user ?? null);
-        }
-      } catch (err) {
-        console.error("Header Auth Init Error:", err);
-      } finally {
-        if (mounted) setIsLoading(false);
+  // 6.1.2b - Escucha cambios de sesión del lado del cliente (logout, etc.)
+  // Se registra UNA sola vez. router.refresh() dispara el efecto de arriba.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        router.refresh();
       }
-    };
-    
-    initAuth();
-
-    // Paso 2: Escuchar eventos de autenticación en tiempo real
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (mounted) {
-          setUser(session?.user ?? null);
-          setIsLoading(false);
-        }
-      }
-    );
-
-    // Cleanup: Desmontar listener al destruir componente
-    return () => {
-        mounted = false;
-        subscription.unsubscribe();
-    };
-  }, [supabase]);
+    });
+    return () => subscription.unsubscribe();
+  }, [supabase, router]);
 
   // 6.1.3 - Ocultar Header en la vista del lector para máxima inmersión
   if (pathname?.startsWith("/reader")) {
@@ -78,7 +53,7 @@ export function Header({ initialUser = null }: HeaderProps) {
   // 6.1.4 - Renderizado del Header
   // ============================================
   return (
-    <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/80 dark:bg-black/60 retro:bg-[#0d1117]/90 border-b border-gray-200 dark:border-white/10 retro:border-[#3fb950]/20 shadow-sm dark:shadow-[0_4px_30px_rgba(0,0,0,0.1)] transition-all pt-safe">
+    <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-gray-100/90 dark:bg-black/60 retro:bg-[#0d1117]/90 border-b border-gray-200 dark:border-white/10 retro:border-[#3fb950]/20 shadow-sm dark:shadow-[0_4px_30px_rgba(0,0,0,0.1)] transition-all pt-safe">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* 6.1.4.1 - Logo de Bookea con enlace al inicio */}
         <Link 

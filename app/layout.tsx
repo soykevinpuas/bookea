@@ -52,18 +52,27 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // 1.6.1 - Manejo defensivo: getUser hace un fetch de red al servidor de Supabase.
+  // Si falla (proyecto pausado, red, vars de entorno), la app debe seguir funcionando
+  // mostrando el Header en estado "no logueado" en lugar de romper todo el layout.
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch (err) {
+    console.warn("⚠️ Layout: No se pudo obtener el usuario del servidor:", err);
+  }
 
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-white transition-colors duration-300 dark:bg-[#0a0a0a] retro:bg-[#0d1117] text-gray-900 dark:text-gray-100 retro:text-white flex flex-col`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 transition-colors duration-300 dark:bg-[#0a0a0a] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-gray-100 retro:text-white navy:text-[#e8eaf6] flex flex-col`}
       >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
-          themes={["light", "dark", "retro"]}
+          themes={["light", "dark", "retro", "navy"]}
         >
           <ReaderColorSync />
           <PwaListener />

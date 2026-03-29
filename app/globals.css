@@ -2,6 +2,7 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant retro (&:where(.retro, .retro *));
+@custom-variant navy (&:where(.navy, .navy *));
 
 @theme {
   --font-sans: var(--font-geist-sans);
@@ -229,16 +230,32 @@
     background-color: #161b22 !important;
   }
 
-  /* Catch-all for any gradient backgrounds */
-  .retro [style*="background"],
-  .retro [class*="gradient"] {
+  /* Catch-all for any gradient backgrounds - exclude color picker dots */
+  .retro [style*="background"]:not(.no-retro-override),
+  .retro [class*="gradient"]:not(.no-retro-override) {
     background-color: #0d1117 !important;
     background-image: none !important;
   }
 
-  /* Force dark background on ALL elements in retro mode */
-  .retro * {
+  /* Force dark background on ALL elements in retro mode (borders only) - exclude color picker dots */
+  .retro *:not(.no-retro-override) {
     border-color: rgba(63, 185, 80, 0.15) !important;
+  }
+
+  /* PROTECCIÓN DEFINTIVA PARA CÍRCULOS DE COLORES Y BOTONES CRÍTICOS */
+  .retro .no-retro-override,
+  .retro .no-retro-override *,
+  .navy .no-retro-override,
+  .navy .no-retro-override * {
+    background-color: var(--dot-bg, inherit) !important;
+    color: var(--dot-text, #ffffff) !important;
+    background-image: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  .retro div.no-retro-override {
+    background-color: var(--dot-bg) !important;
   }
 
   /* Fix for Radix UI dropdown menus - force opaque background */
@@ -260,21 +277,132 @@
     background-color: rgba(13, 17, 23, 0.95) !important;
   }
 
+  /* ==============================================
+     1.7.3 - Navy Theme: Azul Marino Profundo
+     ============================================== */
+  html.navy,
+  .navy {
+    background-color: #0a0f1e !important;
+    color: #e8eaf6 !important;
+  }
+
+  html.navy body,
+  .navy body {
+    background-color: #0a0f1e !important;
+    color: #e8eaf6 !important;
+  }
+
+  /* Títulos en navy: azul eléctrico brillante */
+  .navy h1,
+  .navy h2,
+  .navy h3 {
+    color: #7986cb !important;
+    text-shadow: 0 0 12px rgba(121, 134, 203, 0.4) !important;
+  }
+
+  /* Texto de cuerpo en navy: casi blanco con tono azulado */
+  .navy p,
+  .navy h4, .navy h5, .navy h6,
+  .navy .text-gray-600, .navy .text-gray-400,
+  .navy .text-gray-300, .navy .text-gray-100 {
+    color: #c5cae9 !important;
+    opacity: 1 !important;
+  }
+
+  /* Links en navy */
+  .navy a,
+  .navy .text-blue-600,
+  .navy .text-blue-500,
+  .navy .text-blue-400 {
+    color: #7986cb !important;
+  }
+
+  /* Header en navy con backdrop */
+  .navy .bg-white\/80 {
+    background-color: rgba(10, 15, 30, 0.95) !important;
+  }
+
+  /* Botones principales en navy */
+  .navy .bg-blue-600,
+  .navy .bg-blue-500,
+  .navy [class*='bg-blue-600'],
+  .navy [class*='bg-blue-500'] {
+    background-color: #3949ab !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 12px rgba(57, 73, 171, 0.4) !important;
+  }
+
+  /* Cards y contenedores en navy */
+  .navy .bg-white,
+  .navy .bg-gray-50,
+  .navy .bg-gray-100 {
+    background-color: #111827 !important;
+    border-color: rgba(121, 134, 203, 0.2) !important;
+  }
+
+  .navy .bg-white\/5,
+  .navy .bg-white\/10,
+  .navy .bg-white\/20 {
+    background-color: rgba(17, 24, 39, 0.8) !important;
+    border-color: rgba(121, 134, 203, 0.15) !important;
+  }
+
+  /* Bordes en navy */
+  .navy * {
+    border-color: rgba(121, 134, 203, 0.15) !important;
+  }
+
+  .navy .border-white\/10,
+  .navy .border-white\/5 {
+    border-color: rgba(121, 134, 203, 0.15) !important;
+  }
+
+  /* Inputs en navy */
+  .navy input,
+  .navy textarea,
+  .navy select {
+    background-color: #111827 !important;
+    color: #e8eaf6 !important;
+    border-color: rgba(121, 134, 203, 0.3) !important;
+  }
+
+  /* Fondos principales */
+  .navy .min-h-screen,
+  .navy .bg-\[\#0a0a0a\] {
+    background-color: #0a0f1e !important;
+  }
+
+  /* backdrop-blur en navy */
+  .navy .backdrop-blur-md,
+  .navy .backdrop-blur-xl {
+    background-color: rgba(10, 15, 30, 0.9) !important;
+  }
+
+  /* Selección de texto en navy */
+  .navy ::selection {
+    background-color: rgba(121, 134, 203, 0.4) !important;
+    color: #ffffff !important;
+  }
+
   /* Reader custom text color - applied from localStorage */
   .dark[data-reader-color],
-  .retro[data-reader-color] {
-    --reader-accent: var(--bookea-reader-color, #3fb950);
+  .retro[data-reader-color],
+  .navy[data-reader-color] {
+    --reader-accent: var(--bookea-reader-color, #7986cb);
   }
 
   .dark[data-reader-color] .text-blue-500,
   .dark[data-reader-color] .text-blue-400,
   .retro[data-reader-color] .text-blue-500,
-  .retro[data-reader-color] .text-blue-400 {
+  .retro[data-reader-color] .text-blue-400,
+  .navy[data-reader-color] .text-blue-500,
+  .navy[data-reader-color] .text-blue-400 {
     color: var(--reader-accent) !important;
   }
 
   .dark[data-reader-color] .bg-blue-600,
-  .retro[data-reader-color] .bg-blue-600 {
+  .retro[data-reader-color] .bg-blue-600,
+  .navy[data-reader-color] .bg-blue-600 {
     background-color: var(--reader-accent) !important;
   }
 }

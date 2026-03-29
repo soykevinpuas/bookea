@@ -1,10 +1,6 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
 // ============================================
 // 6.4 - BookCard: Componente de tarjeta para mostrar portadas de libros
-// Incluye mejora de imagen y efectos de sombra
+// Usa CSS puro para efectos visuales (sin Canvas) para evitar errores CORS en producción
 // ============================================
 
 interface Book3DProps {
@@ -15,96 +11,35 @@ interface Book3DProps {
   enhance?: boolean;
 }
 
-// 6.4.1 - Función para mejorar la calidad de imagen: contraste, saturación y nitidez
-function enhanceImage(src: string): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = src;
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        resolve(src);
-        return;
-      }
-
-      // Aplicar filtro de mejora: contraste 8%, saturación 10%, brillo 2%
-      ctx.filter = "contrast(1.08) saturate(1.1) brightness(1.02)";
-      ctx.drawImage(img, 0, 0);
-      
-      // Exportar como JPEG con calidad 92%
-      resolve(canvas.toDataURL("image/jpeg", 0.92));
-    };
-    img.onerror = () => resolve(src);
-  });
-}
-
-// 6.4.2 - Componente principal BookCard
+// 6.4.1 - Componente principal Book3D: renderiza portada con efectos CSS nativos
 export default function Book3D({ 
   src, 
   title, 
   className = "", 
   showShadow = true,
-  enhance = true 
-}: Book3DProps) {
-  // 6.4.2.1 - Estado local para almacenar imagen procesada y estado de carga
-  const [processedSrc, setProcessedSrc] = useState(src);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  // 6.4.2.2 - Efecto para procesar mejora de imagen al cargar
-  useEffect(() => {
-    if (!src) {
-      setProcessedSrc(src);
-      return;
-    }
-
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = src;
-    img.onload = async () => {
-      try {
-        let processed = src;
-        
-        // Aplicar mejora de calidad si está habilitada
-        if (enhance) {
-          processed = await enhanceImage(processed);
-        }
-        
-        setProcessedSrc(processed);
-      } catch {
-        console.warn("Error al mejorar imagen (posible CORS):");
-        setProcessedSrc(src);
-      }
-      setIsLoaded(true);
-    };
-    img.onerror = () => {
-      setProcessedSrc(src);
-      setIsLoaded(true);
-    };
-  }, [src, enhance]);
-
+}: Omit<Book3DProps, 'enhance'>) {
   // ============================================
-  // 6.4.3 - Renderizado de la tarjeta del libro
+  // 6.4.2 - Renderizado de la tarjeta del libro con CSS filter para mejora visual
+  // Se evita el Canvas/crossOrigin que causaba imágenes negras en despliegue
   // ============================================
   return (
     <div className={`relative ${className} group`}>
-      {/* 6.4.3.1 - Contenedor con efecto hover simple (solo translate) */}
-      <div className="relative shadow-lg rounded-lg overflow-hidden transition-transform duration-300 group-hover:-translate-y-1">
-        {/* Imagen de la portada del libro */}
+      {/* 6.4.2.1 - Contenedor con efecto hover: zoom suave y degradado inferior */}
+      <div className="relative shadow-lg rounded-lg overflow-hidden transition-all duration-300 group-hover:-translate-y-2 group-hover:scale-[1.03] group-hover:shadow-2xl">
+        {/* Imagen de la portada: filter CSS aplica el efecto de mejora visual de forma nativa */}
         <img
-          src={processedSrc}
+          src={src || ''}
           alt={title}
-          className={`w-full h-full object-cover rounded-lg transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+          loading="lazy"
+          className="w-full h-full object-cover rounded-lg"
+          style={{ filter: 'contrast(1.05) saturate(1.1) brightness(1.02)' }}
         />
         
-        {/* Overlay de brillo sutil para efecto glossy */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-white/5 pointer-events-none rounded-lg" />
+        {/* Degradado inferior que aparece en hover para mejorar legibilidad/estética - Protegido en modo Retro */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none no-retro-override" />
       </div>
 
-      {/* 6.4.3.2 - Sombra estática */}
+      {/* 6.4.2.2 - Sombra proyectada debajo del libro */}
       {showShadow && (
         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[90%] h-3 bg-black/30 blur-md rounded-[100%] transition-opacity duration-300 group-hover:opacity-50" />
       )}

@@ -9,6 +9,7 @@ import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
 import ePub, { Book, Rendition } from "epubjs";
 import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { toast } from "sonner";
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 export default function ReaderPage() {
@@ -21,6 +22,10 @@ export default function ReaderPage() {
   const renditionRef = useRef<Rendition | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Flag para evitar restaurar posición más de una vez (causa el "sticking" al scrollear)
+  const hasRestoredPosition = useRef(false);
+  // Debounce ref para no saturar Supabase con peticiones en cada evento de scroll
+  const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: book, isLoading: loadingBook } = useBook(bookId);
   const { userId } = useUserId();
@@ -29,7 +34,7 @@ export default function ReaderPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(18);
-  const [fontFamily, setFontFamily] = useState<"sans" | "serif" | "mono">("sans");
+  const [fontFamily, setFontFamily] = useState<string>("sans");
   const [textAlign, setTextAlign] = useState<"left" | "center" | "right" | "justify">("justify");
   const [textColor, setTextColor] = useState<string>("#ffffff");
   const { theme, setTheme } = useTheme();
@@ -38,19 +43,73 @@ export default function ReaderPage() {
   const [showSettings, setShowSettings] = useState(false);
 
   const themeRef = useRef<string | undefined>(theme);
-  const fontRef = useRef<"sans" | "serif" | "mono">(fontFamily);
+  const fontRef = useRef<string>(fontFamily);
   const sizeRef = useRef<number>(fontSize);
   const alignRef = useRef<"left" | "center" | "right" | "justify">(textAlign);
   const colorRef = useRef<string>(textColor);
 
   // 4.2.2.1 - Colores disponibles para el texto del lector
   const textColors = [
-    { name: "Blanco", value: "#ffffff" },
+    { name: "Negro", value: "#000000" },
     { name: "Sepia", value: "#f4ecd8" },
     { name: "Verde", value: "#3fb950" },
     { name: "Azul", value: "#60a5fa" },
     { name: "Rosa", value: "#f472b6" },
   ];
+
+  // 4.2.2.2 - Validador de contraste entre texto y fondo
+  const handleSetTextColor = (color: string) => {
+    // Definir colores de fondo por tema
+    const bgMap: Record<string, string> = {
+      light: "#ffffff",
+      dark: "#0a0a0a",
+      retro: "#0d1117",
+      navy: "#0a0f1e"
+    };
+
+    const currentBg = bgMap[theme || "light"];
+    
+    // Validación estricta para modo Claro (Día)
+    if (theme === "light" && color !== "#000000") {
+      toast.info("El modo claro solo acepta color negro en el texto para garantizar la lectura");
+      return;
+    }
+
+    // Si el color es negro puro y el fondo es oscuro, o viceversa
+    const isDarkBg = theme !== "light";
+    const isBlackText = color === "#000000";
+    
+    if (isDarkBg && isBlackText) {
+      toast.error("No se puede usar ese color de letra con ese fondo (Negro sobre Oscuro)");
+      return;
+    }
+
+    if (!isDarkBg && color === "#ffffff") {
+      toast.error("No se puede usar ese color de letra con ese fondo (Blanco sobre Blanco)");
+      return;
+    }
+
+    setTextColor(color);
+  };
+
+  // 4.2.2.3 - Validador de cambio de tema basado en contraste
+  const handleSetTheme = (newTheme: string) => {
+    const isNewDark = newTheme !== "light";
+    const isCurrentBlackText = textColor === "#000000";
+    const isCurrentWhiteText = textColor === "#ffffff";
+
+    if (isNewDark && isCurrentBlackText) {
+      toast.error("No se puede cambiar a este fondo con letra negra");
+      return;
+    }
+
+    if (newTheme === "light" && isCurrentWhiteText) {
+      toast.error("No se puede cambiar a este fondo con letra blanca");
+      return;
+    }
+
+    setTheme(newTheme);
+  };
 
   // 4.2.4 - Gestores del tiempo de inactividad para ocultar la interfaz HUD (Inactivity Timeout)
   const resetControlsTimeout = () => {
@@ -116,6 +175,14 @@ export default function ReaderPage() {
             
             const style = contents.document.createElement("style");
             style.innerHTML = `
+              @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400..700;1,400..700&family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+              
+              /* Fallback para OpenDyslexic si no está instalada localmente */
+              @font-face {
+                font-family: 'OpenDyslexic';
+                src: url('https://antijingoist.github.io/opendyslexic/compiled/OpenDyslexic-Regular.otf');
+              }
+
               html, body {
                 height: auto;
                 min-height: 100%;
@@ -129,29 +196,37 @@ export default function ReaderPage() {
                 padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
                 max-width: 800px !important;
                 margin: 0 auto !important;
-                transition: color 0.3s ease, background-color 0.3s ease;
-                color: var(--bookea-text-color, #ffffff) !important;
+                transition: color 0.3s ease, background-color 0.3s ease, font-family 0.2s ease;
+                /* --bookea-text-color se actualiza vía override() para cada tema */
+                color: var(--bookea-text-color, #171717) !important;
+                font-family: var(--bookea-font-family, 'Inter', -apple-system, sans-serif) !important;
                 box-sizing: border-box;
                 overflow-x: hidden;
               }
+              
               /* Ajuste responsive para pantallas grandes */
               @media (min-width: 1024px) {
                 body {
                   padding: 20px 10% 20px !important;
                 }
               }
-              p {
+              p, li, td, blockquote {
                 margin-bottom: 1.5em !important;
                 text-align: var(--bookea-text-align, justify) !important;
-                color: var(--bookea-text-color, #ffffff) !important;
+                color: var(--bookea-text-color, #171717) !important;
+                font-family: var(--bookea-font-family, 'Inter', -apple-system, sans-serif) !important;
                 opacity: 0.9;
+              }
+              /* Herencia de fuente en todos los elementos de texto */
+              span, div, a, em, strong, i, b, section, article {
+                font-family: inherit !important;
               }
               h1, h2, h3, h4, h5, h6 {
                 font-weight: 700 !important;
                 margin-top: 2em !important;
                 margin-bottom: 1em !important;
-                color: var(--bookea-text-color, #3fb950) !important;
-                text-shadow: 0 0 8px rgba(63, 185, 80, 0.4);
+                color: var(--bookea-text-color, #171717) !important;
+                font-family: var(--bookea-font-family, 'Inter', -apple-system, sans-serif) !important;
                 text-align: center !important;
               }
               img {
@@ -171,24 +246,42 @@ export default function ReaderPage() {
 
 
         // 4.2.6 - Gestor de inyección de estilos explícitos (overrides) para temas personalizados
+        // Siempre establece --bookea-text-color para que el hook CSS resuelva el valor correcto
         const updateTheme = () => {
           if (themeRef.current === "light") {
             rendition.themes.override("color", "#171717");
             rendition.themes.override("background", "#ffffff");
+            rendition.themes.override("--bookea-text-color", "#171717");
           } else if (themeRef.current === "dark") {
-            rendition.themes.override("color", "#ededed");
+            rendition.themes.override("color", colorRef.current);
             rendition.themes.override("background", "#0a0a0a");
+            rendition.themes.override("--bookea-text-color", colorRef.current);
           } else if (themeRef.current === "retro") {
-            rendition.themes.override("color", "#ffffff");
+            rendition.themes.override("color", colorRef.current);
             rendition.themes.override("background", "#0d1117");
+            rendition.themes.override("--bookea-text-color", colorRef.current);
+          } else if (themeRef.current === "navy") {
+            rendition.themes.override("color", colorRef.current);
+            rendition.themes.override("background", "#0a0f1e");
+            rendition.themes.override("--bookea-text-color", colorRef.current);
           }
         };
 
         updateTheme();
         
-        if (fontRef.current === "sans") rendition.themes.font("Inter, -apple-system, sans-serif");
-        if (fontRef.current === "serif") rendition.themes.font("Georgia, serif");
-        if (fontRef.current === "mono") rendition.themes.font("'Fira Code', 'Courier New', monospace");
+        // Aplicar fuente via CSS variable (más confiable que rendition.themes.font() en scroll mode)
+        const applyFont = (family: string) => {
+          let fontStack = "Inter, -apple-system, sans-serif";
+          if (family === "serif") fontStack = "Georgia, 'Times New Roman', serif";
+          if (family === "mono") fontStack = "'Courier New', Courier, monospace";
+          if (family === "baskerville") fontStack = "'Libre Baskerville', serif";
+          if (family === "dyslexic") fontStack = "'OpenDyslexic', 'Comic Sans MS', sans-serif";
+          if (family === "lora") fontStack = "'Lora', serif";
+          if (family === "nunito") fontStack = "'Nunito', sans-serif";
+          
+          rendition.themes.override("font-family", fontStack);
+          rendition.themes.override("--bookea-font-family", fontStack);
+        };
         
         rendition.themes.fontSize(`${sizeRef.current}px`);
         renditionRef.current = rendition;
@@ -209,7 +302,13 @@ export default function ReaderPage() {
             ? bookInstance.locations.percentageFromCfi(location.start.cfi)
             : Number(location.start.percentage || 0);
           setProgress(percent * 100);
-          saveReadingProgress(bookId, userId, location.start.cfi, percent * 100);
+
+          // Debounce del guardado: espera 1.5s de quietud antes de guardar en Supabase
+          // Esto evita el efecto "sticking" donde el guardado pelea con el scroll del usuario
+          if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+          saveDebounceRef.current = setTimeout(() => {
+            saveReadingProgress(bookId, userId, location.start.cfi, percent * 100);
+          }, 1500);
         });
 
         const generateLocations = () => {
@@ -256,10 +355,12 @@ export default function ReaderPage() {
 
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
       renditionRef.current?.clear();
       renditionRef.current = null;
       bookRef.current?.destroy();
       bookRef.current = null;
+      hasRestoredPosition.current = false;
     };
   }, [book?.epub_url, bookId, userId]);
 
@@ -343,12 +444,19 @@ export default function ReaderPage() {
       if (theme === "light") {
         renditionRef.current.themes.override("color", "#171717");
         renditionRef.current.themes.override("background", "#ffffff");
+        renditionRef.current.themes.override("--bookea-text-color", "#171717");
       } else if (theme === "dark") {
-        renditionRef.current.themes.override("color", "#ededed");
+        renditionRef.current.themes.override("color", colorRef.current);
         renditionRef.current.themes.override("background", "#0a0a0a");
+        renditionRef.current.themes.override("--bookea-text-color", colorRef.current);
       } else if (theme === "retro") {
-        renditionRef.current.themes.override("color", "#ffffff");
+        renditionRef.current.themes.override("color", colorRef.current);
         renditionRef.current.themes.override("background", "#0d1117");
+        renditionRef.current.themes.override("--bookea-text-color", colorRef.current);
+      } else if (theme === "navy") {
+        renditionRef.current.themes.override("color", colorRef.current);
+        renditionRef.current.themes.override("background", "#0a0f1e");
+        renditionRef.current.themes.override("--bookea-text-color", colorRef.current);
       }
     }
     themeRef.current = theme;
@@ -357,9 +465,20 @@ export default function ReaderPage() {
   useEffect(() => {
     if (!mounted) return;
     if (renditionRef.current) {
-      if (fontFamily === "sans") renditionRef.current.themes.font("Inter, -apple-system, sans-serif");
-      if (fontFamily === "serif") renditionRef.current.themes.font("Georgia, serif");
-      if (fontFamily === "mono") renditionRef.current.themes.font("'Fira Code', 'Courier New', monospace");
+      // Aplicar fuente via override() + CSS variable para mayor compatibilidad con epubjs en modo scroll
+      const applyFont = (family: string) => {
+        let fontStack = "Inter, -apple-system, sans-serif";
+        if (family === "serif") fontStack = "Georgia, 'Times New Roman', serif";
+        if (family === "mono") fontStack = "'Courier New', Courier, monospace";
+        if (family === "baskerville") fontStack = "'Libre Baskerville', serif";
+        if (family === "dyslexic") fontStack = "'OpenDyslexic', 'Comic Sans MS', sans-serif";
+        if (family === "lora") fontStack = "'Lora', serif";
+        if (family === "nunito") fontStack = "'Nunito', sans-serif";
+        
+        renditionRef.current!.themes.override("font-family", fontStack);
+        renditionRef.current!.themes.override("--bookea-font-family", fontStack);
+      };
+      applyFont(fontFamily);
     }
     fontRef.current = fontFamily;
     localStorage.setItem("bookea-font-family", fontFamily);
@@ -379,17 +498,14 @@ export default function ReaderPage() {
   useEffect(() => {
     if (!mounted) return;
     if (renditionRef.current) {
-      // Aplicar color de texto solo si no es el tema light
-      if (theme === "dark" || theme === "retro") {
-        renditionRef.current.themes.override("--bookea-text-color", textColor);
-        renditionRef.current.themes.override("color", textColor);
-      }
+      // En modo día forzar siempre negro (ignorar selección de color)
+      const effectiveColor = theme === "light" ? "#171717" : textColor;
+      renditionRef.current.themes.override("--bookea-text-color", effectiveColor);
+      renditionRef.current.themes.override("color", effectiveColor);
     }
     colorRef.current = textColor;
     localStorage.setItem("bookea-text-color", textColor);
-    // Guardar también para uso global
     localStorage.setItem("bookea-reader-color", textColor);
-    // Aplicar al documento global
     document.documentElement.style.setProperty("--bookea-reader-color", textColor);
     document.documentElement.setAttribute("data-reader-color", "true");
   }, [textColor, mounted, theme]);
@@ -441,11 +557,12 @@ export default function ReaderPage() {
   // 4.2.10 - Cálculo computado en tiempo real de paletas de color HUD y Glassmorphism (Basado en Modo Día, Noche, o Retro)
   const isDark = theme === 'dark';
   const isRetro = theme === 'retro';
+  const isNavy = theme === 'navy';
   
-  const iconBgClass = isDark ? 'bg-white/10 hover:bg-white/20' : isRetro ? 'bg-[#3fb950]/10 hover:bg-[#3fb950]/20' : 'bg-black/5 hover:bg-black/10';
-  const panelBgClass = isDark ? 'bg-white/5' : isRetro ? 'bg-[#3fb950]/5 border border-[#3fb950]/10' : 'bg-black/5';
-  const activeBtnClass = isDark ? 'bg-white/10 shadow-sm font-medium' : isRetro ? 'bg-[#3fb950]/20 shadow-sm font-medium text-[#3fb950]' : 'bg-white shadow-sm font-medium';
-  const bgColors = isDark ? 'bg-[#0a0a0a] text-white' : isRetro ? 'bg-[#0d1117] text-[#3fb950]' : 'bg-[#ffffff] text-black';
+  const iconBgClass = isDark ? 'bg-white/10 hover:bg-white/20' : isRetro ? 'bg-[#3fb950]/10 hover:bg-[#3fb950]/20' : isNavy ? 'bg-[#7986cb]/10 hover:bg-[#7986cb]/20' : 'bg-black/5 hover:bg-black/10';
+  const panelBgClass = isDark ? 'bg-white/5' : isRetro ? 'bg-[#3fb950]/5 border border-[#3fb950]/10' : isNavy ? 'bg-[#7986cb]/5 border border-[#7986cb]/10' : 'bg-black/5';
+  const activeBtnClass = isDark ? 'bg-white/10 shadow-sm font-medium' : isRetro ? 'bg-[#3fb950]/20 shadow-sm font-medium text-[#3fb950]' : isNavy ? 'bg-[#7986cb]/20 shadow-sm font-medium text-[#7986cb]' : 'bg-white shadow-sm font-medium';
+  const bgColors = isDark ? 'bg-[#0a0a0a] text-white' : isRetro ? 'bg-[#0d1117] text-[#3fb950]' : isNavy ? 'bg-[#0a0f1e] text-[#e8eaf6]' : 'bg-[#ffffff] text-black';
 
   return (
     <div className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 ${bgColors}`}>
@@ -456,6 +573,7 @@ export default function ReaderPage() {
             showControls ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
         } ${isDark ? 'bg-black/60 backdrop-blur-xl border-b border-white/10' : 
             isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-b border-[#3fb950]/20' : 
+            isNavy ? 'bg-[#0a0f1e]/90 backdrop-blur-xl border-b border-[#7986cb]/20' :
             'bg-white/70 backdrop-blur-xl border-b border-black/5'} shadow-sm`}
       >
         <div className="flex items-center gap-3 sm:gap-4">
@@ -484,16 +602,20 @@ export default function ReaderPage() {
           {showSettings && (
             <div className={`absolute top-14 right-0 w-72 p-4 rounded-2xl shadow-2xl border animate-in fade-in slide-in-from-top-4 duration-200 ${
               isDark ? 'bg-[#1a1a1a] border-white/10 text-white' : 
-              isRetro ? 'bg-[#0d1117] border-[#3fb950]/30 text-[#3fb950]' : 
+              isRetro ? 'bg-[#0d1117] border-[#3fb950]/30 text-[#3fb950]' :
+              isNavy ? 'bg-[#0a1422] border-[#7986cb]/30 text-[#c5cae9]' :
               'bg-white border-black/5 text-gray-900'
             }`}>
-              {/* 4.2.12 - Submenú Renderizado: Selector de Tipografías limpias y monoespaciadas */}
               <div className="mb-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Tipografía</h3>
-                <div className={`flex gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
-                  <button onClick={() => setFontFamily("sans")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${fontFamily === "sans" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Sans</button>
-                  <button onClick={() => setFontFamily("serif")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors font-serif ${fontFamily === "serif" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Serif</button>
-                  <button onClick={() => setFontFamily("mono")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors font-mono ${fontFamily === "mono" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Mono</button>
+                <div className={`grid grid-cols-3 gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
+                  <button onClick={() => setFontFamily("sans")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "sans" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Sans</button>
+                  <button onClick={() => setFontFamily("serif")} className={`py-1.5 text-xs rounded-md transition-colors font-serif ${fontFamily === "serif" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Serif</button>
+                  <button onClick={() => setFontFamily("mono")} className={`py-1.5 text-xs rounded-md transition-colors font-mono ${fontFamily === "mono" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Mono</button>
+                  <button onClick={() => setFontFamily("baskerville")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "baskerville" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "'Libre Baskerville', serif" }}>Baskerville</button>
+                  <button onClick={() => setFontFamily("lora")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "lora" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "'Lora', serif" }}>Lora</button>
+                  <button onClick={() => setFontFamily("nunito")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "nunito" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "Nunito, sans-serif" }}>Nunito</button>
+                  <button onClick={() => setFontFamily("dyslexic")} className={`py-1.5 text-xs rounded-md transition-colors col-span-3 ${fontFamily === "dyslexic" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "OpenDyslexic, sans-serif" }}>OpenDyslexic (Accesible)</button>
                 </div>
               </div>
 
@@ -511,9 +633,10 @@ export default function ReaderPage() {
               <div>
                 <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Tema</h3>
                 <div className={`flex gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
-                  <button onClick={() => setTheme("light")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "light" ? "bg-white shadow-sm font-medium text-black" : "opacity-60 hover:opacity-100"}`}>Día</button>
-                  <button onClick={() => setTheme("dark")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "dark" ? "bg-white/10 shadow-sm font-medium text-white" : "opacity-60 hover:opacity-100"}`}>Noche</button>
-                  <button onClick={() => setTheme("retro")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors font-mono ${theme === "retro" ? "bg-[#3fb950]/20 shadow-sm font-medium text-[#3fb950]" : "opacity-60 hover:opacity-100"}`}>Retro</button>
+                  <button onClick={() => handleSetTheme("light")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "light" ? "bg-white shadow-sm font-medium text-black" : "opacity-60 hover:opacity-100"}`}>Día</button>
+                  <button onClick={() => handleSetTheme("dark")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "dark" ? "bg-white/10 shadow-sm font-medium text-white" : "opacity-60 hover:opacity-100"}`}>Noche</button>
+                  <button onClick={() => handleSetTheme("retro")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors font-mono ${theme === "retro" ? "bg-[#3fb950]/20 shadow-sm font-medium text-[#3fb950]" : "opacity-60 hover:opacity-100"}`}>Retro</button>
+                  <button onClick={() => handleSetTheme("navy")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "navy" ? "bg-[#7986cb]/20 shadow-sm font-medium text-[#7986cb]" : "opacity-60 hover:opacity-100"}`}>Navy</button>
                 </div>
               </div>
 
@@ -535,17 +658,18 @@ export default function ReaderPage() {
                   {textColors.map((color) => (
                     <button
                       key={color.value}
-                      onClick={() => setTextColor(color.value)}
-                      className={`w-8 h-8 rounded-full transition-all border-2 ${
+                      onClick={() => handleSetTextColor(color.value)}
+                      className={`w-8 h-8 rounded-full transition-all border-2 no-retro-override flex items-center justify-center ${
                         textColor === color.value 
                           ? isRetro 
-                            ? 'border-[#3fb950] scale-110' 
+                            ? 'border-[#3fb950] scale-110 shadow-[0_0_10px_rgba(63,185,80,0.5)]' 
                             : isDark
                               ? 'border-white scale-110'
                               : 'border-black scale-110'
                           : 'border-transparent hover:border-gray-400'
                       }`}
                       style={{ 
+                        '--dot-bg': color.value,
                         backgroundColor: color.value,
                         boxShadow: textColor === color.value 
                           ? isRetro 
@@ -553,10 +677,14 @@ export default function ReaderPage() {
                             : isDark
                               ? `0 0 0 2px #121212, 0 0 0 4px ${color.value}`
                               : `0 0 0 2px #ffffff, 0 0 0 4px ${color.value}`
-                          : '0 2px 4px rgba(0,0,0,0.2)'
-                      }}
-                      title={color.name}
-                    />
+                          : 'none'
+                      } as any}
+                    >
+                      <div 
+                        className="w-full h-full rounded-full no-retro-override" 
+                        style={{ backgroundColor: color.value } as any} 
+                      />
+                    </button>
                   ))}
                 </div>
               </div>
@@ -603,6 +731,7 @@ export default function ReaderPage() {
             showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
         } ${isDark ? 'bg-black/60 backdrop-blur-xl border-t border-white/10' : 
             isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-t border-[#3fb950]/20' : 
+            isNavy ? 'bg-[#0a0f1e]/90 backdrop-blur-xl border-t border-[#7986cb]/20' :
             'bg-white/70 backdrop-blur-xl border-t border-black/5'} shadow-[0_-4px_20px_rgba(0,0,0,0.05)]`}
       >
         <div className="flex items-center justify-between max-w-4xl mx-auto w-full gap-2 sm:gap-4">
@@ -617,10 +746,10 @@ export default function ReaderPage() {
             <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest opacity-60">
               {progress > 0 ? `${progress.toFixed(1)}% Leído` : "Iniciando"}
             </span>
-            <div className={`w-full rounded-full h-1 sm:h-1.5 overflow-hidden ${isDark ? 'bg-white/20' : isRetro ? 'bg-[#3fb950]/20' : 'bg-black/10'}`}>
+            <div className={`w-full rounded-full h-1 sm:h-1.5 overflow-hidden ${isDark ? 'bg-white/20' : isRetro ? 'bg-[#3fb950]/20' : isNavy ? 'bg-[#7986cb]/20' : 'bg-black/10'}`}>
               <div
                 className={`h-full rounded-full transition-all duration-300 ease-out ${
-                  isRetro ? 'bg-[#3fb950]' : 'bg-blue-500'
+                  isRetro ? 'bg-[#3fb950]' : isNavy ? 'bg-[#7986cb]' : 'bg-blue-500'
                 }`}
                 style={{ width: `${progress}%` }}
               />

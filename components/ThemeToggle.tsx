@@ -2,56 +2,63 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { Moon, Sun, Terminal } from "lucide-react";
+import { Moon, Sun, Terminal, Anchor } from "lucide-react";
 
 // ============================================
-// 6.2 - ThemeToggle: Botón para alternar entre tema claro, oscuro y retro
-// Utiliza el sistema de temas de next-themes para persistencia
+// 6.2 - ThemeToggle: Botón para alternar entre todos los temas disponibles
+// Ciclo: Light -> Dark -> Retro -> Navy
 // ============================================
 
 export function ThemeToggle() {
-  // Estado para evitar hidratación incorrecta (SSR vs Client)
   const [mounted, setMounted] = useState(false);
-  
-  // Hook de next-themes para gestionar el tema actual
   const { theme, setTheme } = useTheme();
 
-  // Efecto para marcar que el componente se ha montado en el cliente
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Placeholder durante SSR para evitar cumulative layout shift
   if (!mounted) {
     return <div className="w-9 h-9" />;
   }
 
-  // 6.2.1 - Lógica de ciclo de temas: light -> dark -> retro
-  const toggleTheme = () => {
+  // 6.2.1 - Ciclo completo: Light -> Dark -> Retro -> Navy
+  const cycleTheme = () => {
     if (theme === "light") setTheme("dark");
     else if (theme === "dark") setTheme("retro");
+    else if (theme === "retro") setTheme("navy");
     else setTheme("light");
   };
 
-  // 6.2.2 - Renderizado del botón de toggle con icono dinámico
+  // Renderizado dinámico de icono y colores según el tema activo
+  const renderIcon = () => {
+    switch (theme) {
+      case "dark":
+        return <Moon className="w-5 h-5 text-blue-400" />;
+      case "retro":
+        return <Terminal className="w-5 h-5 text-[#3fb950]" />;
+      case "navy":
+        return <Anchor className="w-5 h-5 text-[#7986cb]" />;
+      default:
+        return <Sun className="w-5 h-5 text-amber-500" />;
+    }
+  };
+
+  const btnClasses = {
+    light: "bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-200",
+    dark: "bg-gray-800 text-gray-100 hover:bg-gray-700 border-white/10",
+    retro: "bg-[#0d1117] text-[#3fb950] hover:bg-black border-[#3fb950]/30",
+    navy: "bg-[#0d1422] text-[#c5cae9] hover:bg-[#0a0f1e] border-[#7986cb]/30",
+  };
+
   return (
     <button
-      onClick={toggleTheme}
-      className={`p-2 rounded-lg transition-colors shadow-sm cursor-pointer flex items-center justify-center ${
-        theme === "retro" 
-          ? "bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]/20 hover:bg-[#3fb950]/20" 
-          : "bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700"
+      onClick={cycleTheme}
+      className={`p-2 rounded-lg transition-all shadow-sm cursor-pointer flex items-center justify-center border ${
+        btnClasses[theme as keyof typeof btnClasses] || btnClasses.light
       }`}
       aria-label="Alternar modo de color"
     >
-      {/* Icono dinámico según el tema actual */}
-      {theme === "dark" ? (
-        <Sun className="w-5 h-5" />
-      ) : theme === "retro" ? (
-        <Terminal className="w-5 h-5" />
-      ) : (
-        <Moon className="w-5 h-5" />
-      )}
+      {renderIcon()}
     </button>
   );
 }
