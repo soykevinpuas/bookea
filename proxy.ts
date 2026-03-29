@@ -1,13 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
 
+  // ... (rest of function)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 
@@ -16,7 +17,7 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-// 1.3 - Middleware: Configuración del cliente Supabase (SSR)
+// 1.3 - Proxy: Configuración del cliente Supabase (SSR)
   const supabase = createServerClient(
     supabaseUrl,
     supabaseAnonKey,
@@ -49,7 +50,7 @@ export async function middleware(request: NextRequest) {
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
   const isAuthPath = pathname === '/login' || pathname === '/register' || pathname === '/'
 
-// 1.4 - Middleware: Protección de rutas y redirección de Autenticación
+// 1.4 - Proxy: Protección de rutas y redirección de Autenticación
   if (!user && isProtectedPath) {
     return NextResponse.redirect(new URL('/login', request.url))
   }

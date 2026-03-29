@@ -4,6 +4,16 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-03-29] - Migración a Next.js 15 Proxy API
+**Objetivo:** Resolver advertencia de depreciación de "middleware" y adoptar la nueva convención "proxy".
+
+### Cambios y Mejoras
+- **Renombramiento Crítico:** `middleware.ts` ha sido renombrado a `proxy.ts`.
+- **Refactorización de Función:** La función exportada `middleware` ahora se llama `proxy`, cumpliendo con los estándares actuales de Next.js 15+.
+- **Coherencia Técnica:** Actualización de comentarios y documentación interna para reflejar el cambio de terminología.
+
+---
+
 ## [2026-03-29] - Estabilización del Lector y UX de Temas
 **Objetivo:** Refinar la legibilidad, accesibilidad y proteger la integridad visual de los temas especiales.
 
