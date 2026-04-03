@@ -268,7 +268,7 @@ export default function BookDetailPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl gap-4">
                       <div>
                         <span className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
-                          Compra Permanente
+                          Acceso Digital
                         </span>
                         <span className="text-2xl font-black text-gray-900 dark:text-white">
                            {book.price_digital === 0 ? "¡GRATIS!" : `${book.price_digital} Créditos`}

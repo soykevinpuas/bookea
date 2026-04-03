@@ -343,7 +343,7 @@
   .navy .bg-white\/5,
   .navy .bg-white\/10,
   .navy .bg-white\/20 {
-    background-color: rgba(17, 24, 39, 0.8) !important;
+    background-color: rgba(17, 24, 39, 0.1) !important;
     border-color: rgba(121, 134, 203, 0.15) !important;
   }
 

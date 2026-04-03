@@ -87,7 +87,7 @@ export function Header({ initialUser = null }: HeaderProps) {
               <div className="flex items-center gap-3">
                 <Link 
                   href="/subscribe"
-                  className="hidden xs:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-500/20 transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-500/20 transition-all"
                 >
                   <Ticket className="w-3 h-3 fill-current" />
                   {credits ?? 0} { (credits === 1) ? 'Crédito' : 'Créditos' }

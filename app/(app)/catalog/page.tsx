@@ -63,7 +63,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
               >
                 {/* Portada */}
                 <div className={`${
-                  view === "list" ? "w-full sm:w-48 h-48 sm:h-auto shrink-0" : "relative aspect-[2/3]"
+                  view === "list" ? "w-full sm:w-48 h-64 sm:h-auto shrink-0" : "relative aspect-[2/3]"
                 } px-4 py-4 flex items-center justify-center bg-transparent overflow-hidden`}>
                    {book.cover_url ? (
                     <Link href={`/book/${book.id}`} className="w-full h-full">
@@ -71,6 +71,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
                         src={book.cover_url} 
                         title={book.title} 
                         className="w-full h-full"
+                        objectFit={view === "list" ? "contain" : "cover"}
                       />
                     </Link>
                   ) : (
@@ -110,7 +111,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
                       {book.price_digital === 0 ? (
                         <span className="text-green-600 dark:text-green-400 text-base md:text-lg">¡GRATIS!</span>
                       ) : (
-                        <>${book.price_digital} <span className="text-xs font-normal text-gray-500 dark:text-gray-400">MXN</span></>
+                        <>{book.price_digital} <span className="text-xs font-normal text-white/40">Créditos</span></>
                       )}
                     </span>
                     <Link
