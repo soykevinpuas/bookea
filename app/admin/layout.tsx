@@ -83,7 +83,7 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white flex flex-col md:flex-row">
       {/* Mobile Top Bar */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-[#111111] border-b border-white/5 sticky top-0 z-50">
+      <div className="md:hidden flex items-center justify-between px-4 pb-4 bg-[#111111] border-b border-white/5 sticky top-0 z-50 pt-[calc(1rem+env(safe-area-inset-top,0px))]">
         <Link href="/admin" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-sm font-bold">B</div>
           <span className="font-bold tracking-tight">Admin</span>
@@ -106,7 +106,7 @@ export default function AdminLayout({
 
       {/* Sidebar aside */}
       <aside className={`
-        fixed md:sticky top-0 left-0 bottom-0 z-50 w-64 bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
+        fixed md:sticky top-0 left-0 bottom-0 z-50 w-64 h-screen bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}>
         <div className="px-6 py-8 border-b border-white/5 hidden md:block">
@@ -140,7 +140,7 @@ export default function AdminLayout({
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/5 space-y-2 bg-[#0d0d0d]/50">
+        <div className="p-4 border-t border-white/5 space-y-2 bg-[#0d0d0d]/50 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
           <Link
             href="/"
             className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/40 hover:text-white hover:bg-white/5 transition-all"
