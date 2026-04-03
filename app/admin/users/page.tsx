@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { Users, ShieldCheck, Shield, Loader2, AlertTriangle } from "lucide-react";
+import { Users, ShieldCheck, Shield, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface AppUser {
   id: string;
@@ -45,34 +46,56 @@ export default function AdminUsersPage() {
   });
 
   const updateCredits = useMutation({
-    mutationFn: async ({ userId, credits }: { userId: string; credits: number }) => {
-      // Primero verificar si existe la fila
-      const { data: existing } = await supabase
-        .from("subscription_credits")
-        .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
+    mutationFn: async ({ userId, credits, email }: { userId: string; credits: number; email: string }) => {
+      const toastId = toast.loading(`Guardando créditos para ${email}...`);
+      
+      try {
+        // Primero verificar si existe la fila
+        const { data: existing } = await supabase
+          .from("subscription_credits")
+          .select("id")
+          .eq("user_id", userId)
+          .maybeSingle();
 
-      if (existing) {
-        const { error } = await supabase
-          .from("subscription_credits")
-          .update({ credits_remaining: credits })
-          .eq("user_id", userId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("subscription_credits")
-          .insert({ user_id: userId, credits_remaining: credits, cycle_start: new Date().toISOString() });
-        if (error) throw error;
+        let result;
+        if (existing) {
+          result = await supabase
+            .from("subscription_credits")
+            .update({ credits_remaining: credits })
+            .eq("user_id", userId);
+        } else {
+          result = await supabase
+            .from("subscription_credits")
+            .insert({ 
+              user_id: userId, 
+              credits_remaining: credits, 
+              cycle_start: new Date().toISOString().split('T')[0] // Formato YYYY-MM-DD
+            });
+        }
+
+        if (result.error) throw result.error;
+        
+        toast.success(`Créditos actualizados con éxito para ${email}`, { id: toastId });
+        return { success: true };
+      } catch (err: any) {
+        toast.error(`Error al guardar: ${err.message || "Permiso denegado por RLS"}`, { id: toastId });
+        throw err;
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
   const changeRole = useMutation({
-    mutationFn: async ({ id, role }: { id: string; role: AppUser["role"] }) => {
-      const { error } = await supabase.from("users").update({ role }).eq("id", id);
-      if (error) throw error;
+    mutationFn: async ({ id, role, email }: { id: string; role: AppUser["role"]; email: string }) => {
+      const toastId = toast.loading(`Cambiando rol de ${email}...`);
+      try {
+        const { error } = await supabase.from("users").update({ role }).eq("id", id);
+        if (error) throw error;
+        toast.success(`Rol cambiado a ${ROLE_LABELS[role]} con éxito`, { id: toastId });
+      } catch (err: any) {
+        toast.error(`Error al cambiar rol: ${err.message}`, { id: toastId });
+        throw err;
+      }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
   });
@@ -132,17 +155,25 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
-                       <input 
-                         type="number"
-                         defaultValue={user.subscription_credits?.[0]?.credits_remaining ?? 0}
-                         onBlur={(e) => {
-                           const val = parseInt(e.target.value);
-                           if (!isNaN(val)) {
-                             updateCredits.mutate({ userId: user.id, credits: val });
-                           }
-                         }}
-                         className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-center focus:border-blue-500/50 outline-none"
-                       />
+                       <div className="relative">
+                         <input 
+                           type="number"
+                           defaultValue={user.subscription_credits?.[0]?.credits_remaining ?? 0}
+                           onBlur={(e) => {
+                             const val = parseInt(e.target.value);
+                             if (!isNaN(val)) {
+                               updateCredits.mutate({ userId: user.id, credits: val, email: user.email });
+                             }
+                           }}
+                           disabled={updateCredits.isPending && updateCredits.variables?.userId === user.id}
+                           className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-center focus:border-blue-500/50 outline-none disabled:opacity-50"
+                         />
+                         {updateCredits.isPending && updateCredits.variables?.userId === user.id && (
+                           <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+                             <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
+                           </div>
+                         )}
+                       </div>
                        <span className="text-[10px] text-white/30 uppercase font-bold">Créditos</span>
                     </div>
                   </td>
@@ -207,7 +238,7 @@ export default function AdminUsersPage() {
               </button>
               <button 
                 onClick={() => {
-                  changeRole.mutate({ id: confirmRole.id, role: confirmRole.newRole });
+                  changeRole.mutate({ id: confirmRole.id, role: confirmRole.newRole, email: confirmRole.email });
                   setConfirmRole(null);
                 }}
                 className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
