@@ -8,10 +8,6 @@ import Stripe from 'stripe';
 // 6.7.1 - Instancia global del cliente Stripe (con protección para el build)
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || 'sk_test_dummy';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.warn("⚠️ ALERTA: STRIPE_SECRET_KEY ausente durante el build o ejecución.");
-}
-
 export const stripe = new Stripe(stripeSecretKey, {
   apiVersion: '2026-02-25.clover',
   typescript: true,
