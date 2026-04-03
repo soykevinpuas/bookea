@@ -231,8 +231,8 @@
   }
 
   /* Catch-all for any gradient backgrounds - exclude color picker dots */
-  .retro [style*="background"]:not(.no-retro-override),
-  .retro [class*="gradient"]:not(.no-retro-override) {
+  .retro [style*="background"]:not(.no-retro-override):not(.preserve-gradient),
+  .retro [class*="gradient"]:not(.no-retro-override):not(.preserve-gradient) {
     background-color: #0d1117 !important;
     background-image: none !important;
   }
@@ -382,28 +382,6 @@
   .navy ::selection {
     background-color: rgba(121, 134, 203, 0.4) !important;
     color: #ffffff !important;
-  }
-
-  /* Reader custom text color - applied from localStorage */
-  .dark[data-reader-color],
-  .retro[data-reader-color],
-  .navy[data-reader-color] {
-    --reader-accent: var(--bookea-reader-color, #7986cb);
-  }
-
-  .dark[data-reader-color] .text-blue-500,
-  .dark[data-reader-color] .text-blue-400,
-  .retro[data-reader-color] .text-blue-500,
-  .retro[data-reader-color] .text-blue-400,
-  .navy[data-reader-color] .text-blue-500,
-  .navy[data-reader-color] .text-blue-400 {
-    color: var(--reader-accent) !important;
-  }
-
-  .dark[data-reader-color] .bg-blue-600,
-  .retro[data-reader-color] .bg-blue-600,
-  .navy[data-reader-color] .bg-blue-600 {
-    background-color: var(--reader-accent) !important;
   }
 }
 

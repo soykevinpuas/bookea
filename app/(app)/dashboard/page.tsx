@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
@@ -11,6 +12,7 @@ import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X 
 export default function DashboardPage() {
   // 3.4.1 - Obtención del ID del usuario autenticado mediante el hook useUserId
   const { userId } = useUserId();
+  const router = useRouter();
   
   // 3.4.2 - Estados locales para filtros de búsqueda
   const [search, setSearch] = useState("");
@@ -218,10 +220,10 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 // 3.4.13.3 - Tarjeta del libro en vista list
-                <Link 
+                <div 
                   key={book.id} 
-                  href={`/book/${book.id}`}
-                  className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all"
+                  onClick={() => router.push(`/book/${book.id}`)}
+                  className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
                 >
                   <Book3D 
                     src={book.cover_url || ""} 
@@ -245,7 +247,7 @@ export default function DashboardPage() {
                   >
                     Leer
                   </Link>
-                </Link>
+                </div>
               )
             ))}
           </div>

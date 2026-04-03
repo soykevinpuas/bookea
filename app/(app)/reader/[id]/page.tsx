@@ -6,8 +6,10 @@ import Link from "next/link";
 import { useBook } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
 import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
+import { Highlight } from "@/types/reading";
+import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2, Bookmark, FileText, X, Trash2, Check, PenSquare } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
@@ -41,6 +43,14 @@ export default function ReaderPage() {
   const [progress, setProgress] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // 4.2.2.4 - Estado para Subrayados y Notas
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [activeSelection, setActiveSelection] = useState<{ cfiRange: string; text: string; isExistingId?: string } | null>(null);
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
+  const [editingNote, setEditingNote] = useState<{ id: string; note: string } | null>(null);
+  const [isSavingHighlight, setIsSavingHighlight] = useState(false);
 
   const themeRef = useRef<string | undefined>(theme);
   const fontRef = useRef<string>(fontFamily);
@@ -128,6 +138,17 @@ export default function ReaderPage() {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
       }
       return nextState;
+    });
+  };
+
+  const handleHighlightClick = (h: Highlight) => {
+    // Si queremos abrir el panel de notas enfocando esta nota
+    setShowNotesPanel(true);
+    // Activar la selección para permitir cambiar su color on-the-fly
+    setActiveSelection({
+      cfiRange: h.cfi_start,
+      text: h.text,
+      isExistingId: h.id
     });
   };
 
@@ -239,7 +260,17 @@ export default function ReaderPage() {
             
             // 4.2.5.3 - Event Listener del Iframe: Detecta clicks en toda la hoja para accionar la interfaz HUD central, en lugar de pasar de página
             contents.document.documentElement.addEventListener('click', (e: MouseEvent) => {
+              const selection = contents.window.getSelection();
+              const text = selection?.toString() || "";
+              
+              if (text.trim().length > 0) {
+                // El usuario soltó el clic después de seleccionar texto. 
+                // Ignoramos este clic general para que no desaparezca la barra de subrayado.
+                return;
+              }
+              
               toggleControls();
+              setActiveSelection(null);
             });
           });
         }
@@ -289,13 +320,56 @@ export default function ReaderPage() {
         await bookInstance.ready;
         
         // 4.2.7 - Lógica asíncrona de restauración de localizaciones (CFI) y cálculo de porcentajes
-        const savedProgress = await getReadingProgress(bookId, userId);
+        // PRECARGA: Obtenemos el progreso y highlights de forma concurrente antes de forzar el display
+        const [savedProgress, savedHighlights] = await Promise.all([
+          getReadingProgress(bookId, userId),
+          getHighlights(bookId, userId)
+        ]);
         
+        setHighlights(savedHighlights);
+
+        // Registrar función visual para cada highlight
+        const renderHighlights = () => {
+          savedHighlights.forEach(h => {
+             try {
+               rendition.annotations.highlight(h.cfi_start, { id: h.id }, (e: Event) => {
+                 handleHighlightClick(h);
+               }, undefined, { "fill": h.color, "fill-opacity": "0.3", "mix-blend-mode": "multiply" });
+             } catch (err) {
+               console.warn("No se pudo renderizar el highlight", h.id);
+             }
+          });
+        };
+
+        // EVENTOS PRE-RENDER: El event listener DEBE registrarse antes del display para no perder el primer trigger
+        rendition.on("rendered", () => {
+          setIsLoading(false);
+          renderHighlights();
+        });
+
+        // 4.2.7.2 - Capturar eventos de Selección de texto (Highlights)
+        rendition.on("selected", (cfiRange: string, contents: any) => {
+          const selection = contents.window.getSelection();
+          const text = selection?.toString() || "";
+          
+          if (text && text.trim().length > 0) {
+            setActiveSelection({ cfiRange, text });
+            // Dejamos la selección nativa del navegador como "previsualización",
+            // ya no inyectamos una capa temporal de epub.js que luego es imposible de borrar.
+          }
+        });
+
+        // ACCIÓN DE RENDERIZADO (RESOLVER POSICIÓN INICIAL)
         if (savedProgress?.cfi_position) {
           await rendition.display(savedProgress.cfi_position);
         } else {
           await rendition.display();
         }
+
+        // FALLBACK A PRUEBA DE FALLOS: Si el evento on('rendered') se disparó demasiado rápido 
+        // o si epub.js no lo dispara por estar en modo continuous-scroll, lo quitamos manualmente aquí
+        setIsLoading(false);
+        renderHighlights();
 
         rendition.on("relocated", (location: { start: { cfi: string; percentage: number | string } }) => {
           const percent = bookInstance.locations.length() > 0
@@ -304,7 +378,6 @@ export default function ReaderPage() {
           setProgress(percent * 100);
 
           // Debounce del guardado: espera 1.5s de quietud antes de guardar en Supabase
-          // Esto evita el efecto "sticking" donde el guardado pelea con el scroll del usuario
           if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
           saveDebounceRef.current = setTimeout(() => {
             saveReadingProgress(bookId, userId, location.start.cfi, percent * 100);
@@ -322,10 +395,6 @@ export default function ReaderPage() {
         } else {
           setTimeout(generateLocations, 1000);
         }
-
-        rendition.on("rendered", () => {
-          setIsLoading(false);
-        });
 
         // 4.2.7.1 - Manejo de resize para actualizar el rendition al cambiar orientación o tamaño de ventana
         const handleResize = () => {
@@ -400,14 +469,13 @@ export default function ReaderPage() {
   }, []);
 
   useEffect(() => {
+    if (!mounted) return;
     if (renditionRef.current) {
       renditionRef.current.themes.fontSize(`${fontSize}px`);
     }
     sizeRef.current = fontSize;
     localStorage.setItem("bookea-font-size", fontSize.toString());
-  }, [fontSize]);
-
-  const [mounted, setMounted] = useState(false);
+  }, [fontSize, mounted]);
 
   // 4.2.9 - Efecto de montura para cargar preferencias de tema y tipografía previas del usuario desde localStorage
   useEffect(() => {
@@ -521,6 +589,132 @@ export default function ReaderPage() {
     resetControlsTimeout();
   };
 
+  // 4.2.9.2 - Funciones de CRUD para Highlights desde UI
+  const handleCreateHighlight = async (color: string) => {
+    if (!activeSelection || !bookId || !userId) return;
+    setIsSavingHighlight(true);
+    
+    if (activeSelection.isExistingId) {
+      // FLUJO DE ACTUALIZACIÓN DE COLOR
+      const success = await updateHighlightColor(activeSelection.isExistingId, color);
+      if (success) {
+        setHighlights(prev => prev.map(h => h.id === activeSelection.isExistingId ? { ...h, color } : h));
+        toast.success("Color de subrayado actualizado");
+        // Limpiar registro viejo en epubjs PRIMERO para evitar que se queje de nodos huerfanos
+        renditionRef.current?.annotations.remove(activeSelection.cfiRange, "highlight");
+        
+        // Exorcismo visual manual para borrar cualquier trazo testarudo que epub.js haya fallado en remover
+        try {
+          const DOMTargets = `g[data-epubcfi="${activeSelection.cfiRange}"], mark[data-epubcfi="${activeSelection.cfiRange}"]`;
+          document.querySelectorAll(DOMTargets).forEach(n => n.remove());
+          const contents = renditionRef.current?.getContents() as any;
+          if (Array.isArray(contents)) {
+            contents.forEach(c => c.document?.querySelectorAll(DOMTargets).forEach((n: any) => n.remove()));
+          } else if (contents) {
+            contents.document?.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
+          }
+        } catch (err) {}
+        
+        // Plamar el color nuevo
+        renditionRef.current?.annotations.highlight(activeSelection.cfiRange, { id: activeSelection.isExistingId }, () => {
+          // El objeto actualizado no lo tenemos aquí directo, así que pasamos un mock parcial 
+          const target = highlights.find(h => h.id === activeSelection.isExistingId);
+          if (target) handleHighlightClick({...target, color});
+        }, undefined, { "fill": color, "fill-opacity": "0.3", "mix-blend-mode": "multiply" });
+        
+      } else {
+        toast.error("Error al actualizar color");
+      }
+    } else {
+      // FLUJO DE CREACIÓN DE NUEVO SUBRAYADO
+      const newHighlight = await saveHighlight(
+        bookId, 
+        userId, 
+        activeSelection.cfiRange, 
+        activeSelection.cfiRange, 
+        activeSelection.text, 
+        color
+      );
+
+      if (newHighlight) {
+        setHighlights(prev => [newHighlight, ...prev]);
+        toast.success("Texto subrayado");
+        
+        // Dibujar estéticamente el oficial
+        renditionRef.current?.annotations.highlight(newHighlight.cfi_start, { id: newHighlight.id }, () => {
+          handleHighlightClick(newHighlight);
+        }, undefined, { "fill": color, "fill-opacity": "0.3", "mix-blend-mode": "multiply" });
+      } else {
+        toast.error("Error al guardar subrayado");
+      }
+    }
+
+    setActiveSelection(null);
+    setIsSavingHighlight(false);
+    
+    // Deseleccionar el texto dentro del Iframe
+    if (renditionRef.current) {
+      const contents = renditionRef.current.getContents() as any;
+      if (Array.isArray(contents)) {
+        contents.forEach((content: any) => {
+          content.window?.getSelection()?.removeAllRanges();
+        });
+      } else {
+        contents?.window?.getSelection()?.removeAllRanges();
+      }
+    }
+  };
+
+  const handleCancelSelection = () => {
+    setActiveSelection(null);
+    // Deseleccionar el texto (la previsualización nativa) dentro del Iframe
+    if (renditionRef.current) {
+      const contents = renditionRef.current.getContents() as any;
+      if (Array.isArray(contents)) {
+        contents.forEach((content: any) => {
+          content.window?.getSelection()?.removeAllRanges();
+        });
+      } else {
+        contents?.window?.getSelection()?.removeAllRanges();
+      }
+    }
+  };
+
+  const handleDeleteHighlight = async (id: string, cfi: string) => {
+    const success = await deleteHighlight(id);
+    if (success) {
+      setHighlights(prev => prev.filter(h => h.id !== id));
+      renditionRef.current?.annotations.remove(cfi, "highlight");
+      
+      // Exorcismo visual: Destrucción manual del nodo en el DOM en caso de que el bug de epubjs evite soltar la capa
+      try {
+        const DOMTargets = `g[data-epubcfi="${cfi}"], mark[data-epubcfi="${cfi}"]`;
+        document.querySelectorAll(DOMTargets).forEach(n => n.remove());
+        const contents = renditionRef.current?.getContents() as any;
+        if (Array.isArray(contents)) {
+          contents.forEach(c => c.document?.querySelectorAll(DOMTargets).forEach((n: any) => n.remove()));
+        } else if (contents) {
+          contents.document?.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
+        }
+      } catch (err) {}
+
+      toast.info("Subrayado eliminado");
+    } else {
+      toast.error("Error al eliminar subrayado");
+    }
+  };
+
+  const handleUpdateNote = async (id: string, note: string) => {
+    const success = await updateHighlightNote(id, note);
+    if (success) {
+      setHighlights(prev => prev.map(h => h.id === id ? { ...h, note } : h));
+      setEditingNote(null);
+      toast.success("Nota guardada");
+    } else {
+      toast.error("Error al guardar nota");
+    }
+  };
+
   if (loadingBook) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117]">
@@ -592,6 +786,14 @@ export default function ReaderPage() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4 relative">
+          <button
+            onClick={() => setShowNotesPanel(true)}
+            className={`p-2.5 rounded-full transition-colors ${iconBgClass}`}
+            title="Ver Notas y Subrayados"
+          >
+            <Bookmark className="w-5 h-5" />
+          </button>
+          
           <button
             onClick={() => setShowSettings(!showSettings)}
             className={`p-2.5 rounded-full transition-colors ${showSettings ? (isRetro ? 'bg-[#3fb950]/20 text-[#3fb950]' : 'bg-black/10 text-blue-500') : iconBgClass}`}
@@ -723,6 +925,109 @@ export default function ReaderPage() {
 
         {/* 4.2.16 - Div nativo puro donde ePubJS monta su Iframe interno */}
         <div ref={viewerRef} className="relative w-full h-full cursor-pointer" />
+      </div>
+
+      {/* 4.2.16.1 - Popup fijo interactivo para Subrayados cuando hay Selección */}
+      {activeSelection && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-white dark:bg-[#1a1a1a] shadow-xl border border-gray-200 dark:border-white/10 rounded-2xl flex flex-col sm:flex-row items-center gap-2 p-3 px-4 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 pointer-events-auto">
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px] sm:max-w-[200px]">
+             "{activeSelection.text}"
+          </span>
+          <div className="w-px h-6 bg-gray-200 dark:bg-white/10 hidden sm:block mx-2"></div>
+          <div className="flex items-center gap-3">
+             <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#FFEB3B')} className="w-6 h-6 rounded-full bg-[#FFEB3B] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
+             <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#3fb950')} className="w-6 h-6 rounded-full bg-[#3fb950] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
+             <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#60a5fa')} className="w-6 h-6 rounded-full bg-[#60a5fa] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
+             <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#f472b6')} className="w-6 h-6 rounded-full bg-[#f472b6] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
+             
+             <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-1"></div>
+             
+             <button onClick={handleCancelSelection} className="p-1 px-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300 font-medium text-sm transition-colors cursor-pointer">
+               Cancelar
+             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4.2.16.2 - Panel Lateral (Drawer) para Notas y Subrayados */}
+      <div 
+        className={`fixed inset-y-0 right-0 z-[70] w-full max-w-sm bg-white dark:bg-[#111111] shadow-2xl border-l border-gray-200 dark:border-white/10 transform transition-transform duration-300 ease-in-out ${
+          showNotesPanel ? 'translate-x-0' : 'translate-x-full'
+        } flex flex-col pointer-events-auto`}
+      >
+        <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0a0a0a]">
+          <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+            <Bookmark className="w-5 h-5 text-blue-500" />
+            Notas del Libro
+          </h2>
+          <button 
+            onClick={() => setShowNotesPanel(false)}
+            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors text-gray-500 dark:text-gray-400"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {highlights.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center opacity-50 px-4">
+              <FileText className="w-12 h-12 mb-4" />
+              <p>Aún no has hecho subrayados en este libro.</p>
+              <p className="text-xs mt-2">Selecciona cualquier texto para resaltar o añadir una nota.</p>
+            </div>
+          ) : (
+            highlights.map((h) => (
+              <div key={h.id} className="bg-white dark:bg-[#1a1a1a] retro:bg-[#161b22] navy:bg-[#111827] border border-gray-100 dark:border-white/10 retro:border-[#3fb950]/20 navy:border-[#7986cb]/20 rounded-xl p-4 shadow-sm relative group">
+                <div className="absolute left-0 top-4 bottom-4 w-1 rounded-r-md" style={{ backgroundColor: h.color }}></div>
+                
+                <p className="text-sm text-gray-800 dark:text-gray-200 retro:text-gray-200 navy:text-gray-200 italic mb-2 line-clamp-4 leading-relaxed pr-6 cursor-pointer" onClick={() => {
+                  renditionRef.current?.display(h.cfi_start);
+                  if (window.innerWidth < 640) setShowNotesPanel(false);
+                }}>
+                  "{h.text}"
+                </p>
+                
+                {editingNote?.id === h.id ? (
+                  <div className="mt-3 bg-gray-50 dark:bg-black/30 retro:bg-black/30 navy:bg-black/30 rounded-lg p-2 border border-blue-500/30">
+                    <textarea 
+                      className="w-full bg-transparent border-none focus:outline-none text-sm text-gray-800 dark:text-gray-200 retro:text-gray-200 navy:text-gray-200 resize-none"
+                      rows={3}
+                      value={editingNote.note}
+                      onChange={(e) => setEditingNote({...editingNote, note: e.target.value})}
+                      placeholder="Escribe tu nota aquí..."
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-2 mt-2">
+                      <button onClick={() => setEditingNote(null)} className="text-xs px-3 py-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-white/10 retro:hover:bg-white/10 navy:hover:bg-white/10 font-medium retro:text-white navy:text-white">Cancelar</button>
+                      <button onClick={() => handleUpdateNote(h.id, editingNote.note)} className="text-xs px-3 py-1.5 rounded-md bg-blue-600 retro:bg-[#238636] navy:bg-[#3949ab] text-white font-medium flex items-center gap-1"><Check className="w-3 h-3"/> Guardar</button>
+                    </div>
+                  </div>
+                ) : (
+                  h.note ? (
+                    <div className="mt-3 bg-yellow-50 dark:bg-yellow-500/10 retro:bg-[#3fb950]/10 navy:bg-[#7986cb]/10 rounded-lg p-3 border border-yellow-100 dark:border-yellow-500/20 retro:border-[#3fb950]/30 navy:border-[#7986cb]/30 group/note">
+                       <p className="text-sm text-gray-800 dark:text-yellow-100 retro:text-[#3fb950] navy:text-[#c5cae9] whitespace-pre-wrap">{h.note}</p>
+                       <button onClick={() => setEditingNote({id: h.id, note: h.note || ""})} className="mt-2 text-xs text-yellow-700 dark:text-yellow-400 retro:text-[#2ea043] navy:text-[#7986cb] font-semibold opacity-0 group-hover/note:opacity-100 transition-opacity flex items-center gap-1">
+                         <PenSquare className="w-3 h-3"/> Editar nota
+                       </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setEditingNote({id: h.id, note: ""})} className="mt-3 text-xs text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb] font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <PenSquare className="w-3 h-3"/> Añadir nota
+                    </button>
+                  )
+                )}
+
+                <button 
+                  onClick={() => handleDeleteHighlight(h.id, h.cfi_start)}
+                  className="absolute right-2 top-2 p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                  title="Eliminar"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* 4.2.17 - Barra inferior central (Bottom HUD) de navegación de hojas y rastreo de progreso porcentual estricto */}

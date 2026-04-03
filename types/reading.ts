@@ -7,3 +7,15 @@ export interface ReadingProgress {
   last_read_at: string;
   created_at: string;
 }
+
+export interface Highlight {
+  id: string;
+  user_id: string;
+  book_id: string;
+  cfi_start: string;
+  cfi_end: string;
+  text: string;
+  color: string;
+  note: string | null;
+  created_at: string;
+}
