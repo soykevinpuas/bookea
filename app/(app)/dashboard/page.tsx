@@ -230,6 +230,7 @@ export default function DashboardPage() {
                     title={book.title} 
                     className="w-16 h-24 flex-shrink-0"
                     showShadow={false}
+                    objectFit="contain"
                   />
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold line-clamp-1">{book.title}</h3>

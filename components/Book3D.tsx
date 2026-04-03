@@ -9,6 +9,7 @@ interface Book3DProps {
   className?: string;
   showShadow?: boolean;
   enhance?: boolean;
+  objectFit?: "cover" | "contain";
 }
 
 // 6.4.1 - Componente principal Book3D: renderiza portada con efectos CSS nativos
@@ -17,6 +18,7 @@ export default function Book3D({
   title, 
   className = "", 
   showShadow = true,
+  objectFit = "cover",
 }: Omit<Book3DProps, 'enhance'>) {
   // ============================================
   // 6.4.2 - Renderizado de la tarjeta del libro con CSS filter para mejora visual
@@ -25,13 +27,13 @@ export default function Book3D({
   return (
     <div className={`relative ${className} group`}>
       {/* 6.4.2.1 - Contenedor con efecto hover: zoom suave y degradado inferior */}
-      <div className="relative shadow-lg rounded-lg overflow-hidden transition-all duration-300 group-hover:-translate-y-2 group-hover:scale-[1.03] group-hover:shadow-2xl">
+      <div className="relative h-full shadow-lg rounded-lg overflow-hidden transition-all duration-300 group-hover:-translate-y-2 group-hover:scale-[1.03] group-hover:shadow-2xl bg-white/5">
         {/* Imagen de la portada: filter CSS aplica el efecto de mejora visual de forma nativa */}
         <img
           src={src || ''}
           alt={title}
           loading="lazy"
-          className="w-full h-full object-cover rounded-lg"
+          className={`w-full h-full object-${objectFit} rounded-lg`}
           style={{ filter: 'contrast(1.05) saturate(1.1) brightness(1.02)' }}
         />
         
