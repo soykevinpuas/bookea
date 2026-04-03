@@ -125,7 +125,10 @@ export default function ReaderPage() {
   const resetControlsTimeout = () => {
     setShowControls(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setShowControls(false), 4000);
+    timeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+      setShowSettings(false);
+    }, 4000);
   };
 
   const toggleControls = () => {
@@ -133,9 +136,13 @@ export default function ReaderPage() {
       const nextState = !prev;
       if (nextState) {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => setShowControls(false), 4000);
+        timeoutRef.current = setTimeout(() => {
+          setShowControls(false);
+          setShowSettings(false);
+        }, 4000);
       } else {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setShowSettings(false);
       }
       return nextState;
     });
@@ -960,9 +967,9 @@ export default function ReaderPage() {
       )}
 
       {/* 4.2.16.2.1 - Backdrop de Glassmorphism para los Ajustes */}
-      {showSettings && (
+      {showSettings && showControls && (
         <div 
-          className="fixed inset-0 z-[45] bg-black/[0.01] dark:bg-black/[0.05] backdrop-blur-md transition-all duration-300 pointer-events-auto animate-in fade-in"
+          className="fixed inset-0 z-[45] bg-transparent backdrop-blur-md transition-all duration-300 pointer-events-auto animate-in fade-in"
           onClick={() => setShowSettings(false)}
         />
       )}
