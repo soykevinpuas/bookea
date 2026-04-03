@@ -957,6 +957,14 @@ export default function ReaderPage() {
         />
       )}
 
+      {/* 4.2.16.2.1 - Backdrop de Glassmorphism para los Ajustes */}
+      {showSettings && (
+        <div 
+          className="fixed inset-0 z-[45] bg-black/5 dark:bg-black/20 backdrop-blur-md transition-all duration-300 pointer-events-auto animate-in fade-in"
+          onClick={() => setShowSettings(false)}
+        />
+      )}
+
       {/* 4.2.16.3 - Panel Lateral (Drawer) para Notas y Subrayados */}
       <div 
         className={`fixed inset-y-0 right-0 z-[70] w-full max-w-sm bg-white dark:bg-[#111111] shadow-2xl border-l border-gray-200 dark:border-white/10 transform transition-transform duration-300 ease-in-out ${
