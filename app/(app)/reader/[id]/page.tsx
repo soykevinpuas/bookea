@@ -802,7 +802,9 @@ export default function ReaderPage() {
           </button>
 
           {showSettings && (
-            <div className={`absolute top-14 right-0 w-72 p-4 rounded-2xl shadow-2xl border animate-in fade-in slide-in-from-top-4 duration-200 ${
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className={`absolute top-14 right-0 w-72 p-4 rounded-2xl shadow-2xl border animate-in fade-in slide-in-from-top-4 duration-200 ${
               isDark ? 'bg-[#1a1a1a] border-white/10 text-white' : 
               isRetro ? 'bg-[#0d1117] border-[#3fb950]/30 text-[#3fb950]' :
               isNavy ? 'bg-[#0a1422] border-[#7986cb]/30 text-[#c5cae9]' :
@@ -960,7 +962,7 @@ export default function ReaderPage() {
       {/* 4.2.16.2.1 - Backdrop de Glassmorphism para los Ajustes */}
       {showSettings && (
         <div 
-          className="fixed inset-0 z-[45] bg-black/5 dark:bg-black/20 backdrop-blur-md transition-all duration-300 pointer-events-auto animate-in fade-in"
+          className="fixed inset-0 z-[45] bg-black/[0.01] dark:bg-black/[0.05] backdrop-blur-md transition-all duration-300 pointer-events-auto animate-in fade-in"
           onClick={() => setShowSettings(false)}
         />
       )}
