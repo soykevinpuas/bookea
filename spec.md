@@ -302,7 +302,7 @@ Estos son los agentes que van a construir la app:
 **Fase 2 (retención):**
 - Comentarios realtime
 - Progreso y rachas
-- Highlights y notas
+- [x] Highlights y notas
 - Reseñas y ratings
 
 **Fase 3 (crecimiento):**

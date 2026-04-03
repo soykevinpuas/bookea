@@ -4,6 +4,24 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-02] - Implementación de Subrayados, Notas y Fixes Complejos de ePub.js
+**Objetivo:** Habilitar un sistema completo de base de datos para subrayados interactivos por color, panel de apuntes y resolver bugs silenciosos pero críticos del sistema epub.js.
+
+### Añadido
+- **Capa DAO (Highlights):** Creación del módulo central de conexiones `lib/highlights.ts` con soporte CRUD nativo (Crear, Obtener, Editar Color/Nota, Eliminar).
+- **Interacción Táctil/Cursor Inteligente:** 
+  - La app utiliza la selección nativa del OS para previsualizar texto. 
+  - Al soltar, una barra flotante de colores interactiva permite elegir un tono (o editar color si la marca ya existía).
+- **Panel Drawer Lateral (Cuaderno):** Implementado un gestor visual de tarjetas accesible mediante la navegación superior. Cada tarjeta corresponde a un subrayado en la base de datos, permitiendo atar notas tipo "sticky" directamente vinculadas a contextos exactos del libro.
+  
+### Arreglos Críticos
+- **Destrucción Manual del DOM ("Exorcismo"):** Implementada lógica agresiva `querySelectorAll(g, mark).remove()` para solventar el bug endémico de Epub.js v0.3 *Continuous Flow* donde `.annotations.remove()` perdía la referencia del elemento y fallaba al limpiar la capa SVG.
+- **Race Condition de Preferencias (localStorage):** Parcheado un defecto grave de ciclo de vida en `app/(app)/reader/[id]/page.tsx` donde el efecto de 'guardado' se activaba milisegundos antes del montaje total, causando borrado e inicialización automática de los ajustes del usuario.
+- **Render Loop en Epubjs:** Reparado el bug ocasionante del "Cargador Infinito...". El escuchador del trigger `rendered` se ha re-ordenado secuencialmente para asegurar la des-visualización de los estados de carga.
+- **Refactoring Visual y de Hidratación:** Eliminadas etiquetas `<a>` dobles (`Link > Link`) que derrumbaban la página dashboard a modo cascada, y aplicados prefijos estáticos `retro:` y `navy:` directamente a las notas renderizadas para prevenir palidezca de contrastes debidos a choques con temas next-themes globales.
+
+---
+
 ## [2026-03-29] - Solución de Build Estratégico (Vercel)
 **Objetivo:** Permitir el despliegue del proyecto ignorando la falta de claves de Stripe durante la compilación.
 

@@ -1,41 +1,39 @@
-<<<<<<< HEAD
-# bookea
-bookstore
-=======
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📚 Bookea
 
-## Getting Started
+**Bookea** es una plataforma SaaS moderna diseñada para revolucionar la lectura digital. Permite a los usuarios leer libros (formato EPUB) de manera fluida directamente desde el navegador, interactuar con el contenido a través de subrayados y notas sincronizadas en la nube, y facilita la adquisición de copias físicas o licencias permanentes.
 
-First, run the development server:
+## Características Principales
+
+- 📖 **Lector EPUB de Alta Fidelidad**: Integración con `epub.js` soportando modo scroll continuo, perfiles de tipografía personalizados, y temas dinámicos (Día, Noche, Navy, Retro).
+- 🖍️ **Highlights y Notas Interactivos**: Selecciona texto en tiempo real, clasifícalo por colores, añade "sticky notes", y accede a ellos desde tu cuaderno virtual.
+- 🎨 **Diseño Moderno (UI/UX)**: Interfaz construida con **Tailwind CSS V4**, modo oscuro progresivo adaptativo y componentes altamente responsivos (incluyendo Safe Area para PWA).
+- 🔐 **Autenticación y Sesiones**: Login seguro respaldado por **Supabase Auth**.
+- 💳 **Pagos Múltiples**: Sistema de compras y suscripciones recurrentes procesadas mediante **Stripe**.
+- 🗄️ **Almacenamiento Desacoplado (Backend)**: Toda la interacción se sincroniza instantáneamente con una base de datos **PostgreSQL** administrada a través de Supabase.
+
+## Stack Tecnológico 🛠️
+- **Framework:** Next.js 15 (App Router)
+- **Lenguaje:** TypeScript / React 19
+- **Estilos:** Tailwind CSS V4
+- **Backend/DB:** Supabase (PostgreSQL, Realtime, Storage)
+- **Pagos:** Stripe (Suscripciones, Payment Intents)
+- **Herramienta Lector:** epub.js
+
+## Inicialización y Desarrollo
+
+Instala las dependencias y arranca el entorno de desarrollo local:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+La aplicación funcionará por defecto en [http://localhost:3000](http://localhost:3000).
+Asegúrate de tener un archivo `.env.local` configurado con tus variables de `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, y tus claves de `STRIPE`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Documentación del Proyecto
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
->>>>>>> 6fe390f (Initial commit from Create Next App)
+El desarrollo progresivo, hitos completados y la filosofía técnica están regidos por nuestros archivos locales:
+- `spec.md`: Especificaciones del Producto y Features.
+- `bitacora.md`: Historial y Registro (Changelog) de Cambios.
+- `rules.md`: Estándares de Código y Patrones de Arquitectura del proyecto.

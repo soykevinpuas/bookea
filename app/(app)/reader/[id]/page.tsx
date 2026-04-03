@@ -955,7 +955,7 @@ export default function ReaderPage() {
           showNotesPanel ? 'translate-x-0' : 'translate-x-full'
         } flex flex-col pointer-events-auto`}
       >
-        <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0a0a0a]">
+        <div className="flex items-center justify-between px-5 pb-5 pt-[calc(env(safe-area-inset-top)+1.25rem)] border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0a0a0a]">
           <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
             <Bookmark className="w-5 h-5 text-blue-500" />
             Notas del Libro
@@ -1006,12 +1006,12 @@ export default function ReaderPage() {
                   h.note ? (
                     <div className="mt-3 bg-yellow-50 dark:bg-yellow-500/10 retro:bg-[#3fb950]/10 navy:bg-[#7986cb]/10 rounded-lg p-3 border border-yellow-100 dark:border-yellow-500/20 retro:border-[#3fb950]/30 navy:border-[#7986cb]/30 group/note">
                        <p className="text-sm text-gray-800 dark:text-yellow-100 retro:text-[#3fb950] navy:text-[#c5cae9] whitespace-pre-wrap">{h.note}</p>
-                       <button onClick={() => setEditingNote({id: h.id, note: h.note || ""})} className="mt-2 text-xs text-yellow-700 dark:text-yellow-400 retro:text-[#2ea043] navy:text-[#7986cb] font-semibold opacity-0 group-hover/note:opacity-100 transition-opacity flex items-center gap-1">
+                       <button onClick={() => setEditingNote({id: h.id, note: h.note || ""})} className="mt-2 text-xs text-yellow-700 dark:text-yellow-400 retro:text-[#2ea043] navy:text-[#7986cb] font-semibold md:opacity-0 opacity-100 group-hover/note:opacity-100 transition-opacity flex items-center gap-1">
                          <PenSquare className="w-3 h-3"/> Editar nota
                        </button>
                     </div>
                   ) : (
-                    <button onClick={() => setEditingNote({id: h.id, note: ""})} className="mt-3 text-xs text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb] font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setEditingNote({id: h.id, note: ""})} className="mt-3 text-xs text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb] font-semibold flex items-center gap-1 md:opacity-0 opacity-100 group-hover:opacity-100 transition-opacity">
                       <PenSquare className="w-3 h-3"/> Añadir nota
                     </button>
                   )
@@ -1019,7 +1019,7 @@ export default function ReaderPage() {
 
                 <button 
                   onClick={() => handleDeleteHighlight(h.id, h.cfi_start)}
-                  className="absolute right-2 top-2 p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                  className="absolute right-2 top-2 p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 md:opacity-0 opacity-100 group-hover:opacity-100 transition-all"
                   title="Eliminar"
                 >
                   <Trash2 className="w-4 h-4" />
