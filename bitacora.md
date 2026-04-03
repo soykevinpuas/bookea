@@ -4,6 +4,28 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-03] - Sistema de Créditos y Cobro Manual
+**Objetivo:** Transicionar de un modelo de cobro automático (Stripe) a un sistema manual basado en créditos por libro para facilitar la administración tributaria.
+
+### Añadido
+- **Módulo de Créditos (Backend):** 
+  - Nueva API `api/credits/redeem` para el canje de libros (1 crédito = 30 días de acceso).
+  - Hook personalizado `useCredits.ts` para gestión de saldo y mutaciones de canje.
+- **Admin Panel Pro:**
+  - Gestión directa de créditos por usuario en `/admin/users`.
+  - Restricción de visibilidad del link "Panel Administrador" en el menú de usuario (solo visible para rol 'admin').
+- **Infraestructura de Pago Manual:**
+  - Nueva interfaz de `/subscribe` con instrucciones para PayPal y Transferencia SPEI (placeholders).
+  - Integración de botón directo a WhatsApp para validación de comprobantes.
+
+### Cambios y Mejoras
+- **Rebrand de Terminología:** Sustitución de "Precio Digital" y "$" por "**Créditos**" en todo el catálogo y panel de administración.
+- **Header Inteligente:** Añadido indicador dinámico de créditos disponibles (`🎟️ X Créditos`) visible para todos los usuarios autenticados.
+- **Flujo de Adquisición:** Reemplazo del botón de compra directa por el botón de "Canjear Crédito" con estados de carga y validaciones de saldo.
+- **Seguridad Admin:** El acceso a las rutas `/admin/*` ahora está doblemente protegido en la UI para evitar confusión entre usuarios premium y administradores.
+
+---
+
 ## [2026-04-02] - Implementación de Subrayados, Notas y Fixes Complejos de ePub.js
 **Objetivo:** Habilitar un sistema completo de base de datos para subrayados interactivos por color, panel de apuntes y resolver bugs silenciosos pero críticos del sistema epub.js.
 

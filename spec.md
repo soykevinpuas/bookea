@@ -19,35 +19,37 @@ El operador (tú) administra el catálogo, inventario físico, órdenes y precio
 |------|-------------|
 | **Visitante** | Sin cuenta. Puede ver catálogo y leer descripción de libros |
 | **Usuario Free** | Con cuenta gratuita. Acceso limitado |
-| **Usuario Suscrito** | Paga $99 MXN/mes. Elige 5 libros por ciclo |
+| **Usuario Suscrito** | Paga $99 MXN por 5 créditos. Elige 5 libros por ciclo |
 | **Usuario con compra permanente** | Pagó por un título. Acceso de por vida a ese título |
-| **Admin** | Tú. Acceso total al panel de gestión |
+| **Admin** | Tú. Acceso total al panel de gestión y asignación manual de créditos |
 
 ---
 
-## 3. MODELO DE NEGOCIO
+## 3. MODELO DE NEGOCIO (Manual v1.0)
 
 ### 3.1 Planes
 
 | Plan | Precio | Beneficio |
 |------|--------|-----------|
 | **Free** | $0 | Vista previa de X% de cada libro |
-| **Suscripción** | $99 MXN/mes | Elige 5 libros por mes. Se resetean al renovar |
-| **Compra permanente** | $49 MXN por título | Acceso de por vida al título. Sin descarga |
+| **Pack 5 Créditos** | $99 MXN | Canjea por 5 libros (1 cada uno). Acceso por 30 días por libro |
+| **Compra permanente** | $49 MXN (aprox) | Acceso de por vida al título. Sin descarga |
 | **Libro físico** | $199–$249 MXN | Orden de envío a domicilio. Envío aparte |
-| **Bundle físico + digital** | $229 MXN | Compra permanente + físico con descuento |
 
-### 3.2 Lógica de suscripción
-- Al suscribirse, el usuario tiene 5 "créditos" de selección
-- Elige hasta 5 títulos del catálogo
-- Al renovar el mes, los créditos se resetean (los libros elegidos antes siguen accesibles ese ciclo pero no el nuevo)
-- Si no renueva, pierde acceso a los 5 libros seleccionados
+### 3.2 Lógica de Créditos
+- El sistema utiliza **Créditos** como moneda interna para suscripciones.
+- **1 Crédito = 1 Libro por 30 días.**
+- Al canjear un crédito, el libro se añade a `user_books` con una fecha de expiración de 30 días.
+- El usuario puede comprar paquetes de créditos vía pago manual.
 
-### 3.3 Pagos
-- Plataforma: **Stripe** con precios en MXN
-- Suscripción recurrente mensual (Stripe Subscriptions)
-- Compras únicas (Stripe Payment Intents)
-- Órdenes físicas incluyen captura de datos de envío antes del pago
+### 3.3 Pagos e Ingreso Manual
+- **Pasarela:** No automatizada por ahora (Pivot de Stripe).
+- **Métodos:** PayPal (`link directo`), Transferencia SPEI (México).
+- **Flujo de Activación:**
+  1. El usuario realiza el pago.
+  2. Envía comprobante y correo por WhatsApp al Administrador.
+  3. El Administrador busca al usuario en el **Panel Admin** y le asigna los créditos correspondientes.
+  4. Los créditos aparecen instantáneamente en la cuenta del usuario.
 
 ---
 

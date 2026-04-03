@@ -10,6 +10,9 @@ interface AppUser {
   email: string;
   role: "free" | "subscriber" | "admin";
   created_at: string;
+  subscription_credits?: {
+    credits_remaining: number;
+  }[];
 }
 
 const ROLE_STYLES: Record<AppUser["role"], string> = {
@@ -34,11 +37,36 @@ export default function AdminUsersPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("users")
-        .select("id, email, role, created_at")
+        .select("id, email, role, created_at, subscription_credits(credits_remaining)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
+  });
+
+  const updateCredits = useMutation({
+    mutationFn: async ({ userId, credits }: { userId: string; credits: number }) => {
+      // Primero verificar si existe la fila
+      const { data: existing } = await supabase
+        .from("subscription_credits")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from("subscription_credits")
+          .update({ credits_remaining: credits })
+          .eq("user_id", userId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("subscription_credits")
+          .insert({ user_id: userId, credits_remaining: credits, cycle_start: new Date().toISOString() });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
   const changeRole = useMutation({
@@ -79,8 +107,9 @@ export default function AdminUsersPage() {
               <tr className="border-b border-white/8">
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Email</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Rol actual</th>
+                <th className="text-left px-5 py-3.5 font-medium text-white/40">Créditos</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden sm:table-cell">Registro</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40">Asignar nuevo rol</th>
+                <th className="text-left px-5 py-3.5 font-medium text-white/40">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -101,6 +130,22 @@ export default function AdminUsersPage() {
                       {ROLE_LABELS[user.role]}
                     </span>
                   </td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-2">
+                       <input 
+                         type="number"
+                         defaultValue={user.subscription_credits?.[0]?.credits_remaining ?? 0}
+                         onBlur={(e) => {
+                           const val = parseInt(e.target.value);
+                           if (!isNaN(val)) {
+                             updateCredits.mutate({ userId: user.id, credits: val });
+                           }
+                         }}
+                         className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-center focus:border-blue-500/50 outline-none"
+                       />
+                       <span className="text-[10px] text-white/30 uppercase font-bold">Créditos</span>
+                    </div>
+                  </td>
                   <td className="px-5 py-4 text-white/40 text-xs hidden sm:table-cell">
                     {new Date(user.created_at).toLocaleDateString("es-MX", {
                       day: "numeric",
@@ -120,7 +165,7 @@ export default function AdminUsersPage() {
                       className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/70 focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer"
                     >
                       <option value="free" className="bg-neutral-900 text-white">Free</option>
-                      <option value="subscriber" className="bg-neutral-900 text-white">Suscriptor</option>
+                      <option value="subscriber" className="bg-neutral-900 text-white">Suscriptor (Créditos)</option>
                       <option value="admin" className="bg-neutral-900 text-white">Admin</option>
                     </select>
                   </td>

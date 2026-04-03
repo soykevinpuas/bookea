@@ -6,6 +6,8 @@ import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState, useMemo } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserMenu } from "./UserMenu";
+import { useCredits } from "@/hooks/useCredits";
+import { Ticket } from "lucide-react";
 
 // ============================================
 // 6.1 - Header: Barra de navegación global de la aplicación
@@ -24,6 +26,9 @@ export function Header({ initialUser = null }: HeaderProps) {
   const supabase = useMemo(() => createClientClient(), []);
   const pathname = usePathname();
   const router = useRouter();
+
+  // 6.1.1.1 - Obtención de créditos
+  const { credits } = useCredits(user?.id);
 
   // 6.1.2a - Cuando el RSC del layout se re-ejecuta (por router.refresh()),
   // el prop `initialUser` cambia — este efecto lo sincroniza al state local.
@@ -78,8 +83,17 @@ export function Header({ initialUser = null }: HeaderProps) {
           {/* 6.1.4.3 - Menú de autenticación condicional */}
           {!isLoading && (
             user ? (
-              // Usuario autenticado: mostrar avatar y menú de usuario
-              <UserMenu email={user.email} />
+              // Usuario autenticado: mostrar créditos, avatar y menú de usuario
+              <div className="flex items-center gap-3">
+                <Link 
+                  href="/subscribe"
+                  className="hidden xs:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-500/20 transition-all"
+                >
+                  <Ticket className="w-3 h-3 fill-current" />
+                  {credits ?? 0} { (credits === 1) ? 'Crédito' : 'Créditos' }
+                </Link>
+                <UserMenu email={user.email} />
+              </div>
             ) : (
               // Usuario no autenticado: mostrar botones de login/registro
               <div className="flex items-center gap-3 sm:gap-4">

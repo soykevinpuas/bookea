@@ -219,7 +219,7 @@ export default function AdminBooksPage() {
               <tr className="border-b border-white/8">
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Libro</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden sm:table-cell">Categoría</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40">Digital</th>
+                <th className="text-left px-5 py-3.5 font-medium text-white/40">Créditos</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">Físico</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">Stock</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Estado</th>
@@ -249,7 +249,7 @@ export default function AdminBooksPage() {
                     {book.price_digital === 0 ? (
                       <span className="text-green-400 font-medium">GRATIS</span>
                     ) : (
-                      <span className="text-white">${book.price_digital}</span>
+                      <span className="text-white">{book.price_digital}</span>
                     )}
                   </td>
                   <td className="px-5 py-4 text-white/70 hidden md:table-cell">${book.price_physical}</td>
@@ -345,7 +345,7 @@ export default function AdminBooksPage() {
               {/* Prices */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-white/40 font-medium mb-1.5 block">Digital (MXN)</label>
+                  <label className="text-xs text-white/40 font-medium mb-1.5 block">Créditos (Digital)</label>
                   <input
                     type="number"
                     min="0"
@@ -353,7 +353,7 @@ export default function AdminBooksPage() {
                     onChange={(e) => setEditingBook((p) => ({ ...p, price_digital: Number(e.target.value) }))}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
                   />
-                  <p className="text-[10px] text-white/25 mt-1">0 = GRATIS</p>
+                  <p className="text-[10px] text-white/25 mt-1">1 crédito = acceso por 30 días</p>
                 </div>
                 <div>
                   <label className="text-xs text-white/40 font-medium mb-1.5 block">Físico (MXN)</label>

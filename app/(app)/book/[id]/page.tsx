@@ -6,10 +6,12 @@
 
 import { useBook, useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
+import { useCredits } from "@/hooks/useCredits";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Ticket, Zap, Shield, BookOpen, CreditCard, Loader2 } from "lucide-react";
 
 // 3.5.1 - Componente principal de la página de detalle
 export default function BookDetailPage() {
@@ -35,6 +37,9 @@ export default function BookDetailPage() {
   // 3.5.5 - Consulta del libro por ID y verificación de acceso del usuario
   const { data: book, isLoading, error } = useBook(id);
   const { data: userBooks, refetch } = useUserBooks(userId);
+
+  // 3.5.5.1 - Obtención de créditos del usuario
+  const { credits, redeemCredit } = useCredits(userId);
 
   // 3.5.6 - Determinación de si el usuario ya tiene acceso al libro
   const hasAccess = userBooks?.some((b) => b.id === id);
@@ -96,6 +101,32 @@ export default function BookDetailPage() {
       }
     } catch {
       toast.error('Error al añadir el libro a tu biblioteca');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  // 3.5.8.1 - Handler para canjear un crédito por el libro
+  const handleRedeemCredit = async () => {
+    if (!userId) {
+      toast.error("Debes iniciar sesión para canjear créditos");
+      router.push("/login");
+      return;
+    }
+
+    if ((credits ?? 0) <= 0) {
+      toast.error("No tienes créditos disponibles");
+      router.push("/subscribe");
+      return;
+    }
+
+    setLoading('redeem_credit');
+    try {
+      await redeemCredit.mutateAsync(id);
+      toast.success("¡Libro desbloqueado con éxito!");
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Error al canjear crédito");
     } finally {
       setLoading(null);
     }
@@ -205,40 +236,57 @@ export default function BookDetailPage() {
 
                 {/* 3.5.10.2.3.2 - Estado: Usuario NO tiene acceso - Mostrar opciones de compra */}
                 {!hasAccess && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-white/5 rounded-xl gap-4">
-                    <div>
-                      <span className="block text-sm text-gray-500 dark:text-gray-400 mb-1">
-                        Versión Digital
-                      </span>
+                  <div className="space-y-4">
+                    {/* Opción con Créditos (Recomendada) */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 rounded-2xl gap-4 group">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-blue-500/20 rounded-xl text-blue-500">
+                           <Ticket className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <span className="block text-xs font-bold text-blue-500 uppercase tracking-widest mb-0.5">
+                            Plan Premium
+                          </span>
+                          <span className="text-2xl font-black text-gray-900 dark:text-white">
+                            1 Crédito
+                          </span>
+                          <p className="text-xs text-white/40 mt-1">Acceso por 30 días</p>
+                        </div>
+                      </div>
+                      
+                      <button 
+                        onClick={handleRedeemCredit}
+                        disabled={loading === 'redeem_credit'}
+                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {loading === 'redeem_credit' ? <Loader2 className="w-4 h-4 animate-spin"/> : <Zap className="w-4 h-4 fill-current"/>}
+                        {loading === 'redeem_credit' ? 'Cajeando...' : 'Canjear 1 Crédito'}
+                      </button>
+                    </div>
+
+                    {/* Opción Permanente con Monedas/Dinero (Opcional - Ahora Créditos) */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl gap-4">
+                      <div>
+                        <span className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                          Compra Permanente
+                        </span>
+                        <span className="text-2xl font-black text-gray-900 dark:text-white">
+                           {book.price_digital === 0 ? "¡GRATIS!" : `${book.price_digital} Créditos`}
+                        </span>
+                      </div>
+                      
                       {book.price_digital === 0 ? (
-                        <span className="text-3xl font-bold text-green-600 dark:text-green-400">
-                          ¡GRATIS!
-                        </span>
+                        <button 
+                          onClick={handleClaimFree}
+                          disabled={loading === 'claim_free'}
+                          className="px-8 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-500 transition-all disabled:opacity-50"
+                        >
+                          {loading === 'claim_free' ? 'Añadiendo...' : 'Añadir Gratis'}
+                        </button>
                       ) : (
-                        <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                          ${book.price_digital} <span className="text-lg font-normal text-gray-500 dark:text-gray-400">MXN</span>
-                        </span>
+                         <div className="text-xs text-white/30 italic">Pagar vía manual en perfil</div>
                       )}
                     </div>
-                    
-                    {/* Botón condicional: Reclamar gratis o Comprar */}
-                    {book.price_digital === 0 ? (
-                      <button 
-                        onClick={handleClaimFree}
-                        disabled={loading === 'claim_free'}
-                        className="px-8 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-all shadow-sm shadow-green-500/30 disabled:opacity-50 hover:-translate-y-0.5"
-                      >
-                        {loading === 'claim_free' ? 'Añadiendo...' : 'Añadir a mi Biblioteca (Gratis)'}
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={() => handleBuy('digital_permanent')}
-                        disabled={loading === 'digital_permanent'}
-                        className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all shadow-sm shadow-blue-500/30 disabled:opacity-50 hover:-translate-y-0.5"
-                      >
-                        {loading === 'digital_permanent' ? 'Procesando...' : 'Comprar Digital'}
-                      </button>
-                    )}
                   </div>
                 )}
 

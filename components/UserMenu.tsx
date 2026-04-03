@@ -1,7 +1,7 @@
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { User, LogOut, BookOpen, ChevronDown, Zap, CreditCard } from "lucide-react";
+import { User, LogOut, BookOpen, ChevronDown, Zap, CreditCard, Settings } from "lucide-react";
 import Link from "next/link";
 import { createClientClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -93,13 +93,17 @@ export function UserMenu({ email }: UserMenuProps) {
             <p className="text-sm font-bold text-gray-900 dark:text-white retro:text-[#3fb950] truncate mb-1">
               {email || "Usuario"}
             </p>
-            <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-              isSubscriber 
-                ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' 
-                : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40 border border-gray-200 dark:border-white/10 retro:border-[#3fb950]/20 retro:text-[#3fb950]'
-            }`}>
-              {isSubscriber ? <Zap className="w-2.5 h-2.5 fill-current" /> : null}
-              {isSubscriber ? 'Plan Premium' : 'Nivel Gratis'}
+            <div className="flex flex-col gap-1.5">
+              <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${
+                isSubscriber 
+                  ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' 
+                  : (role === 'admin' 
+                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                    : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40 border border-gray-200 dark:border-white/10 retro:border-[#3fb950]/20 retro:text-[#3fb950]')
+              }`}>
+                {isSubscriber ? <Zap className="w-2.5 h-2.5 fill-current" /> : null}
+                {role === 'admin' ? 'Administrador' : (isSubscriber ? 'Plan Premium' : 'Nivel Gratis')}
+              </div>
             </div>
           </div>
 
@@ -126,14 +130,27 @@ export function UserMenu({ email }: UserMenuProps) {
           </DropdownMenu.Item>
 
           {/* 6.5.2.2.4 - Opción de upgrade para usuarios free */}
-          {!isSubscriber && (
+          {role === 'free' && (
             <DropdownMenu.Item asChild>
               <Link
                 href="/subscribe"
                 className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-blue-600 dark:text-blue-400 retro:text-[#3fb950] rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 retro:hover:bg-[#3fb950]/10 cursor-pointer outline-none transition-colors"
               >
                 <Zap className="w-4 h-4 fill-current" />
-                Mejorar a Premium
+                Obtener Créditos
+              </Link>
+            </DropdownMenu.Item>
+          )}
+
+          {/* 6.5.2.2.4.1 - Link al Panel de Administrador (SOLO PARA ADMINS) */}
+          {role === 'admin' && (
+            <DropdownMenu.Item asChild>
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 cursor-pointer outline-none transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Panel Administrador
               </Link>
             </DropdownMenu.Item>
           )}
