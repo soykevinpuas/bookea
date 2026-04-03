@@ -223,20 +223,20 @@ export default function DashboardPage() {
                 <div 
                   key={book.id} 
                   onClick={() => router.push(`/book/${book.id}`)}
-                  className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
+                  className="flex items-center gap-3 p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group"
                 >
                   <Book3D 
                     src={book.cover_url || ""} 
                     title={book.title} 
-                    className="w-16 h-24 flex-shrink-0"
+                    className="w-14 h-20 flex-shrink-0"
                     showShadow={false}
                     objectFit="contain"
                   />
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold line-clamp-1">{book.title}</h3>
-                    <p className="text-sm text-white/40 line-clamp-1">{book.author}</p>
+                    <h3 className="font-bold text-sm sm:text-base line-clamp-1 group-hover:text-blue-400 transition-colors">{book.title}</h3>
+                    <p className="text-[11px] sm:text-sm text-white/40 line-clamp-1">{book.author}</p>
                     {book.category && (
-                      <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-white/10 rounded-full text-white/60">
+                      <span className="inline-block mt-1 text-[9px] sm:text-[10px] px-2 py-0.5 bg-white/10 rounded-full text-white/60">
                         {book.category}
                       </span>
                     )}
@@ -244,7 +244,7 @@ export default function DashboardPage() {
                   <Link 
                     href={`/reader/${book.id}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-500 transition-all flex-shrink-0"
+                    className="px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-semibold hover:bg-blue-500 transition-all flex-shrink-0"
                   >
                     Leer
                   </Link>

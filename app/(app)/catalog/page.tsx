@@ -58,13 +58,13 @@ export default async function CatalogPage({ searchParams }: PageProps) {
               <div
                 key={book.id}
                 className={`group bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none transition-all duration-300 overflow-hidden ${
-                  view === "list" ? "flex flex-col sm:flex-row min-h-[180px]" : "flex flex-col h-full hover:-translate-y-1"
+                  view === "list" ? "flex flex-row min-h-0 h-32 sm:h-40" : "flex flex-col h-full hover:-translate-y-1"
                 }`}
               >
                 {/* Portada */}
                 <div className={`${
-                  view === "list" ? "w-full sm:w-48 h-64 sm:h-auto shrink-0" : "relative aspect-[2/3]"
-                } px-4 py-4 flex items-center justify-center bg-transparent overflow-hidden`}>
+                  view === "list" ? "w-20 sm:w-28 h-full shrink-0" : "relative aspect-[2/3]"
+                } flex items-center justify-center bg-transparent overflow-hidden`}>
                    {book.cover_url ? (
                     <Link href={`/book/${book.id}`} className="w-full h-full">
                       <Book3D 
@@ -82,41 +82,41 @@ export default async function CatalogPage({ searchParams }: PageProps) {
                 </div>
 
                 {/* Información */}
-                <div className={`p-5 flex flex-col flex-1 ${view === "list" ? "justify-center" : ""}`}>
-                  <div className="flex justify-between items-start gap-2">
-                    <Link href={`/book/${book.id}`}>
-                      <h3 className="font-bold text-gray-900 dark:text-white text-lg line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <div className={`p-3 sm:p-5 flex flex-col flex-1 min-w-0 ${view === "list" ? "justify-center" : ""}`}>
+                  <div className="flex justify-between items-start gap-2 mb-1">
+                    <Link href={`/book/${book.id}`} className="min-w-0 flex-1">
+                      <h3 className="font-bold text-gray-900 dark:text-white text-sm sm:text-lg line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {book.title}
                       </h3>
                     </Link>
                     {book.category && (
-                      <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-100 dark:border-blue-500/20">
+                      <span className="text-[9px] sm:text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-100 dark:border-blue-500/20 whitespace-nowrap shrink-0">
                         {book.category}
                       </span>
                     )}
                   </div>
                   
-                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-1 mb-3">
+                  <p className="text-[11px] sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-1 mb-2">
                     por {book.author}
                   </p>
 
                   {view === "list" && book.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-4 hidden sm:block">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-3 hidden sm:block">
                       {book.description}
                     </p>
                   )}
                   
-                  <div className={`flex items-center justify-between ${view === "list" ? "mt-4" : "mt-auto pt-4 border-t border-gray-100 dark:border-white/5"}`}>
-                    <span className="text-lg font-black text-gray-900 dark:text-white">
+                  <div className={`flex items-center justify-between ${view === "list" ? "mt-1 sm:mt-4" : "mt-auto pt-4 border-t border-gray-100 dark:border-white/5"}`}>
+                    <span className="text-sm sm:text-lg font-black text-gray-900 dark:text-white">
                       {book.price_digital === 0 ? (
-                        <span className="text-green-600 dark:text-green-400 text-base md:text-lg">¡GRATIS!</span>
+                        <span className="text-green-600 dark:text-green-400">¡GRATIS!</span>
                       ) : (
-                        <>{book.price_digital} <span className="text-xs font-normal text-white/40">Créditos</span></>
+                        <>{book.price_digital} <span className="text-[10px] font-normal text-white/40">Créditos</span></>
                       )}
                     </span>
                     <Link
                       href={`/book/${book.id}`}
-                      className="text-sm font-medium bg-blue-600 dark:bg-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-600/30 text-white dark:text-blue-400 px-4 py-2 rounded-xl transition-all shadow-sm no-retro-override"
+                      className="text-[10px] sm:text-sm font-medium bg-blue-600 dark:bg-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-600/30 text-white dark:text-blue-400 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl transition-all shadow-sm no-retro-override"
                       style={{ '--dot-bg': '#2563eb' } as any}
                     >
                       {view === "list" ? "Ver detalles" : "Detalles"}
