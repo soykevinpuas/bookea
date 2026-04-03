@@ -897,7 +897,7 @@ export default function ReaderPage() {
 
       {/* 4.2.15 - Ventana principal de visualización del objeto renderizado (Viewport) */}
       <div 
-        className="flex-1 relative w-full h-full pt-20 pb-20"
+        className="flex-1 relative w-full h-full pt-10 sm:pt-12 md:pt-8 pb-4 md:pb-6"
         onClick={() => toggleControls()}
       >
         {isLoading && (
@@ -949,7 +949,15 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* 4.2.16.2 - Panel Lateral (Drawer) para Notas y Subrayados */}
+      {/* 4.2.16.2 - Backdrop para cerrar el panel al tocar fuera */}
+      {showNotesPanel && (
+        <div 
+          className="fixed inset-0 z-[65] bg-black/5 dark:bg-black/20 backdrop-blur-sm transition-opacity pointer-events-auto"
+          onClick={() => setShowNotesPanel(false)}
+        />
+      )}
+
+      {/* 4.2.16.3 - Panel Lateral (Drawer) para Notas y Subrayados */}
       <div 
         className={`fixed inset-y-0 right-0 z-[70] w-full max-w-sm bg-white dark:bg-[#111111] shadow-2xl border-l border-gray-200 dark:border-white/10 transform transition-transform duration-300 ease-in-out ${
           showNotesPanel ? 'translate-x-0' : 'translate-x-full'
