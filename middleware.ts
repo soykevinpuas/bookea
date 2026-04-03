@@ -1,23 +1,25 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  
+  // 1.1 - Respuesta base
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
 
-  // ... (rest of function)
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    // Si no hay variables (ej. durante el build), devolvemos la respuesta normal sin procesar auth
+  // 1.2 - Si faltan variables clave, dejar pasar (evita errores en build)
+  if (!supabaseUrl || !supabaseAnonKey) {
     return response
   }
 
-// 1.3 - Proxy: Configuración del cliente Supabase (SSR)
+  // 1.3 - Configuración del cliente Supabase (SSR)
   const supabase = createServerClient(
     supabaseUrl,
     supabaseAnonKey,
@@ -41,16 +43,20 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
-  const user = session?.user
+  // 1.4 - Obtención de sesión con manejo de errores para evitar 401 en assets estáticos
+  let user = null
+  try {
+    const { data } = await supabase.auth.getSession()
+    user = data.session?.user || null
+  } catch (error) {
+    console.error("Middleware Auth Error:", error)
+  }
 
-  const { pathname } = request.nextUrl
-
-  const protectedPaths = ['/dashboard', '/reader']
+  // 1.5 - Protección de rutas
+  const protectedPaths = ['/dashboard', '/reader', '/admin']
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
-  const isAuthPath = pathname === '/login' || pathname === '/register' || pathname === '/'
+  const isAuthPath = pathname === '/login' || pathname === '/register'
 
-// 1.4 - Proxy: Protección de rutas y redirección de Autenticación
   if (!user && isProtectedPath) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
@@ -62,8 +68,9 @@ export async function proxy(request: NextRequest) {
   return response
 }
 
+// 1.6 - Matcher optimizado: ignora archivos estáticos, api interna y archivos de sistema
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|manifest.json|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

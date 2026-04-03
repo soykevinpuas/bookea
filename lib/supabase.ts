@@ -5,14 +5,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  // Solo advertir en modo desarrollo para no ensuciar los logs de producción/build
-  if (process.env.NODE_ENV === 'development') {
-    console.warn("⚠️ ALERTA: Variables de Supabase ausentes. Usando placeholders.");
-  }
+  console.warn("⚠️ ALERTA: Variables de Supabase ausentes durante el build o ejecución. Usando placeholders.");
   
   // En el navegador, esto es crítico:
   if (typeof window !== 'undefined') {
-    console.error("❌ ERROR DE CONFIGURACIÓN: La aplicación se construyó sin las variables de Supabase.");
+    console.error("❌ ERROR DE CONFIGURACIÓN: La aplicación no tiene las variables de Supabase. Revisa tu archivo .env.local.");
   }
 }
 
