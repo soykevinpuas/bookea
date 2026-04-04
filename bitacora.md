@@ -53,9 +53,7 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ### Añadido
 - **Capa DAO (Highlights):** Creación del módulo central de conexiones `lib/highlights.ts` con soporte CRUD nativo (Crear, Obtener, Editar Color/Nota, Eliminar).
-- **Interacción Táctil/Cursor Inteligente:** 
-  - La app utiliza la selección nativa del OS para previsualizar texto. 
-  - Al soltar, una barra flotante de colores interactiva permite elegir un tono (o editar color si la marca ya existía).
+- **Validación de Contraste Estricto:** En el lector (`page.tsx`), se añadió una regla de negocio que **prohíbe** persistir selecciones donde el contraste de color del *highlight* elegido falle las pautas WCAG AA sobre el color de fondo de la página (ej. no se permite texto negro sobre fondo blanco seleccionado con un color de subrayado muy claro).
 - **Panel Drawer Lateral (Cuaderno):** Implementado un gestor visual de tarjetas accesible mediante la navegación superior. Cada tarjeta corresponde a un subrayado en la base de datos, permitiendo atar notas tipo "sticky" directamente vinculadas a contextos exactos del libro.
   
 ### Arreglos Críticos
@@ -65,6 +63,9 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - **Refactoring Visual y de Hidratación:** Eliminadas etiquetas `<a>` dobles (`Link > Link`) que derrumbaban la página dashboard a modo cascada, y aplicados prefijos estáticos `retro:` y `navy:` directamente a las notas renderizadas para prevenir palidezca de contrastes debidos a choques con temas next-themes globales.
 
 ---
+**RESUMEN DE ESTADO:** La funcionalidad completa de **Subrayados Textuales** (persistencia, edición de color, notas asociadas y limpieza de DOM) se considera **COMPLETA y POST-BUGFIXED** (Fase 2.1).
+
+---
 
 ## [2026-03-29] - Solución de Build Estratégico (Vercel)
 **Objetivo:** Permitir el despliegue del proyecto ignorando la falta de claves de Stripe durante la compilación.
@@ -72,32 +73,26 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 ### Arreglos Críticos
 - **Inicialización Segura de Stripe:** Modificado `lib/stripe.ts` para usar un placeholder en caso de ausencia de `STRIPE_SECRET_KEY`, evitando el crash `Neither apiKey nor config.authenticator provided` en Vercel.
 - **Documentación de Infraestructura:** Actualizado el Documento Maestro para marcar el módulo de pagos como "**Fase 2 (Listo para Integrar)**", permitiendo presentarlo como una funcionalidad planificada y estructurada.
-
 ---
 
 ## [2026-03-29] - Migración a Next.js 15 Proxy API
 **Objetivo:** Resolver advertencia de depreciación de "middleware" y adoptar la nueva convención "proxy".
-
 ### Cambios y Mejoras
 - **Renombramiento Crítico:** `middleware.ts` ha sido renombrado a `proxy.ts`.
 - **Refactorización de Función:** La función exportada `middleware` ahora se llama `proxy`, cumpliendo con los estándares actuales de Next.js 15+.
 - **Coherencia Técnica:** Actualización de comentarios y documentación interna para reflejar el cambio de terminología.
-
 ---
 
 ## [2026-03-29] - Estabilización del Lector y UX de Temas
 **Objetivo:** Refinar la legibilidad, accesibilidad y proteger la integridad visual de los temas especiales.
-
 ### Añadido
 - **Tipografía Expandida:** Integración de Google Fonts (Nunito, Lora, Libre Baskerville) y OpenDyslexic directamente en el Iframe del lector.
 - **Validación de Contrastes:** Sistema de seguridad que impide texto ilegible y restringe el modo Claro a texto puramente negro.
 - **Protección de Estilo (`no-retro-override`):** Implementación de una clase CSS global para prevenir que los temas Retro/Navy sobrescriban elementos críticos como botones y avatares.
-
 ### Cambios y Mejoras
 - **Diseño del Catálogo:** Rediseño de la vista de lista para que sea flexible (sin altura fija) y muestre más metadatos (autor y descripción extendida).
 - **Tematización Global:** Restaurado el ciclo completo de 4 temas (Día, Noche, Terminal, Marina) en el botón de cabecera.
 - **Modo Claro (Día):** Ajuste de paleta a grises suaves (`bg-gray-50`) para reducir la fatiga visual.
-
 ---
 
 ## [2026-03-23] - Unificación de Temas y Redirección Inteligente
@@ -112,7 +107,6 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - **Fix SafeZones en Lector**: Refactorización profunda de `ReaderPage` para inyectar márgenes de seguridad directamente en el contenido del libro (Iframe) y corregir el posicionamiento del contenedor del visor.
 - **Soporte de Safe Areas (Notch)**: Implementadas utilidades CSS (`pt-safe`, `pb-safe`, `px-safe`) y aplicadas en el Header y RootLayout.
 - **Refinamiento de UI**: Simplificación de etiquetas de navegación. "Ingresar" e "Iniciar Sesión" se consolidaron en el término más directo "**Iniciar**".
-
 ---
 
 ## [2026-03-22] - Sincronización de Sesión y UX Móvil
@@ -123,7 +117,6 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 ### Pruebas
 - Verificación completa del build local con `npm run build` (Exitoso).
 - Simulación visual de navegación con agente de explorador.
-
 ---
 
 ## [Fase 1] - Inicio y Construcción del MVP (Febrero - Marzo 2026)
@@ -145,3 +138,4 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - **PWA (Progressive Web App):** Configuración de `manifest.json`, inyección de Service Worker (`sw.js`) con `PwaListener`, e ícono generado de alta resolución para asegurar comportamiento de app nativa en iOS/Android.
 
 ---
+
