@@ -4,6 +4,28 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-03-B] - Comunidad Realtime y Sistema de Identidad Animal
+**Objetivo:** Fomentar la interacción social y la personalización estética mediante un sistema de reseñas en tiempo real y avatars predefinidos.
+
+### Añadido
+- **Módulo de Comunidad (Frontend & Backend):** 
+  - Nueva API/Hook `useReviews.ts` integrada con **Supabase Realtime**.
+  - Componentes `ReviewForm`, `ReviewList` y `StarRating` con animaciones de Framer Motion.
+  - Implementación de **Calificación de 1-5 estrellas** y comentarios públicos abiertos a todos los usuarios.
+- **Sistema de Identidad (Avatars):**
+  - Galería de **9 avatars animales únicos y neutros** (Panda, Gato, Koala, Pingüino, Zorro, Búho, Conejo, Mapache, Perezoso).
+  - Implementación de `Sprite Clipping` para carga eficiente de texturas (`animal_sprites.png`).
+  - Hook `useAvatars.ts` y componente `AvatarSelector` para personalización desde el perfil.
+- **Infraestructura:**
+  - Nueva migración `004_enable_realtime_reviews.sql` para habilitar el canal de datos instantáneo.
+
+### Cambios y Mejoras
+- **Página de Perfil Pro:** Rediseño completo para incluir la gestión de "Persona" (Nombre público + Avatar animal).
+- **Página de Libro:** Integración de la sección "Conversaciones" debajo de la sinopsis, vinculada al promedio dinámico de estrellas.
+- **Seguridad:** Ajuste de RLS para permitir lecturas públicas de reseñas pero inserciones/ediciones exclusivas del autor.
+
+---
+
 ## [2026-04-03] - Sistema de Créditos y Cobro Manual
 **Objetivo:** Transicionar de un modelo de cobro automático (Stripe) a un sistema manual basado en créditos por libro para facilitar la administración tributaria.
 

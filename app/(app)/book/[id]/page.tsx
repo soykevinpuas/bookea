@@ -11,7 +11,9 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Ticket, Zap, Shield, BookOpen, CreditCard, Loader2 } from "lucide-react";
+import { Ticket, Zap, Shield, BookOpen, CreditCard, Loader2, MessageSquare, Star, Sparkles } from "lucide-react";
+import ReviewForm from "@/components/community/ReviewForm";
+import ReviewList from "@/components/community/ReviewList";
 
 // 3.5.1 - Componente principal de la página de detalle
 export default function BookDetailPage() {
@@ -316,6 +318,48 @@ export default function BookDetailPage() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* 3.5.11 - Sección de Comunidad y Reseñas */}
+        <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
+          {/* Lado izquierdo: Formulario de reseña */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="sticky top-24">
+              <div className="flex items-center gap-2 mb-6">
+                 <MessageSquare className="w-5 h-5 text-blue-500" />
+                 <h2 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">
+                    Tu Opinión
+                 </h2>
+              </div>
+              <ReviewForm bookId={id} />
+              
+              <div className="mt-8 p-6 bg-gradient-to-br from-yellow-500/5 to-transparent border border-yellow-500/10 rounded-2xl">
+                 <div className="flex items-center gap-2 mb-2">
+                    <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                    <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400 uppercase tracking-widest">
+                       Comunidad Bookea
+                    </span>
+                 </div>
+                 <p className="text-xs text-gray-500 dark:text-white/40 leading-relaxed font-medium">
+                    Tus reseñas ayudan a otros usuarios a descubrir nuevas historias. ¡Seamos constructivos y apasionados!
+                 </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Lado derecho: Lista de reseñas */}
+          <div className="lg:col-span-2 space-y-8">
+             <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                   <Sparkles className="w-5 h-5 text-blue-500/50" />
+                   <h2 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">
+                      Conversaciones
+                   </h2>
+                </div>
+             </div>
+             
+             <ReviewList bookId={id} />
           </div>
         </div>
       </div>
