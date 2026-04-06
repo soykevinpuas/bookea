@@ -1,7 +1,7 @@
 # 📘 Proyecto Bookea: Plataforma SaaS de Lectura Premium
 
 ## 1. Visión General
-**Bookea** (anteriormente LeafRead) es una solución SaaS (Software as a Service) de vanguardia diseñada para ofrecer una experiencia de lectura digital de alta fidelidad. Combina la elegancia deldiseño editorial clásico con herramientas modernas de Inteligencia Artificial y una arquitectura técnica escalable.
+**Bookea** (anteriormente LeafRead) es una solución SaaS (Software as a Service) de vanguardia diseñada para ofrecer una experiencia de lectura digital de alta fidelidad. Combina la elegancia del diseño editorial clásico con herramientas modernas de Inteligencia Artificial y una arquitectura técnica escalable.
 
 ### Propuesta de Valor
 - **Lectura sin Distracciones:** Interfaz minimalista y personalizable.

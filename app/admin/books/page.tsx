@@ -51,8 +51,9 @@ const EMPTY_FORM: FormData = {
 };
 
 const CATEGORIES = [
-  "Clásico", "Novela", "Fantasía", "Ciencia Ficción", "Romance",
-  "Misterio", "Histórico", "Autoayuda", "Ensayo", "Poesía", "Otro"
+  "Ficción", "No Ficción", "Novela", "Clásicos", "Misterio y Suspenso",
+  "Fantasía", "Ciencia Ficción", "Romance", "Terror", "Autoayuda",
+  "Negocios y Finanzas", "Historia", "Biografías", "Cuentos", "Poesía", "Otros"
 ];
 
 export default function AdminBooksPage() {

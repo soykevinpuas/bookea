@@ -93,8 +93,20 @@ export function SearchFilters({
             <option value="all">Todas las categorías</option>
             <option value="Ficción">Ficción</option>
             <option value="No Ficción">No Ficción</option>
+            <option value="Novela">Novela</option>
             <option value="Clásicos">Clásicos</option>
+            <option value="Misterio y Suspenso">Misterio y Suspenso</option>
+            <option value="Fantasía">Fantasía</option>
+            <option value="Ciencia Ficción">Ciencia Ficción</option>
+            <option value="Romance">Romance</option>
+            <option value="Terror">Terror</option>
+            <option value="Autoayuda">Autoayuda</option>
+            <option value="Negocios y Finanzas">Negocios y Finanzas</option>
+            <option value="Historia">Historia</option>
+            <option value="Biografías">Biografías</option>
+            <option value="Cuentos">Cuentos</option>
             <option value="Poesía">Poesía</option>
+            <option value="Otros">Otros</option>
           </select>
 
           {/* 6.3.4.2.1 - Toggle de vista (Grid/List) */}
@@ -158,7 +170,12 @@ export function SearchFilters({
                   Categoría
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {["all", "Ficción", "No Ficción", "Clásicos", "Poesía"].map((cat) => (
+                  {[
+                    "all", "Ficción", "No Ficción", "Novela", "Clásicos", 
+                    "Misterio y Suspenso", "Fantasía", "Ciencia Ficción", 
+                    "Romance", "Terror", "Autoayuda", "Negocios y Finanzas", 
+                    "Historia", "Biografías", "Cuentos", "Poesía", "Otros"
+                  ].map((cat) => (
                     <button
                       key={cat}
                       onClick={() => {

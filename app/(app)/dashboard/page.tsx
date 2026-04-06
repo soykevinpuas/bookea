@@ -45,16 +45,12 @@ export default function DashboardPage() {
     return filtered;
   }, [allBooks, search, category]);
 
-  // 3.4.5 - Obtener categorías únicas de los libros del usuario
-  const categories = useMemo(() => {
-    if (!allBooks) return [];
-    const cats = new Set(
-      allBooks
-        .map(book => book.category)
-        .filter((cat): cat is string => typeof cat === "string" && cat.length > 0)
-    );
-    return Array.from(cats);
-  }, [allBooks]);
+  // 3.4.5 - Categorías disponibles para filtrado
+  const categories = [
+    "Ficción", "No Ficción", "Novela", "Clásicos", "Misterio y Suspenso",
+    "Fantasía", "Ciencia Ficción", "Romance", "Terror", "Autoayuda",
+    "Negocios y Finanzas", "Historia", "Biografías", "Cuentos", "Poesía", "Otros"
+  ];
 
   // 3.4.6 - Estado de carga inicial mientras se obtienen los datos del usuario
   if (isLoading) {

@@ -4,6 +4,19 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-05] - Expansión del Sistema de Categorías
+**Objetivo:** Ofrecer una mayor variedad de géneros literarios para facilitar el filtrado y la organización del catálogo.
+
+### Añadido
+- **Sincronización de Categorías:** Se han estandarizado y expandido las categorías en el **Panel de Admin**, **Catálogo** (Desktop/Móvil) y **Dashboard**.
+- **Nuevos Géneros:** Se añadieron 15+ categorías incluyendo: Ficción, No Ficción, Novela, Clásicos, Misterio y Suspenso, Fantasía, Ciencia Ficción, Romance, Terror, Autoayuda, Negocios y Finanzas, Historia, Biografías, Cuentos y Poesía.
+- **Categoría "Otros":** Añadida para clasificar libros que no encajan en los géneros predefinidos.
+
+### Cambios y Mejoras
+- **UI de Filtros:** Actualización de los modales y dropdowns de selección para soportar listados extensos sin comprometer la usabilidad.
+
+---
+
 ## [2026-04-03-B] - Comunidad Realtime y Sistema de Identidad Animal
 **Objetivo:** Fomentar la interacción social y la personalización estética mediante un sistema de reseñas en tiempo real y avatars predefinidos.
 
