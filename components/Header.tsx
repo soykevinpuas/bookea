@@ -6,8 +6,8 @@ import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState, useMemo } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserMenu } from "./UserMenu";
-import { useCredits } from "@/hooks/useCredits";
-import { Ticket } from "lucide-react";
+import { useSubscription } from "@/hooks/useSubscription";
+import { Zap } from "lucide-react";
 
 // ============================================
 // 6.1 - Header: Barra de navegación global de la aplicación
@@ -27,8 +27,8 @@ export function Header({ initialUser = null }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // 6.1.1.1 - Obtención de créditos
-  const { credits } = useCredits(user?.id);
+  // 6.1.1.1 - Obtención del estado de suscripción
+  const { data: subscription } = useSubscription(user?.id);
 
   // 6.1.2a - Cuando el RSC del layout se re-ejecuta (por router.refresh()),
   // el prop `initialUser` cambia — este efecto lo sincroniza al state local.
@@ -87,10 +87,14 @@ export function Header({ initialUser = null }: HeaderProps) {
               <div className="flex items-center gap-3">
                 <Link 
                   href="/subscribe"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-500/20 transition-all"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all text-xs font-bold ${
+                    subscription?.isActive 
+                    ? (subscription?.role === 'admin' ? 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400' : 'bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400')
+                    : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
+                  }`}
                 >
-                  <Ticket className="w-3 h-3 fill-current" />
-                  {credits ?? 0} { (credits === 1) ? 'Crédito' : 'Créditos' }
+                  <Zap className={`w-3 h-3 ${subscription?.isActive ? 'fill-current' : ''}`} />
+                  {subscription?.role === 'admin' ? 'Admin Premium' : (subscription?.isActive ? 'Plan Premium' : 'Cambiar a Premium')}
                 </Link>
                 <UserMenu email={user.email} />
               </div>

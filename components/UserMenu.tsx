@@ -142,7 +142,7 @@ export function UserMenu({ email }: UserMenuProps) {
                 className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-blue-600 dark:text-blue-400 retro:text-[#3fb950] rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 retro:hover:bg-[#3fb950]/10 cursor-pointer outline-none transition-colors"
               >
                 <Zap className="w-4 h-4 fill-current" />
-                Obtener Créditos
+                Activar Premium
               </Link>
             </DropdownMenu.Item>
           )}

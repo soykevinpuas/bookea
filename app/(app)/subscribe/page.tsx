@@ -16,12 +16,12 @@ export default function SubscribePage() {
   };
 
   const benefits = [
-    "5 créditos mensuales para canjear por libros",
-    "Cada crédito activa un libro por 30 días",
-    "Acceso total al catálogo premium",
+    "Acceso ilimitado a todo el catálogo digital",
+    "Lectura offline en dispositivos compatibles",
     "Lector avanzado con notas y subrayados",
-    "Sincronización en la nube",
+    "Sincronización en la nube de tu progreso",
     "Sin publicidad ni interrupciones",
+    "Soporte prioritario 24/7",
   ];
 
   return (
@@ -33,16 +33,16 @@ export default function SubscribePage() {
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-950/50 border border-blue-800/50 text-blue-300 text-sm font-medium mb-6 backdrop-blur-sm">
             <Sparkles className="w-4 h-4" />
-            <span>Plan de Créditos Premium</span>
+            <span>Plan Premium Ilimitado</span>
           </div>
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-6">
-            Obtén tus <br className="hidden sm:block" />
+            Desbloquea todo el <br className="hidden sm:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
-              Créditos de Lectura
+              Universo Bookea
             </span>
           </h1>
           <p className="text-lg text-white/50 max-w-xl mx-auto">
-            Suscríbete de forma manual y recibe créditos para desbloquear tus libros favoritos cada mes.
+            Suscríbete ahora para obtener acceso ilimitado a todos nuestros libros premium.
           </p>
         </div>
 
@@ -64,10 +64,10 @@ export default function SubscribePage() {
               <div className="mb-8">
                 <div className="flex items-baseline gap-1">
                   <span className="text-5xl font-black">$99</span>
-                  <span className="text-white/40 font-medium">MXN / 5 Créditos</span>
+                  <span className="text-white/40 font-medium">MXN / mes</span>
                 </div>
                 <p className="text-xs text-blue-400/60 mt-2 font-medium uppercase tracking-wider">
-                  1 Crédito = 1 Libro por 30 Días
+                  Acceso Total e Ilimitado
                 </p>
               </div>
 
@@ -150,7 +150,7 @@ export default function SubscribePage() {
             <div>
               <h3 className="text-lg font-bold mb-2">Lectura sin límites</h3>
               <p className="text-sm text-white/40 leading-relaxed">
-                Usa tus créditos para desbloquear cualquier libro del catálogo premium por un periodo de 30 días.
+                Olvídate de los créditos. Con el plan Premium puedes abrir cualquier libro del catálogo en cualquier momento.
               </p>
             </div>
           </div>
@@ -159,9 +159,9 @@ export default function SubscribePage() {
               <Shield className="w-6 h-6 text-purple-400" />
             </div>
             <div>
-              <h3 className="text-lg font-bold mb-2">Activación Humana</h3>
+              <h3 className="text-lg font-bold mb-2">Modo Offline</h3>
               <p className="text-sm text-white/40 leading-relaxed">
-                Tus pagos son procesados directamente por nosotros. Una vez validado, verás tus créditos reflejados en tu perfil.
+                Descarga tus libros favoritos y léelos sin conexión a internet desde el lector avanzado.
               </p>
             </div>
           </div>

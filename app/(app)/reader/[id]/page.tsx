@@ -15,6 +15,27 @@ import { toast } from "sonner";
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 export default function ReaderPage() {
+  // 4.1.9 - Bloqueo de orientación vertical (Portrait)
+  useEffect(() => {
+    const lockPortrait = async () => {
+      try {
+        if ('screen' in window && 'orientation' in window.screen && (window.screen.orientation as any).lock) {
+          await (window.screen.orientation as any).lock('portrait');
+        }
+      } catch (err) {
+        console.warn("Screen orientation lock failed:", err);
+      }
+    };
+    lockPortrait();
+    return () => {
+      try {
+        if ('screen' in window && 'orientation' in window.screen && (window.screen.orientation as any).unlock) {
+          (window.screen.orientation as any).unlock();
+        }
+      } catch (err) {}
+    };
+  }, []);
+
   const params = useParams();
   const router = useRouter();
   const bookId = params.id as string;

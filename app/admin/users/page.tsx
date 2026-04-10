@@ -11,9 +11,7 @@ interface AppUser {
   email: string;
   role: "free" | "subscriber" | "admin";
   created_at: string;
-  subscription_credits?: {
-    credits_remaining: number;
-  }[];
+  subscription_ends_at: string | null;
 }
 
 const ROLE_STYLES: Record<AppUser["role"], string> = {
@@ -38,47 +36,29 @@ export default function AdminUsersPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("users")
-        .select("id, email, role, created_at, subscription_credits(credits_remaining)")
+        .select("id, email, role, created_at, subscription_ends_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const updateCredits = useMutation({
-    mutationFn: async ({ userId, credits, email }: { userId: string; credits: number; email: string }) => {
-      const toastId = toast.loading(`Guardando créditos para ${email}...`);
+  const updateSubscriptionDate = useMutation({
+    mutationFn: async ({ userId, endsAt, email }: { userId: string; endsAt: string | null; email: string }) => {
+      const toastId = toast.loading(`Actualizando suscripción de ${email}...`);
       
       try {
-        // Primero verificar si existe la fila
-        const { data: existing } = await supabase
-          .from("subscription_credits")
-          .select("id")
-          .eq("user_id", userId)
-          .maybeSingle();
+        const { error } = await supabase
+          .from("users")
+          .update({ subscription_ends_at: endsAt })
+          .eq("id", userId);
 
-        let result;
-        if (existing) {
-          result = await supabase
-            .from("subscription_credits")
-            .update({ credits_remaining: credits })
-            .eq("user_id", userId);
-        } else {
-          result = await supabase
-            .from("subscription_credits")
-            .insert({ 
-              user_id: userId, 
-              credits_remaining: credits, 
-              cycle_start: new Date().toISOString().split('T')[0] // Formato YYYY-MM-DD
-            });
-        }
-
-        if (result.error) throw result.error;
+        if (error) throw error;
         
-        toast.success(`Créditos actualizados con éxito para ${email}`, { id: toastId });
+        toast.success(`Suscripción actualizada para ${email}`, { id: toastId });
         return { success: true };
       } catch (err: any) {
-        toast.error(`Error al guardar: ${err.message || "Permiso denegado por RLS"}`, { id: toastId });
+        toast.error(`Error al guardar: ${err.message}`, { id: toastId });
         throw err;
       }
     },
@@ -130,7 +110,7 @@ export default function AdminUsersPage() {
               <tr className="border-b border-white/8">
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Email</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Rol actual</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40">Créditos</th>
+                <th className="text-left px-5 py-3.5 font-medium text-white/40">Fin Suscripción</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden sm:table-cell">Registro</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Acciones</th>
               </tr>
@@ -157,24 +137,25 @@ export default function AdminUsersPage() {
                     <div className="flex items-center gap-2">
                        <div className="relative">
                          <input 
-                           type="number"
-                           defaultValue={user.subscription_credits?.[0]?.credits_remaining ?? 0}
-                           onBlur={(e) => {
-                             const val = parseInt(e.target.value);
-                             if (!isNaN(val)) {
-                               updateCredits.mutate({ userId: user.id, credits: val, email: user.email });
-                             }
+                           type="date"
+                           defaultValue={user.subscription_ends_at ? user.subscription_ends_at.split('T')[0] : ""}
+                           onChange={(e) => {
+                             const val = e.target.value;
+                             updateSubscriptionDate.mutate({ 
+                               userId: user.id, 
+                               endsAt: val ? new Date(val).toISOString() : null, 
+                               email: user.email 
+                             });
                            }}
-                           disabled={updateCredits.isPending && updateCredits.variables?.userId === user.id}
-                           className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-center focus:border-blue-500/50 outline-none disabled:opacity-50"
+                           disabled={updateSubscriptionDate.isPending && updateSubscriptionDate.variables?.userId === user.id}
+                           className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs outline-none focus:border-blue-500/50 disabled:opacity-50"
                          />
-                         {updateCredits.isPending && updateCredits.variables?.userId === user.id && (
+                         {updateSubscriptionDate.isPending && updateSubscriptionDate.variables?.userId === user.id && (
                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
                              <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
                            </div>
                          )}
                        </div>
-                       <span className="text-[10px] text-white/30 uppercase font-bold">Créditos</span>
                     </div>
                   </td>
                   <td className="px-5 py-4 text-white/40 text-xs hidden sm:table-cell">
@@ -196,7 +177,7 @@ export default function AdminUsersPage() {
                       className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/70 focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer"
                     >
                       <option value="free" className="bg-neutral-900 text-white">Free</option>
-                      <option value="subscriber" className="bg-neutral-900 text-white">Suscriptor (Créditos)</option>
+                      <option value="subscriber" className="bg-neutral-900 text-white">Suscriptor Premium</option>
                       <option value="admin" className="bg-neutral-900 text-white">Admin</option>
                     </select>
                   </td>

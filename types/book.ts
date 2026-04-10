@@ -11,5 +11,6 @@ export interface Book {
   price_bundle: number | null;
   stock_physical: number;
   is_active: boolean;
+  is_premium: boolean;
   created_at: string;
 }

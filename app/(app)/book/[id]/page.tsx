@@ -6,12 +6,12 @@
 
 import { useBook, useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
-import { useCredits } from "@/hooks/useCredits";
+import { useSubscription } from "@/hooks/useSubscription";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Ticket, Zap, Shield, BookOpen, CreditCard, Loader2, MessageSquare, Star, Sparkles } from "lucide-react";
+import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2 } from "lucide-react";
 import ReviewForm from "@/components/community/ReviewForm";
 import ReviewList from "@/components/community/ReviewList";
 
@@ -40,97 +40,51 @@ export default function BookDetailPage() {
   const { data: book, isLoading, error } = useBook(id);
   const { data: userBooks, refetch } = useUserBooks(userId);
 
-  // 3.5.5.1 - Obtención de créditos del usuario
-  const { credits, redeemCredit } = useCredits(userId);
+  // 3.5.5.1 - Obtención del estado de suscripción del usuario
+  const { data: subscription } = useSubscription(userId);
 
-  // 3.5.6 - Determinación de si el usuario ya tiene acceso al libro
-  const hasAccess = userBooks?.some((b) => b.id === id);
+  // 3.5.6 - Determinación del tipo de acceso
+  const isPremiumBook = book?.is_premium !== false; // Por defecto es premium si no se especifica
+  const hasPremiumAccess = subscription?.isActive;
+  const canRead = !isPremiumBook || hasPremiumAccess;
 
-  // 3.5.7 - Handler para iniciar proceso de compra con Stripe Checkout
-  const handleBuy = async (type: string) => {
-    setLoading(type);
-    
-    try {
-      const response = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, bookId: id }),
+  // 3.5.6.1 - Estado para descarga offline
+  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  useEffect(() => {
+    // Verificar si el libro está en el caché al cargar
+    if (book?.epub_url) {
+      const url = book.epub_url;
+      caches.open('bookea-books').then(cache => {
+        cache.match(url).then(match => {
+          if (match) setIsDownloaded(true);
+        });
       });
-
-      const data = await response.json();
-
-      if (data.url) {
-        // Redirección a Stripe Checkout
-        window.location.href = data.url;
-      } else if (data.error) {
-        toast.error(data.error);
-      }
-    } catch {
-      toast.error('Error al procesar la compra');
-    } finally {
-      setLoading(null);
     }
-  };
+  }, [book?.epub_url]);
 
-  // 3.5.8 - Handler para reclamar un libro gratuito (libros con price_digital = 0)
-  const handleClaimFree = async () => {
-    // Verificación de autenticación antes de reclamar
-    if (!userId) {
-      toast.error("Debes iniciar sesión para añadir libros gratis");
-      router.push("/login?message=Debes iniciar sesión para añadir libros gratis");
+  // 3.5.7 - Los handlers de compra individual (handleBuy, handleClaimFree) han sido deprecados
+  // en favor del modelo de suscripción mensual gestionado en /subscribe
+
+  // 3.5.8.1 - Handler para descarga offline
+  const handleDownload = async () => {
+    if (!book?.epub_url) {
+      toast.error("El libro no tiene un archivo digital disponible");
       return;
     }
     
-    setLoading('claim_free');
-    
+    setIsDownloading(true);
     try {
-      const response = await fetch('/api/books/claim-free', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookId: id }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        toast.success("¡Libro añadido a tu biblioteca!");
-        refetch();
-      } else if (data.alreadyClaimed) {
-        toast.info("Ya tienes este libro en tu biblioteca");
-        refetch();
-      } else if (data.error) {
-        toast.error(data.error);
-      }
-    } catch {
-      toast.error('Error al añadir el libro a tu biblioteca');
+      const cache = await caches.open('bookea-books');
+      await cache.add(book.epub_url as string);
+      setIsDownloaded(true);
+      toast.success("¡Libro descargado para lectura offline!");
+    } catch (err) {
+      console.error("Download error:", err);
+      toast.error("Error al descargar el libro para modo offline");
     } finally {
-      setLoading(null);
-    }
-  };
-
-  // 3.5.8.1 - Handler para canjear un crédito por el libro
-  const handleRedeemCredit = async () => {
-    if (!userId) {
-      toast.error("Debes iniciar sesión para canjear créditos");
-      router.push("/login");
-      return;
-    }
-
-    if ((credits ?? 0) <= 0) {
-      toast.error("No tienes créditos disponibles");
-      router.push("/subscribe");
-      return;
-    }
-
-    setLoading('redeem_credit');
-    try {
-      await redeemCredit.mutateAsync(id);
-      toast.success("¡Libro desbloqueado con éxito!");
-      refetch();
-    } catch (err: any) {
-      toast.error(err.message || "Error al canjear crédito");
-    } finally {
-      setLoading(null);
+      setIsDownloading(false);
     }
   };
 
@@ -217,77 +171,72 @@ export default function BookDetailPage() {
               {/* 3.5.10.2.3 - Opciones de compra y acceso */}
               <div className="space-y-4 max-w-xl">
                 {/* 3.5.10.2.3.1 - Estado: Usuario tiene acceso al libro */}
-                {hasAccess && book.epub_url && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-xl gap-4">
-                    <div>
-                      <span className="block text-sm font-medium text-green-800 dark:text-green-400 mb-1">
-                        ✓ Libro en biblioteca
-                      </span>
-                      <span className="text-xl font-bold text-green-900 dark:text-green-300">
-                        Listo para leer
-                      </span>
+                {canRead && book.epub_url && (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-xl gap-4">
+                      <div>
+                        <span className="block text-sm font-medium text-green-800 dark:text-green-400 mb-1">
+                          {isPremiumBook ? '✓ Acceso Premium Activo' : '✓ Libro Gratuito'}
+                        </span>
+                        <span className="text-xl font-bold text-green-900 dark:text-green-300">
+                          Listo para leer
+                        </span>
+                      </div>
+                      <Link
+                        href={`/reader/${book.id}`}
+                        className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow-md text-center"
+                      >
+                        Abrir Lector
+                      </Link>
                     </div>
-                    <Link
-                      href={`/reader/${book.id}`}
-                      className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow-md text-center"
+
+                    {/* Opción de descarga offline si tiene acceso */}
+                    <button
+                      onClick={handleDownload}
+                      disabled={isDownloading || isDownloaded}
+                      className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl border transition-all ${
+                        isDownloaded 
+                        ? 'bg-blue-500/5 border-blue-500/20 text-blue-500 cursor-default' 
+                        : 'border-white/10 hover:bg-white/5 text-gray-400'
+                      }`}
                     >
-                      Abrir Lector
-                    </Link>
+                      {isDownloading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : isDownloaded ? (
+                        <CheckCircle2 className="w-5 h-5" />
+                      ) : (
+                        <Download className="w-5 h-5" />
+                      )}
+                      {isDownloading ? 'Descargando...' : isDownloaded ? 'Disponible Offline' : 'Descargar para leer sin internet'}
+                    </button>
                   </div>
                 )}
 
-                {/* 3.5.10.2.3.2 - Estado: Usuario NO tiene acceso - Mostrar opciones de compra */}
-                {!hasAccess && (
+                {/* 3.5.10.2.3.2 - Estado: Usuario NO tiene acceso Premium */}
+                {!canRead && (
                   <div className="space-y-4">
-                    {/* Opción con Créditos (Recomendada) */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 rounded-2xl gap-4 group">
                       <div className="flex items-center gap-4">
                         <div className="p-3 bg-blue-500/20 rounded-xl text-blue-500">
-                           <Ticket className="w-6 h-6" />
+                           <Zap className="w-6 h-6 fill-current" />
                         </div>
                         <div>
                           <span className="block text-xs font-bold text-blue-500 uppercase tracking-widest mb-0.5">
-                            Plan Premium
+                            Contenido Premium
                           </span>
                           <span className="text-2xl font-black text-gray-900 dark:text-white">
-                            1 Crédito
+                            $99 MXN / mes
                           </span>
-                          <p className="text-xs text-white/40 mt-1">Acceso por 30 días</p>
+                          <p className="text-xs text-white/40 mt-1">Acceso ilimitado a todos los libros</p>
                         </div>
                       </div>
                       
-                      <button 
-                        onClick={handleRedeemCredit}
-                        disabled={loading === 'redeem_credit'}
-                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                      <Link 
+                        href="/subscribe"
+                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
                       >
-                        {loading === 'redeem_credit' ? <Loader2 className="w-4 h-4 animate-spin"/> : <Zap className="w-4 h-4 fill-current"/>}
-                        {loading === 'redeem_credit' ? 'Cajeando...' : 'Canjear 1 Crédito'}
-                      </button>
-                    </div>
-
-                    {/* Opción Permanente con Monedas/Dinero (Opcional - Ahora Créditos) */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl gap-4">
-                      <div>
-                        <span className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
-                          Acceso Digital
-                        </span>
-                        <span className="text-2xl font-black text-gray-900 dark:text-white">
-                           {book.price_digital === 0 ? "¡GRATIS!" : `${book.price_digital} Créditos`}
-                        </span>
-                      </div>
-                      
-                      {book.price_digital === 0 ? (
-                        <button 
-                          onClick={handleClaimFree}
-                          disabled={loading === 'claim_free'}
-                          className="px-8 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-500 transition-all disabled:opacity-50"
-                        >
-                          {loading === 'claim_free' ? 'Añadiendo...' : 'Añadir Gratis'}
-                        </button>
-                      ) : (
-                         <div className="text-xs text-white/30 italic">Pagar vía manual en perfil</div>
-                      )}
+                        Activar Premium
+                      </Link>
                     </div>
                   </div>
                 )}

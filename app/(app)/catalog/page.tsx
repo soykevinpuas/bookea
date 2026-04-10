@@ -100,18 +100,14 @@ export default async function CatalogPage({ searchParams }: PageProps) {
                     por {book.author}
                   </p>
 
-                  {view === "list" && book.description && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-3 hidden sm:block">
-                      {book.description}
-                    </p>
-                  )}
+                  {/* Descripción removida para limpieza visual en modo lista */}
                   
                   <div className={`flex items-center justify-between ${view === "list" ? "mt-1 sm:mt-4" : "mt-auto pt-4 border-t border-gray-100 dark:border-white/5"}`}>
-                    <span className="text-sm sm:text-lg font-black text-gray-900 dark:text-white">
-                      {book.price_digital === 0 ? (
-                        <span className="text-green-600 dark:text-green-400">¡GRATIS!</span>
+                    <span className="text-sm sm:text-lg font-black">
+                      {book.is_premium === false || book.price_digital === 0 ? (
+                        <span className="text-green-600 dark:text-green-400">Gratis</span>
                       ) : (
-                        <>{book.price_digital} <span className="text-[10px] font-normal text-white/40">Créditos</span></>
+                        <span className="text-blue-600 dark:text-blue-400">Premium</span>
                       )}
                     </span>
                     <Link

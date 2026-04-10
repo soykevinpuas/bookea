@@ -4,6 +4,16 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-08] - Formalización del Protocolo de Auditoría de Código
+**Objetivo:** Establecer un sistema riguroso de auditoría asistida por IA para mantener la integridad técnica y de seguridad del proyecto.
+
+### Añadido
+- **Estrategia Tiered AI Audit:** Definición de niveles de auditoría (FAST para UI/Lógica simple, PLAN para Seguridad/Core).
+- **Centro de Control de Integridad:** Creación del archivo `docs/AUDIT_LOG.md` para el seguimiento histórico de revisiones.
+- **Reglas de Auditoría:** Actualización de `rules.md` (Regla 14) para normalizar el uso de IA en la validación de código.
+
+---
+
 ## [2026-04-05] - Expansión del Sistema de Categorías
 **Objetivo:** Ofrecer una mayor variedad de géneros literarios para facilitar el filtrado y la organización del catálogo.
 
@@ -149,6 +159,6 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - **Sistematización de Documentación:** Implementación del formato global de índice de comentarios (`1.1.1`, `3.2.1`, etc.) en todo el código base guiado por `rules.md`.
 - **Limpieza de Arquitectura:** Eliminación completa de `MOCK_BOOKS` (Ej. El Principito) y "bypasses" de entorno local. Todo el sistema ahora opera estrictamente consultando o devolviendo errores desde Supabase.
 - **PWA (Progressive Web App):** Configuración de `manifest.json`, inyección de Service Worker (`sw.js`) con `PwaListener`, e ícono generado de alta resolución para asegurar comportamiento de app nativa en iOS/Android.
+- **Integridad de Código (Auditoría Continua):** Establecimiento del protocolo de revisión por IA desde la concepción del proyecto para garantizar que cada componente sea seguro (RLS) y fiel a los estándares de documentación jerárquica.
 
 ---
-

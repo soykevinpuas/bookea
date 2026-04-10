@@ -204,5 +204,16 @@ Es obligatorio mantener actualizado el archivo `bitacora.md` en la raíz del pro
 
 ---
 
-*Última actualización: Marzo 2026*
+## 14. AUDITORÍA DE CÓDIGO E INTEGRIDAD
+
+Para garantizar la seguridad y estabilidad desde el inicio, el proyecto sigue un protocolo de auditoría asistida por IA:
+
+- **Nivel 1 (Estética y Lógica Simple):** Se audita en **Modo FAST** con **Gemini Flash**. Foco en limpieza, convenciones de nombres y documentación jerárquica.
+- **Nivel 2 (Seguridad y Core):** Se audita en **Modo PLAN** con **modelos Pro o Flash (según complejidad)**. Foco en RLS, Auth, Stripe y manejo de datos sensibles.
+- **Registro Obligatorio:** Toda auditoría debe quedar plasmada en `docs/AUDIT_LOG.md`.
+- **Cuidado de Cuotas:** Auditar preferentemente `diffs` de código en lugar de archivos completos para optimizar tokens.
+
+---
+
+*Última actualización: Abril 2026*
 *Proyecto: Bookea — bookea.mx*

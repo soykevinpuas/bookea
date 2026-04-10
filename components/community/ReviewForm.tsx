@@ -138,7 +138,7 @@ export default function ReviewForm({ bookId }: ReviewFormProps) {
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      Publicar Reseña
+                      {reviews.some(r => r.user_id === userId) ? "Actualizar Reseña" : "Publicar Reseña"}
                     </>
                   )}
                 </button>

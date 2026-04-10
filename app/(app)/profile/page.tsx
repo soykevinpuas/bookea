@@ -9,6 +9,7 @@ import { useUserId } from "@/hooks/useUser";
 import { useProfile } from "@/hooks/useAvatars";
 import AvatarSelector from "@/components/profile/AvatarSelector";
 import { ANIMAL_AVATARS, getAvatarStyle } from "@/lib/avatars";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export default function ProfilePage() {
   const { userId, isLoading: authLoading } = useUserId();
@@ -20,6 +21,7 @@ export default function ProfilePage() {
     updateName,
     isUpdatingName 
   } = useProfile(userId);
+  const { data: subscription, isLoading: subLoading } = useSubscription(userId);
 
   const [dbUser, setDbUser] = useState<any>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -65,7 +67,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (authLoading || (profileLoading && !profile)) {
+  if (authLoading || (profileLoading && !profile) || subLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] retro:bg-[#0d1117]">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500/50" />
@@ -85,7 +87,7 @@ export default function ProfilePage() {
   };
 
   // 3.3.2 - Determinar si el usuario tiene suscripción activa
-  const isSubscriber = dbUser?.role === 'subscriber';
+  const isSubscriber = subscription?.isActive;
 
   // 3.3.3 - Renderizado del perfil del usuario
   return (
@@ -166,7 +168,7 @@ export default function ProfilePage() {
                   ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' 
                   : 'bg-white/5 text-white/40 border border-white/10'
               }`}>
-                {isSubscriber ? 'Plan Premium' : 'Nivel Gratis'}
+                {subscription?.role === 'admin' ? 'Admin / VIP' : (isSubscriber ? 'Plan Premium' : 'Nivel Gratis')}
               </div>
             </div>
 
@@ -213,13 +215,13 @@ export default function ProfilePage() {
                 <div className="space-y-6">
                   <div className="p-5 bg-gradient-to-br from-blue-600/10 to-transparent border border-blue-500/20 rounded-xl">
                     <p className="text-sm leading-relaxed mb-4">
-                      Actualmente estás en el nivel gratuito. Actualiza a Premium para obtener <span className="text-blue-400 font-bold">5 libros mensuales</span> y más beneficios exclusivos.
+                      Actualmente estás en el nivel gratuito. Actualiza a Premium para obtener acceso ilimitado a toda nuestra biblioteca digital y lectura offline.
                     </p>
                     <Link 
                       href="/subscribe"
                       className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-sm transition-all hover:scale-105"
                     >
-                      <Zap className="w-4 h-4" /> Ver Planes Premium
+                      <Zap className="w-4 h-4" /> Activar Premium
                     </Link>
                   </div>
                 </div>
@@ -228,11 +230,15 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-white/5 rounded-xl border border-white/10">
                       <p className="text-xs text-white/30 uppercase tracking-wider mb-1">Estado</p>
-                      <p className="text-lg font-bold text-green-400">Activo</p>
+                      <p className={`text-lg font-bold ${subscription?.role === 'admin' ? 'text-purple-400' : 'text-green-400'}`}>
+                        {subscription?.role === 'admin' ? 'Acceso VIP Admin' : 'Premium Activo'}
+                      </p>
                     </div>
                     <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                      <p className="text-xs text-white/30 uppercase tracking-wider mb-1">Ciclo Mensual</p>
-                      <p className="text-lg font-bold">5/5 Créditos</p>
+                      <p className="text-xs text-white/30 uppercase tracking-wider mb-1">Expiración</p>
+                      <p className="text-lg font-bold">
+                        {subscription?.role === 'admin' ? 'Acceso Vitalicio' : `${subscription?.daysRemaining ?? 0} días restantes`}
+                      </p>
                     </div>
                   </div>
 

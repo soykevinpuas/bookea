@@ -1,29 +1,28 @@
 import { createClientClient } from "@/lib/supabase";
 
-/**
- * 6.5 - Reseñas: Lógica de acceso a datos y suscripciones en tiempo real
- */
-
 export interface Review {
   id: string;
-  user_id: string;
   book_id: string;
+  user_id: string;
   rating: number;
   content: string;
   created_at: string;
-  profiles: {
-    name: string | null;
-    avatar_url: string | null;
+  profiles?: {
+    name: string;
+    avatar_url: string;
   };
 }
 
+// 7.1 - Obtener todas las reseñas de un libro específico
 export async function getBookReviews(bookId: string): Promise<Review[]> {
   const supabase = createClientClient();
+  
+  // Realizamos la consulta simplificada para evitar errores de relación ambiguos
   const { data, error } = await supabase
     .from("reviews")
     .select(`
       *,
-      profiles:user_id (
+      profiles (
         name,
         avatar_url
       )
@@ -32,42 +31,55 @@ export async function getBookReviews(bookId: string): Promise<Review[]> {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching reviews:", error);
+    console.error("Error al obtener reseñas:", error.message);
     return [];
   }
-  return data as any as Review[];
+  
+  return data as Review[];
 }
 
+// 7.2 - Guardar o actualizar una reseña de usuario
 export async function saveReview(
   bookId: string,
   userId: string,
   rating: number,
   content: string
-): Promise<boolean> {
+): Promise<Review | null> {
   const supabase = createClientClient();
   
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("reviews")
     .upsert(
       {
-        book_id: bookId,
         user_id: userId,
+        book_id: bookId,
         rating,
         content,
-        created_at: new Date().toISOString(),
       },
       { onConflict: "user_id,book_id" }
-    );
+    )
+    .select()
+    .single();
 
   if (error) {
     console.error("Error saving review:", error);
+    return null;
+  }
+
+  return data as Review;
+}
+
+// 7.3 - Eliminar una reseña propia
+export async function deleteReview(reviewId: string): Promise<boolean> {
+  const supabase = createClientClient();
+  const { error } = await supabase
+    .from("reviews")
+    .delete()
+    .eq("id", reviewId);
+
+  if (error) {
+    console.error("Error deleting review:", error);
     return false;
   }
   return true;
-}
-
-export async function deleteReview(reviewId: string): Promise<boolean> {
-  const supabase = createClientClient();
-  const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
-  return !error;
 }

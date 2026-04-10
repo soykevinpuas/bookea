@@ -25,13 +25,14 @@ async function getAdminStats() {
   const revenue = ordersRes.data?.reduce((sum, o) => sum + (Number(o.total) || 0), 0) ?? 0;
 
   const totalUsers = usersRes.count ?? 0;
+  const activeSubscribers = usersRes.data?.filter((u) => u.role === 'subscriber').length ?? 0;
 
-  return { totalBooks, activeBooks, totalOrders, pendingOrders, revenue, totalUsers };
+  return { totalBooks, activeBooks, totalOrders, pendingOrders, revenue, totalUsers, activeSubscribers };
 }
 
 // 5.2 - AdminDashboard: Vista principal del panel de control que muestra estadísticas globales del proyecto
 export default async function AdminDashboard() {
-  let stats = { totalBooks: 0, activeBooks: 0, totalOrders: 0, pendingOrders: 0, revenue: 0, totalUsers: 0 };
+  let stats = { totalBooks: 0, activeBooks: 0, totalOrders: 0, pendingOrders: 0, revenue: 0, totalUsers: 0, activeSubscribers: 0 };
 
   try {
     stats = await getAdminStats();
@@ -59,7 +60,7 @@ export default async function AdminDashboard() {
     {
       label: "Usuarios registrados",
       value: stats.totalUsers,
-      sub: "en total",
+      sub: `${stats.activeSubscribers} suscriptores`,
       icon: Users,
       href: "/admin/users",
       color: "green",

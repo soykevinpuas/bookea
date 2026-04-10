@@ -30,6 +30,7 @@ interface Book {
   price_bundle: number | null;
   stock_physical: number;
   is_active: boolean;
+  is_premium: boolean;
   created_at: string;
 }
 
@@ -48,6 +49,7 @@ const EMPTY_FORM: FormData = {
   price_bundle: null,
   stock_physical: 0,
   is_active: true,
+  is_premium: true,
 };
 
 const CATEGORIES = [
@@ -159,6 +161,7 @@ export default function AdminBooksPage() {
         price_bundle: editingBook.price_bundle ? Number(editingBook.price_bundle) : null,
         stock_physical: Number(editingBook.stock_physical),
         is_active: editingBook.is_active,
+        is_premium: editingBook.is_premium,
       };
 
       if (editingBook.id) {
@@ -220,7 +223,7 @@ export default function AdminBooksPage() {
               <tr className="border-b border-white/8">
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Libro</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden sm:table-cell">Categoría</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40">Créditos</th>
+                <th className="text-left px-5 py-3.5 font-medium text-white/40">Contenido</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">Físico</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">Stock</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Estado</th>
@@ -247,10 +250,10 @@ export default function AdminBooksPage() {
                     {book.category ?? "—"}
                   </td>
                   <td className="px-5 py-4">
-                    {book.price_digital === 0 ? (
-                      <span className="text-green-400 font-medium">GRATIS</span>
+                    {book.is_premium ? (
+                      <span className="text-blue-400 font-medium text-xs border border-blue-400/20 px-2 py-0.5 rounded-full bg-blue-400/5">PREMIUM</span>
                     ) : (
-                      <span className="text-white">{book.price_digital}</span>
+                      <span className="text-green-400 font-medium text-xs border border-green-400/20 px-2 py-0.5 rounded-full bg-green-400/5">GRATIS</span>
                     )}
                   </td>
                   <td className="px-5 py-4 text-white/70 hidden md:table-cell">${book.price_physical}</td>
@@ -346,7 +349,7 @@ export default function AdminBooksPage() {
               {/* Prices */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-white/40 font-medium mb-1.5 block">Créditos (Digital)</label>
+                  <label className="text-xs text-white/40 font-medium mb-1.5 block">Precio Digital (Ref)</label>
                   <input
                     type="number"
                     min="0"
@@ -354,7 +357,7 @@ export default function AdminBooksPage() {
                     onChange={(e) => setEditingBook((p) => ({ ...p, price_digital: Number(e.target.value) }))}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
                   />
-                  <p className="text-[10px] text-white/25 mt-1">1 crédito = acceso por 30 días</p>
+                  <p className="text-[10px] text-white/25 mt-1">Precio referencial informativo</p>
                 </div>
                 <div>
                   <label className="text-xs text-white/40 font-medium mb-1.5 block">Físico (MXN)</label>
@@ -440,23 +443,39 @@ export default function AdminBooksPage() {
                 </div>
               </div>
 
-              {/* Active toggle */}
-              <div className="flex items-center justify-between bg-white/5 border border-white/8 rounded-xl px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium">Publicar en catálogo</p>
-                  <p className="text-xs text-white/40 mt-0.5">Los usuarios podrán ver y comprar este libro</p>
+                <div className="flex items-center justify-between bg-white/5 border border-white/8 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium">Contenido Premium</p>
+                    <p className="text-xs text-white/40 mt-0.5">Requiere suscripción activa para leerse</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingBook((p) => ({ ...p, is_premium: !p.is_premium }))}
+                  >
+                    {editingBook.is_premium ? (
+                      <ToggleRight className="w-8 h-8 text-blue-400" />
+                    ) : (
+                      <ToggleLeft className="w-8 h-8 text-white/25" />
+                    )}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setEditingBook((p) => ({ ...p, is_active: !p.is_active }))}
-                >
-                  {editingBook.is_active ? (
-                    <ToggleRight className="w-8 h-8 text-green-400" />
-                  ) : (
-                    <ToggleLeft className="w-8 h-8 text-white/25" />
-                  )}
-                </button>
-              </div>
+
+                <div className="flex items-center justify-between bg-white/5 border border-white/8 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium">Publicar en catálogo</p>
+                    <p className="text-xs text-white/40 mt-0.5">Visible para todos los usuarios</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingBook((p) => ({ ...p, is_active: !p.is_active }))}
+                  >
+                    {editingBook.is_active ? (
+                      <ToggleRight className="w-8 h-8 text-green-400" />
+                    ) : (
+                      <ToggleLeft className="w-8 h-8 text-white/25" />
+                    )}
+                  </button>
+                </div>
             </div>
 
             {/* Modal Footer */}
