@@ -56,7 +56,13 @@ export default async function CatalogPage({ searchParams }: PageProps) {
               : "flex flex-col gap-4"
           }>
             {books.map((book) => (
-              <CatalogBookCard key={book.id} bookId={book.id} bookTitle={book.title} epubUrl={book.epub_url}>
+              <CatalogBookCard 
+                key={book.id} 
+                bookId={book.id} 
+                bookTitle={book.title} 
+                epubUrl={book.epub_url}
+                coverUrl={book.cover_url}
+              >
               <div
                 className={`group bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none transition-all duration-300 overflow-hidden ${
                   view === "list" ? "flex flex-row min-h-0 h-32 sm:h-40" : "flex flex-col h-full hover:-translate-y-1"

@@ -16,17 +16,28 @@ export async function isBookDownloaded(epubUrl: string): Promise<boolean> {
 }
 
 /**
- * 8.2 - Descargar libro al caché local para acceso offline
+ * 8.2 - Descargar libro al caché local para acceso offline (Incluyendo Portada)
  */
-export async function downloadBook(epubUrl: string): Promise<boolean> {
+export async function downloadBook(epubUrl: string, coverUrl?: string): Promise<boolean> {
   try {
     const cache = await caches.open(BOOKS_CACHE);
-    const response = await fetch(epubUrl);
-    if (!response.ok) return false;
-    await cache.put(epubUrl, response);
+    
+    // Descargar EPUB
+    const epubRes = await fetch(epubUrl);
+    if (!epubRes.ok) return false;
+    await cache.put(epubUrl, epubRes);
+
+    // Descargar Portada (si existe)
+    if (coverUrl) {
+      const coverRes = await fetch(coverUrl);
+      if (coverRes.ok) {
+        await cache.put(coverUrl, coverRes);
+      }
+    }
+
     return true;
   } catch (err) {
-    console.error("Error descargando libro:", err);
+    console.error("Error descargando recursos:", err);
     return false;
   }
 }

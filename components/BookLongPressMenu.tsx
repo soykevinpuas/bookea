@@ -15,10 +15,11 @@ interface BookLongPressMenuProps {
   bookId: string;
   bookTitle: string;
   epubUrl?: string;
+  coverUrl?: string;
   children: React.ReactNode;
 }
 
-export default function BookLongPressMenu({ bookId, bookTitle, epubUrl, children }: BookLongPressMenuProps) {
+export default function BookLongPressMenu({ bookId, bookTitle, epubUrl, coverUrl, children }: BookLongPressMenuProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -67,7 +68,7 @@ export default function BookLongPressMenu({ bookId, bookTitle, epubUrl, children
       return;
     }
     setIsProcessing(true);
-    const success = await downloadBook(epubUrl);
+    const success = await downloadBook(epubUrl, coverUrl);
     if (success) {
       setIsDownloaded(true);
       toast.success(`"${bookTitle}" descargado para lectura offline`);

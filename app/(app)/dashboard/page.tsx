@@ -32,17 +32,44 @@ export default function DashboardPage() {
   }, []);
 
   const { data: allBooks, isLoading } = useUserBooks(userId);
+  const [offlineBooks, setOfflineBooks] = useState<any[]>(() => {
+    // Cargar datos offline inmediatamente (antes del primer render)
+    if (typeof window !== 'undefined' && userId) {
+      try {
+        const saved = localStorage.getItem(`bookea-library-${userId}`);
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return [];
+  });
+
+  // 3.4.2 - Persistencia de metadatos para modo offline
+  useEffect(() => {
+    if (allBooks && allBooks.length > 0) {
+      localStorage.setItem(`bookea-library-${userId}`, JSON.stringify(allBooks));
+      setOfflineBooks(allBooks);
+    } else if (!isLoading) {
+      const saved = localStorage.getItem(`bookea-library-${userId}`);
+      if (saved) {
+        setOfflineBooks(JSON.parse(saved));
+      }
+    }
+  }, [allBooks, isLoading, userId]);
+
+  // Usar libros offline si los libros por red no están disponibles
+  const displayBooks = useMemo(() => {
+    return (allBooks && allBooks.length > 0) ? allBooks : offlineBooks;
+  }, [allBooks, offlineBooks]);
 
   // 3.4.2 - Lógica de 'Recientemente leídos' (Checkpoint)
   const recentBook = useMemo(() => {
-    if (!allBooks || allBooks.length === 0) return null;
-    // Por ahora tomamos el primero, asumiendo orden por fecha en el futuro
-    return allBooks[0];
-  }, [allBooks]);
+    if (!displayBooks || displayBooks.length === 0) return null;
+    return displayBooks[0];
+  }, [displayBooks]);
 
   const books = useMemo(() => {
-    if (!allBooks) return [];
-    let filtered = [...allBooks];
+    if (!displayBooks) return [];
+    let filtered = [...displayBooks];
     if (search) {
       const s = search.toLowerCase();
       filtered = filtered.filter(b => b.title?.toLowerCase().includes(s) || b.author?.toLowerCase().includes(s));
@@ -51,11 +78,12 @@ export default function DashboardPage() {
       filtered = filtered.filter(b => b.category === category);
     }
     return filtered;
-  }, [allBooks, search, category]);
+  }, [displayBooks, search, category]);
 
   const categories = ["Ficción", "Novela", "Clásicos", "Misterio", "Fantasía", "Historia", "Otros"];
 
-  if (isLoading) {
+  // 3.4.6 - Loading con soporte offline: no quedarnos en loading si hay datos locales
+  if (isLoading && isOnline && offlineBooks.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500/50" />
@@ -64,7 +92,7 @@ export default function DashboardPage() {
   }
 
   const stats = [
-    { label: "Colección", value: allBooks?.length || 0, icon: BookOpen, color: "text-blue-400" },
+    { label: "Colección", value: displayBooks?.length || 0, icon: BookOpen, color: "text-blue-400" },
     { label: "Terminados", value: 0, icon: Trophy, color: "text-yellow-400" },
     { label: "Racha", value: "1 día", icon: Flame, color: "text-orange-500" },
   ];
@@ -155,7 +183,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {books.length === 0 ? (
+        {displayBooks.length === 0 ? (
           <div className="py-20 text-center bg-white/5 rounded-3xl border border-dashed border-white/10">
             <BookOpen className="w-12 h-12 mx-auto text-white/10 mb-4" />
             <p className="text-white/40">No hay libros que mostrar</p>
@@ -164,7 +192,12 @@ export default function DashboardPage() {
           <div className={view === "grid" ? "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-6" : "space-y-4"}>
             {books.map((book) => (
               view === "grid" ? (
-              <BookLongPressMenu bookId={book.id} bookTitle={book.title} epubUrl={book.epub_url || undefined}>
+              <BookLongPressMenu 
+                bookId={book.id} 
+                bookTitle={book.title} 
+                epubUrl={book.epub_url || undefined}
+                coverUrl={book.cover_url || undefined}
+              >
                 <div key={book.id} className="flex flex-col gap-3 group">
                   <Link href={`/reader/${book.id}`}>
                     <div className="aspect-[2/3] transition-transform group-hover:scale-105">
@@ -178,7 +211,12 @@ export default function DashboardPage() {
                 </div>
               </BookLongPressMenu>
               ) : (
-                <BookLongPressMenu bookId={book.id} bookTitle={book.title} epubUrl={book.epub_url || undefined}>
+                <BookLongPressMenu 
+                  bookId={book.id} 
+                  bookTitle={book.title} 
+                  epubUrl={book.epub_url || undefined}
+                  coverUrl={book.cover_url || undefined}
+                >
                   <Link key={book.id} href={`/reader/${book.id}`} className="flex items-center gap-4 p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all">
                     <div className="w-12 h-16 flex-shrink-0"><Book3D src={book.cover_url || ""} title={book.title} /></div>
                     <div className="flex-1 min-w-0">
