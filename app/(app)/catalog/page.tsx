@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getBooks } from "@/lib/books";
 import Book3D from "@/components/Book3D";
+import CatalogBookCard from "@/components/CatalogBookCard";
 import { createClient } from "@/lib/server";
 import { SearchFilters } from "@/components/SearchFilters";
 
@@ -55,8 +56,8 @@ export default async function CatalogPage({ searchParams }: PageProps) {
               : "flex flex-col gap-4"
           }>
             {books.map((book) => (
+              <CatalogBookCard key={book.id} bookId={book.id} bookTitle={book.title} epubUrl={book.epub_url}>
               <div
-                key={book.id}
                 className={`group bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none transition-all duration-300 overflow-hidden ${
                   view === "list" ? "flex flex-row min-h-0 h-32 sm:h-40" : "flex flex-col h-full hover:-translate-y-1"
                 }`}
@@ -120,6 +121,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
                   </div>
                 </div>
               </div>
+              </CatalogBookCard>
             ))}
           </div>
         )}

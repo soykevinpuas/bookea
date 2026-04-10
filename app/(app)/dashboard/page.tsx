@@ -6,6 +6,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
 import Book3D from "@/components/Book3D";
+import BookLongPressMenu from "@/components/BookLongPressMenu";
 import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History } from "lucide-react";
 
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
@@ -163,6 +164,7 @@ export default function DashboardPage() {
           <div className={view === "grid" ? "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-6" : "space-y-4"}>
             {books.map((book) => (
               view === "grid" ? (
+              <BookLongPressMenu bookId={book.id} bookTitle={book.title} epubUrl={book.epub_url || undefined}>
                 <div key={book.id} className="flex flex-col gap-3 group">
                   <Link href={`/reader/${book.id}`}>
                     <div className="aspect-[2/3] transition-transform group-hover:scale-105">
@@ -174,15 +176,18 @@ export default function DashboardPage() {
                     <p className="text-[10px] text-white/40 truncate">{book.author}</p>
                   </div>
                 </div>
+              </BookLongPressMenu>
               ) : (
-                <Link key={book.id} href={`/reader/${book.id}`} className="flex items-center gap-4 p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all">
-                  <div className="w-12 h-16 flex-shrink-0"><Book3D src={book.cover_url || ""} title={book.title} /></div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold truncate">{book.title}</h3>
-                    <p className="text-xs text-white/40 truncate">{book.author}</p>
-                  </div>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">Leer</button>
-                </Link>
+                <BookLongPressMenu bookId={book.id} bookTitle={book.title} epubUrl={book.epub_url || undefined}>
+                  <Link key={book.id} href={`/reader/${book.id}`} className="flex items-center gap-4 p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all">
+                    <div className="w-12 h-16 flex-shrink-0"><Book3D src={book.cover_url || ""} title={book.title} /></div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold truncate">{book.title}</h3>
+                      <p className="text-xs text-white/40 truncate">{book.author}</p>
+                    </div>
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">Leer</button>
+                  </Link>
+                </BookLongPressMenu>
               )
             ))}
           </div>
