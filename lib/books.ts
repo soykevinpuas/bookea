@@ -63,7 +63,10 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
   try {
     const { data, error } = await supabase
       .from("user_books")
-      .select("books(*)")
+      .select(`
+        books(*),
+        reading_progress:book_id(reading_progress(last_read_at))
+      `)
       .eq("user_id", userId);
 
     if (error) {
@@ -75,12 +78,24 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
 
     let books = data
       .map((item: any) => {
-        // 3.3.1 - Aplanar matriz/objeto anidado devuelto por la API de Supabase para asegurar mapeo de Typescript
         const bookData = item.books;
-        if (Array.isArray(bookData)) return bookData[0];
-        return bookData;
+        const book = Array.isArray(bookData) ? bookData[0] : bookData;
+        
+        // Extraer last_read_at del join (si existe)
+        const progress = item.reading_progress;
+        const progressData = Array.isArray(progress) ? progress[0] : progress;
+        const lastRead = progressData?.reading_progress?.[0]?.last_read_at || null;
+        
+        return { ...book, last_read_at: lastRead };
       })
-      .filter((b): b is Book => !!b && typeof b === 'object' && 'id' in b);
+      .filter((b): b is Book & { last_read_at: string | null } => !!b && typeof b === 'object' && 'id' in b);
+
+    // 3.3.2 - Ordenar por lectura más reciente
+    books.sort((a, b) => {
+      if (!a.last_read_at) return 1;
+      if (!b.last_read_at) return -1;
+      return new Date(b.last_read_at).getTime() - new Date(a.last_read_at).getTime();
+    });
 
     // 3.4.1 - Aplicar filtros de búsqueda y categoría en los libros del usuario
     if (options?.search) {

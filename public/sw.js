@@ -5,6 +5,7 @@ const BOOKS_CACHE = 'bookea-books';
 // Archivos básicos para que la app cargue sin internet (App Shell)
 const STATIC_ASSETS = [
   '/',
+  '/dashboard',
   '/manifest.json',
   '/icon-192x192.png',
   '/icon-512x512.png',
@@ -59,7 +60,7 @@ self.addEventListener('fetch', (event) => {
       }).catch(() => {
         // Si falla la red y no hay caché, devuelves el error amigable
         if (request.mode === 'navigate') {
-          return caches.match('/');
+          return caches.match('/dashboard') || caches.match('/');
         }
       });
 

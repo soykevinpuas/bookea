@@ -2,66 +2,66 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
 import Book3D from "@/components/Book3D";
-import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X } from "lucide-react";
+import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History } from "lucide-react";
 
-// 3.4 - DashboardPage: Panel principal del usuario que muestra su biblioteca personal, estadísticas de lectura y filtros de búsqueda
+// 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
 export default function DashboardPage() {
-  // 3.4.1 - Obtención del ID del usuario autenticado mediante el hook useUserId
   const { userId } = useUserId();
   const router = useRouter();
   
-  // 3.4.2 - Estados locales para filtros de búsqueda
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [isOnline, setIsOnline] = useState(true);
 
-  // 3.4.3 - Consulta de los libros adquiridos por el usuario mediante React Query
+  // 3.4.1 - Detección de estado de conexión
+  useEffect(() => {
+    setIsOnline(navigator.onLine);
+    const handleStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleStatus);
+    window.addEventListener('offline', handleStatus);
+    return () => {
+      window.removeEventListener('online', handleStatus);
+      window.removeEventListener('offline', handleStatus);
+    };
+  }, []);
+
   const { data: allBooks, isLoading } = useUserBooks(userId);
 
-  // 3.4.4 - Filtrado local de libros
+  // 3.4.2 - Lógica de 'Recientemente leídos' (Checkpoint)
+  const recentBook = useMemo(() => {
+    if (!allBooks || allBooks.length === 0) return null;
+    // Por ahora tomamos el primero, asumiendo orden por fecha en el futuro
+    return allBooks[0];
+  }, [allBooks]);
+
   const books = useMemo(() => {
     if (!allBooks) return [];
-    
     let filtered = [...allBooks];
-    
-    // Filtro de búsqueda
     if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(book => 
-        book.title?.toLowerCase().includes(searchLower) || 
-        book.author?.toLowerCase().includes(searchLower)
-      );
+      const s = search.toLowerCase();
+      filtered = filtered.filter(b => b.title?.toLowerCase().includes(s) || b.author?.toLowerCase().includes(s));
     }
-    
-    // Filtro de categoría
     if (category && category !== "all") {
-      filtered = filtered.filter(book => book.category === category);
+      filtered = filtered.filter(b => b.category === category);
     }
-    
     return filtered;
   }, [allBooks, search, category]);
 
-  // 3.4.5 - Categorías disponibles para filtrado
-  const categories = [
-    "Ficción", "No Ficción", "Novela", "Clásicos", "Misterio y Suspenso",
-    "Fantasía", "Ciencia Ficción", "Romance", "Terror", "Autoayuda",
-    "Negocios y Finanzas", "Historia", "Biografías", "Cuentos", "Poesía", "Otros"
-  ];
+  const categories = ["Ficción", "Novela", "Clásicos", "Misterio", "Fantasía", "Historia", "Otros"];
 
-  // 3.4.6 - Estado de carga inicial mientras se obtienen los datos del usuario
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] retro:bg-[#0d1117]">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500/50" />
       </div>
     );
   }
 
-  // 3.4.7 - Estadísticas de lectura del usuario (colección, libros terminados, racha actual)
   const stats = [
     { label: "Colección", value: allBooks?.length || 0, icon: BookOpen, color: "text-blue-400" },
     { label: "Terminados", value: 0, icon: Trophy, color: "text-yellow-400" },
@@ -69,182 +69,120 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] dark:bg-[#0a0a0a] retro:bg-[#0d1117] text-white selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30">
+      {/* 3.4.3 - Banner Offline */}
+      {!isOnline && (
+        <div className="bg-orange-600/20 border-b border-orange-500/20 py-2 px-6 flex items-center justify-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-widest backdrop-blur-md">
+          <WifiOff className="w-3 h-3" /> Modo Offline Activado - Solo libros descargados disponibles
+        </div>
+      )}
+
       <main className="max-w-7xl mx-auto px-6 py-12">
-        {/* 3.4.8 - Encabezado con estadísticas de lectura en cards */}
+        {/* 3.4.4 - Sección Reciente */}
+        {recentBook && (
+          <section className="mb-12">
+            <div className="flex items-center gap-2 mb-4 text-blue-400">
+              <History className="w-4 h-4" />
+              <h2 className="text-sm font-bold uppercase tracking-wider">Continuar leyendo</h2>
+            </div>
+            <Link 
+              href={`/reader/${recentBook.id}`}
+              className="group relative flex flex-col sm:flex-row items-center gap-6 p-6 bg-white/5 border border-white/10 rounded-3xl overflow-hidden hover:border-blue-500/30 transition-all shadow-2xl"
+            >
+              <div className="w-24 h-36 flex-shrink-0 shadow-xl group-hover:scale-105 transition-transform">
+                <Book3D src={recentBook.cover_url || ""} title={recentBook.title} />
+              </div>
+              <div className="flex-1 text-center sm:text-left z-10">
+                <h3 className="text-xl font-black mb-1 group-hover:text-blue-400 transition-colors">{recentBook.title}</h3>
+                <p className="text-white/40 text-sm mb-4">{recentBook.author}</p>
+                <div className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-600/20">
+                  Reanudar lectura
+                </div>
+              </div>
+            </Link>
+          </section>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
           {stats.map((stat) => (
             <div key={stat.label} className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
               <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-xl bg-white/5 ${stat.color}`}>
-                  <stat.icon className="w-5 h-5" />
-                </div>
+                <div className={`p-3 rounded-xl bg-white/5 ${stat.color}`}><stat.icon className="w-5 h-5" /></div>
                 <div>
-                  <p className="text-white/40 text-xs font-medium uppercase tracking-wider">{stat.label}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
+                  <p className="text-white/40 text-[10px] font-medium uppercase tracking-wider">{stat.label}</p>
+                  <p className="text-xl font-bold">{stat.value}</p>
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* 3.4.9 - Título de sección con enlace de navegación al catálogo completo */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Mi Biblioteca</h1>
-          <Link href="/catalog" className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2">
-            Explorar más <Compass className="w-4 h-4" />
-          </Link>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-black">Mi Biblioteca</h1>
+          {isOnline && (
+            <Link href="/catalog" className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2 uppercase tracking-widest">
+              Explorar <Compass className="w-4 h-4" />
+            </Link>
+          )}
         </div>
 
-        {/* 3.4.10 - Barra de filtros de búsqueda y categoría */}
+        {/* Filtros */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          {/* 3.4.10.1 - Input de búsqueda */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input
               type="text"
-              placeholder="Buscar por título o autor..."
+              placeholder="Buscar..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500/50 transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm focus:border-blue-500/50 transition-colors"
             />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
           </div>
-
-          {/* 3.4.10.2 - Selector de categoría */}
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer"
-          >
-            <option value="all" className="bg-[#1a1a1a]">Todas las categorías</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat} className="bg-[#1a1a1a]">{cat}</option>
-            ))}
-          </select>
-
-          {/* 3.4.10.3 - Toggle de vista (Grid/List) */}
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
-            <button
-              onClick={() => setView("grid")}
-              className={`p-2 rounded-lg transition-all ${
-                view === "grid" 
-                  ? "bg-white/10 text-white shadow-sm" 
-                  : "text-white/40 hover:text-white"
-              }`}
+          <div className="flex gap-2">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="px-3 bg-white/5 border border-white/10 rounded-xl text-xs"
             >
-              <LayoutGrid className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setView("list")}
-              className={`p-2 rounded-lg transition-all ${
-                view === "list" 
-                  ? "bg-white/10 text-white shadow-sm" 
-                  : "text-white/40 hover:text-white"
-              }`}
-            >
-              <List className="w-5 h-5" />
-            </button>
+              <option value="all">Todo</option>
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+               <button onClick={() => setView("grid")} className={`p-2 rounded-lg ${view === "grid" ? "bg-white/10" : "text-white/40"}`}><LayoutGrid className="w-4 h-4" /></button>
+               <button onClick={() => setView("list")} className={`p-2 rounded-lg ${view === "list" ? "bg-white/10" : "text-white/40"}`}><List className="w-4 h-4" /></button>
+            </div>
           </div>
         </div>
 
-        {/* 3.4.11 - Renderizado condicional: Estado vacío (Empty State) cuando el usuario no tiene libros */}
-        {!allBooks || allBooks.length === 0 ? (
-          <div className="bg-white/5 border border-dashed border-white/10 rounded-3xl p-16 text-center backdrop-blur-sm">
-            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-              <BookOpen className="w-8 h-8 text-white/20" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Tu estantería está vacía</h3>
-            <p className="text-white/40 mb-8 max-w-sm mx-auto">Comienza tu viaje literario adquiriendo tu primer libro en el catálogo premium.</p>
-            <Link
-              href="/catalog"
-              className="inline-flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-500 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-600/20"
-            >
-              Ir al Catálogo
-            </Link>
-          </div>
-        ) : books.length === 0 ? (
-          // 3.4.12 - Estado cuando no hay resultados con los filtros aplicados
-          <div className="bg-white/5 border border-dashed border-white/10 rounded-3xl p-16 text-center backdrop-blur-sm">
-            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Search className="w-8 h-8 text-white/20" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">No se encontraron libros</h3>
-            <p className="text-white/40 mb-8 max-w-sm mx-auto">No hay libros que coincidan con tu búsqueda o filtro.</p>
-            <button
-              onClick={() => { setSearch(""); setCategory("all"); }}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 text-white rounded-full font-semibold hover:bg-white/20 transition-all"
-            >
-              Limpiar filtros
-            </button>
+        {books.length === 0 ? (
+          <div className="py-20 text-center bg-white/5 rounded-3xl border border-dashed border-white/10">
+            <BookOpen className="w-12 h-12 mx-auto text-white/10 mb-4" />
+            <p className="text-white/40">No hay libros que mostrar</p>
           </div>
         ) : (
-          // 3.4.13 - Grid/List de libros adquiridos con acceso directo al lector
-          <div className={view === "grid" 
-            ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
-            : "flex flex-col gap-4"
-          }>
+          <div className={view === "grid" ? "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-6" : "space-y-4"}>
             {books.map((book) => (
               view === "grid" ? (
-                <div key={book.id} className="flex flex-col items-center">
-                  {/* 3.4.13.1 - Tarjeta del libro en vista grid */}
-                  <Link href={`/book/${book.id}`} className="w-full">
-                    <Book3D 
-                      src={book.cover_url || ""} 
-                      title={book.title} 
-                      className="w-full aspect-[2/3]"
-                    />
+                <div key={book.id} className="flex flex-col gap-3 group">
+                  <Link href={`/reader/${book.id}`}>
+                    <div className="aspect-[2/3] transition-transform group-hover:scale-105">
+                      <Book3D src={book.cover_url || ""} title={book.title} />
+                    </div>
                   </Link>
-                  {/* 3.4.13.2 - Información del libro */}
-                  <div className="text-center w-full mt-3">
-                    <h3 className="font-bold text-sm line-clamp-1 mb-1">{book.title}</h3>
-                    <p className="text-xs text-white/40 line-clamp-1 mb-2">{book.author}</p>
-                    <Link 
-                      href={`/reader/${book.id}`}
-                      className="inline-block w-full py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-semibold hover:bg-white/10 hover:border-white/20 transition-all"
-                    >
-                      Leer
-                    </Link>
+                  <div className="text-center">
+                    <h3 className="text-xs font-bold truncate">{book.title}</h3>
+                    <p className="text-[10px] text-white/40 truncate">{book.author}</p>
                   </div>
                 </div>
               ) : (
-                // 3.4.13.3 - Tarjeta del libro en vista list
-                <div 
-                  key={book.id} 
-                  onClick={() => router.push(`/book/${book.id}`)}
-                  className="flex items-center gap-3 p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group"
-                >
-                  <Book3D 
-                    src={book.cover_url || ""} 
-                    title={book.title} 
-                    className="w-14 h-20 flex-shrink-0"
-                    showShadow={false}
-                    objectFit="contain"
-                  />
+                <Link key={book.id} href={`/reader/${book.id}`} className="flex items-center gap-4 p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all">
+                  <div className="w-12 h-16 flex-shrink-0"><Book3D src={book.cover_url || ""} title={book.title} /></div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-sm sm:text-base line-clamp-1 group-hover:text-blue-400 transition-colors">{book.title}</h3>
-                    <p className="text-[11px] sm:text-sm text-white/40 line-clamp-1">{book.author}</p>
-                    {book.category && (
-                      <span className="inline-block mt-1 text-[9px] sm:text-[10px] px-2 py-0.5 bg-white/10 rounded-full text-white/60">
-                        {book.category}
-                      </span>
-                    )}
+                    <h3 className="text-sm font-bold truncate">{book.title}</h3>
+                    <p className="text-xs text-white/40 truncate">{book.author}</p>
                   </div>
-                  <Link 
-                    href={`/reader/${book.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-semibold hover:bg-blue-500 transition-all flex-shrink-0"
-                  >
-                    Leer
-                  </Link>
-                </div>
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">Leer</button>
+                </Link>
               )
             ))}
           </div>
