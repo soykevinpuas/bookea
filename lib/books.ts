@@ -1,6 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Book } from "@/types/book";
-import { getCachedBookMetadata, getAllCachedBooks } from "./downloads";
+import { getCachedBookMetadata, getAllCachedBooks, saveBookMetadata } from "./downloads";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isValidUUID = (id: string) => UUID_REGEX.test(id);
@@ -95,6 +95,11 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
         return { ...book, last_read_at: lastRead };
       })
       .filter((b): b is Book & { last_read_at: string | null } => !!b && typeof b === 'object' && 'id' in b);
+
+    // 3.4.2 - AUTO-CACHING: Guardar libros en el caché offline para que aparezcan en la lista sin internet
+    if (books.length > 0) {
+      books.forEach(b => saveBookMetadata(b));
+    }
 
     // 3.3.2 - Ordenar por lectura más reciente
     books.sort((a, b) => {

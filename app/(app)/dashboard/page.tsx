@@ -32,34 +32,12 @@ export default function DashboardPage() {
   }, []);
 
   const { data: allBooks, isLoading } = useUserBooks(userId);
-  const [offlineBooks, setOfflineBooks] = useState<any[]>(() => {
-    // Cargar datos offline inmediatamente (antes del primer render)
-    if (typeof window !== 'undefined' && userId) {
-      try {
-        const saved = localStorage.getItem(`bookea-library-${userId}`);
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return [];
-  });
-
-  // 3.4.2 - Persistencia de metadatos para modo offline
-  useEffect(() => {
-    if (allBooks && allBooks.length > 0) {
-      localStorage.setItem(`bookea-library-${userId}`, JSON.stringify(allBooks));
-      setOfflineBooks(allBooks);
-    } else if (!isLoading) {
-      const saved = localStorage.getItem(`bookea-library-${userId}`);
-      if (saved) {
-        setOfflineBooks(JSON.parse(saved));
-      }
-    }
-  }, [allBooks, isLoading, userId]);
-
-  // Usar libros offline si los libros por red no están disponibles
+  
+  // 3.4.2 - Los libros ya vienen con el plan B (offline) desde el hook useUserBooks
+  // No necesitamos un estado local ruidoso separado aquí.
   const displayBooks = useMemo(() => {
-    return (allBooks && allBooks.length > 0) ? allBooks : offlineBooks;
-  }, [allBooks, offlineBooks]);
+    return allBooks || [];
+  }, [allBooks]);
 
   // 3.4.2 - Lógica de 'Recientemente leídos' (Checkpoint)
   const recentBook = useMemo(() => {
@@ -82,8 +60,8 @@ export default function DashboardPage() {
 
   const categories = ["Ficción", "Novela", "Clásicos", "Misterio", "Fantasía", "Historia", "Otros"];
 
-  // 3.4.6 - Loading con soporte offline: no quedarnos en loading si hay datos locales
-  if (isLoading && isOnline && offlineBooks.length === 0) {
+  // 3.4.6 - Loading con soporte offline: no quedarnos en loading si el hook ya devolvió algo (aunque sea del caché)
+  if (isLoading && isOnline && (!allBooks || allBooks.length === 0)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500/50" />
