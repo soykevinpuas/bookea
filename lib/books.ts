@@ -63,7 +63,12 @@ export async function getBook(supabase: SupabaseClient, id: string): Promise<Boo
 }
 
 export async function getUserBooks(supabase: SupabaseClient, userId: string, options?: { search?: string; category?: string }): Promise<Book[]> {
-  if (!userId) return [];
+  // 1. Si estamos offline (chequeo rápido de navegador), vamos directo al grano
+  if (typeof window !== 'undefined' && !navigator.onLine) {
+    return getAllCachedBooks();
+  }
+
+  if (!userId) return getAllCachedBooks(); // Devolver caché incluso si no hay ID por ahora
   
   try {
     const { data, error } = await supabase
@@ -75,19 +80,17 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
       .eq("user_id", userId);
 
     if (error) {
-      // FALLBACK OFFLINE: Si no hay conexión, mostrar solo libros descargados
-      console.warn("Using offline fallback for user books");
+      console.warn("Using offline fallback due to Supabase error");
       return getAllCachedBooks();
     }
 
     if (!data || !Array.isArray(data)) return getAllCachedBooks();
 
-    let books = data
+    const books = data
       .map((item: any) => {
         const bookData = item.books;
         const book = Array.isArray(bookData) ? bookData[0] : bookData;
         
-        // Extraer last_read_at del join (si existe)
         const progress = item.reading_progress;
         const progressData = Array.isArray(progress) ? progress[0] : progress;
         const lastRead = progressData?.reading_progress?.[0]?.last_read_at || null;
@@ -96,34 +99,33 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
       })
       .filter((b): b is Book & { last_read_at: string | null } => !!b && typeof b === 'object' && 'id' in b);
 
-    // 3.4.2 - AUTO-CACHING: Guardar libros en el caché offline para que aparezcan en la lista sin internet
+    // 3.4.2 - AUTO-CACHING: Guardar todo lo que traemos de la nube para el futuro
     if (books.length > 0) {
       books.forEach(b => saveBookMetadata(b));
     }
 
-    // 3.3.2 - Ordenar por lectura más reciente
-    books.sort((a, b) => {
+    // 3.3.2 - Ordenar y filtrar
+    let result = [...books];
+    result.sort((a, b) => {
       if (!a.last_read_at) return 1;
       if (!b.last_read_at) return -1;
       return new Date(b.last_read_at).getTime() - new Date(a.last_read_at).getTime();
     });
 
-    // 3.4.1 - Aplicar filtros de búsqueda y categoría en los libros del usuario
     if (options?.search) {
       const searchLower = options.search.toLowerCase();
-      books = books.filter(book => 
+      result = result.filter(book => 
         book.title?.toLowerCase().includes(searchLower) || 
         book.author?.toLowerCase().includes(searchLower)
       );
     }
 
     if (options?.category && options.category !== "all") {
-      books = books.filter(book => book.category === options.category);
+      result = result.filter(book => book.category === options.category);
     }
 
-    return books;
+    return result;
   } catch (error) {
-    // FALLBACK OFFLINE: En caso de excepción de red
     return getAllCachedBooks();
   }
 }

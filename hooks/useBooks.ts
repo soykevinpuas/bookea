@@ -34,8 +34,9 @@ export function useUserBooks(userId: string, options?: { search?: string; catego
   const supabase = createClientClient();
   return useQuery({
     queryKey: ["userBooks", userId, options?.search, options?.category],
-    queryFn: () => getUserBooks(supabase, userId, options),
-    enabled: !!userId,
+    queryFn: () => getUserBooks(supabase, userId!, options),
+    // Habilitado si hay usuario O si estamos offline (para ver lo que hay en caché)
+    enabled: !!userId || (typeof window !== 'undefined' && !navigator.onLine),
     ...BOOK_QUERY_OPTIONS,
   });
 }
