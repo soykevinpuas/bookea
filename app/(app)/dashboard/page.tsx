@@ -131,7 +131,14 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-black">Mi Biblioteca</h1>
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-black">Mi Biblioteca</h1>
+            {!isOnline && (
+              <span className="text-[10px] font-bold text-green-400 uppercase tracking-[0.2em] animate-pulse">
+                Libros Descargados
+              </span>
+            )}
+          </div>
           {isOnline && (
             <Link href="/catalog" className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2 uppercase tracking-widest">
               Explorar <Compass className="w-4 h-4" />
