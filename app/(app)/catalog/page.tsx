@@ -58,10 +58,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
             {books.map((book) => (
               <CatalogBookCard 
                 key={book.id} 
-                bookId={book.id} 
-                bookTitle={book.title} 
-                epubUrl={book.epub_url}
-                coverUrl={book.cover_url}
+                book={book}
               >
               <div
                 className={`group bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none transition-all duration-300 overflow-hidden ${

@@ -12,14 +12,12 @@ import { motion, AnimatePresence } from "framer-motion";
  * Opciones: Ver Detalles, Descargar, Eliminar Descarga
  */
 interface BookLongPressMenuProps {
-  bookId: string;
-  bookTitle: string;
-  epubUrl?: string;
-  coverUrl?: string;
+  book: import("@/types/book").Book;
   children: React.ReactNode;
 }
 
-export default function BookLongPressMenu({ bookId, bookTitle, epubUrl, coverUrl, children }: BookLongPressMenuProps) {
+export default function BookLongPressMenu({ book, children }: BookLongPressMenuProps) {
+  const { id: bookId, title: bookTitle, epub_url: epubUrl } = book;
   const [showMenu, setShowMenu] = useState(false);
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -68,7 +66,7 @@ export default function BookLongPressMenu({ bookId, bookTitle, epubUrl, coverUrl
       return;
     }
     setIsProcessing(true);
-    const success = await downloadBook(epubUrl, coverUrl);
+    const success = await downloadBook(book);
     if (success) {
       setIsDownloaded(true);
       toast.success(`"${bookTitle}" descargado para lectura offline`);
@@ -82,7 +80,7 @@ export default function BookLongPressMenu({ bookId, bookTitle, epubUrl, coverUrl
   const handleRemoveDownload = async () => {
     if (!epubUrl) return;
     setIsProcessing(true);
-    const success = await removeBookDownload(epubUrl);
+    const success = await removeBookDownload(bookId, epubUrl);
     if (success) {
       setIsDownloaded(false);
       toast.info(`"${bookTitle}" eliminado del almacenamiento offline`);
