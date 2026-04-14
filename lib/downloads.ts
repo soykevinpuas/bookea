@@ -4,15 +4,20 @@ import { Book } from "@/types/book";
 const BOOKS_CACHE = 'bookea-books';
 const METADATA_KEY = 'bookea-offline-metadata';
 
-/**
+/** 
  * 8.0 - Guardar metadatos del libro para acceso offline
  */
-export function saveBookMetadata(book: Book) {
+export function saveBookMetadata(book: Book, isOfflineReady: boolean = false) {
   try {
     const existing = localStorage.getItem(METADATA_KEY);
     const metadata = existing ? JSON.parse(existing) : {};
+    
+    // Si ya estaba marcado como offlineReady, no le quitemos la marca a menos que sea explícito
+    const wasReady = metadata[book.id]?.isOfflineReady || false;
+
     metadata[book.id] = {
       ...book,
+      isOfflineReady: isOfflineReady || wasReady,
       cachedAt: new Date().toISOString()
     };
     localStorage.setItem(METADATA_KEY, JSON.stringify(metadata));
@@ -86,7 +91,7 @@ export async function downloadBook(book: Book): Promise<boolean> {
     }
 
     // GUARDAR METADATA 
-    saveBookMetadata(book);
+    saveBookMetadata(book, true);
 
     return true;
   } catch (err) {
@@ -131,5 +136,19 @@ export async function getCacheSize(): Promise<string> {
     return "Desconocido";
   } catch {
     return "Desconocido";
+  }
+}
+
+/**
+ * 8.5 - Obtener el archivo (Blob) desde el caché local
+ */
+export async function getCachedBookFile(epubUrl: string): Promise<Blob | null> {
+  try {
+    const cache = await caches.open(BOOKS_CACHE);
+    const response = await cache.match(epubUrl);
+    if (!response) return null;
+    return await response.blob();
+  } catch {
+    return null;
   }
 }

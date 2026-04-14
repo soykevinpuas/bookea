@@ -202,7 +202,19 @@ export default function ReaderPage() {
         setError(null);
 
         const epubUrl = book.epub_url as string;
-        const bookInstance = ePub(epubUrl, {
+        
+        // 4.2.5.0 - SOPORTE OFFLINE: Intentar cargar desde caché si no hay internet
+        let epubSource: string | ArrayBuffer = epubUrl;
+        
+        if (typeof window !== 'undefined' && !navigator.onLine) {
+          const { getCachedBookFile } = await import("@/lib/downloads");
+          const cachedBlob = await getCachedBookFile(epubUrl);
+          if (cachedBlob) {
+            epubSource = await cachedBlob.arrayBuffer();
+          }
+        }
+
+        const bookInstance = ePub(epubSource, {
           openAs: "epub"
         });
         bookRef.current = bookInstance;

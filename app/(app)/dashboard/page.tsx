@@ -48,6 +48,12 @@ export default function DashboardPage() {
   const books = useMemo(() => {
     if (!displayBooks) return [];
     let filtered = [...displayBooks];
+
+    // 3.4.1.2 - Filtro Offline: Solo mostrar libros descargados si no hay internet
+    if (!isOnline) {
+      filtered = filtered.filter(b => (b as any).isOfflineReady === true);
+    }
+
     if (search) {
       const s = search.toLowerCase();
       filtered = filtered.filter(b => b.title?.toLowerCase().includes(s) || b.author?.toLowerCase().includes(s));
