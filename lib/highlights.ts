@@ -7,6 +7,7 @@ export async function getHighlights(
   bookId: string,
   userId: string
 ): Promise<Highlight[]> {
+  if (typeof window !== 'undefined' && !navigator.onLine) return [];
   try {
     const supabase = createClientClient();
     const { data, error } = await supabase

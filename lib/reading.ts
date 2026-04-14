@@ -6,6 +6,7 @@ export async function getReadingProgress(
   bookId: string,
   userId: string
 ): Promise<ReadingProgress | null> {
+  if (typeof window !== 'undefined' && !navigator.onLine) return null;
   try {
     const supabase = createClientClient();
     const { data, error } = await supabase
