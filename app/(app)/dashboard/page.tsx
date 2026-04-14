@@ -61,7 +61,7 @@ export default function DashboardPage() {
   const categories = ["Ficción", "Novela", "Clásicos", "Misterio", "Fantasía", "Historia", "Otros"];
 
   // 3.4.6 - Loading con soporte offline: no quedarnos en loading si el hook ya devolvió algo (aunque sea del caché)
-  if (isLoading && isOnline && (!allBooks || allBooks.length === 0)) {
+  if (isLoading && isOnline && displayBooks.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500/50" />
