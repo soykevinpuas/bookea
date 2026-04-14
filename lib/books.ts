@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Book } from "@/types/book";
+import { getCachedBookMetadata, getAllCachedBooks } from "./downloads";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isValidUUID = (id: string) => UUID_REGEX.test(id);
@@ -50,10 +51,14 @@ export async function getBook(supabase: SupabaseClient, id: string): Promise<Boo
       .eq("is_active", true)
       .single();
 
-    if (error) return null;
+    if (error) {
+      // FALLBACK OFFLINE: Si no hay internet, intentar obtener del caché local
+      return getCachedBookMetadata(id);
+    }
     return (data as Book) || null;
   } catch (error) {
-    return null;
+    // FALLBACK OFFLINE: En caso de error de red (fetch fallido)
+    return getCachedBookMetadata(id);
   }
 }
 
@@ -70,11 +75,12 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
       .eq("user_id", userId);
 
     if (error) {
-      console.warn("Supabase error fetching user_books:", error.message);
-      return [];
+      // FALLBACK OFFLINE: Si no hay conexión, mostrar solo libros descargados
+      console.warn("Using offline fallback for user books");
+      return getAllCachedBooks();
     }
 
-    if (!data || !Array.isArray(data)) return [];
+    if (!data || !Array.isArray(data)) return getAllCachedBooks();
 
     let books = data
       .map((item: any) => {
@@ -112,8 +118,8 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
 
     return books;
   } catch (error) {
-    console.warn("Error in getUserBooks logic");
-    return [];
+    // FALLBACK OFFLINE: En caso de excepción de red
+    return getAllCachedBooks();
   }
 }
 

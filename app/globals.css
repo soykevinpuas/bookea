@@ -249,7 +249,8 @@
   .navy .no-retro-override * {
     background-color: var(--dot-bg, inherit) !important;
     color: var(--dot-text, #ffffff) !important;
-    background-image: none !important;
+    /* Permitimos background-image para que los avatares funcionen */
+    background-image: inherit !important;
     opacity: 1 !important;
     visibility: visible !important;
   }

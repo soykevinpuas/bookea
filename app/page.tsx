@@ -1,7 +1,16 @@
 import Link from "next/link";
 import { BookOpen, Zap, Shield, Sparkles } from "lucide-react";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/server";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (session) {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] retro:bg-[#0d1117] text-gray-100 overflow-hidden font-sans selection:bg-blue-500/30">
       
@@ -87,7 +96,7 @@ export default function Home() {
       {/* Footer minimalista */}
       <footer className="border-t border-white/10 py-8 text-center bg-black">
         <p className="text-gray-500 text-sm">
-          © {new Date().getFullYear()} Bookea. Hecho para México. <Link href="/admin" className="hover:text-white transition-colors">Admin Panel</Link>
+          © {new Date().getFullYear()} Bookea. Hecho para México.
         </p>
       </footer>
     </div>
