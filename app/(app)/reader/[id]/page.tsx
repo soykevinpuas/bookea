@@ -194,7 +194,9 @@ export default function ReaderPage() {
 
   // 4.2.5 - Inicialización Central del Motor epub.js y configuración DOM
   useEffect(() => {
-    if (!book?.epub_url || !viewerRef.current || !userId) return;
+    // 4.1.9.1 - SOPORTE OFFLINE: Permitir inicializar sin userId si estamos offline
+    const canInit = book?.epub_url && viewerRef.current && (userId || !navigator.onLine);
+    if (!canInit) return;
 
     const initEpub = async () => {
       try {
