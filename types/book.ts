@@ -13,4 +13,6 @@ export interface Book {
   is_active: boolean;
   is_premium: boolean;
   created_at: string;
+  percent_complete?: number;
+  last_read_at?: string | null;
 }

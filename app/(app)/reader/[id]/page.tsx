@@ -298,7 +298,12 @@ export default function ReaderPage() {
               img {
                 max-width: 100% !important;
                 height: auto !important;
-                border-radius: 8px !important;
+                display: block !important;
+                margin: 2em auto !important;
+                border-radius: 12px !important;
+                /* 4.2.5.4 - Estabilidad de Layout: Evita brincos al cargar imágenes */
+                content-visibility: auto;
+                contain-intrinsic-size: 300px;
               }
             `;
             contents.document.head.appendChild(style);
@@ -505,18 +510,19 @@ export default function ReaderPage() {
 
     window.addEventListener("resize", handleResize);
     window.addEventListener("orientationchange", () => {
+      // 4.1.9.2 - ANCLAJE POR CFI: Durante la rotación, forzamos al lector a 
+      // mantenerse en la coordenada exacta de texto (CFI), ignorando el % relativo.
       setTimeout(() => {
         handleResize();
-        // Restaurar la posición exacta después de que el navegador actualice dimensiones
         if (lastCfiRef.current && renditionRef.current) {
           renditionRef.current.display(lastCfiRef.current);
         }
-      }, 300);
+      }, 150); // Reducimos el delay para que sea imperceptible
     });
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      window.removeEventListener("orientationchange", handleResize);
+      window.removeEventListener("orientationchange", () => {});
     };
   }, []);
 

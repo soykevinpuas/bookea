@@ -7,6 +7,7 @@ import { useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
 import Book3D from "@/components/Book3D";
 import BookLongPressMenu from "@/components/BookLongPressMenu";
+import ProgressCircle from "@/components/ProgressCircle";
 import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History } from "lucide-react";
 
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
@@ -106,7 +107,12 @@ export default function DashboardPage() {
                 <Book3D src={recentBook.cover_url || ""} title={recentBook.title} />
               </div>
               <div className="flex-1 text-center sm:text-left z-10">
-                <h3 className="text-xl font-black mb-1 group-hover:text-blue-400 transition-colors">{recentBook.title}</h3>
+                <div className="flex items-center justify-center sm:justify-start gap-4 mb-2">
+                  <h3 className="text-xl font-black group-hover:text-blue-400 transition-colors truncate">{recentBook.title}</h3>
+                  {recentBook.percent_complete !== undefined && recentBook.percent_complete > 0 && (
+                    <ProgressCircle progress={recentBook.percent_complete} size={32} />
+                  )}
+                </div>
                 <p className="text-white/40 text-sm mb-4">{recentBook.author}</p>
                 <div className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-600/20">
                   Reanudar lectura
@@ -186,8 +192,13 @@ export default function DashboardPage() {
               <BookLongPressMenu book={book}>
                 <div key={book.id} className="flex flex-col gap-3 group">
                   <Link href={`/reader/${book.id}`}>
-                    <div className="aspect-[2/3] transition-transform group-hover:scale-105">
+                    <div className="aspect-[2/3] transition-transform group-hover:scale-105 relative">
                       <Book3D src={book.cover_url || ""} title={book.title} />
+                      {book.percent_complete !== undefined && book.percent_complete > 0 && (
+                        <div className="absolute -bottom-2 -right-2 z-20 bg-[#0a0a0a] rounded-full p-1 shadow-xl border border-white/10">
+                          <ProgressCircle progress={book.percent_complete} size={30} />
+                        </div>
+                      )}
                     </div>
                   </Link>
                   <div className="text-center">
@@ -204,7 +215,12 @@ export default function DashboardPage() {
                       <h3 className="text-sm font-bold truncate">{book.title}</h3>
                       <p className="text-xs text-white/40 truncate">{book.author}</p>
                     </div>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">Leer</button>
+                    <div className="flex items-center gap-4">
+                      {book.percent_complete !== undefined && book.percent_complete > 0 && (
+                        <ProgressCircle progress={book.percent_complete} size={28} />
+                      )}
+                      <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">Leer</button>
+                    </div>
                   </Link>
                 </BookLongPressMenu>
               )

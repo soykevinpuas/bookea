@@ -93,11 +93,34 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
         
         const progress = item.reading_progress;
         const progressData = Array.isArray(progress) ? progress[0] : progress;
-        const lastRead = progressData?.reading_progress?.[0]?.last_read_at || null;
+        const rp = progressData?.reading_progress?.[0];
         
-        return { ...book, last_read_at: lastRead };
+        const serverPercent = rp?.percent_complete || 0;
+        const serverCfi = rp?.cfi_position || null;
+        const lastRead = rp?.last_read_at || null;
+
+        // 3.4.1.9 - PRIORIDAD OFFLINE: Si lo local es más nuevo, lo usamos para la card
+        const local = typeof window !== 'undefined' ? (JSON.parse(localStorage.getItem("bookea-offline-progress") || "{}")[book.id]) : null;
+        
+        let finalPercent = serverPercent;
+        let finalLastRead = lastRead;
+        
+        if (local && local.updated_at) {
+          const sTime = new Date(lastRead || 0).getTime();
+          const lTime = new Date(local.updated_at).getTime();
+          if (lTime > sTime) {
+            finalPercent = local.percent_complete;
+            finalLastRead = local.updated_at;
+          }
+        }
+        
+        return { 
+          ...book, 
+          last_read_at: finalLastRead,
+          percent_complete: finalPercent
+        };
       })
-      .filter((b): b is Book & { last_read_at: string | null } => !!b && typeof b === 'object' && 'id' in b);
+      .filter((b): b is Book => !!b && typeof b === 'object' && 'id' in b);
 
     // 3.4.2 - AUTO-CACHING: Guardar todo lo que traemos de la nube para el futuro
     if (books.length > 0) {
