@@ -72,7 +72,7 @@ export function Header({ initialUser = null }: HeaderProps) {
         <nav className="flex items-center gap-4 sm:gap-6">
           <Link 
             href="/catalog" 
-            className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors hidden sm:block"
+            className="text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-full transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.5)] transform hover:-translate-y-0.5 hidden sm:block uppercase tracking-wider"
           >
             Catálogo
           </Link>

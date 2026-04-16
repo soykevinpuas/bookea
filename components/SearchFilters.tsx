@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, LayoutGrid, List, SlidersHorizontal, X } from "lucide-react";
+import { Search, LayoutGrid, List, SlidersHorizontal, X, User, Grid3X3 } from "lucide-react";
 import { useState, useEffect, useTransition } from "react";
 
 // ============================================
@@ -11,13 +11,15 @@ import { useState, useEffect, useTransition } from "react";
 
 interface SearchFiltersProps {
   initialSearch?: string;
+  initialAuthor?: string;
   initialCategory?: string;
-  initialView?: "grid" | "list";
+  initialView?: "grid" | "list" | "compact";
 }
 
 // 6.3.1 - Componente de filtros con valores iniciales desde URL
 export function SearchFilters({ 
   initialSearch = "", 
+  initialAuthor = "",
   initialCategory = "all", 
   initialView = "list" 
 }: SearchFiltersProps) {
@@ -29,6 +31,7 @@ export function SearchFilters({
   
   // Estados locales para búsqueda, categoría y vista
   const [search, setSearch] = useState(initialSearch);
+  const [author, setAuthor] = useState(initialAuthor);
   const [category, setCategory] = useState(initialCategory);
   const [view, setView] = useState(initialView);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -54,12 +57,12 @@ export function SearchFilters({
   // 6.3.3 - Debounce de búsqueda (500ms) para evitar demasiadas actualizaciones
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (search !== initialSearch) {
-        updateFilters({ search });
+      if (search !== initialSearch || author !== initialAuthor) {
+        updateFilters({ search, author });
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, author]);
 
   // ============================================
   // 6.3.4 - Renderizado de la barra de filtros
@@ -68,13 +71,24 @@ export function SearchFilters({
     <div className="mb-8 space-y-4">
       <div className="flex flex-col md:flex-row gap-4 items-center">
         {/* 6.3.4.1 - Barra de búsqueda con ícono */}
-        <div className="relative w-full md:flex-1 group">
+        <div className="relative w-full md:flex-[2] group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
           <input
             type="text"
-            placeholder="Buscar por título o autor..."
+            placeholder="Título..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-500/30 transition-all text-gray-900 dark:text-white placeholder:text-gray-400"
+          />
+        </div>
+
+        <div className="relative w-full md:flex-1 group">
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+          <input
+            type="text"
+            placeholder="Autor..."
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-500/30 transition-all text-gray-900 dark:text-white placeholder:text-gray-400"
           />
         </div>
@@ -121,8 +135,23 @@ export function SearchFilters({
                   ? "bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-sm" 
                   : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
               }`}
+              title="Cuadrícula"
             >
               <LayoutGrid className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => {
+                setView("compact");
+                updateFilters({ view: "compact" });
+              }}
+              className={`p-2 rounded-lg transition-all ${
+                view === "compact" 
+                  ? "bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-sm" 
+                  : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
+              }`}
+              title="Compacto"
+            >
+              <Grid3X3 className="w-5 h-5" />
             </button>
             <button
               onClick={() => {
@@ -134,6 +163,7 @@ export function SearchFilters({
                   ? "bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-sm" 
                   : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
               }`}
+              title="Lista"
             >
               <List className="w-5 h-5" />
             </button>

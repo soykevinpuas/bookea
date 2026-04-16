@@ -9,18 +9,24 @@ import { SearchFilters } from "@/components/SearchFilters";
 interface PageProps {
   searchParams: Promise<{
     search?: string;
+    author?: string;
     category?: string;
-    view?: "grid" | "list";
+    view?: "grid" | "list" | "compact";
   }>;
 }
 
 // 3.1 - CatalogPage: Componente principal del catálogo que lista los libros disponibles
 export default async function CatalogPage({ searchParams }: PageProps) {
-  const { search, category, view = "list" } = await searchParams;
+  const { search, author, category, view = "list" } = await searchParams;
   
   // 3.1.1 - Inicialización del cliente Supabase en servidor y obtención de la colección filtrada
   const supabase = await createClient();
-  const books = await getBooks(supabase, { search, category });
+  const books = await getBooks(supabase, { search, author, category });
+Line: 19:   const { search, category, view = "list" } = await searchParams;
+20:   
+21:   // 3.1.1 - Inicialización del cliente Supabase en servidor y obtención de la colección filtrada
+22:   const supabase = await createClient();
+23:   const books = await getBooks(supabase, { search, category });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">
@@ -38,6 +44,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
 
         <SearchFilters 
           initialSearch={search} 
+          initialAuthor={author}
           initialCategory={category} 
           initialView={view} 
         />
@@ -53,9 +60,23 @@ export default async function CatalogPage({ searchParams }: PageProps) {
           <div className={
             view === "grid" 
               ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8" 
+              : view === "compact"
+              ? "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
               : "flex flex-col gap-4"
           }>
             {books.map((book) => (
+              view === "compact" ? (
+                <CatalogBookCard key={book.id} book={book}>
+                  <Link href={`/book/${book.id}`} className="group block">
+                    <div className="aspect-[2/3] relative rounded-2xl overflow-hidden shadow-sm group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-300">
+                      <Book3D src={book.cover_url || ""} title={book.title} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                         <h4 className="text-white text-xs font-bold truncate">{book.title}</h4>
+                      </div>
+                    </div>
+                  </Link>
+                </CatalogBookCard>
+              ) : (
               <CatalogBookCard 
                 key={book.id} 
                 book={book}
@@ -104,8 +125,6 @@ export default async function CatalogPage({ searchParams }: PageProps) {
                     por {book.author}
                   </p>
 
-                  {/* Descripción removida para limpieza visual en modo lista */}
-                  
                   <div className={`flex items-center justify-between ${view === "list" ? "mt-1 sm:mt-4" : "mt-auto pt-4 border-t border-gray-100 dark:border-white/5"}`}>
                     <span className="text-sm sm:text-lg font-black">
                       {book.is_premium === false || book.price_digital === 0 ? (
@@ -125,6 +144,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
                 </div>
               </div>
               </CatalogBookCard>
+              )
             ))}
           </div>
         )}

@@ -51,7 +51,7 @@ export default function ProgressCircle({
       </svg>
       {/* Percentage Text */}
       <span className="text-[9px] font-black text-white/90">
-        {Math.round(progress)}
+        {Math.round(progress)}%
       </span>
     </div>
   );

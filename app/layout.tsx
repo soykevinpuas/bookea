@@ -5,6 +5,7 @@ import { QueryProvider } from "@/lib/providers";
 import { Header } from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PwaListener } from "@/components/PwaListener";
+import { SplashScreen } from "@/components/SplashScreen";
 
 // 1.5 - Configuración de fuentes y Metadata global
 const geistSans = Geist({
@@ -76,6 +77,7 @@ export default async function RootLayout({
         >
           <ReaderColorSync />
           <PwaListener />
+          <SplashScreen />
           <QueryProvider>
             <Header initialUser={user ? { id: user.id, email: user.email } : null} />
             <main className="flex-1 pb-safe px-safe">

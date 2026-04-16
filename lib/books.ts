@@ -8,7 +8,7 @@ const isValidUUID = (id: string) => UUID_REGEX.test(id);
 // 3.3 - Configuración y Utilerías de Acceso a Supabase para la Entidad Books
 export async function getBooks(
   supabase: SupabaseClient, 
-  filters?: { search?: string; category?: string }
+  filters?: { search?: string; category?: string; author?: string }
 ): Promise<Book[]> {
   try {
     let query = supabase
@@ -19,6 +19,10 @@ export async function getBooks(
     if (filters?.search) {
       // Búsqueda simple en título o autor
       query = query.or(`title.ilike.%${filters.search}%,author.ilike.%${filters.search}%`);
+    }
+
+    if (filters?.author) {
+      query = query.ilike("author", `%${filters.author}%`);
     }
 
     if (filters?.category && filters.category !== "all") {
@@ -62,7 +66,7 @@ export async function getBook(supabase: SupabaseClient, id: string): Promise<Boo
   }
 }
 
-export async function getUserBooks(supabase: SupabaseClient, userId: string, options?: { search?: string; category?: string }): Promise<Book[]> {
+export async function getUserBooks(supabase: SupabaseClient, userId: string, options?: { search?: string; category?: string; author?: string }): Promise<Book[]> {
   // 1. Si estamos offline (chequeo rápido de navegador), vamos directo al grano
   if (typeof window !== 'undefined' && !navigator.onLine) {
     return getAllCachedBooks();
@@ -146,6 +150,11 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
         book.title?.toLowerCase().includes(searchLower) || 
         book.author?.toLowerCase().includes(searchLower)
       );
+    }
+
+    if (options?.author) {
+      const authorLower = options.author.toLowerCase();
+      result = result.filter(book => book.author?.toLowerCase().includes(authorLower));
     }
 
     if (options?.category && options.category !== "all") {

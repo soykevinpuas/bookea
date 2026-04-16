@@ -808,8 +808,8 @@ export default function ReaderPage() {
         <div className="text-red-500 mb-4 text-4xl">⚠️</div>
         <h2 className="text-xl font-bold mb-2">Error al cargar libro</h2>
         <p className="text-white/60 mb-6 max-w-md">{typeof error === 'string' ? error : "Ocurrió un error inesperado al inicializar epub.js"}</p>
-        <Link href={`/book/${bookId}`} className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition">
-          Volver a detalles
+        <Link href="/dashboard" className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition">
+          Volver a la biblioteca
         </Link>
       </div>
     );
@@ -851,7 +851,7 @@ export default function ReaderPage() {
       >
         <div className="flex items-center gap-3 sm:gap-4">
           <Link
-            href={`/book/${bookId}`}
+            href="/dashboard"
             className={`p-2 rounded-full transition ${iconBgClass}`}
           >
             <ArrowLeft className="w-5 h-5" />

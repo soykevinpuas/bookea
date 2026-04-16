@@ -8,7 +8,7 @@ import { useUserId } from "@/hooks/useUser";
 import Book3D from "@/components/Book3D";
 import BookLongPressMenu from "@/components/BookLongPressMenu";
 import ProgressCircle from "@/components/ProgressCircle";
-import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History } from "lucide-react";
+import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History, User, Grid3X3 } from "lucide-react";
 
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
 export default function DashboardPage() {
@@ -16,8 +16,9 @@ export default function DashboardPage() {
   const router = useRouter();
   
   const [search, setSearch] = useState("");
+  const [authorSearch, setAuthorSearch] = useState("");
   const [category, setCategory] = useState("all");
-  const [view, setView] = useState<"grid" | "list">("grid");
+  const [view, setView] = useState<"grid" | "list" | "compact">("grid");
   const [isOnline, setIsOnline] = useState(true);
 
   // 3.4.1 - Detección de estado de conexión
@@ -64,13 +65,17 @@ export default function DashboardPage() {
 
     if (search) {
       const s = search.toLowerCase();
-      filtered = filtered.filter(b => b.title?.toLowerCase().includes(s) || b.author?.toLowerCase().includes(s));
+      filtered = filtered.filter(b => b.title?.toLowerCase().includes(s));
+    }
+    if (authorSearch) {
+      const a = authorSearch.toLowerCase();
+      filtered = filtered.filter(b => b.author?.toLowerCase().includes(a));
     }
     if (category && category !== "all") {
       filtered = filtered.filter(b => b.category === category);
     }
     return filtered;
-  }, [displayBooks, search, category]);
+  }, [displayBooks, search, authorSearch, category, isOnline]);
 
   const categories = ["Ficción", "Novela", "Clásicos", "Misterio", "Fantasía", "Historia", "Otros"];
 
@@ -153,21 +158,33 @@ export default function DashboardPage() {
             )}
           </div>
           {isOnline && (
-            <Link href="/catalog" className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2 uppercase tracking-widest">
-              Explorar <Compass className="w-4 h-4" />
+            <Link 
+              href="/catalog" 
+              className="text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-full transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] transform hover:-translate-y-1 flex items-center gap-2 uppercase tracking-widest"
+            >
+              Catálogo <Compass className="w-4 h-4" />
             </Link>
           )}
         </div>
 
-        {/* Filtros */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="relative flex-1">
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <div className="relative flex-[2]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input
               type="text"
-              placeholder="Buscar..."
+              placeholder="Buscar por título..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm focus:border-blue-500/50 transition-colors"
+            />
+          </div>
+          <div className="relative flex-1">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+            <input
+              type="text"
+              placeholder="Autor..."
+              value={authorSearch}
+              onChange={(e) => setAuthorSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm focus:border-blue-500/50 transition-colors"
             />
           </div>
@@ -181,8 +198,9 @@ export default function DashboardPage() {
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
-               <button onClick={() => setView("grid")} className={`p-2 rounded-lg ${view === "grid" ? "bg-white/10" : "text-white/40"}`}><LayoutGrid className="w-4 h-4" /></button>
-               <button onClick={() => setView("list")} className={`p-2 rounded-lg ${view === "list" ? "bg-white/10" : "text-white/40"}`}><List className="w-4 h-4" /></button>
+               <button onClick={() => setView("grid")} className={`p-2 rounded-lg ${view === "grid" ? "bg-white/10" : "text-white/40"}`} title="Cuadrícula"><LayoutGrid className="w-4 h-4" /></button>
+               <button onClick={() => setView("compact")} className={`p-2 rounded-lg ${view === "compact" ? "bg-white/10" : "text-white/40"}`} title="Compacto"><Grid3X3 className="w-4 h-4" /></button>
+               <button onClick={() => setView("list")} className={`p-2 rounded-lg ${view === "list" ? "bg-white/10" : "text-white/40"}`} title="Lista"><List className="w-4 h-4" /></button>
             </div>
           </div>
         </div>
@@ -193,11 +211,15 @@ export default function DashboardPage() {
             <p className="text-white/40">No hay libros que mostrar</p>
           </div>
         ) : (
-          <div className={view === "grid" ? "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-6" : "space-y-4"}>
+          <div className={
+            view === "grid" ? "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-6" : 
+            view === "compact" ? "grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-8 gap-3" : 
+            "space-y-4"
+          }>
             {books.map((book) => (
               view === "grid" ? (
-              <BookLongPressMenu book={book}>
-                <div key={book.id} className="flex flex-col gap-3 group">
+              <BookLongPressMenu book={book} key={book.id}>
+                <div className="flex flex-col gap-3 group">
                   <Link href={`/reader/${book.id}`}>
                     <div className="aspect-[2/3] transition-transform group-hover:scale-105 relative">
                       <Book3D src={book.cover_url || ""} title={book.title} />
@@ -214,19 +236,32 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </BookLongPressMenu>
+              ) : view === "compact" ? (
+                <BookLongPressMenu book={book} key={book.id}>
+                  <Link href={`/reader/${book.id}`} className="block group">
+                    <div className="aspect-[2/3] transition-transform group-hover:scale-110 relative shadow-lg rounded-lg overflow-hidden">
+                      <Book3D src={book.cover_url || ""} title={book.title} />
+                      {book.percent_complete !== undefined && book.percent_complete > 0 && (
+                        <div className="absolute bottom-1 right-1 z-20">
+                          <ProgressCircle progress={book.percent_complete} size={22} strokeWidth={2} />
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                </BookLongPressMenu>
               ) : (
-                <BookLongPressMenu book={book}>
-                  <Link key={book.id} href={`/reader/${book.id}`} className="flex items-center gap-4 p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all">
-                    <div className="w-12 h-16 flex-shrink-0"><Book3D src={book.cover_url || ""} title={book.title} /></div>
+                <BookLongPressMenu book={book} key={book.id}>
+                  <Link href={`/reader/${book.id}`} className="flex items-center gap-4 p-2 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all">
+                    <div className="w-10 h-14 flex-shrink-0"><Book3D src={book.cover_url || ""} title={book.title} /></div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-bold truncate">{book.title}</h3>
                       <p className="text-xs text-white/40 truncate">{book.author}</p>
                     </div>
                     <div className="flex items-center gap-4">
                       {book.percent_complete !== undefined && book.percent_complete > 0 && (
-                        <ProgressCircle progress={book.percent_complete} size={28} />
+                        <ProgressCircle progress={book.percent_complete} size={24} />
                       )}
-                      <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">Leer</button>
+                      <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider">Leer</button>
                     </div>
                   </Link>
                 </BookLongPressMenu>
