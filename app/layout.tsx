@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PwaListener } from "@/components/PwaListener";
 import { SplashScreen } from "@/components/SplashScreen";
+import { BottomNav } from "@/components/BottomNav";
 
 // 1.5 - Configuración de fuentes y Metadata global
 const geistSans = Geist({
@@ -114,6 +115,7 @@ export default async function RootLayout({
             <main className="flex-1 pb-safe px-safe">
               {children}
             </main>
+            <BottomNav />
           </QueryProvider>
           <Toaster 
             position="bottom-right" 

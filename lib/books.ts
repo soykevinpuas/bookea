@@ -94,14 +94,26 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
       .map((item: any) => {
         const bookData = item.books;
         const book = Array.isArray(bookData) ? bookData[0] : bookData;
+        if (!book) return null;
+
+        // Búsqueda de progreso: Intentar encontrar el registro que corresponde a este libro
+        const allProgress = item.reading_progress || [];
+        const progressEntry = Array.isArray(allProgress) ? allProgress[0] : allProgress;
         
-        const progress = item.reading_progress;
-        const progressData = Array.isArray(progress) ? progress[0] : progress;
-        const rp = progressData?.reading_progress?.[0];
-        
-        const serverPercent = rp?.percent_complete || 0;
-        const serverCfi = rp?.cfi_position || null;
-        const lastRead = rp?.last_read_at || null;
+        let serverPercent = 0;
+        let serverCfi = null;
+        let lastRead = null;
+
+        // Extraer datos si la estructura es la esperada por el join
+        if (progressEntry?.reading_progress) {
+          const rp = Array.isArray(progressEntry.reading_progress) 
+            ? progressEntry.reading_progress[0] 
+            : progressEntry.reading_progress;
+          
+          serverPercent = rp?.percent_complete || 0;
+          serverCfi = rp?.cfi_position || null;
+          lastRead = rp?.last_read_at || null;
+        }
 
         // 3.4.1.9 - PRIORIDAD OFFLINE: Si lo local es más nuevo, lo usamos para la card
         let local = null;
@@ -120,16 +132,16 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
         
         if (local && (local.updated_at || local.last_read_at)) {
           const localTimestamp = local.updated_at || local.last_read_at;
-          const sTime = new Date(lastRead || 0).getTime();
+          const sTime = lastRead ? new Date(lastRead).getTime() : 0;
           const lTime = new Date(localTimestamp).getTime();
           
           if (lTime > sTime) {
-            finalPercent = local.percent_complete;
+            finalPercent = local.percent_complete ?? serverPercent;
             finalLastRead = localTimestamp;
           }
         }
         
-        // 3.4.1.9.1 - ESTADO DE DESCARGA: Crucial para el filtrado offline del Dashboard
+        // 3.4.1.9.1 - ESTADO DE DESCARGA
         const offlineMeta = getCachedBookMetadata(book.id);
         const isOfflineReady = offlineMeta ? (offlineMeta as any).isOfflineReady : false;
 

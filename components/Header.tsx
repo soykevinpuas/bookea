@@ -76,7 +76,7 @@ export function Header({ initialUser = null }: HeaderProps) {
         {/* 6.1.4.1 - Logo de Bookea con enlace al inicio */}
         <Link 
           href="/" 
-          className="text-xl sm:text-2xl font-black tracking-tighter text-gray-900 dark:text-white flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0"
+          className="text-xl sm:text-2xl font-black tracking-tighter text-gray-900 dark:text-white flex items-center gap-0 hover:opacity-80 transition-opacity flex-shrink-0"
         >
           <span className="text-blue-600 dark:text-blue-500">B</span>ookea
         </Link>
