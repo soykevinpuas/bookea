@@ -12,12 +12,16 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - **Vista de Cuadrícula Compacta:** Nuevo modo de visualización "Compacto" en Dashboard y Catálogo que prioriza las portadas (6-8 por fila en desktop, 3 en móvil).
 - **Filtrado por Autor:** Implementación de un campo de búsqueda dedicado para autores en los filtros de búsqueda.
 - **Feedback de Progreso:** Inclusión del símbolo `%` en los círculos de progreso para una lectura más clara del avance.
-- **Estabilidad Offline:** Nueva página de fallback en el Service Worker para evitar bucles de redirección infinita cuando no hay red.
+- **Estabilidad Offline:** Nueva página de fallback en el Service Worker y manejo quirúrgico de peticiones RSC para evitar bucles de redirección infinita.
+- **Carga Resiliente:** Timeout de 15 segundos en el lector para evitar bloqueos infinitos en el spinner de "Preparando libro".
 
 ### Cambios y Mejoras
 - **Rediseño de Navegación:** El botón "Explorar" fue renombrado a "**Catálogo**" y recibió un estilo de botón premium con sombras y gradientes.
 - **Optimización de Lista:** Reducción del tamaño de los iconos en la vista de lista para un diseño más limpio y profesional.
-- **Navegación del Lector:** Ajuste de la lógica del botón "Regresar" para redirigir siempre al Dashboard del usuario, optimizado para evitar retornos accidentales a la página de detalles.
+- **Navegación del Lector:** Uso de `router.replace` para limpiar el historial y asegurar que el botón de regreso siempre lleve al Dashboard, evitando retornos a la página de detalles.
+- **Pantalla de Inicio (Anti-Flicker):** Implementación de script y CSS crítico en el layout para ocultar el contenido hasta que la animación de Bookea comience.
+- **Menú Contextual Inteligente:** Detección de bordes en el menú de Long Press para evitar que se recorte por el borde inferior de la pantalla.
+- **Sincronización de Datos:** Estrategia de merge para subrayados que protege los datos guardados offline de ser sobreescritos por el servidor.
 - **Header Premium:** Reducción del tamaño del indicador de suscripción y optimización del layout móvil para evitar el encimamiento del logo y el toggle de temas.
 - **Gestión Offline:** El enlace al "Catálogo" ahora se oculta automáticamente cuando se detecta pérdida de conexión.
 

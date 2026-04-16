@@ -97,6 +97,17 @@ export async function downloadBook(book: Book): Promise<boolean> {
     const { getBookReviews } = await import("./reviews");
     await getBookReviews(book.id);
 
+    // CACHEAR INTERFAZ DEL LECTOR
+    try {
+      const readerUrl = `/reader/${book.id}`;
+      const readerRes = await fetch(readerUrl);
+      if (readerRes.ok) {
+        await cache.put(readerUrl, readerRes);
+      }
+    } catch (e) {
+      console.warn("No se pudo cachear la interfaz del lector:", e);
+    }
+
     return true;
   } catch (err) {
     console.error("Error descargando recursos:", err);

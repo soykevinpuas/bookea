@@ -65,12 +65,24 @@ export async function getHighlights(
 
     if (error) return local;
 
-    // Actualizar cache local con la verdad del servidor
+    // 4.3.0.1 - ESTRATEGIA DE MERGE: Preservar locales no sincronizados
     if (data && typeof window !== 'undefined') {
       const raw = localStorage.getItem(HIGHLIGHTS_KEY);
       const all = raw ? JSON.parse(raw) : {};
-      all[bookId] = data.map(h => ({ ...h, synced: true }));
+      const localUnsynced = (all[bookId] || []).filter((h: any) => h.synced === false);
+      
+      // Combinar: Servidor (prioridad si hay colisión por ID) + Locales no sincronizados
+      const remoteIds = new Set(data.map(h => h.id));
+      const filteredLocal = localUnsynced.filter((h: Highlight) => !remoteIds.has(h.id));
+      
+      const merged = [
+        ...data.map(h => ({ ...h, synced: true })),
+        ...filteredLocal
+      ];
+
+      all[bookId] = merged;
       localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(all));
+      return merged;
     }
 
     return data || local;

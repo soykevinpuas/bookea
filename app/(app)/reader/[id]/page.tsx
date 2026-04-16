@@ -198,6 +198,14 @@ export default function ReaderPage() {
     const canInit = book?.epub_url && viewerRef.current && (userId || !navigator.onLine);
     if (!canInit) return;
 
+    // 4.2.4b - Timeout de seguridad para el cargador
+    const loadingTimeout = setTimeout(() => {
+      if (isLoading && !bookRef.current) {
+        setIsLoading(false);
+        setError("El libro está tardando demasiado en cargar. Por favor, reintenta o verifica tu conexión.");
+      }
+    }, 15000);
+
     const initEpub = async () => {
       try {
         setIsLoading(true);

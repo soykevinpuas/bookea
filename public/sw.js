@@ -84,15 +84,28 @@ self.addEventListener('fetch', (event) => {
         const clone = res.clone();
         caches.open(CACHE_NAME).then((c) => c.put(request, clone));
         return res;
-      }).catch(() =>
-        // Intentar servir la versión cacheada de esta misma página o la shell de offline
-        caches.match(request).then((cached) =>
-          cached || new Response(
-            '<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bookea Offline</title></head><body style="background:#0a0a0a;color:white;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;margin:0"><div style="text-align:center;padding:20px"><h1 style="font-size:3rem;margin-bottom:10px">📚 Bookea</h1><h2 style="font-size:1.5rem;color:#3b82f6;margin-bottom:20px">Modo Offline</h2><p style="opacity:0.6;max-width:300px;margin:auto;line-height:1.5">No tienes conexión a internet y esta página no está guardada. Ve a tu <b>Dashboard</b> para ver tus libros descargados.</p><a href="/dashboard" style="display:inline-block;margin-top:30px;padding:12px 24px;background:#2563eb;color:white;text-decoration:none;border-radius:12px;font-weight:bold">Ir a mi Biblioteca</a></div></body></html>',
-            { headers: { 'Content-Type': 'text/html' } }
-          )
-        )
-      )
+      }).catch(() => {
+        // 8.2.3 - Manejo quirúrgico de fallos de red
+        const url = new URL(request.url);
+        const isRscRequest = request.headers.get('RSC') || url.searchParams.has('_rsc') || url.pathname.includes('/_next/data/');
+
+        // Si es una petición de datos (RSC), devolver 503 para que el cliente Next.js maneje el estado offline adecuadamente
+        if (isRscRequest) {
+          return new Response(null, { status: 503, statusText: 'Service Unavailable' });
+        }
+
+        // Si es una navegación completa, intentar servir la versión cacheada o la shell offline
+        if (request.mode === 'navigate') {
+          return caches.match(request).then((cached) =>
+            cached || new Response(
+              '<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bookea Offline</title></head><body style="background:#0a0a0a;color:white;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;margin:0"><div style="text-align:center;padding:20px"><h1 style="font-size:3rem;margin-bottom:10px">📚 Bookea</h1><h2 style="font-size:1.5rem;color:#3b82f6;margin-bottom:20px">Modo Offline</h2><p style="opacity:0.6;max-width:300px;margin:auto;line-height:1.5">No tienes conexión a internet y esta página no está guardada. Ve a tu <b>Dashboard</b> para ver tus libros descargados.</p><a href="/dashboard" style="display:inline-block;margin-top:30px;padding:12px 24px;background:#2563eb;color:white;text-decoration:none;border-radius:12px;font-weight:bold">Ir a mi Biblioteca</a></div></body></html>',
+              { headers: { 'Content-Type': 'text/html' } }
+            )
+          );
+        }
+        
+        return caches.match(request);
+      })
     );
     return;
   }

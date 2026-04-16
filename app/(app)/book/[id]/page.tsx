@@ -183,7 +183,7 @@ export default function BookDetailPage() {
                         </span>
                       </div>
                       <button
-                        onClick={() => router.push(`/reader/${book.id}`)}
+                        onClick={() => router.replace(`/reader/${book.id}`)}
                         className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow-md text-center"
                       >
                         Abrir Lector

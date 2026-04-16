@@ -16,6 +16,12 @@ export function SplashScreen() {
     if (!hasShown) {
       setShow(true);
       sessionStorage.setItem("bookea-splash-shown", "true");
+      // Quitar la clase que oculta todo para que se vea el splash
+      document.documentElement.classList.remove('splash-pending');
+    } else {
+      // Si ya se mostró, asegurar que el contenido sea visible inmediatamente
+      document.documentElement.classList.remove('splash-pending');
+      document.documentElement.classList.add('splash-ready');
     }
   }, []);
 
@@ -29,7 +35,10 @@ export function SplashScreen() {
         exit={{ opacity: 0, transition: { duration: 0.8, ease: "easeInOut" } }}
         onAnimationComplete={() => {
             // Un pequeño retraso extra antes de desmontar para suavidad
-            setTimeout(() => setShow(false), 2000);
+            setTimeout(() => {
+              setShow(false);
+              document.documentElement.classList.add('splash-ready');
+            }, 2000);
         }}
         className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0a0a0a]"
       >

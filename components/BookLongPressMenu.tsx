@@ -31,6 +31,23 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     }
   }, [epubUrl]);
 
+  const [menuPosition, setMenuPosition] = useState<"bottom" | "top">("bottom");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Calcular posición del menú para evitar recorte
+  useEffect(() => {
+    if (showMenu && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      // Si hay menos de 250px abajo (aprox el alto del menú), abrir hacia arriba
+      if (spaceBelow < 250) {
+        setMenuPosition("top");
+      } else {
+        setMenuPosition("bottom");
+      }
+    }
+  }, [showMenu]);
+
   // Cerrar menú al hacer click fuera
   useEffect(() => {
     if (!showMenu) return;
@@ -93,6 +110,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
 
   return (
     <div
+      ref={containerRef}
       className="relative"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -112,11 +130,13 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
         {showMenu && (
           <motion.div
             ref={menuRef}
-            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+            initial={{ opacity: 0, scale: 0.9, y: menuPosition === "bottom" ? -10 : 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+            exit={{ opacity: 0, scale: 0.9, y: menuPosition === "bottom" ? -10 : 10 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[100] w-56 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl"
+            className={`absolute left-1/2 -translate-x-1/2 z-[100] w-56 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl ${
+              menuPosition === "bottom" ? "top-full mt-2" : "bottom-full mb-2"
+            }`}
           >
             {/* Header del menú */}
             <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
