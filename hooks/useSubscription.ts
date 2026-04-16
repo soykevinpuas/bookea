@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 
@@ -11,7 +11,7 @@ export interface SubscriptionData {
 }
 
 export function useSubscription(userId: string | undefined) {
-  const supabase = createClientClient();
+  const supabase = useMemo(() => createClientClient(), []);
   const queryClient = useQueryClient();
 
   const query = useQuery({

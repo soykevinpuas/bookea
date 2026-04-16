@@ -110,7 +110,7 @@ export function Header({ initialUser = null }: HeaderProps) {
                 >
                   <Zap className={`w-2.5 h-2.5 ${subscription?.isActive ? 'fill-current' : ''}`} />
                   {subscription?.role === 'admin' ? (
-                    <span className="hidden xs:inline">Admin Permium</span>
+                    <span className="hidden xs:inline">Admin Premium</span>
                   ) : (
                     subscription?.isActive ? 'Premium' : 'Hazte Premium'
                   )}
