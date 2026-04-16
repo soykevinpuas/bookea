@@ -40,7 +40,7 @@ export function Header({ initialUser = null }: HeaderProps) {
   // 6.1.2b - Escucha cambios de sesión del lado del cliente (logout, etc.)
   // Se registra UNA sola vez. router.refresh() dispara el efecto de arriba.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       setUser(session?.user ?? null);
       setIsLoading(false);
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
