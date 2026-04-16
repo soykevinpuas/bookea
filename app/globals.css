@@ -250,8 +250,6 @@
   .preserve-gradient {
     background-color: var(--dot-bg, inherit) !important;
     color: var(--dot-text, #ffffff) !important;
-    /* Permitimos background-image para que los avatares funcionen */
-    background-image: inherit !important;
     opacity: 1 !important;
     visibility: visible !important;
     background-clip: padding-box !important;
@@ -259,7 +257,6 @@
 
   .retro .preserve-gradient,
   .navy .preserve-gradient {
-    background-image: var(--avatar-url, inherit) !important; /* Permitir variables de fondo si se usan */
     filter: none !important;
   }
 

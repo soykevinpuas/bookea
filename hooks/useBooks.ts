@@ -5,8 +5,8 @@ import { getBooks, getBook, getUserBooks } from "@/lib/books";
 import { createClientClient } from "@/lib/supabase";
 
 const BOOK_QUERY_OPTIONS = {
-  staleTime: 5 * 60 * 1000,
-  gcTime: 10 * 60 * 1000,
+  staleTime: 10 * 1000, // 10 segundos (para ser muy reactivo al volver del lector)
+  gcTime: 30 * 60 * 1000, 
   retry: 1,
 };
 

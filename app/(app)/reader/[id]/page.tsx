@@ -54,10 +54,23 @@ export default function ReaderPage() {
 
   const { data: book, isLoading: loadingBook } = useBook(bookId);
   const { userId } = useUserId();
-
-  // 4.2.2 - Estado React para gestionar preferencias visuales, cargas y UI del lector
+  const queryClient = useQueryClient();
+  
+  // 4.2.1 - Estado local del lector
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // 4.1.9 - INVALIDACIÓN DE CACHÉ: Cuando el usuario sale del lector, 
+  // invalidamos las queries de libros para que el Dashboard vea el nuevo progreso instantáneamente.
+  useEffect(() => {
+    return () => {
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
+        queryClient.invalidateQueries({ queryKey: ["books"] });
+      }
+    };
+  }, [userId, queryClient]);
+
   const [fontSize, setFontSize] = useState(18);
   const [fontFamily, setFontFamily] = useState<string>("sans");
   const [textAlign, setTextAlign] = useState<"left" | "center" | "right" | "justify">("justify");
