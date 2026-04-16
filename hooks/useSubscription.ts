@@ -1,5 +1,5 @@
-// 2.1 - Hook para gestión de suscripción y acceso premium
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 
 export interface SubscriptionData {
@@ -12,8 +12,9 @@ export interface SubscriptionData {
 
 export function useSubscription(userId: string | undefined) {
   const supabase = createClientClient();
+  const queryClient = useQueryClient();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ["user-subscription", userId],
     queryFn: async (): Promise<SubscriptionData | null> => {
       if (!userId) return null;
@@ -48,6 +49,34 @@ export function useSubscription(userId: string | undefined) {
       };
     },
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5, // 5 minutos de cache
+    staleTime: 1000 * 60 * 1, // 1 minuto de cache (seguro y reactivo)
   });
+
+  // 2.2 - Suscripción Realtime: Escuchar cambios en el rol del usuario para actualizar instantáneamente
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`user-updates-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+          filter: `id=eq.${userId}`
+        },
+        () => {
+          // Forzar refresco de React Query al detectar cambio en DB
+          query.refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, supabase, query]);
+
+  return query;
 }

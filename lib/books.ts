@@ -79,7 +79,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
       .from("user_books")
       .select(`
         books(*),
-        reading_progress:book_id(reading_progress(last_read_at))
+        reading_progress:book_id(reading_progress(last_read_at, percent_complete, cfi_position))
       `)
       .eq("user_id", userId);
 

@@ -73,7 +73,7 @@ export function UserMenu({ email }: UserMenuProps) {
           >
             {profile?.avatar_url?.startsWith("avatar:") ? (
                <div 
-                className="w-full h-full"
+                className="w-full h-full preserve-gradient"
                 style={getAvatarStyle(profile.avatar_url)}
               />
             ) : (
