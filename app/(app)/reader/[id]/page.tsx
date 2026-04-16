@@ -371,10 +371,31 @@ export default function ReaderPage() {
         
         // 4.2.7 - Lógica asíncrona de restauración de localizaciones (CFI) y cálculo de porcentajes
         // PRECARGA: Obtenemos el progreso y highlights de forma concurrente antes de forzar el display
-        const [savedProgress, savedHighlights] = await Promise.all([
-          getReadingProgress(bookId, userId),
-          getHighlights(bookId, userId)
-        ]);
+        // 4.2.7.0 - GESTIÓN DE TIMEOUT: Si el servidor tarda > 1.5s (Lie-fi), usamos caché local para evitar cuelgues.
+        const fetchTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 1500));
+        
+        let savedProgress = null;
+        let savedHighlights: Highlight[] = [];
+
+        try {
+          const results = await Promise.race([
+            Promise.all([
+              getReadingProgress(bookId, userId),
+              getHighlights(bookId, userId)
+            ]),
+            fetchTimeout
+          ]) as [any, Highlight[]];
+          
+          savedProgress = results[0];
+          savedHighlights = results[1];
+        } catch (err) {
+          console.warn("⚠️ Reader: Timeout o error cargando metadatos. Usando respaldo local.");
+          // Importación dinámica para evitar dependencias circulares si las hubiera
+          const { getLocalProgress } = await import("@/lib/reading");
+          const { getLocalHighlights } = await import("@/lib/highlights");
+          savedProgress = getLocalProgress(bookId);
+          savedHighlights = getLocalHighlights(bookId);
+        }
         
         setHighlights(savedHighlights);
 

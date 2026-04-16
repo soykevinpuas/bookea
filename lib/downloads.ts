@@ -93,6 +93,10 @@ export async function downloadBook(book: Book): Promise<boolean> {
     // GUARDAR METADATA 
     saveBookMetadata(book, true);
 
+    // CACHEAR REVIEWS (Comunidad) para modo offline
+    const { getBookReviews } = await import("./reviews");
+    await getBookReviews(book.id);
+
     return true;
   } catch (err) {
     console.error("Error descargando recursos:", err);

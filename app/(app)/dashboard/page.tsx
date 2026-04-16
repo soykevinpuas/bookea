@@ -41,10 +41,17 @@ export default function DashboardPage() {
   }, [allBooks]);
 
   // 3.4.2 - Lógica de 'Recientemente leídos' (Checkpoint)
+  // Filtrar por disponibilidad offline si no hay red para evitar errores al pulsar 'Reanudar'
   const recentBook = useMemo(() => {
     if (!displayBooks || displayBooks.length === 0) return null;
+    
+    if (!isOnline) {
+      // Buscar el primero que esté descargado
+      return displayBooks.find(b => (b as any).isOfflineReady === true) || null;
+    }
+    
     return displayBooks[0];
-  }, [displayBooks]);
+  }, [displayBooks, isOnline]);
 
   const books = useMemo(() => {
     if (!displayBooks) return [];

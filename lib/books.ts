@@ -114,10 +114,15 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
           }
         }
         
+        // 3.4.1.9.1 - ESTADO DE DESCARGA: Crucial para el filtrado offline del Dashboard
+        const offlineMeta = getCachedBookMetadata(book.id);
+        const isOfflineReady = offlineMeta ? (offlineMeta as any).isOfflineReady : false;
+
         return { 
           ...book, 
           last_read_at: finalLastRead,
-          percent_complete: finalPercent
+          percent_complete: finalPercent,
+          isOfflineReady
         };
       })
       .filter((b): b is Book => !!b && typeof b === 'object' && 'id' in b);
