@@ -22,11 +22,6 @@ export default async function CatalogPage({ searchParams }: PageProps) {
   // 3.1.1 - Inicialización del cliente Supabase en servidor y obtención de la colección filtrada
   const supabase = await createClient();
   const books = await getBooks(supabase, { search, author, category });
-Line: 19:   const { search, category, view = "list" } = await searchParams;
-20:   
-21:   // 3.1.1 - Inicialización del cliente Supabase en servidor y obtención de la colección filtrada
-22:   const supabase = await createClient();
-23:   const books = await getBooks(supabase, { search, category });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">
