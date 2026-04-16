@@ -54,7 +54,12 @@ export function useSubscription(userId: string | undefined) {
 
   // 2.2 - Suscripción Realtime: Escuchar cambios en el rol del usuario para actualizar instantáneamente
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      console.log("[SubscriptionHook] No userId provided, skipping realtime.");
+      return;
+    }
+
+    console.log(`[SubscriptionHook] Connecting to Realtime for user: ${userId}`);
 
     const channel = supabase
       .channel(`user-updates-${userId}`)
@@ -66,14 +71,21 @@ export function useSubscription(userId: string | undefined) {
           table: 'users',
           filter: `id=eq.${userId}`
         },
-        () => {
+        (payload) => {
+          console.log("[SubscriptionHook] 🔔 CHANGE DETECTED!", payload);
           // Forzar refresco de React Query al detectar cambio en DB
           query.refetch();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[SubscriptionHook] Status: ${status}`);
+        if (status === 'CHANNEL_ERROR') {
+          console.error("[SubscriptionHook] ❌ Realtime error. Check RLS or Supabase Dashboard replication settings.");
+        }
+      });
 
     return () => {
+      console.log(`[SubscriptionHook] Cleaning up channel for user: ${userId}`);
       supabase.removeChannel(channel);
     };
   }, [userId, supabase, query]);

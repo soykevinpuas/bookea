@@ -35,8 +35,12 @@ self.addEventListener('activate', (event) => {
 
 // 1.2 - Interceptor de peticiones
 self.addEventListener('fetch', (event) => {
+  // Identificar el tipo de asset para aplicar la estrategia correcta
   const { request } = event;
   const url = new URL(request.url);
+
+  // IGNORAR esquemas no soportados (chrome-extension, edge-extension, etc)
+  if (!url.protocol.startsWith('http')) return;
 
   // Ignorar peticiones que no sean GET
   if (request.method !== 'GET') return;

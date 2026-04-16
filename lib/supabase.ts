@@ -16,7 +16,18 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_A
 // 1.1 - Cliente Supabase Estándar (SSG / Funciones Puras)
 export const supabase = createStandardClient(supabaseUrl, supabaseAnonKey)
 
-// 1.2 - Cliente Supabase para Componentes de Cliente (SSR Aware)
+// Singleton para el cliente del navegador para evitar múltiples instancias de Auth/Realtime
+let browserClient: any = null;
+
+// 1.2 - Cliente Supabase para Componentes de Cliente (SSR Aware / Singleton)
 export const createClientClient = () => {
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  if (typeof window === 'undefined') {
+    return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  }
+
+  if (!browserClient) {
+    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  }
+
+  return browserClient;
 }
