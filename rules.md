@@ -104,13 +104,15 @@ chore: cambios de configuración
 style: cambios de UI sin lógica
 refactor: refactorización de código
 docs: documentación
+
+**NOTA IMPORTANTE:** Los mensajes de commit deben escribirse estrictamente en **ESPAÑOL**.
 ```
 
 Ejemplos:
 ```
-feat: add catalog page with book grid
-fix: resolve RLS infinite recursion on users table
-chore: add epubjs dependency
+feat: agregar página de catálogo con cuadrícula de libros
+fix: resolver recursión infinita de RLS en tabla de usuarios
+chore: añadir dependencia epubjs
 ```
 
 ---

@@ -4,6 +4,25 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-15] - Mejoras de UI/UX y Navegación Premium
+**Objetivo:** Elevar la percepción de calidad de la aplicación mediante animaciones, vistas optimizadas y navegación intuitiva.
+
+### Añadido
+- **Pantalla de Inicio (Splash Screen):** Animación de entrada con el logo de Bookea y efectos de brillo usando `framer-motion`. Configurada para mostrarse solo una vez por sesión (`sessionStorage`).
+- **Vista de Cuadrícula Compacta:** Nuevo modo de visualización "Compacto" en Dashboard y Catálogo que prioriza las portadas (6-8 por fila en desktop, 3 en móvil).
+- **Filtrado por Autor:** Implementación de un campo de búsqueda dedicado para autores en los filtros de búsqueda.
+- **Feedback de Progreso:** Inclusión del símbolo `%` en los círculos de progreso para una lectura más clara del avance.
+
+### Cambios y Mejoras
+- **Rediseño de Navegación:** El botón "Explorar" fue renombrado a "**Catálogo**" y recibió un estilo de botón premium con sombras y gradientes.
+- **Optimización de Lista:** Reducción del tamaño de los iconos en la vista de lista para un diseño más limpio y profesional.
+- **Navegación del Lector:** Ajuste de la lógica del botón "Regresar" para redirigir siempre al Dashboard del usuario.
+
+### Arreglos
+- **Capa de Datos:** Actualización de `lib/books.ts` para soportar filtrado explícito por autor en las consultas a Supabase y caché local.
+
+---
+
 ## [2026-04-08] - Formalización del Protocolo de Auditoría de Código
 **Objetivo:** Establecer un sistema riguroso de auditoría asistida por IA para mantener la integridad técnica y de seguridad del proyecto.
 
