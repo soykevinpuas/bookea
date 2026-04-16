@@ -71,7 +71,7 @@ export function useSubscription(userId: string | undefined) {
           table: 'users',
           filter: `id=eq.${userId}`
         },
-        (payload) => {
+        (payload: any) => {
           console.log("[SubscriptionHook] 🔔 CHANGE DETECTED!", payload);
           // Forzar refresco de React Query al detectar cambio en DB
           query.refetch();

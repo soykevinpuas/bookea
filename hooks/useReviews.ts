@@ -58,7 +58,7 @@ export function useReviews(bookId: string) {
           table: 'reviews',
           filter: `book_id=eq.${bookId}`
         },
-        (payload) => {
+        (payload: any) => {
           // React Query invalidará y refrescará los datos automáticamente
           queryClient.invalidateQueries({ queryKey: ["reviews", bookId] });
         }
