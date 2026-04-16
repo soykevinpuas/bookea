@@ -14,6 +14,9 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - **Feedback de Progreso:** Inclusión del símbolo `%` en los círculos de progreso para una lectura más clara del avance.
 - **Estabilidad Offline:** Nueva página de fallback en el Service Worker y manejo quirúrgico de peticiones RSC para evitar bucles de redirección infinita.
 - **Carga Resiliente:** Timeout de 15 segundos en el lector para evitar bloqueos infinitos en el spinner de "Preparando libro".
+- **Progreso de Lectura:** Nueva lógica de fusión (merge) para asegurar que el progreso offline se sincronice correctamente con la nube y el Dashboard siempre muestre el libro más reciente.
+- **Visualización de Progreso:** Estabilización del componente `ProgressCircle` para manejar valores inválidos y ser visible incluso al 0% de avance.
+- **UX PWA en Móviles:** Bloqueo de la previsualización nativa de iOS/Android en las portadas de libros para permitir el uso fluido del menú de opciones personalizado (`BookLongPressMenu`).
 
 ### Cambios y Mejoras
 - **Rediseño de Navegación:** El botón "Explorar" fue renombrado a "**Catálogo**" y recibió un estilo de botón premium con sombras y gradientes.

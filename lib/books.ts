@@ -104,17 +104,28 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
         const lastRead = rp?.last_read_at || null;
 
         // 3.4.1.9 - PRIORIDAD OFFLINE: Si lo local es más nuevo, lo usamos para la card
-        const local = typeof window !== 'undefined' ? (JSON.parse(localStorage.getItem("bookea-offline-progress") || "{}")[book.id]) : null;
+        let local = null;
+        try {
+          const rawLocal = typeof window !== 'undefined' ? localStorage.getItem("bookea-offline-progress") : null;
+          if (rawLocal) {
+            const allLocal = JSON.parse(rawLocal);
+            local = allLocal[book.id];
+          }
+        } catch (e) {
+          console.warn("Error parsing local progress in getUserBooks:", e);
+        }
         
         let finalPercent = serverPercent;
         let finalLastRead = lastRead;
         
-        if (local && local.updated_at) {
+        if (local && (local.updated_at || local.last_read_at)) {
+          const localTimestamp = local.updated_at || local.last_read_at;
           const sTime = new Date(lastRead || 0).getTime();
-          const lTime = new Date(local.updated_at).getTime();
+          const lTime = new Date(localTimestamp).getTime();
+          
           if (lTime > sTime) {
             finalPercent = local.percent_complete;
-            finalLastRead = local.updated_at;
+            finalLastRead = localTimestamp;
           }
         }
         

@@ -213,15 +213,23 @@ export default function ReaderPage() {
 
         const epubUrl = book.epub_url as string;
         
-        // 4.2.5.0 - SOPORTE OFFLINE: Intentar cargar desde caché si no hay internet
+        // 4.1.9.5 - SOPORTE OFFLINE AGRESIVO: Si no hay red, usar local SIEMPRE
         let epubSource: string | ArrayBuffer | Blob = epubUrl;
         
         if (typeof window !== 'undefined' && !navigator.onLine) {
-          const { getCachedBookFile } = await import("@/lib/downloads");
-          const cachedBlob = await getCachedBookFile(epubUrl);
-          if (cachedBlob) {
-            // Usamos Blob URL para máxima compatibilidad con el motor de epub.js
-            epubSource = URL.createObjectURL(cachedBlob);
+          try {
+            const { getCachedBookFile } = await import("@/lib/downloads");
+            const cachedBlob = await getCachedBookFile(epubUrl);
+            if (cachedBlob) {
+              epubSource = URL.createObjectURL(cachedBlob);
+            } else {
+              throw new Error("Libro no encontrado en caché offline");
+            }
+          } catch (e) {
+            console.error("Fallo crítico en carga offline:", e);
+            setError("Este libro no está disponible offline. Por favor, conéctate a internet para descargarlo.");
+            setIsLoading(false);
+            return;
           }
         }
 

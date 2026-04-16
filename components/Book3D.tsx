@@ -25,7 +25,10 @@ export default function Book3D({
   // Se evita el Canvas/crossOrigin que causaba imágenes negras en despliegue
   // ============================================
   return (
-    <div className={`relative ${className} group`}>
+    <div 
+      className={`relative ${className} group`}
+      data-book-cover
+    >
       {/* 6.4.2.1 - Contenedor con efecto hover: zoom suave y degradado inferior */}
       <div className="relative h-full shadow-lg rounded-lg overflow-hidden transition-all duration-300 group-hover:-translate-y-2 group-hover:scale-[1.03] group-hover:shadow-2xl">
         {/* Imagen de la portada: filter CSS aplica el efecto de mejora visual de forma nativa */}

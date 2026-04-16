@@ -15,9 +15,11 @@ export default function ProgressCircle({
   strokeWidth = 3,
   className = ""
 }: ProgressCircleProps) {
+  // Asegurar que el progreso sea un número válido y esté entre 0 y 100
+  const validProgress = isNaN(progress) || progress === undefined ? 0 : Math.min(100, Math.max(0, progress));
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (Math.min(100, Math.max(0, progress)) / 100) * circumference;
+  const offset = circumference - (validProgress / 100) * circumference;
 
   return (
     <div 
@@ -51,7 +53,7 @@ export default function ProgressCircle({
       </svg>
       {/* Percentage Text */}
       <span className="text-[9px] font-black text-white/90">
-        {Math.round(progress)}%
+        {Math.round(validProgress)}%
       </span>
     </div>
   );

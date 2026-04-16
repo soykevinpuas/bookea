@@ -399,4 +399,16 @@
   padding-right: env(safe-area-inset-right);
 }
 
-/* Base styles for standard elements are handled by Tailwind's dark: classes */
+/* 1.7.4 - PWA Interactivity & Touch Overrides */
+.no-touch-callout {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[data-book-cover] {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}

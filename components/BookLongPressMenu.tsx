@@ -111,11 +111,16 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   return (
     <div
       ref={containerRef}
-      className="relative"
+      className="relative select-none"
+      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' } as any}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchEnd}
-      onContextMenu={(e) => { e.preventDefault(); setShowMenu(true); }}
+      onContextMenu={(e) => { 
+        e.preventDefault(); 
+        e.stopPropagation();
+        setShowMenu(true); 
+      }}
     >
       {/* Indicador de descargado */}
       {isDownloaded && (

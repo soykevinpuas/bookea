@@ -42,16 +42,22 @@ export default function DashboardPage() {
   }, [allBooks]);
 
   // 3.4.2 - Lógica de 'Recientemente leídos' (Checkpoint)
-  // Filtrar por disponibilidad offline si no hay red para evitar errores al pulsar 'Reanudar'
   const recentBook = useMemo(() => {
     if (!displayBooks || displayBooks.length === 0) return null;
     
+    // 3.4.2.1 - Ordenar copias locales por fecha de lectura para encontrar el verdadero "reciente"
+    const sorted = [...displayBooks].sort((a, b) => {
+      const timeA = new Date(a.last_read_at || 0).getTime();
+      const timeB = new Date(b.last_read_at || 0).getTime();
+      return timeB - timeA;
+    });
+
     if (!isOnline) {
-      // Buscar el primero que esté descargado
-      return displayBooks.find(b => (b as any).isOfflineReady === true) || null;
+      // Buscar el primero que esté descargado y tenga algo de progreso
+      return sorted.find(b => (b as any).isOfflineReady === true) || sorted[0];
     }
     
-    return displayBooks[0];
+    return sorted[0];
   }, [displayBooks, isOnline]);
 
   const books = useMemo(() => {
@@ -121,7 +127,7 @@ export default function DashboardPage() {
               <div className="flex-1 text-center sm:text-left z-10">
                 <div className="flex items-center justify-center sm:justify-start gap-4 mb-2">
                   <h3 className="text-xl font-black group-hover:text-blue-400 transition-colors truncate">{recentBook.title}</h3>
-                  {recentBook.percent_complete !== undefined && recentBook.percent_complete > 0 && (
+                  {recentBook.percent_complete !== undefined && (
                     <ProgressCircle progress={recentBook.percent_complete} size={32} />
                   )}
                 </div>
@@ -220,10 +226,10 @@ export default function DashboardPage() {
               view === "grid" ? (
               <BookLongPressMenu book={book} key={book.id}>
                 <div className="flex flex-col gap-3 group">
-                  <Link href={`/reader/${book.id}`}>
+                      <Link href={`/reader/${book.id}`}>
                     <div className="aspect-[2/3] transition-transform group-hover:scale-105 relative">
                       <Book3D src={book.cover_url || ""} title={book.title} />
-                      {book.percent_complete !== undefined && book.percent_complete > 0 && (
+                      {book.percent_complete !== undefined && (
                         <div className="absolute -bottom-2 -right-2 z-20 bg-[#0a0a0a] rounded-full p-1 shadow-xl border border-white/10">
                           <ProgressCircle progress={book.percent_complete} size={30} />
                         </div>
@@ -241,7 +247,7 @@ export default function DashboardPage() {
                   <Link href={`/reader/${book.id}`} className="block group">
                     <div className="aspect-[2/3] transition-transform group-hover:scale-110 relative shadow-lg rounded-lg overflow-hidden">
                       <Book3D src={book.cover_url || ""} title={book.title} />
-                      {book.percent_complete !== undefined && book.percent_complete > 0 && (
+                      {book.percent_complete !== undefined && (
                         <div className="absolute bottom-1 right-1 z-20">
                           <ProgressCircle progress={book.percent_complete} size={22} strokeWidth={2} />
                         </div>
@@ -258,7 +264,7 @@ export default function DashboardPage() {
                       <p className="text-xs text-white/40 truncate">{book.author}</p>
                     </div>
                     <div className="flex items-center gap-4">
-                      {book.percent_complete !== undefined && book.percent_complete > 0 && (
+                      {book.percent_complete !== undefined && (
                         <ProgressCircle progress={book.percent_complete} size={24} />
                       )}
                       <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider">Leer</button>
