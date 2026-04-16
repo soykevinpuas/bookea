@@ -104,8 +104,8 @@ export default function AdminUsersPage() {
           <p>No hay usuarios todavía.</p>
         </div>
       ) : (
-        <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white/5 border border-white/8 rounded-2xl overflow-x-auto">
+          <table className="w-full text-sm min-w-full sm:min-w-[800px]">
             <thead>
               <tr className="border-b border-white/8">
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Email</th>

@@ -182,12 +182,12 @@ export default function BookDetailPage() {
                           Listo para leer
                         </span>
                       </div>
-                      <Link
-                        href={`/reader/${book.id}`}
+                      <button
+                        onClick={() => router.push(`/reader/${book.id}`)}
                         className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow-md text-center"
                       >
                         Abrir Lector
-                      </Link>
+                      </button>
                     </div>
 
                     {/* Opción de descarga offline si tiene acceso */}

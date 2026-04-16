@@ -850,12 +850,12 @@ export default function ReaderPage() {
             'bg-white/70 backdrop-blur-xl border-b border-black/5'} shadow-sm`}
       >
         <div className="flex items-center gap-3 sm:gap-4">
-          <Link
-            href="/dashboard"
+          <button
+            onClick={() => router.push("/dashboard")}
             className={`p-2 rounded-full transition ${iconBgClass}`}
           >
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
           <div className="flex flex-col">
             <h1 className="text-sm font-bold truncate max-w-[150px] sm:max-w-md">
               {book.title}
@@ -992,15 +992,15 @@ export default function ReaderPage() {
           <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 px-6 text-center ${bgColors}`}>
             <div className="text-red-500 mb-2 text-2xl">⚠️</div>
             <div className="text-lg font-medium mb-4">{typeof error === 'string' ? error : "Error al cargar el libro"}</div>
-            <Link 
-              href="/dashboard"
+            <button 
+              onClick={() => router.push("/dashboard")}
               className={`px-6 py-2 rounded-lg transition-colors ${
                 isRetro ? 'bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/50 hover:bg-[#3fb950]/30' : 
                 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
               Volver a la biblioteca
-            </Link>
+            </button>
           </div>
         )}
 

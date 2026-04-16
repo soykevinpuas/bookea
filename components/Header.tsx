@@ -20,8 +20,9 @@ interface HeaderProps {
 
 // 6.1.1 - Componente Header con autenticación en tiempo real
 export function Header({ initialUser = null }: HeaderProps) {
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(initialUser);
+   const [user, setUser] = useState<{ id: string; email?: string } | null>(initialUser);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
   
   const supabase = useMemo(() => createClientClient(), []);
   const pathname = usePathname();
@@ -49,6 +50,18 @@ export function Header({ initialUser = null }: HeaderProps) {
     return () => subscription.unsubscribe();
   }, [supabase, router]);
 
+  // 6.1.2c - Detectar estado de conexión
+  useEffect(() => {
+    setIsOnline(navigator.onLine);
+    const handleStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleStatus);
+    window.addEventListener('offline', handleStatus);
+    return () => {
+      window.removeEventListener('online', handleStatus);
+      window.removeEventListener('offline', handleStatus);
+    };
+  }, []);
+
   // 6.1.3 - Ocultar Header en la vista del lector para máxima inmersión
   if (pathname?.startsWith("/reader")) {
     return null;
@@ -63,19 +76,21 @@ export function Header({ initialUser = null }: HeaderProps) {
         {/* 6.1.4.1 - Logo de Bookea con enlace al inicio */}
         <Link 
           href="/" 
-          className="text-2xl font-black tracking-tighter text-gray-900 dark:text-white flex items-center gap-2 hover:opacity-80 transition-opacity"
+          className="text-xl sm:text-2xl font-black tracking-tighter text-gray-900 dark:text-white flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0"
         >
           <span className="text-blue-600 dark:text-blue-500">B</span>ookea
         </Link>
         
         {/* 6.1.4.2 - Navegación principal */}
-        <nav className="flex items-center gap-4 sm:gap-6">
-          <Link 
-            href="/catalog" 
-            className="text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-full transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.5)] transform hover:-translate-y-0.5 hidden sm:block uppercase tracking-wider"
-          >
-            Catálogo
-          </Link>
+        <nav className="flex items-center gap-2 sm:gap-6">
+          {isOnline && (
+            <Link 
+              href="/catalog" 
+              className="text-[10px] sm:text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.5)] transform hover:-translate-y-0.5 hidden sm:block uppercase tracking-wider"
+            >
+              Catálogo
+            </Link>
+          )}
           
           {/* Toggle de tema claro/oscuro */}
           <ThemeToggle />
@@ -87,14 +102,19 @@ export function Header({ initialUser = null }: HeaderProps) {
               <div className="flex items-center gap-3">
                 <Link 
                   href="/subscribe"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all text-xs font-bold ${
+                  className={`flex items-center gap-1 px-2 py-1 rounded-full border transition-all text-[10px] sm:text-xs font-bold ${
                     subscription?.isActive 
                     ? (subscription?.role === 'admin' ? 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400' : 'bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400')
                     : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
                   }`}
                 >
-                  <Zap className={`w-3 h-3 ${subscription?.isActive ? 'fill-current' : ''}`} />
-                  {subscription?.role === 'admin' ? 'Admin Premium' : (subscription?.isActive ? 'Plan Premium' : 'Cambiar a Premium')}
+                  <Zap className={`w-2.5 h-2.5 ${subscription?.isActive ? 'fill-current' : ''}`} />
+                  {subscription?.role === 'admin' ? (
+                    <span className="hidden xs:inline">Admin Permium</span>
+                  ) : (
+                    subscription?.isActive ? 'Premium' : 'Hazte Premium'
+                  )}
+                  {subscription?.role === 'admin' && <span className="xs:hidden">Admin</span>}
                 </Link>
                 <UserMenu email={user.email} />
               </div>

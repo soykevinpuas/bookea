@@ -12,14 +12,18 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - **Vista de Cuadrícula Compacta:** Nuevo modo de visualización "Compacto" en Dashboard y Catálogo que prioriza las portadas (6-8 por fila en desktop, 3 en móvil).
 - **Filtrado por Autor:** Implementación de un campo de búsqueda dedicado para autores en los filtros de búsqueda.
 - **Feedback de Progreso:** Inclusión del símbolo `%` en los círculos de progreso para una lectura más clara del avance.
+- **Estabilidad Offline:** Nueva página de fallback en el Service Worker para evitar bucles de redirección infinita cuando no hay red.
 
 ### Cambios y Mejoras
 - **Rediseño de Navegación:** El botón "Explorar" fue renombrado a "**Catálogo**" y recibió un estilo de botón premium con sombras y gradientes.
 - **Optimización de Lista:** Reducción del tamaño de los iconos en la vista de lista para un diseño más limpio y profesional.
-- **Navegación del Lector:** Ajuste de la lógica del botón "Regresar" para redirigir siempre al Dashboard del usuario.
+- **Navegación del Lector:** Ajuste de la lógica del botón "Regresar" para redirigir siempre al Dashboard del usuario, optimizado para evitar retornos accidentales a la página de detalles.
+- **Header Premium:** Reducción del tamaño del indicador de suscripción y optimización del layout móvil para evitar el encimamiento del logo y el toggle de temas.
+- **Gestión Offline:** El enlace al "Catálogo" ahora se oculta automáticamente cuando se detecta pérdida de conexión.
 
 ### Arreglos
 - **Capa de Datos:** Actualización de `lib/books.ts` para soportar filtrado explícito por autor en las consultas a Supabase y caché local.
+- **Panel Admin:** Implementación de scroll horizontal en la tabla de usuarios registrados para evitar el recorte de opciones de rol en dispositivos móviles.
 
 ---
 
