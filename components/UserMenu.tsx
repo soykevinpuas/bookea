@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 
 import { InstallPWA } from "./InstallPWA";
 import { useUserId } from "@/hooks/useUser";
+import { useSubscription } from "@/hooks/useSubscription";
 
 // ============================================
 // 6.5 - UserMenu: Menú desplegable de usuario autenticado
@@ -24,25 +25,7 @@ export function UserMenu({ email }: UserMenuProps) {
   const router = useRouter();
   const supabase = createClientClient();
   const { userId } = useUserId();
-  
-  // Estado para almacenar el rol del usuario (free/subscriber)
-  const [role, setRole] = useState<string>("free");
-
-  // 6.5.1.1 - Efecto para obtener el rol del usuario desde la base de datos
-  useEffect(() => {
-    async function getRole() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-        if (data?.role) setRole(data.role);
-      }
-    }
-    getRole();
-  }, [supabase]);
+  const { data: subscription } = useSubscription(userId);
 
   // 6.5.1.2 - Handler para cerrar sesión
   const handleLogout = async () => {
@@ -51,8 +34,9 @@ export function UserMenu({ email }: UserMenuProps) {
     router.refresh();
   };
 
-  // Determinación de si el usuario tiene suscripción activa
-  const isSubscriber = role === 'subscriber';
+  // Determinación de si el usuario tiene suscripción activa a través del hook global realtime
+  const role = subscription?.role || 'free';
+  const isSubscriber = subscription?.isActive;
 
   // ============================================
   // 6.5.2 - Renderizado del menú de usuario

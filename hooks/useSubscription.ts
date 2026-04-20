@@ -73,8 +73,8 @@ export function useSubscription(userId: string | undefined) {
         },
         (payload: any) => {
           console.log("[SubscriptionHook] 🔔 CHANGE DETECTED!", payload);
-          // Forzar refresco de React Query al detectar cambio en DB
-          query.refetch();
+          // Forzar refresco de React Query al detectar cambio en DB usando invalidateQueries
+          queryClient.invalidateQueries({ queryKey: ["user-subscription", userId] });
         }
       )
       .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
@@ -88,7 +88,7 @@ export function useSubscription(userId: string | undefined) {
       console.log(`[SubscriptionHook] Cleaning up channel for user: ${userId}`);
       supabase.removeChannel(channel);
     };
-  }, [userId, supabase, query]);
+  }, [userId, supabase, queryClient]);
 
   return query;
 }
