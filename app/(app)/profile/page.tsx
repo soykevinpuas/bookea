@@ -63,7 +63,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (authLoading || (profileLoading && !profile) || subLoading) {
+  if (authLoading || (profileLoading && !profile)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] retro:bg-[#0d1117]">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500/50" />
@@ -153,11 +153,12 @@ export default function ProfilePage() {
               <p className="text-xs text-white/30 truncate mb-6">{dbUser?.email}</p>
               
               <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                subLoading ? 'bg-white/5 text-white/40 animate-pulse border border-white/10' :
                 isSubscriber 
                   ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' 
                   : 'bg-white/5 text-white/40 border border-white/10'
               }`}>
-                {subscription?.role === 'admin' ? 'Admin / VIP' : (isSubscriber ? 'Plan Premium' : 'Nivel Gratis')}
+                {subLoading ? 'Cargando Estado...' : (subscription?.role === 'admin' ? 'Admin / VIP' : (isSubscriber ? 'Plan Premium' : 'Nivel Gratis'))}
               </div>
             </div>
 
