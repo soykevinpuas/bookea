@@ -49,8 +49,7 @@ export function useSubscription(userId: string | undefined) {
       };
     },
     enabled: !!userId,
-    staleTime: 1000 * 60 * 1, // 1 minuto de cache
-    refetchInterval: 5000, // <--- Polling cada 5s: Respaldo a prueba de balas por si falla el WebSocket Realtime
+    staleTime: 1000 * 60 * 1, // 1 minuto de cache (seguro y reactivo)
   });
 
   // 2.2 - Suscripción Realtime: Escuchar cambios en el rol del usuario para actualizar instantáneamente
