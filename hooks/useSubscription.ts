@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 
@@ -13,6 +13,8 @@ export interface SubscriptionData {
 export function useSubscription(userId: string | undefined) {
   const supabase = useMemo(() => createClientClient(), []);
   const queryClient = useQueryClient();
+  // Ref estable para evitar reconexiones del canal Realtime
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const query = useQuery({
     queryKey: ["user-subscription", userId],
@@ -25,7 +27,12 @@ export function useSubscription(userId: string | undefined) {
         .eq("id", userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("[useSubscription] Error fetching role:", error.message);
+        throw error;
+      }
+
+      console.log("[useSubscription] Fetched from DB:", data);
 
       let endsAt: Date | null = null;
       if (data.subscription_ends_at) {
@@ -55,20 +62,21 @@ export function useSubscription(userId: string | undefined) {
       };
     },
     enabled: !!userId,
-    staleTime: 1000 * 60 * 1, // 1 minuto de cache (seguro y reactivo)
+    staleTime: 0, // SIEMPRE refrescar del servidor — sin cache engañoso
+    refetchOnWindowFocus: true, // Refrescar al volver a la pestaña
   });
 
-  // 2.2 - Suscripción Realtime: Escuchar cambios en el rol del usuario para actualizar instantáneamente
+  // 2.2 - Suscripción Realtime: Escuchar cambios en el rol del usuario
   useEffect(() => {
-    if (!userId) {
-      console.log("[SubscriptionHook] No userId provided, skipping realtime.");
-      return;
-    }
+    if (!userId) return;
 
-    console.log(`[SubscriptionHook] Connecting to Realtime for user: ${userId}`);
+    // No reconectar si ya existe un canal para este userId
+    if (channelRef.current) return;
+
+    console.log(`[useSubscription] Connecting Realtime for user: ${userId}`);
 
     const channel = supabase
-      .channel(`user-updates-${userId}`)
+      .channel(`user-role-${userId}`)
       .on(
         'postgres_changes',
         {
@@ -78,23 +86,26 @@ export function useSubscription(userId: string | undefined) {
           filter: `id=eq.${userId}`
         },
         (payload: any) => {
-          console.log("[SubscriptionHook] 🔔 CHANGE DETECTED!", payload);
-          // Forzar refresco de React Query al detectar cambio en DB usando invalidateQueries
-          queryClient.invalidateQueries({ queryKey: ["user-subscription", userId] });
+          console.log("[useSubscription] 🔔 REALTIME CHANGE:", payload.new);
+          // Forzar refetch inmediato ignorando staleTime
+          queryClient.invalidateQueries({ 
+            queryKey: ["user-subscription", userId],
+            refetchType: 'all'
+          });
         }
       )
-      .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
-        console.log(`[SubscriptionHook] Status: ${status}`);
-        if (status === 'CHANNEL_ERROR') {
-          console.error("[SubscriptionHook] ❌ Realtime error. Check RLS or Supabase Dashboard replication settings.");
-        }
+      .subscribe((status: string) => {
+        console.log(`[useSubscription] Realtime status: ${status}`);
       });
 
+    channelRef.current = channel;
+
     return () => {
-      console.log(`[SubscriptionHook] Cleaning up channel for user: ${userId}`);
+      console.log(`[useSubscription] Cleaning up channel for user: ${userId}`);
       supabase.removeChannel(channel);
+      channelRef.current = null;
     };
-  }, [userId, supabase, queryClient]);
+  }, [userId]); // Solo depende de userId — supabase y queryClient son estables
 
   return query;
 }
