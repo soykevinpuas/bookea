@@ -4,12 +4,17 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
-## [2026-04-20] - Corrección de Build y Tipado Estricto de Supabase
-**Objetivo:** Resolver el error de compilación en Vercel originado por tipado implícito en el hook de suscripción y fortalecer la infraestructura general de tipos de la aplicación.
+## [2026-04-20] - Corrección de Build, Realtime, y Preparación de Nuevo Perfil
+**Objetivo:** Resolver el error de compilación en Vercel originado por tipado implícito en el hook de suscripción, fortalecer la infraestructura general de tipos de la aplicación, habilitar suscripciones en tiempo real del panel admin y preparar limpieza de UI para nuevo sistema de avatares.
+
+### Añadido
+- **Migración SQL (Realtime):** Se creó `007_enable_realtime_users.sql` para forzar la publicación en realtime de la tabla `users`, permitiendo que el hook `useSubscription` actúe de forma reactiva a los cambios hechos en el panel de administrador.
 
 ### Arreglos
 - **Hook de Suscripción (`useSubscription.ts`):** Se proporcionó un tipado explícito de unión (`'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR'`) para el estado de retorno en el callback del canal realtime de Supabase, resolviendo la falla de TypeScript durante el proceso de build.
 - **Tipado del Cliente Supabase (`lib/supabase.ts`):** Se eliminó el tipo inseguro `any` utilizado en el singleton `browserClient` que sirve a toda la aplicación. Fue reemplazado correctamente con `SupabaseClient | null`, asegurando la verificación estricta de inferencia de tipos por parte de TypeScript previendo futuros errores "implicit any" o violaciones en la forma de los datos esperados en los componentes.
+- **Portadas en Lector (`app/(app)/book/[id]/page.tsx`):** Se sustituyó la etiqueta estándar `<img>` por el componente encapsulado de la aplicación `<Book3D />`, unificando su renderizado con el catálogo y evitando bloqueos de CORS o CSP en los entornos de Vercel.
+- **Limpieza de UI de Perfil:** Se eliminó todo rastro del componente anterior `AvatarSelector` y de renderizado de imagen de avatar de la base de datos (tanto de la página de perfil como del `<UserMenu />` global) a petición para preparar el terreno limpio para el nuevo sistema de UI de customización. Solo se renderizará la primera letra del usuario en un círculo sólido.
 
 
 ## [2026-04-15] - Mejoras de UI/UX y Navegación Premium

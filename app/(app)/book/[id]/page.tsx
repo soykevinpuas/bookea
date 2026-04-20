@@ -12,6 +12,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2 } from "lucide-react";
+import Book3D from "@/components/Book3D";
 import ReviewForm from "@/components/community/ReviewForm";
 import ReviewList from "@/components/community/ReviewList";
 
@@ -129,10 +130,10 @@ export default function BookDetailPage() {
             <div className="md:w-1/3 lg:w-1/4">
               <div className="aspect-[2/3] bg-gray-100 dark:bg-black m-4 md:m-6 rounded-xl overflow-hidden shadow-sm relative group">
                 {book.cover_url ? (
-                  <img
+                  <Book3D
                     src={book.cover_url}
-                    alt={book.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    title={book.title}
+                    className="w-full h-full transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-white/10 font-serif italic text-4xl">

@@ -7,8 +7,6 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { useUserId } from "@/hooks/useUser";
 import { useProfile } from "@/hooks/useAvatars";
-import AvatarSelector from "@/components/profile/AvatarSelector";
-import { ANIMAL_AVATARS, getAvatarStyle } from "@/lib/avatars";
 import { useSubscription } from "@/hooks/useSubscription";
 
 export default function ProfilePage() {
@@ -16,8 +14,6 @@ export default function ProfilePage() {
   const { 
     profile, 
     isLoading: profileLoading, 
-    updateAvatar, 
-    isUpdatingAvatar,
     updateName,
     isUpdatingName 
   } = useProfile(userId);
@@ -107,16 +103,9 @@ export default function ProfilePage() {
               
               <div className="relative w-28 h-28 mx-auto mb-6">
                 <div className="w-full h-full rounded-full border-4 border-white/5 overflow-hidden bg-white/5 shadow-2xl relative">
-                  {profile?.avatar_url?.startsWith("avatar:") ? (
-                    <div 
-                      className="w-full h-full"
-                      style={getAvatarStyle(profile.avatar_url)}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-blue-600 text-3xl font-bold">
-                      {dbUser?.email?.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                  <div className="w-full h-full flex items-center justify-center bg-blue-600 text-3xl font-bold uppercase">
+                    {dbUser?.email?.charAt(0) || "U"}
+                  </div>
                 </div>
                 
                 {isSubscriber && (
@@ -184,21 +173,6 @@ export default function ProfilePage() {
 
           {/* Subscription / Billing Details */}
           <div className="md:col-span-2 space-y-6">
-            <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md">
-              <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-blue-400" />
-                Personalización
-              </h3>
-              
-              <div className="space-y-6">
-                <p className="text-sm text-white/60">Elige tu animal espiritual. Este avatar será visible en la comunidad cuando comentes libros.</p>
-                <AvatarSelector 
-                  currentAvatarId={profile?.avatar_url || ""}
-                  onSelect={(id) => updateAvatar(id as any)}
-                  isUpdating={isUpdatingAvatar}
-                />
-              </div>
-            </div>
 
             <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md relative overflow-hidden">
                {/* Decorative glow */}

@@ -9,8 +9,6 @@ import { useEffect, useState } from "react";
 
 import { InstallPWA } from "./InstallPWA";
 import { useUserId } from "@/hooks/useUser";
-import { useProfile } from "@/hooks/useAvatars";
-import { ANIMAL_AVATARS, getAvatarStyle } from "@/lib/avatars";
 
 // ============================================
 // 6.5 - UserMenu: Menú desplegable de usuario autenticado
@@ -26,7 +24,6 @@ export function UserMenu({ email }: UserMenuProps) {
   const router = useRouter();
   const supabase = createClientClient();
   const { userId } = useUserId();
-  const { profile } = useProfile(userId);
   
   // Estado para almacenar el rol del usuario (free/subscriber)
   const [role, setRole] = useState<string>("free");
@@ -71,16 +68,9 @@ export function UserMenu({ email }: UserMenuProps) {
           <div 
             className="w-8 h-8 rounded-full flex items-center justify-center shadow-sm no-retro-override overflow-hidden bg-blue-600 relative"
           >
-            {profile?.avatar_url?.startsWith("avatar:") ? (
-               <div 
-                className="w-full h-full preserve-gradient"
-                style={getAvatarStyle(profile.avatar_url)}
-              />
-            ) : (
               <span className="text-white font-bold text-xs uppercase">
                 {email ? email.charAt(0) : <User className="w-4 h-4" />}
               </span>
-            )}
           </div>
           <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 mr-1" />
         </button>
