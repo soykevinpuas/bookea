@@ -1,8 +1,30 @@
+'use client';
+
 import { register } from '@/app/auth/actions'
 import Link from 'next/link'
+import { useState } from 'react'
 
 // 2.2 - RegisterPage: Componente de formulario para creación de nuevas cuentas de usuario
 export default function RegisterPage() {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (password !== confirmPassword) {
+      e.preventDefault();
+      setError('Las contraseñas no coinciden');
+      return;
+    }
+    if (password.length < 6) {
+      e.preventDefault();
+      setError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    setError('');
+    // Si todo coincide, el form se envía normalmente al Server Action
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">
       <div className="w-full max-w-md p-8 bg-white dark:bg-white/5 rounded-2xl shadow-lg border border-gray-100 dark:border-white/10 backdrop-blur-sm">
@@ -17,7 +39,7 @@ export default function RegisterPage() {
           </p>
         </div>
         {/* 2.2.1 - Formulario conectado a la Subrutina Server Action 'register' externa */}
-        <form action={register} className="flex flex-col gap-5">
+        <form action={register} onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* 2.2.2 - Campo de captura para el nuevo Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="email">
@@ -33,7 +55,7 @@ export default function RegisterPage() {
             />
           </div>
           
-          {/* 2.2.3 - Campo de registro de Contraseña (con seguridad mínima requerida) */}
+          {/* 2.2.3 - Campo de registro de Contraseña */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="password">
               Contraseña
@@ -44,10 +66,35 @@ export default function RegisterPage() {
               type="password" 
               placeholder="••••••••" 
               minLength={6}
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(''); }}
               className="w-full p-3 bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
               required 
             />
             <p className="text-xs text-gray-500 mt-2">Mínimo 6 caracteres</p>
+          </div>
+
+          {/* 2.2.4 - Campo de confirmación de Contraseña */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="confirmPassword">
+              Confirmar contraseña
+            </label>
+            <input 
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password" 
+              placeholder="••••••••" 
+              minLength={6}
+              value={confirmPassword}
+              onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+              className={`w-full p-3 bg-gray-50 dark:bg-black/50 border rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${
+                error ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-white/10'
+              }`}
+              required 
+            />
+            {error && (
+              <p className="text-xs text-red-500 mt-2 font-medium">{error}</p>
+            )}
           </div>
           
           <button 

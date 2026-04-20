@@ -69,12 +69,21 @@ export default function AdminUsersPage() {
     mutationFn: async ({ id, role, email }: { id: string; role: AppUser["role"]; email: string }) => {
       const toastId = toast.loading(`Cambiando rol de ${email}...`);
       try {
-        const { error } = await supabase.rpc("admin_change_user_role", {
-          target_user_id: id,
-          new_role: role
+        // Llamada al servidor para bypassear RLS completamente
+        const response = await fetch('/api/admin/update-role', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetUserId: id, newRole: role }),
         });
-        if (error) throw error;
-        toast.success(`Rol cambiado a ${ROLE_LABELS[role]} con éxito`, { id: toastId });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Error desconocido del servidor');
+        }
+
+        console.log('[Admin] Rol cambiado exitosamente:', result);
+        toast.success(`Rol cambiado a ${ROLE_LABELS[role]} con éxito (vía ${result.method})`, { id: toastId });
       } catch (err: any) {
         toast.error(`Error al cambiar rol: ${err.message}`, { id: toastId });
         throw err;
