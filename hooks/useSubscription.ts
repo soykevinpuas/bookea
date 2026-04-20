@@ -77,7 +77,7 @@ export function useSubscription(userId: string | undefined) {
           query.refetch();
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
         console.log(`[SubscriptionHook] Status: ${status}`);
         if (status === 'CHANNEL_ERROR') {
           console.error("[SubscriptionHook] ❌ Realtime error. Check RLS or Supabase Dashboard replication settings.");

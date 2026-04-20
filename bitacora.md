@@ -4,6 +4,14 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-20] - Corrección de Build y Tipado Estricto de Supabase
+**Objetivo:** Resolver el error de compilación en Vercel originado por tipado implícito en el hook de suscripción y fortalecer la infraestructura general de tipos de la aplicación.
+
+### Arreglos
+- **Hook de Suscripción (`useSubscription.ts`):** Se proporcionó un tipado explícito de unión (`'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR'`) para el estado de retorno en el callback del canal realtime de Supabase, resolviendo la falla de TypeScript durante el proceso de build.
+- **Tipado del Cliente Supabase (`lib/supabase.ts`):** Se eliminó el tipo inseguro `any` utilizado en el singleton `browserClient` que sirve a toda la aplicación. Fue reemplazado correctamente con `SupabaseClient | null`, asegurando la verificación estricta de inferencia de tipos por parte de TypeScript previendo futuros errores "implicit any" o violaciones en la forma de los datos esperados en los componentes.
+
+
 ## [2026-04-15] - Mejoras de UI/UX y Navegación Premium
 **Objetivo:** Elevar la percepción de calidad de la aplicación mediante animaciones, vistas optimizadas y navegación intuitiva.
 

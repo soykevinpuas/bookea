@@ -1,5 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
-import { createClient as createStandardClient } from '@supabase/supabase-js'
+import { createClient as createStandardClient, SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
@@ -17,7 +17,7 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_A
 export const supabase = createStandardClient(supabaseUrl, supabaseAnonKey)
 
 // Singleton para el cliente del navegador para evitar múltiples instancias de Auth/Realtime
-let browserClient: any = null;
+let browserClient: SupabaseClient | null = null;
 
 // 1.2 - Cliente Supabase para Componentes de Cliente (SSR Aware / Singleton)
 export const createClientClient = () => {
