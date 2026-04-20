@@ -133,7 +133,6 @@ export default function BookDetailPage() {
                   <img
                     src={book.cover_url}
                     alt={book.title}
-                    unoptimized="true"
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 z-10"
                   />
                 ) : (
