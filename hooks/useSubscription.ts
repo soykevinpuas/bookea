@@ -27,16 +27,22 @@ export function useSubscription(userId: string | undefined) {
 
       if (error) throw error;
 
+      let endsAt: Date | null = null;
+      if (data.subscription_ends_at) {
+        const parsedDate = new Date(data.subscription_ends_at);
+        if (!isNaN(parsedDate.getTime())) {
+          endsAt = parsedDate;
+        }
+      }
+      
       const now = new Date();
-      const endsAt = data.subscription_ends_at ? new Date(data.subscription_ends_at) : null;
-      
       const isActive = data.role === 'admin' || 
-                      (data.role === 'subscriber' && (!endsAt || endsAt > now));
+                      (data.role === 'subscriber' && (endsAt === null || endsAt > now));
       
-      const isExpired = data.role === 'subscriber' && !!endsAt && endsAt <= now;
+      const isExpired = data.role === 'subscriber' && endsAt !== null && endsAt <= now;
       
       let daysRemaining = null;
-      if (endsAt && endsAt > now) {
+      if (endsAt !== null && endsAt > now) {
         daysRemaining = Math.ceil((endsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       }
 
