@@ -48,10 +48,10 @@ export default function AdminUsersPage() {
       const toastId = toast.loading(`Actualizando suscripción de ${email}...`);
       
       try {
-        const { error, data } = await supabase.rpc("admin_set_subscription_date", {
-          target_user_id: userId,
-          new_ends_at: endsAt
-        });
+        const { error } = await supabase
+          .from("users")
+          .update({ subscription_ends_at: endsAt })
+          .eq("id", userId);
 
         if (error) throw error;
         
@@ -69,10 +69,7 @@ export default function AdminUsersPage() {
     mutationFn: async ({ id, role, email }: { id: string; role: AppUser["role"]; email: string }) => {
       const toastId = toast.loading(`Cambiando rol de ${email}...`);
       try {
-        const { error } = await supabase.rpc("admin_change_user_role", {
-          target_user_id: id,
-          new_role: role
-        });
+        const { error } = await supabase.from("users").update({ role }).eq("id", id);
         if (error) throw error;
         toast.success(`Rol cambiado a ${ROLE_LABELS[role]} con éxito`, { id: toastId });
       } catch (err: any) {
