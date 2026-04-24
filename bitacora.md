@@ -4,6 +4,23 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-24-C] - Gestión Manual de Biblioteca y Accesibilidad de Mouse
+**Objetivo:** Sustituir la automatización de biblioteca por una acción manual deliberada y mejorar la usabilidad del menú contextual en dispositivos sin pantalla táctil.
+
+### Añadido
+- **Botón Manual de Biblioteca:**
+  - Nueva acción en `BookDetailPage.tsx` que permite al usuario añadir libros manualmente a su colección.
+  - El botón detecta si el libro ya está en la biblioteca y cambia su estado a "En tu Biblioteca" con color ámbar.
+- **Accesibilidad de Menú (Mouse):**
+  - Se añadió un botón de **"Tres Puntos" (`...`)** en la esquina superior izquierda de las portadas de los libros.
+  - Este botón permite abrir las opciones (Descargar, Eliminar, Ver Detalles) con un simple clic, solucionando la limitación de la pulsación larga en PCs y Laptops.
+
+### Cambios y Mejoras
+- **Reversión de Auto-Add:** Se eliminó el intento de añadir libros automáticamente al abrir el lector para dar total control al usuario desde la página de detalles.
+- **Branding de Transición:** El enlace "Hazte Premium" en el menú de usuario ahora es azul ( branding gratuito) para usuarios sin suscripción, reservando el dorado exclusivamente para el estado Premium activo.
+
+---
+
 ## [2026-04-24-B] - Branding Dinámico Premium y Gestión de Biblioteca Realtime
 **Objetivo:** Refinar la identidad visual para diferenciar usuarios Premium de Free y automatizar la experiencia de gestión de biblioteca personal.
 
