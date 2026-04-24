@@ -36,6 +36,21 @@ export async function verifySubscriptionAction(sessionId: string) {
 
       if (updateError) throw updateError
 
+      // ASIGNAR CRÉDITOS (Igual que en el webhook)
+      const { data: existingCredits } = await supabase
+        .from('subscription_credits')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!existingCredits) {
+        await supabase.from('subscription_credits').insert({
+          user_id: user.id,
+          cycle_start: new Date().toISOString().split('T')[0],
+          credits_remaining: 5, // 5 libros al mes
+        });
+      }
+
       revalidatePath('/')
       revalidatePath('/dashboard')
       
