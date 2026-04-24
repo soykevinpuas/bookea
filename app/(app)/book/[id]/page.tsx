@@ -11,9 +11,11 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2 } from "lucide-react";
+import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2, BookmarkPlus, BookmarkCheck } from "lucide-react";
 import ReviewForm from "@/components/community/ReviewForm";
 import ReviewList from "@/components/community/ReviewList";
+import { addToLibrary } from "@/lib/books";
+import { createClientClient } from "@/lib/supabase";
 
 // 3.5.1 - Componente principal de la página de detalle
 export default function BookDetailPage() {
@@ -48,9 +50,13 @@ export default function BookDetailPage() {
   const hasPremiumAccess = subscription?.isActive;
   const canRead = !isPremiumBook || hasPremiumAccess;
 
-  // 3.5.6.1 - Estado para descarga offline
+  // 3.5.6.1 - Estado para descarga offline y biblioteca
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [addingToLib, setAddingToLib] = useState(false);
+  const supabase = createClientClient();
+
+  const isInLibrary = userBooks?.some(b => b.id === id);
 
   useEffect(() => {
     // Verificar si el libro está en el caché al cargar
@@ -85,6 +91,28 @@ export default function BookDetailPage() {
       toast.error("Error al descargar el libro para modo offline");
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handleAddToLibrary = async () => {
+    if (!userId) {
+      toast.error("Debes iniciar sesión");
+      return;
+    }
+    setAddingToLib(true);
+    try {
+      const accessType = subscription?.isActive ? 'subscription' : 'permanent';
+      const result = await addToLibrary(supabase, userId, id, accessType as any);
+      if (result) {
+        toast.success("¡Libro añadido a tu biblioteca!");
+        refetch(); // Actualizar lista local
+      } else {
+        toast.error("No se pudo añadir el libro");
+      }
+    } catch (error) {
+      toast.error("Error al conectar con el servidor");
+    } finally {
+      setAddingToLib(false);
     }
   };
 
@@ -209,6 +237,26 @@ export default function BookDetailPage() {
                         <Download className="w-5 h-5" />
                       )}
                       {isDownloading ? 'Descargando...' : isDownloaded ? 'Disponible Offline' : 'Descargar para leer sin internet'}
+                    </button>
+
+                    {/* NUEVO: Botón Agregar a Biblioteca (Manual) */}
+                    <button
+                      onClick={handleAddToLibrary}
+                      disabled={addingToLib || isInLibrary}
+                      className={`flex items-center justify-center gap-3 px-6 py-4 rounded-xl font-bold transition-all border ${
+                        isInLibrary
+                        ? "bg-amber-500/10 border-amber-500/20 text-amber-500 cursor-default"
+                        : "bg-white dark:bg-white/5 border-white/10 hover:border-amber-500/40 text-gray-900 dark:text-white"
+                      }`}
+                    >
+                      {addingToLib ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : isInLibrary ? (
+                        <BookmarkCheck className="w-5 h-5" />
+                      ) : (
+                        <BookmarkPlus className="w-5 h-5 text-amber-500" />
+                      )}
+                      {addingToLib ? 'Agregando...' : isInLibrary ? 'En tu Biblioteca' : 'Agregar a mi Biblioteca'}
                     </button>
                   </div>
                 )}

@@ -102,7 +102,7 @@ export function UserMenu({ email, avatarConfig }: UserMenuProps) {
               <Link
                 href="/subscribe"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 text-sm font-black text-amber-600 dark:text-amber-500 hover:bg-amber-500/10 rounded-xl transition-all group"
+                className="flex items-center gap-3 px-3 py-2.5 text-sm font-black text-blue-600 dark:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all group"
               >
                 <Zap className="w-4 h-4 fill-current group-hover:scale-110 transition-transform" />
                 Hazte Premium

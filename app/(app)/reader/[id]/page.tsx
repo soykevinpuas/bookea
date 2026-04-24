@@ -229,28 +229,15 @@ export default function ReaderPage() {
         setIsLoading(true);
         setError(null);
 
-        // 4.2.5.0 - VALIDACIÓN DE ACCESO Y AUTO-ADD
+        // 4.2.5.0 - VALIDACIÓN DE ACCESO
         const supabase = createClientClient();
         if (userId && bookId) {
           const hasAccess = await hasBookAccess(supabase, userId, bookId);
           
           if (!hasAccess) {
-            // Si es premium, intentamos agregarlo automáticamente
-            if (subscription?.isActive) {
-              const added = await addToLibrary(supabase, userId, bookId, 'subscription');
-              if (!added) {
-                setError("No se pudo agregar el libro a tu biblioteca. Reintenta.");
-                setIsLoading(false);
-                return;
-              }
-              // Notificar al dashboard que hay un nuevo libro
-              queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
-            } else {
-              // No es premium y no tiene acceso
-              setError("Este libro es Premium. Suscríbete para leerlo o cómpralo permanentemente.");
-              setIsLoading(false);
-              return;
-            }
+            setError("Este libro es Premium o no tienes acceso. Agrégalo primero a tu biblioteca o compra una suscripción.");
+            setIsLoading(false);
+            return;
           }
         }
 

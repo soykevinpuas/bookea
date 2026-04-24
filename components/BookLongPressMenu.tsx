@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Download, Eye, Trash2, X, Loader2, CheckCircle } from "lucide-react";
+import { Download, Eye, Trash2, X, Loader2, CheckCircle, MoreVertical } from "lucide-react";
 import { isBookDownloaded, downloadBook, removeBookDownload } from "@/lib/downloads";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -156,6 +156,18 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       )}
 
       {children}
+      
+      {/* 8.5.1 - Botón de activación para Mouse/Trackpad (Tres puntos) */}
+      <button 
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowMenu(!showMenu);
+        }}
+        className="absolute top-1 left-1 z-30 p-1 bg-black/60 hover:bg-black/80 text-white/50 hover:text-white rounded-full opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity"
+      >
+        <MoreVertical className="w-3.5 h-3.5" />
+      </button>
 
       <AnimatePresence>
         {showMenu && (
