@@ -19,7 +19,7 @@ export async function createPurchaseSession(formData: FormData) {
   
   switch (type) {
     case 'subscription':
-      priceId = PRICE_IDS.subscription
+      priceId = PRICE_IDS.premium
       break
     case 'digital_permanent':
       priceId = price || PRICE_IDS.digital_permanent
