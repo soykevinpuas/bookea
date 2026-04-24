@@ -8,18 +8,35 @@ import { useUserId } from "@/hooks/useUser";
 import Book3D from "@/components/Book3D";
 import BookLongPressMenu from "@/components/BookLongPressMenu";
 import ProgressCircle from "@/components/ProgressCircle";
-import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History, User, Grid3X3 } from "lucide-react";
+import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History, User, Grid3X3, Sparkles } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
 export default function DashboardPage() {
   const { userId } = useUserId();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [search, setSearch] = useState("");
   const [authorSearch, setAuthorSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [view, setView] = useState<"grid" | "list" | "compact">("grid");
   const [isOnline, setIsOnline] = useState(true);
+
+  // Detectar éxito de pago
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      toast.success("¡Bienvenido a Bookea Premium!", {
+        description: "Tu suscripción se ha activado correctamente. Ya puedes disfrutar de todo el catálogo.",
+        icon: <Sparkles className="w-5 h-5 text-amber-500" />,
+        duration: 8000,
+      });
+      // Limpiar la URL para no repetir el mensaje
+      const newPath = window.location.pathname;
+      window.history.replaceState({}, '', newPath);
+    }
+  }, [searchParams]);
 
   // 3.4.1 - Detección de estado de conexión
   useEffect(() => {
