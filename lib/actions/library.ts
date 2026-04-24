@@ -10,11 +10,23 @@ export async function addToLibraryAction(bookId: string, accessType: 'subscripti
 
   if (authError || !user) {
     console.error("[addToLibraryAction] NO USER SESSION FOUND ON SERVER:", authError);
-    return { success: false, error: 'Tu sesión ha expirado o no se detecta en el servidor. Por favor, reinicia sesión.' }
+    return { 
+      success: false, 
+      error: 'Sesión no detectada en el servidor. Intenta cerrar sesión y volver a entrar. Detalle: ' + (authError?.message || 'Ninguno') 
+    }
   }
 
+  console.log(`[addToLibraryAction] Diagnostic: User=${user.id}, Email=${user.email}`);
+
   try {
-    console.log(`[addToLibraryAction] User ${user.id} adding book ${bookId}`);
+    // 1. Verificar si el libro existe primero
+    const { data: bookCheck, error: bookError } = await supabase.from('books').select('id').eq('id', bookId).single();
+    if (bookError || !bookCheck) {
+      console.error("[addToLibraryAction] Book not found:", bookId, bookError);
+      return { success: false, error: `El libro no existe o no fue encontrado en la base de datos.` }
+    }
+
+    console.log(`[addToLibraryAction] Book verified. Proceeding to add...`);
     const result = await libAddToLibrary(supabase, user.id, bookId, accessType)
     if (result) {
       console.log(`[addToLibraryAction] Successfully added book ${bookId}`);

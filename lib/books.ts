@@ -236,22 +236,34 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
 
   try {
     // 1. Verificar si ya existe para evitar errores de duplicidad/constraint
-    const { data: existing } = await supabase
+    console.log(`[addToLibrary] Checking existing for user=${userId}, book=${bookId}`);
+    const { data: existing, error: checkError } = await supabase
       .from("user_books")
       .select("id")
       .eq("user_id", userId)
       .eq("book_id", bookId)
       .maybeSingle();
 
+    if (checkError) {
+      console.error("[addToLibrary] Check error:", checkError);
+      throw new Error(`Database check error: ${checkError.message}`);
+    }
+
     let record;
     if (existing) {
       // Si existe, actualizar el access_type por si acaso
-      const { data } = await supabase
+      console.log(`[addToLibrary] Existing record found (${existing.id}), updating access_type...`);
+      const { data, error: updateError } = await supabase
         .from("user_books")
         .update({ access_type: accessType })
         .eq("id", existing.id)
         .select()
         .single();
+      
+      if (updateError) {
+        console.error("[addToLibrary] Update error:", updateError);
+        throw new Error(`Update failed: ${updateError.message}`);
+      }
       record = data;
     } else {
       // Si no existe, insertar
@@ -275,12 +287,17 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
     }
     
     // 2. Asegurar que exista el registro de progreso (necesario para el join)
-    const { data: existingProgress } = await supabase
+    console.log(`[addToLibrary] Ensuring reading_progress for book=${bookId}`);
+    const { data: existingProgress, error: progressCheckError } = await supabase
       .from("reading_progress")
       .select("id")
       .eq("user_id", userId)
       .eq("book_id", bookId)
       .maybeSingle();
+
+    if (progressCheckError) {
+      console.warn("[addToLibrary] Non-fatal: reading_progress check error:", progressCheckError);
+    }
 
     if (!existingProgress) {
       await supabase

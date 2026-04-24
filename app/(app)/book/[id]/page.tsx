@@ -114,10 +114,11 @@ export default function BookDetailPage() {
       }
     } catch (error: any) {
       console.error("Error al añadir a biblioteca:", error);
-      toast.error(`Error: ${error.message || "No se pudo conectar con el servidor"}`);
+      // Mostrar el error completo para diagnóstico
+      toast.error(`Error del Servidor: ${error.message || "Desconocido"}. Revisa los logs de Vercel.`);
     } finally {
       // Pequeño delay para dejar que el cache se actualice y el botón no parpadee
-      setTimeout(() => setAddingToLib(false), 800);
+      setTimeout(() => setAddingToLib(false), 1000);
     }
   };
 
