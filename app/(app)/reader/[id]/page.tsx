@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { createClientClient } from "@/lib/supabase";
 import { addToLibrary, hasBookAccess } from "@/lib/books";
 import { useSubscription } from "@/hooks/useSubscription";
+import { motion, useAnimation } from "framer-motion";
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 export default function ReaderPage() {
@@ -64,6 +65,7 @@ export default function ReaderPage() {
   // 4.2.1 - Estado local del lector
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const controls = useAnimation();
   
   // 4.1.9 - INVALIDACIÓN DE CACHÉ: Cuando el usuario sale del lector, 
   // invalidamos las queries de libros para que el Dashboard vea el nuevo progreso instantáneamente.
@@ -494,6 +496,10 @@ export default function ReaderPage() {
             : Number(location.start.percentage || 0);
           setProgress(percent * 100);
           lastCfiRef.current = location.start.cfi;
+
+          // Lanzar animación de deslizamiento suave
+          controls.set({ opacity: 0, x: 20 });
+          controls.start({ opacity: 1, x: 0, transition: { duration: 0.4, ease: "easeOut" } });
 
           // Debounce del guardado: espera 1.5s de quietud antes de guardar en Supabase
           if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
@@ -1051,7 +1057,12 @@ export default function ReaderPage() {
         )}
 
         {/* 4.2.16 - Div nativo puro donde ePubJS monta su Iframe interno */}
-        <div ref={viewerRef} className="relative w-full h-full cursor-pointer" />
+        <motion.div 
+          ref={viewerRef} 
+          animate={controls}
+          initial={{ opacity: 1, x: 0 }}
+          className="w-full h-full cursor-pointer" 
+        />
       </div>
 
       {/* 4.2.16.1 - Popup fijo interactivo para Subrayados cuando hay Selección */}
