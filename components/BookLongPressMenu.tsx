@@ -269,32 +269,34 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
 
               <div className="border-t border-white/5 my-1" />
 
-              {!isInLibrary ? (
-                <button
-                  onClick={handleAddToLibrary}
-                  disabled={isProcessing}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-500/10 transition-colors text-amber-500/80"
-                >
-                  {isProcessing ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-                  ) : (
-                    <BookmarkPlus className="w-4 h-4 text-amber-500" />
-                  )}
-                  <span className="text-sm font-bold">Añadir a Biblioteca</span>
-                </button>
-              ) : (
-                <button
-                  onClick={handleRemoveFromLibrary}
-                  disabled={isProcessing}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 transition-colors text-red-500/80"
-                >
-                  {isProcessing ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-red-500" />
-                  ) : (
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  )}
-                  <span className="text-sm font-bold">Quitar de Biblioteca</span>
-                </button>
+              {( !book.is_premium || subscription?.isActive ) && (
+                !isInLibrary ? (
+                  <button
+                    onClick={handleAddToLibrary}
+                    disabled={isProcessing}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-500/10 transition-colors text-amber-500/80"
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                    ) : (
+                      <BookmarkPlus className="w-4 h-4 text-amber-500" />
+                    )}
+                    <span className="text-sm font-bold">Añadir a Biblioteca</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleRemoveFromLibrary}
+                    disabled={isProcessing}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 transition-colors text-red-500/80"
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    )}
+                    <span className="text-sm font-bold">Quitar de Biblioteca</span>
+                  </button>
+                )
               )}
             </div>
           </motion.div>

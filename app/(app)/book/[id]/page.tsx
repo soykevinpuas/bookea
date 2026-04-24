@@ -264,33 +264,35 @@ export default function BookDetailPage() {
                     </button>
 
                     {/* 3.5.10.2.3.1.2 - Botón de Biblioteca (Toggle) */}
-                    <button
-                      onClick={isCurrentlyInLibrary ? handleRemoveFromLibrary : handleAddToLibrary}
-                      disabled={addingToLib}
-                      className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl font-black transition-all border shadow-lg relative overflow-hidden ${
-                        isCurrentlyInLibrary 
-                        ? "bg-white dark:bg-[#1a1a1a] border-amber-500/50 text-amber-500 hover:bg-amber-500/5 shadow-amber-500/10" 
-                        : (hasPremiumAccess
-                          ? "bg-amber-500 border-amber-600 text-white hover:bg-amber-600 shadow-amber-500/20"
-                          : "bg-white dark:bg-white/5 border-white/10 hover:border-blue-500/40 text-gray-900 dark:text-white")
-                      } ${addingToLib ? "opacity-70 cursor-wait grayscale" : ""}`}
-                    >
-                      {addingToLib && (
-                        <div className="absolute inset-0 bg-white/20 dark:bg-black/20 flex items-center justify-center z-10 backdrop-blur-[1px]">
-                          <Loader2 className="w-6 h-6 animate-spin text-current" />
-                        </div>
-                      )}
-                      
-                      {!addingToLib && (isCurrentlyInLibrary ? (
-                        <BookmarkCheck className="w-6 h-6" />
-                      ) : (
-                        <BookmarkPlus className="w-6 h-6" />
-                      ))}
-                      
-                      <span className={addingToLib ? "opacity-0" : "opacity-100"}>
-                        {isCurrentlyInLibrary ? 'En tu Biblioteca (Quitar)' : 'Añadir a mi Biblioteca'}
-                      </span>
-                    </button>
+                    {( !isPremiumBook || hasPremiumAccess ) && (
+                      <button
+                        onClick={isCurrentlyInLibrary ? handleRemoveFromLibrary : handleAddToLibrary}
+                        disabled={addingToLib}
+                        className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl font-black transition-all border shadow-lg relative overflow-hidden ${
+                          isCurrentlyInLibrary 
+                          ? "bg-white dark:bg-[#1a1a1a] border-amber-500/50 text-amber-500 hover:bg-amber-500/5 shadow-amber-500/10" 
+                          : (hasPremiumAccess
+                            ? "bg-amber-500 border-amber-600 text-white hover:bg-amber-600 shadow-amber-500/20"
+                            : "bg-white dark:bg-white/5 border-white/10 hover:border-blue-500/40 text-gray-900 dark:text-white")
+                        } ${addingToLib ? "opacity-70 cursor-wait grayscale" : ""}`}
+                      >
+                        {addingToLib && (
+                          <div className="absolute inset-0 bg-white/20 dark:bg-black/20 flex items-center justify-center z-10 backdrop-blur-[1px]">
+                            <Loader2 className="w-6 h-6 animate-spin text-current" />
+                          </div>
+                        )}
+                        
+                        {!addingToLib && (isCurrentlyInLibrary ? (
+                          <BookmarkCheck className="w-6 h-6" />
+                        ) : (
+                          <BookmarkPlus className="w-6 h-6" />
+                        ))}
+                        
+                        <span className={addingToLib ? "opacity-0" : "opacity-100"}>
+                          {isCurrentlyInLibrary ? 'En tu Biblioteca (Quitar)' : 'Añadir a mi Biblioteca'}
+                        </span>
+                      </button>
+                    )}
                   </div>
                 )}
 
