@@ -7,7 +7,10 @@ import { useEffect, useState, useMemo } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserMenu } from "./UserMenu";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useProfile } from "@/hooks/useAvatars";
 import { Zap } from "lucide-react";
+import { parseAvatarConfig } from "@/lib/avatars-v2";
+import { AnimalEngine } from "./avatars/AnimalEngine";
 
 // ============================================
 // 6.1 - Header: Barra de navegación global de la aplicación
@@ -20,7 +23,7 @@ interface HeaderProps {
 
 // 6.1.1 - Componente Header con autenticación en tiempo real
 export function Header({ initialUser = null }: HeaderProps) {
-   const [user, setUser] = useState<{ id: string; email?: string } | null>(initialUser);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(initialUser);
   const [isLoading, setIsLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   
@@ -30,6 +33,7 @@ export function Header({ initialUser = null }: HeaderProps) {
 
   // 6.1.1.1 - Obtención del estado de suscripción
   const { data: subscription } = useSubscription(user?.id);
+  const { profile } = useProfile(user?.id);
 
   // 6.1.2a - Cuando el RSC del layout se re-ejecuta (por router.refresh()),
   // el prop `initialUser` cambia — este efecto lo sincroniza al state local.
@@ -78,7 +82,7 @@ export function Header({ initialUser = null }: HeaderProps) {
           href="/" 
           className="text-xl sm:text-2xl font-black tracking-tighter text-gray-900 dark:text-white flex items-center gap-0 hover:opacity-80 transition-opacity flex-shrink-0"
         >
-          <span className="text-blue-600 dark:text-blue-500">B</span>ookea
+          <span className="text-amber-500">B</span>ookea
         </Link>
         
         {/* 6.1.4.2 - Navegación principal */}
@@ -86,7 +90,7 @@ export function Header({ initialUser = null }: HeaderProps) {
           {isOnline && (
             <Link 
               href="/catalog" 
-              className="text-[10px] sm:text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.5)] transform hover:-translate-y-0.5 hidden sm:block uppercase tracking-wider"
+              className="text-[10px] sm:text-xs font-black bg-white dark:bg-[#151515] hover:bg-gray-50 border border-gray-200 dark:border-white/5 text-gray-900 dark:text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all shadow-sm transform hover:-translate-y-0.5 hidden sm:block uppercase tracking-wider"
             >
               Catálogo
             </Link>
@@ -102,21 +106,21 @@ export function Header({ initialUser = null }: HeaderProps) {
               <div className="flex items-center gap-3">
                 <Link 
                   href="/subscribe"
-                  className={`flex items-center gap-1 px-2 py-1 rounded-full border transition-all text-[10px] sm:text-xs font-bold ${
+                  className={`flex items-center gap-1 px-2 py-1 rounded-full border transition-all text-[10px] sm:text-xs font-black ${
                     subscription?.isActive 
-                    ? (subscription?.role === 'admin' ? 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400' : 'bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400')
+                    ? (subscription?.role === 'admin' ? 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-500')
                     : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
                   }`}
                 >
                   <Zap className={`w-2.5 h-2.5 ${subscription?.isActive ? 'fill-current' : ''}`} />
                   {subscription?.role === 'admin' ? (
-                    <span className="hidden xs:inline">Admin Premium</span>
+                    <span className="hidden xs:inline">Premium Admin</span>
                   ) : (
                     subscription?.isActive ? 'Premium' : 'Hazte Premium'
                   )}
                   {subscription?.role === 'admin' && <span className="xs:hidden">Admin</span>}
                 </Link>
-                <UserMenu email={user.email} />
+                <UserMenu email={user.email} avatarConfig={profile?.avatar_url} />
               </div>
             ) : (
               // Usuario no autenticado: mostrar botones de login/registro
@@ -129,7 +133,7 @@ export function Header({ initialUser = null }: HeaderProps) {
                 </Link>
                 <Link 
                   href="/register" 
-                  className="text-sm font-medium bg-blue-600 dark:bg-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-600/30 text-white dark:text-blue-400 dark:border dark:border-blue-500/30 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all shadow-sm cursor-pointer"
+                  className="text-sm font-bold bg-gray-900 dark:bg-white hover:opacity-90 text-white dark:text-black px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all shadow-sm cursor-pointer"
                 >
                   Regístrate
                 </Link>

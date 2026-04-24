@@ -1,13 +1,6 @@
-"use client";
-
-import { createClientClient } from "@/lib/supabase";
-import { useEffect, useState } from "react";
-import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles } from "lucide-react";
-import { toast } from "sonner";
-import Link from "next/link";
-import { useUserId } from "@/hooks/useUser";
-import { useProfile } from "@/hooks/useAvatars";
-import { useSubscription } from "@/hooks/useSubscription";
+import { parseAvatarConfig } from "@/lib/avatars-v2";
+import { AnimalEngine } from "@/components/avatars/AnimalEngine";
+import AvatarSelector from "@/components/profile/AvatarSelector";
 
 export default function ProfilePage() {
   const { userId, isLoading: authLoading } = useUserId();
@@ -15,7 +8,9 @@ export default function ProfilePage() {
     profile, 
     isLoading: profileLoading, 
     updateName,
-    isUpdatingName 
+    isUpdatingName,
+    updateAvatar,
+    isUpdatingAvatar
   } = useProfile(userId);
   const { data: subscription, isLoading: subLoading } = useSubscription(userId);
 
@@ -66,7 +61,7 @@ export default function ProfilePage() {
   if (authLoading || (profileLoading && !profile)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] retro:bg-[#0d1117]">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500/50" />
+        <Loader2 className="w-8 h-8 animate-spin text-amber-500/50" />
       </div>
     );
   }
@@ -82,45 +77,70 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSaveAvatar = async (config: string) => {
+    try {
+      await updateAvatar(config);
+      toast.success("Avatar actualizado");
+    } catch {
+      toast.error("Error al guardar avatar");
+    }
+  };
+
   // 3.3.2 - Determinar si el usuario tiene suscripción activa
   const isSubscriber = subscription?.isActive;
 
   // 3.3.3 - Renderizado del perfil del usuario
   return (
-    <div className="min-h-screen bg-[#0a0a0a] retro:bg-[#0d1117] text-white py-12 px-6">
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-10 text-center sm:text-left">
-          <h1 className="text-3xl font-bold mb-2">Mi Perfil</h1>
-          <p className="text-white/40">Gestiona tu cuenta y suscripción premium.</p>
+    <div className="min-h-screen bg-[#070708] text-white py-12 px-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-12 text-center sm:text-left flex flex-col sm:flex-row justify-between items-end gap-4">
+          <div>
+            <h1 className="text-4xl font-black mb-2 tracking-tight">Mi Perfil</h1>
+            <p className="text-white/40">Gestiona tu identidad y suscripción Premium.</p>
+          </div>
+          {isSubscriber && (
+            <div className="px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-500 fill-current" />
+              <span className="text-amber-500 font-bold text-xs uppercase tracking-widest">Miembro Premium</span>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* User Info Card */}
-          <div className="md:col-span-1 space-y-6">
-            <div className="bg-white/5 border border-white/10 rounded-3xl p-8 text-center relative overflow-hidden group">
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 text-center relative overflow-hidden group">
               {/* Background glow behind avatar */}
-              <div className="absolute top-0 left-0 w-full h-full bg-blue-600/5 blur-3xl -z-10 group-hover:bg-blue-600/10 transition-colors" />
+              <div className="absolute top-0 left-0 w-full h-full bg-amber-600/5 blur-3xl -z-10 group-hover:bg-amber-600/10 transition-colors" />
               
-              <div className="relative w-28 h-28 mx-auto mb-6">
-                <div className="w-full h-full rounded-full border-4 border-white/5 overflow-hidden bg-white/5 shadow-2xl relative">
-                  <div className="w-full h-full flex items-center justify-center bg-blue-600 text-3xl font-bold uppercase">
-                    {dbUser?.email?.charAt(0) || "U"}
-                  </div>
+              <div className="relative w-32 h-32 mx-auto mb-8">
+                <div className="w-full h-full rounded-full border-4 border-white/5 overflow-hidden bg-[#111] shadow-2xl relative flex items-center justify-center">
+                  {profile?.avatar_url ? (
+                    <AnimalEngine 
+                      type={parseAvatarConfig(profile.avatar_url).type} 
+                      color={parseAvatarConfig(profile.avatar_url).color} 
+                      size="100%" 
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-amber-600 text-4xl font-black">
+                      {dbUser?.email?.charAt(0) || "U"}
+                    </div>
+                  )}
                 </div>
                 
                 {isSubscriber && (
-                  <div className="absolute -bottom-1 -right-1 bg-blue-500 p-2 rounded-full shadow-lg border-2 border-[#0a0a0a]">
-                    <Zap className="w-4 h-4 text-white fill-current" />
+                  <div className="absolute -bottom-1 -right-1 bg-amber-500 p-2 rounded-full shadow-lg border-4 border-[#070708]">
+                    <Zap className="w-4 h-4 text-black fill-current" />
                   </div>
                 )}
               </div>
 
               {isEditingName ? (
-                <div className="flex flex-col gap-2 mb-4">
+                <div className="flex flex-col gap-3 mb-6">
                   <input 
                     value={tempName}
                     onChange={(e) => setTempName(e.target.value)}
-                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-center outline-none focus:border-blue-500 transition-colors"
+                    className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-center outline-none focus:border-amber-500 transition-colors"
                     placeholder="Tu nombre público..."
                     autoFocus
                   />
@@ -128,13 +148,13 @@ export default function ProfilePage() {
                     <button 
                       onClick={handleSaveName}
                       disabled={isUpdatingName}
-                      className="flex-1 bg-blue-600 hover:bg-blue-500 text-xs py-1.5 rounded-md transition-colors disabled:opacity-50"
+                      className="flex-1 bg-white text-black font-bold text-xs py-2.5 rounded-xl transition-all hover:opacity-80 disabled:opacity-50"
                     >
                       {isUpdatingName ? "..." : "Guardar"}
                     </button>
                     <button 
                       onClick={() => setIsEditingName(false)}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-xs py-1.5 rounded-md transition-colors"
+                      className="flex-1 bg-white/5 hover:bg-white/10 text-xs py-2.5 rounded-xl transition-all"
                     >
                       Cancelar
                     </button>
@@ -143,39 +163,53 @@ export default function ProfilePage() {
               ) : (
                 <h2 
                   onClick={() => setIsEditingName(true)}
-                  className="font-bold text-xl mb-1 truncate cursor-pointer hover:text-blue-400 transition-colors flex items-center justify-center gap-2"
+                  className="font-black text-2xl mb-1 truncate cursor-pointer hover:text-amber-500 transition-colors flex items-center justify-center gap-2 group-hover:translate-y-[-2px]"
                 >
                   {profile?.name || dbUser?.email?.split('@')[0]}
-                  <Settings className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" />
+                  <Settings className="w-4 h-4 opacity-0 group-hover:opacity-40 transition-opacity" />
                 </h2>
               )}
               
-              <p className="text-xs text-white/30 truncate mb-6">{dbUser?.email}</p>
+              <p className="text-xs text-white/30 truncate mb-8 px-4">{dbUser?.email}</p>
               
-              <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                subLoading ? 'bg-white/5 text-white/40 animate-pulse border border-white/10' :
+              <div className={`inline-flex items-center gap-2 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] w-fit ${
+                subLoading ? 'bg-white/5 text-white/20 animate-pulse border border-white/10' :
                 isSubscriber 
-                  ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' 
+                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
                   : 'bg-white/5 text-white/40 border border-white/10'
               }`}>
-                {subLoading ? 'Cargando Estado...' : (subscription?.role === 'admin' ? 'Admin / VIP' : (isSubscriber ? 'Plan Premium' : 'Nivel Gratis'))}
+                {subLoading ? 'Cargando...' : (subscription?.role === 'admin' ? 'Premium Admin' : (isSubscriber ? 'Miembro Premium' : 'Nivel Gratis'))}
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 divide-y divide-white/5">
-              <Link href="/dashboard" className="flex items-center gap-3 px-2 py-3 text-sm text-white/60 hover:text-white transition-colors">
-                <Sparkles className="w-4 h-4 text-blue-400" /> Mi Biblioteca
+            <div className="bg-white/5 border border-white/10 rounded-[2rem] p-4 divide-y divide-white/5 overflow-hidden">
+              <Link href="/dashboard" className="flex items-center gap-4 px-4 py-4 text-sm font-bold text-white/60 hover:text-white hover:bg-white/5 transition-all">
+                <Sparkles className="w-4 h-4 text-amber-400 font-bold" /> Mi Biblioteca
               </Link>
-              <Link href="/catalog" className="flex items-center gap-3 px-2 py-3 text-sm text-white/60 hover:text-white transition-colors">
-                <CreditCard className="w-4 h-4" /> Mis Compras
+              <Link href="/dashboard?tab=reading" className="flex items-center gap-4 px-4 py-4 text-sm font-bold text-white/60 hover:text-white hover:bg-white/5 transition-all">
+                <BookOpen className="w-4 h-4" /> Progreso
               </Link>
             </div>
           </div>
 
-          {/* Subscription / Billing Details */}
-          <div className="md:col-span-2 space-y-6">
-
-            <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md relative overflow-hidden">
+          {/* Configuration Sections (Right) */}
+          <div className="lg:col-span-8 space-y-8">
+            
+            {/* Animal Builder Section */}
+            <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-10">
+              <div className="flex items-center justify-between mb-10">
+                <h3 className="text-2xl font-black flex items-center gap-3">
+                  <Sparkles className="w-6 h-6 text-amber-500" />
+                  Personalizar Avatar
+                </h3>
+              </div>
+              
+              <AvatarSelector 
+                currentAvatarConfig={profile?.avatar_url}
+                onSelect={handleSaveAvatar}
+                isUpdating={isUpdatingAvatar}
+              />
+            </div>
                {/* Decorative glow */}
               <div className="absolute top-0 right-0 p-8 opacity-10">
                 <Shield className="w-32 h-32 text-blue-500" />

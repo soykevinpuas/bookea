@@ -1,173 +1,135 @@
 "use client";
 
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { User, LogOut, BookOpen, ChevronDown, Zap, CreditCard, Settings } from "lucide-react";
-import Link from "next/link";
+import { User, LogOut, Shield, Zap, LayoutDashboard } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { createClientClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
-import { InstallPWA } from "./InstallPWA";
-import { useUserId } from "@/hooks/useUser";
+import Link from "next/link";
 import { useSubscription } from "@/hooks/useSubscription";
+import { AnimalEngine } from "./avatars/AnimalEngine";
+import { parseAvatarConfig } from "@/lib/avatars-v2";
 
-// ============================================
-// 6.5 - UserMenu: Menú desplegable de usuario autenticado
-// Muestra información del usuario, rol, navegación y opciones de cuenta
-// ============================================
+/**
+ * 6.2 - UserMenu: Menú desplegable para la gestión de cuenta del usuario
+ * Muestra opciones de perfil, escritorio, admin y logout
+ */
 
 interface UserMenuProps {
-  email: string | undefined;
+  email?: string;
+  avatarConfig?: string | null;
 }
 
-// 6.5.1 - Componente principal del menú de usuario
-export function UserMenu({ email }: UserMenuProps) {
+export function UserMenu({ email, avatarConfig }: UserMenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClientClient();
-  const { userId } = useUserId();
-  const { data: subscription } = useSubscription(userId);
 
-  // 6.5.1.2 - Handler para cerrar sesión
+  const { data: subscription } = useSubscription();
+
+  // 6.2.1 - Cerrar menú al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push("/login");
     router.refresh();
   };
 
-  // Determinación de si el usuario tiene suscripción activa a través del hook global realtime
-  const role = subscription?.role || 'free';
-  const isSubscriber = subscription?.isActive;
+  const isPremium = subscription?.isActive;
 
-  // ============================================
-  // 6.5.2 - Renderizado del menú de usuario
-  // ============================================
   return (
-    <DropdownMenu.Root>
-      {/* 6.5.2.1 - Botón trigger del menú (avatar de usuario) */}
-      <DropdownMenu.Trigger asChild>
-        <button
-          className="flex items-center gap-2 pr-2 pl-1 py-1 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          aria-label="Menú de usuario"
-        >
-          <div 
-            className="w-8 h-8 rounded-full flex items-center justify-center shadow-sm no-retro-override overflow-hidden bg-blue-600 relative"
-          >
-              <span className="text-white font-bold text-xs uppercase">
-                {email ? email.charAt(0) : <User className="w-4 h-4" />}
-              </span>
-          </div>
-          <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 mr-1" />
-        </button>
-      </DropdownMenu.Trigger>
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-white/5 transition-all"
+      >
+        <div className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] overflow-hidden flex items-center justify-center relative">
+          {avatarConfig ? (
+             <AnimalEngine 
+              type={parseAvatarConfig(avatarConfig).type} 
+              color={parseAvatarConfig(avatarConfig).color} 
+              size="100%" 
+             />
+          ) : (
+            <span className="text-sm font-bold uppercase text-gray-400">
+              {email?.charAt(0) || "U"}
+            </span>
+          )}
+          
+          {isPremium && (
+            <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white dark:border-black" />
+          )}
+        </div>
+      </button>
 
-      {/* 6.5.2.2 - Contenido del menú desplegable */}
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          className="min-w-[240px] bg-white dark:bg-[#1a1a1a] retro:bg-[#0d1117] rounded-xl p-2 shadow-xl border border-gray-200 dark:border-white/10 retro:border-[#3fb950]/20 z-50 animate-in fade-in zoom-in-95 duration-200 mt-2"
-          sideOffset={5}
-          align="end"
-        >
-          {/* 6.5.2.2.1 - Encabezado con email y badge de suscripción */}
-          <div className="px-3 py-3 mb-2 border-b border-gray-100 dark:border-white/10 retro:border-[#3fb950]/20">
-            <p className="text-sm font-bold text-gray-900 dark:text-white retro:text-[#3fb950] truncate mb-1">
-              {email || "Usuario"}
-            </p>
-            <div className="flex flex-col gap-1.5">
-              <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${
-                isSubscriber 
-                  ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' 
-                  : (role === 'admin' 
-                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                    : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/40 border border-gray-200 dark:border-white/10 retro:border-[#3fb950]/20 retro:text-[#3fb950]')
-              }`}>
-                {isSubscriber ? <Zap className="w-2.5 h-2.5 fill-current" /> : null}
-                {role === 'admin' ? 'Administrador' : (isSubscriber ? 'Plan Premium' : 'Nivel Gratis')}
-              </div>
-            </div>
+      {isOpen && (
+        <div className="absolute right-0 mt-3 w-56 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 z-[100]">
+          <div className="p-4 border-b border-gray-100 dark:border-white/5">
+            <p className="text-[10px] uppercase tracking-widest font-black text-gray-400 dark:text-white/20 mb-1">Cuenta</p>
+            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{email}</p>
           </div>
 
-          {/* 6.5.2.2.2 - Navegación a Biblioteca */}
-          <DropdownMenu.Item asChild>
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 retro:text-[#3fb950] rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 retro:hover:bg-[#3fb950]/10 cursor-pointer outline-none transition-colors"
-            >
-              <BookOpen className="w-4 h-4 text-gray-400 dark:text-white/40 retro:text-[#3fb950]" />
-              Mi Biblioteca
-            </Link>
-          </DropdownMenu.Item>
-
-          {/* 6.5.2.2.3 - Navegación a Perfil */}
-          <DropdownMenu.Item asChild>
+          <div className="p-2 space-y-1">
             <Link
               href="/profile"
-              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 retro:text-[#3fb950] rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 retro:hover:bg-[#3fb950]/10 cursor-pointer outline-none transition-colors"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-all group"
             >
-              <User className="w-4 h-4 text-gray-400 dark:text-white/40 retro:text-[#3fb950]" />
-              Mi Perfil
+              <User className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              Ver Perfil
             </Link>
-          </DropdownMenu.Item>
 
-          {/* 6.5.2.2.4 - Opción de upgrade para usuarios free */}
-          {role === 'free' && (
-            <DropdownMenu.Item asChild>
+            <Link
+              href="/dashboard"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-all group"
+            >
+              <LayoutDashboard className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              Escritorio
+            </Link>
+
+            {!isPremium && (
               <Link
                 href="/subscribe"
-                className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-blue-600 dark:text-blue-400 retro:text-[#3fb950] rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 retro:hover:bg-[#3fb950]/10 cursor-pointer outline-none transition-colors"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm font-black text-amber-600 dark:text-amber-500 hover:bg-amber-500/10 rounded-xl transition-all group"
               >
-                <Zap className="w-4 h-4 fill-current" />
-                Activar Premium
+                <Zap className="w-4 h-4 fill-current group-hover:scale-110 transition-transform" />
+                Hazte Premium
               </Link>
-            </DropdownMenu.Item>
-          )}
+            )}
 
-          {/* 6.5.2.2.4.1 - Link al Panel de Administrador (SOLO PARA ADMINS) */}
-          {role === 'admin' && (
-            <DropdownMenu.Item asChild>
+            {subscription?.role === 'admin' && (
               <Link
                 href="/admin"
-                className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 cursor-pointer outline-none transition-colors"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm font-black text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 rounded-xl transition-all group"
               >
-                <Settings className="w-4 h-4" />
-                Panel Administrador
+                <Shield className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                Panel Admin
               </Link>
-            </DropdownMenu.Item>
-          )}
+            )}
+          </div>
 
-          {/* 6.5.2.2.5 - Opción de facturación para suscriptores */}
-          {isSubscriber && (
-            <DropdownMenu.Item asChild>
-              <Link
-                href="/profile"
-                className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 retro:text-[#3fb950] rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 retro:hover:bg-[#3fb950]/10 cursor-pointer outline-none transition-colors"
-              >
-                <CreditCard className="w-4 h-4 text-gray-400 dark:text-white/40 retro:text-[#3fb950]" />
-                Facturación
-              </Link>
-            </DropdownMenu.Item>
-          )}
-
-          <DropdownMenu.Separator className="h-px bg-gray-100 dark:bg-white/10 my-1 retro:bg-[#3fb950]/20" />
-
-          {/* 6.5.2.2.6 - Opción de instalación PWA */}
-          <DropdownMenu.Item asChild>
-            <InstallPWA variant="menuitem" />
-          </DropdownMenu.Item>
-
-          <DropdownMenu.Separator className="h-px bg-gray-100 dark:bg-white/10 my-1 retro:bg-[#3fb950]/20" />
-
-          {/* 6.5.2.2.7 - Botón de cerrar sesión */}
-          <DropdownMenu.Item asChild>
+          <div className="p-2 border-t border-gray-100 dark:border-white/5">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 retro:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 retro:hover:bg-red-500/10 cursor-pointer outline-none transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all group"
             >
-              <LogOut className="w-4 h-4" />
-              Cerrar sesión
+              <LogOut className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              Cerrar Sesión
             </button>
-          </DropdownMenu.Item>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

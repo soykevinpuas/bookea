@@ -4,6 +4,34 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-24] - Stripe Premium y Animal Avatar Builder (V2)
+**Objetivo:** Finalizar la monetización mediante Stripe prioritario y renovar el sistema de identidad visual con un constructor de avatars SVG dinámico y personalizable.
+
+### Añadido
+- **Animal Avatar Builder (SVG):**
+  - Creación del componente `AnimalEngine.tsx` que renderiza avatares (Perro, Gato, Conejo, Panda) usando SVGs puros con colores dinámicos.
+  - Implementación de un nuevo `AvatarSelector.tsx` interactivo que permite la personalización de especie y color en una paleta curada de 15 tonos.
+  - Creación de utilidades de parsing (`lib/avatars-v2.ts`) para manejar el nuevo formato de persistencia `v2:animal:color`.
+- **Integración con Stripe:**
+  - Configuración formal de `PRICE_IDS.premium` para suscripciones mensuales de $99 MXN.
+  - Rediseño de la página `/subscribe` con una estética de alta gama (*glassmorphism*, gradientes ámbar, micro-animaciones).
+  - Implementación de checkout directo de Stripe en el frontend.
+
+### Cambios y Mejoras
+- **Identidad Visual Premium:**
+  - Actualización de toda la terminología de la aplicación de "Subscriber" a "**Member Premium**" o "**Plan Premium**".
+  - Refactorización de `Header.tsx` y `UserMenu.tsx` para mostrar el avatar personalizado del usuario con el nuevo motor SVG.
+  - Página de perfil renovada con sección de "Personalización de Identidad" integrada.
+- **Backend / Webhooks:**
+  - Sincronización del API de checkout para usar el ID de precio premium definitivo.
+  - Validación del webhook de Stripe para asegurar que la actualización del rol al valor técnico `subscriber` se mantenga consistente.
+
+### Arreglos
+- **Persistencia de Perfil:** Se ajustaron los helpers de base de datos para permitir el guardado de strings de configuración largos, superando la limitación de IDs estáticos anteriores.
+- **Imports y Hooks:** Limpieza de dependencias muertas del antiguo sistema de sprites de animales en `useAvatars.ts`.
+
+---
+
 ## [2026-04-20] - Corrección de Build, Realtime, y Preparación de Nuevo Perfil
 **Objetivo:** Resolver el error de compilación en Vercel originado por tipado implícito en el hook de suscripción, fortalecer la infraestructura general de tipos de la aplicación, habilitar suscripciones en tiempo real del panel admin y preparar limpieza de UI para nuevo sistema de avatares.
 

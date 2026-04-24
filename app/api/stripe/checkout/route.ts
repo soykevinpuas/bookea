@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     // 7.1.3 - Manejo de suscripción mensual
     if (type === 'subscription') {
       const session = await createCheckoutSession({
-        priceId: PRICE_IDS.subscription,
+        priceId: PRICE_IDS.premium,
         userId: user.id,
         userEmail: user.email!,
         successUrl: `${baseUrl}/dashboard?payment=success`,

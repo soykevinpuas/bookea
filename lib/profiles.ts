@@ -26,14 +26,12 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   return data as Profile;
 }
 
-export async function updateProfileAvatar(userId: string, avatarId: string): Promise<boolean> {
+export async function updateProfileAvatar(userId: string, avatarConfig: string): Promise<boolean> {
   const supabase = createClientClient();
-  // Formato: avatar:id (ej: avatar:panda)
-  const avatarKey = `avatar:${avatarId}`;
   
   const { error } = await supabase
     .from("profiles")
-    .update({ avatar_url: avatarKey, updated_at: new Date().toISOString() })
+    .update({ avatar_url: avatarConfig, updated_at: new Date().toISOString() })
     .eq("user_id", userId);
 
   return !error;
