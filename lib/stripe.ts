@@ -11,14 +11,12 @@ let stripeInstance: Stripe | null = null;
  * Garantiza que las variables de entorno estén cargadas antes de la inicialización.
  */
 export function getStripeClient() {
-  // 3.5.11 - Forzar lectura fresca de variables de entorno
-  // if (stripeInstance) return stripeInstance;
-  
-  const secretKey = process.env.STRIPE_SECRET_KEY_V2 || process.env.STRIPE_SECRET_KEY || "";
+  // PRUEBA DEFINITIVA: Hardcodeando la clave del .env.local para descartar errores de Vercel
+  const secretKey = "sk_test_51SBSopQgC67T6ANcD3Qg3UdJmdijeBTWzVoos8hfLWXVhKPy3DQWbtSFQCYHNrelH2EFdu0yJIbja0YyPz4NtjBy00UCphULRS";
   
   if (!secretKey) {
-    console.error("FATAL ERROR: STRIPE_SECRET_KEY_V2 is missing!");
-    throw new Error("Configuración incompleta: STRIPE_SECRET_KEY_V2 no encontrada.");
+    console.error("FATAL ERROR: secretKey is missing!");
+    throw new Error("Configuración incompleta.");
   }
 
   // Verificar si la clave es la correcta (6ANc)
