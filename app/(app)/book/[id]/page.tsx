@@ -264,7 +264,7 @@ export default function BookDetailPage() {
                     </button>
 
                     {/* 3.5.10.2.3.1.2 - Botón de Biblioteca (Toggle) */}
-                    {( !isPremiumBook || hasPremiumAccess ) && (
+                    {( isCurrentlyInLibrary || (!isPremiumBook || hasPremiumAccess) ) && (
                       <button
                         onClick={isCurrentlyInLibrary ? handleRemoveFromLibrary : handleAddToLibrary}
                         disabled={addingToLib}

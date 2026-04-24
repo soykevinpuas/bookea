@@ -269,7 +269,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
 
               <div className="border-t border-white/5 my-1" />
 
-              {( !book.is_premium || subscription?.isActive ) && (
+              {( isInLibrary || !book.is_premium || subscription?.isActive ) && (
                 !isInLibrary ? (
                   <button
                     onClick={handleAddToLibrary}
