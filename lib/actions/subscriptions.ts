@@ -23,6 +23,8 @@ export async function verifySubscriptionAction(sessionId: string) {
     
     const session = await stripe.checkout.sessions.retrieve(sessionId)
 
+    const stripeId = (await stripe.accounts.retrieve()).id;
+
     if (session.payment_status === 'paid') {
       // Calcular fecha de vencimiento (30 días a partir de hoy)
       const endsAt = new Date();
@@ -39,7 +41,7 @@ export async function verifySubscriptionAction(sessionId: string) {
 
       if (updateError) throw updateError
 
-      // ASIGNAR CRÉDITOS (Igual que en el webhook)
+      // ASIGNAR CRÉDITOS
       const { data: existingCredits } = await supabase
         .from('subscription_credits')
         .select('*')
@@ -50,17 +52,17 @@ export async function verifySubscriptionAction(sessionId: string) {
         await supabase.from('subscription_credits').insert({
           user_id: user.id,
           cycle_start: new Date().toISOString().split('T')[0],
-          credits_remaining: 5, // 5 libros al mes
+          credits_remaining: 5,
         });
       }
 
       revalidatePath('/')
       revalidatePath('/dashboard')
       
-      return { success: true }
+      return { success: true, accountId: stripeId }
     }
 
-    return { success: false, error: 'El pago aún no se ha procesado.' }
+    return { success: false, error: 'El pago aún no se ha procesado.', accountId: stripeId }
   } catch (error: any) {
     console.error('Error verificando suscripción:', error)
     return { success: false, error: error.message }
