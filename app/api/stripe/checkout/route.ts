@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
         priceId: PRICE_IDS.premium,
         userId: user.id,
         userEmail: user.email!,
-        successUrl: `${baseUrl}/dashboard?payment=success`,
+        successUrl: `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${baseUrl}/catalog?payment=cancelled`,
         mode: 'subscription',
       });
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       userEmail: user.email!,
       bookId,
-      successUrl: `${baseUrl}/dashboard?payment=success`,
+      successUrl: `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${baseUrl}/book/${bookId}?payment=cancelled`,
       mode: 'payment',
     });

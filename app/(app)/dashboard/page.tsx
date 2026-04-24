@@ -11,6 +11,7 @@ import ProgressCircle from "@/components/ProgressCircle";
 import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History, User, Grid3X3, Sparkles } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { verifySubscriptionAction } from "@/lib/actions/subscriptions";
 
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
 export default function DashboardPage() {
@@ -24,17 +25,35 @@ export default function DashboardPage() {
   const [view, setView] = useState<"grid" | "list" | "compact">("grid");
   const [isOnline, setIsOnline] = useState(true);
 
-  // Detectar éxito de pago
+  // Detectar éxito de pago y verificar automáticamente
   useEffect(() => {
-    if (searchParams.get('payment') === 'success') {
-      toast.success("¡Bienvenido a Bookea Premium!", {
-        description: "Tu suscripción se ha activado correctamente. Ya puedes disfrutar de todo el catálogo.",
-        icon: <Sparkles className="w-5 h-5 text-amber-500" />,
-        duration: 8000,
-      });
-      // Limpiar la URL para no repetir el mensaje
-      const newPath = window.location.pathname;
-      window.history.replaceState({}, '', newPath);
+    const sessionId = searchParams.get('session_id');
+    const paymentStatus = searchParams.get('payment');
+
+    if (paymentStatus === 'success' && sessionId) {
+      const verify = async () => {
+        const id = toast.loading("Sincronizando suscripción...");
+        try {
+          const result = await verifySubscriptionAction(sessionId);
+          if (result.success) {
+            toast.success("¡Bienvenido a Bookea Premium!", {
+              id,
+              description: "Tu suscripción se ha activado correctamente. Ya puedes disfrutar de todo el catálogo.",
+              icon: <Sparkles className="w-5 h-5 text-amber-500" />,
+              duration: 8000,
+            });
+          } else {
+            toast.error("Hubo un problema al sincronizar", { id, description: result.error });
+          }
+        } catch (e) {
+          toast.error("Error de conexión", { id });
+        } finally {
+          // Limpiar la URL para no repetir el mensaje
+          const newPath = window.location.pathname;
+          window.history.replaceState({}, '', newPath);
+        }
+      };
+      verify();
     }
   }, [searchParams]);
 

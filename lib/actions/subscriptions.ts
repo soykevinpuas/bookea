@@ -1,0 +1,46 @@
+'use server'
+
+import { createClient } from '@/lib/server'
+import { getStripeClient } from '@/lib/stripe'
+import { revalidatePath } from 'next/cache'
+
+/**
+ * Verifica una sesión de Stripe y actualiza el rol del usuario si el pago fue exitoso.
+ * Esto sirve como alternativa automática a los Webhooks.
+ */
+export async function verifySubscriptionAction(sessionId: string) {
+  if (!sessionId) return { success: false, error: 'No session ID provided' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { success: false, error: 'No autorizado' }
+
+  try {
+    const stripe = getStripeClient()
+    const session = await stripe.checkout.sessions.retrieve(sessionId)
+
+    if (session.payment_status === 'paid') {
+      // Actualizar el rol del usuario a suscriptor en la base de datos
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ 
+          role: 'subscriber',
+          subscription_ends_at: null // Suscripción activa
+        })
+        .eq('id', user.id)
+
+      if (updateError) throw updateError
+
+      revalidatePath('/')
+      revalidatePath('/dashboard')
+      
+      return { success: true }
+    }
+
+    return { success: false, error: 'El pago aún no se ha procesado.' }
+  } catch (error: any) {
+    console.error('Error verificando suscripción:', error)
+    return { success: false, error: error.message }
+  }
+}
