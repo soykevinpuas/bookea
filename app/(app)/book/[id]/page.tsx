@@ -47,7 +47,7 @@ export default function BookDetailPage() {
 
   // 3.5.6 - Determinación del tipo de acceso
   const isPremiumBook = book?.is_premium !== false; // Por defecto es premium si no se especifica
-  const hasPremiumAccess = subscription?.isActive;
+  const hasPremiumAccess = subscription?.isActive || subscription?.role === 'admin';
   const canRead = !isPremiumBook || hasPremiumAccess;
 
   // 3.5.6.1 - Estado para descarga offline y biblioteca
@@ -226,38 +226,44 @@ export default function BookDetailPage() {
                       className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl border transition-all ${
                         isDownloaded 
                         ? 'bg-blue-500/5 border-blue-500/20 text-blue-500 cursor-default' 
-                        : 'border-white/10 hover:bg-white/5 text-gray-400'
+                        : 'border-white/10 hover:bg-white/5 text-gray-400 font-bold'
                       }`}
                     >
                       {isDownloading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : isDownloaded ? (
-                        <CheckCircle2 className="w-5 h-5" />
+                        <CheckCircle2 className="w-5 h-5 font-bold" />
                       ) : (
                         <Download className="w-5 h-5" />
                       )}
-                      {isDownloading ? 'Descargando...' : isDownloaded ? 'Disponible Offline' : 'Descargar para leer sin internet'}
+                      {isDownloading ? 'Descargando...' : isDownloaded ? 'Disponible Offline' : 'Descargar Offline'}
                     </button>
 
-                    {/* NUEVO: Botón Agregar a Biblioteca (Manual) */}
-                    <button
-                      onClick={handleAddToLibrary}
-                      disabled={addingToLib || isInLibrary}
-                      className={`flex items-center justify-center gap-3 px-6 py-4 rounded-xl font-bold transition-all border ${
-                        isInLibrary
-                        ? "bg-amber-500/10 border-amber-500/20 text-amber-500 cursor-default"
-                        : "bg-white dark:bg-white/5 border-white/10 hover:border-amber-500/40 text-gray-900 dark:text-white"
-                      }`}
-                    >
-                      {addingToLib ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : isInLibrary ? (
-                        <BookmarkCheck className="w-5 h-5" />
-                      ) : (
-                        <BookmarkPlus className="w-5 h-5 text-amber-500" />
-                      )}
-                      {addingToLib ? 'Agregando...' : isInLibrary ? 'En tu Biblioteca' : 'Agregar a mi Biblioteca'}
-                    </button>
+                    {/* Botón Agregar a Biblioteca (Visible para quienes tienen acceso pero no el libro) */}
+                    {!isInLibrary && (
+                      <button
+                        onClick={handleAddToLibrary}
+                        disabled={addingToLib}
+                        className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl font-black transition-all border shadow-lg ${
+                          subscription?.isActive || subscription?.role === 'admin'
+                          ? "bg-amber-500 border-amber-600 text-white hover:bg-amber-600 shadow-amber-500/20"
+                          : "bg-white dark:bg-white/5 border-white/10 hover:border-blue-500/40 text-gray-900 dark:text-white"
+                        }`}
+                      >
+                        {addingToLib ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <BookmarkPlus className="w-6 h-6" />
+                        )}
+                        {addingToLib ? 'Agregando...' : 'Añadir a mi Biblioteca'}
+                      </button>
+                    )}
+
+                    {isInLibrary && (
+                      <div className="flex items-center justify-center gap-2 py-3 text-amber-500 font-black uppercase tracking-widest text-[10px]">
+                        <BookmarkCheck className="w-4 h-4" /> Ya en tu biblioteca
+                      </div>
+                    )}
                   </div>
                 )}
 

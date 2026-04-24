@@ -195,35 +195,46 @@ export async function hasBookAccess(supabase: SupabaseClient, userId: string, bo
   if (!userId || !bookId) return false;
   
   try {
-    // 1. Obtener el registro de acceso y el estado de suscripción del usuario en una sola consulta
+    // 1. Verificar el rol del usuario primero para bypass de admin
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("role, subscription_ends_at")
+      .eq("id", userId)
+      .single();
+
+    if (userError || !userData) return false;
+
+    // Administradores tienen acceso total SIEMPRE
+    if (userData.role === 'admin') return true;
+
+    // 2. Para otros usuarios, verificar si el libro está en su biblioteca
     const { data: userBook, error: ubError } = await supabase
       .from("user_books")
       .select(`
         id,
-        access_type,
-        users:user_id (role, subscription_ends_at)
+        access_type
       `)
       .eq("user_id", userId)
       .eq("book_id", bookId)
       .maybeSingle();
 
+    // Si no tiene el libro en la biblioteca, no tiene acceso (a menos que sea admin, ya manejado arriba)
     if (ubError || !userBook) return false;
 
     const accessType = userBook.access_type;
-    const userData = (userBook as any).users;
 
-    // 2. Acceso Permanente o Regalo siempre es TRUE
+    // 3. Acceso Permanente o Regalo siempre es TRUE
     if (accessType === 'permanent' || accessType === 'gift') {
       return true;
     }
 
-    // 3. Acceso por Suscripción requiere validación de Premium activo
+    // 4. Acceso por Suscripción requiere validación de Premium activo
     if (accessType === 'subscription') {
-      if (!userData) return false;
+      const now = new Date();
+      const endsAt = userData.subscription_ends_at ? new Date(userData.subscription_ends_at) : null;
       
-      const isPremium = userData.role === 'admin' || 
-                       (userData.role === 'subscriber' && 
-                        (!userData.subscription_ends_at || new Date(userData.subscription_ends_at) > new Date()));
+      const isPremium = userData.role === 'subscriber' && 
+                       (!endsAt || endsAt > now);
       
       return isPremium;
     }
