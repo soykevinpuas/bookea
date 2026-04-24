@@ -38,9 +38,9 @@ export default function DashboardPage() {
           if (result.success) {
             toast.success("¡Bienvenido a Bookea Premium!", {
               id,
-              description: `Cuenta: ${result.accountId} | Key: ${result.keyPrefix}...`,
+              description: "Tu suscripción se ha activado correctamente. Ya puedes disfrutar de todo el catálogo.",
               icon: <Sparkles className="w-5 h-5 text-amber-500" />,
-              duration: 15000,
+              duration: 8000,
             });
             // Esperar un poco antes de limpiar la URL para evitar parpadeos
             setTimeout(() => {
