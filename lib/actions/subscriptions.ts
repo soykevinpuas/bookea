@@ -59,10 +59,19 @@ export async function verifySubscriptionAction(sessionId: string) {
       revalidatePath('/')
       revalidatePath('/dashboard')
       
-      return { success: true, accountId: stripeId }
+      return { 
+        success: true, 
+        accountId: stripeId,
+        keyPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 15) 
+      }
     }
 
-    return { success: false, error: 'El pago aún no se ha procesado.', accountId: stripeId }
+    return { 
+      success: false, 
+      error: 'El pago aún no se ha procesado.', 
+      accountId: stripeId,
+      keyPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 15)
+    }
   } catch (error: any) {
     console.error('Error verificando suscripción:', error)
     return { success: false, error: error.message }
