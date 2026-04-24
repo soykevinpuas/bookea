@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
 import { createClientClient } from "@/lib/supabase";
 import { addToLibrary, hasBookAccess } from "@/lib/books";
+import { addToLibraryAction } from "@/lib/actions/library";
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 export default function ReaderPage() {
@@ -229,16 +230,21 @@ export default function ReaderPage() {
         setIsLoading(true);
         setError(null);
 
-        // 4.2.5.0 - VALIDACIÓN DE ACCESO
+        // 4.2.5.0 - VALIDACIÓN DE ACCESO Y AUTO-ADD
         const supabase = createClientClient();
         if (userId && bookId) {
           const hasAccess = await hasBookAccess(supabase, userId, bookId);
           
           if (!hasAccess) {
-            setError("Este libro es Premium o no tienes acceso. Agrégalo primero a tu biblioteca o compra una suscripción.");
+            setError("No tienes acceso a este libro. Los libros Premium requieren una suscripción activa.");
             setIsLoading(false);
             return;
           }
+
+          // 4.2.5.0.1 - AUTO-ADD: Si tiene acceso (ej. admin o premium), asegurar que esté en su biblioteca
+          // Esto garantiza que aparezca en el Dashboard de inmediato al abrirlo.
+          const accessType = subscription?.isActive ? 'subscription' : 'permanent';
+          await addToLibraryAction(bookId, accessType);
         }
 
         const epubUrl = book.epub_url as string;

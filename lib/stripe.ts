@@ -1,20 +1,48 @@
-import Stripe from 'stripe';
+import { Stripe } from 'stripe';
 
-// ============================================
-// 6.7 - Stripe: Configuración y utilerías para integración con Stripe Payments
-// Maneja creación de sesiones de checkout y portal de facturación
-// ============================================
+/**
+ * 6.7.1 - Instancia global del cliente Stripe.
+ * Usamos una inicialización segura para evitar fallos durante el build.
+ */
+let stripeInstance: Stripe | null = null;
 
-// 6.7.1 - Instancia global del cliente Stripe (con protección para el build)
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || 'sk_test_dummy';
+/**
+ * 6.7.1 - Obtiene la instancia del cliente Stripe (Lazy Loading).
+ * Garantiza que las variables de entorno estén cargadas antes de la inicialización.
+ */
+export function getStripeClient() {
+  if (stripeInstance) return stripeInstance;
+  
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    console.error("STRIPE_SECRET_KEY is not defined in environment variables");
+    // Fallback para evitar crashes fatales durante el build, 
+    // pero lanzará error descriptivo en runtime.
+    return new Stripe('sk_test_dummy', {
+      apiVersion: '2024-06-20' as any,
+      typescript: true,
+    });
+  }
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.warn("⚠️ ALERTA: STRIPE_SECRET_KEY ausente durante el build o ejecución.");
+  stripeInstance = new Stripe(secretKey.trim(), {
+    apiVersion: '2024-06-20' as any,
+    typescript: true,
+  });
+
+  return stripeInstance;
 }
 
-export const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: '2026-02-25.clover',
-  typescript: true,
+/**
+ * 6.7.1b - Exportación compatible habilitando Lazy Loading.
+ * Permite usar 'stripe.checkout.sessions.create' de forma transparente 
+ * sin inicializar el cliente hasta que sea realmente invocado.
+ */
+export const stripe = new Proxy({} as Stripe, {
+  get(target, prop, receiver) {
+    const client = getStripeClient();
+    const value = Reflect.get(client, prop, receiver);
+    return typeof value === 'function' ? value.bind(client) : value;
+  }
 });
 
 // 6.7.2 - Mapeo de IDs de precios de Stripe (desde variables de entorno)
@@ -50,6 +78,7 @@ export async function createCheckoutSession({
   cancelUrl: string;
   mode?: 'payment' | 'subscription';
 }) {
+  const stripe = getStripeClient();
   // Crear sesión de checkout con metadata para webhook
   const session = await stripe.checkout.sessions.create({
     mode,
@@ -80,6 +109,7 @@ export async function createPortalSession({
   customerId: string;
   returnUrl: string;
 }) {
+  const stripe = getStripeClient();
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,

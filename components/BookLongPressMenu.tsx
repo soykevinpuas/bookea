@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useUserId } from "@/hooks/useUser";
 import { createClientClient } from "@/lib/supabase";
 import { removeFromLibrary, addToLibrary } from "@/lib/books";
+import { addToLibraryAction, removeFromLibraryAction } from "@/lib/actions/library";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUserBooks } from "@/hooks/useBooks";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -130,13 +131,13 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     setIsProcessing(true);
     try {
       const accessType = subscription?.isActive ? 'subscription' : 'permanent';
-      const result = await addToLibrary(supabase, userId, bookId, accessType as any);
-      if (result) {
+      const result = await addToLibraryAction(bookId, accessType as any);
+      if (result.success) {
         toast.success(`"${bookTitle}" añadido a tu biblioteca`);
-        // Actualizar queries
+        // React Query se actualizará vía Realtime o podemos invalidar aquí
         queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
       } else {
-        toast.error("No se pudo añadir a la biblioteca");
+        toast.error(result.error || "No se pudo añadir a la biblioteca");
       }
     } catch (err) {
       toast.error("Error al conectar con el servidor");
@@ -152,16 +153,20 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       return;
     }
     setIsProcessing(true);
-    const success = await removeFromLibrary(supabase, userId, bookId);
-    if (success) {
-      toast.info(`"${bookTitle}" quitado de tu biblioteca`);
-      // Invalidar queries para que desaparezca del dashboard
-      queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
-    } else {
-      toast.error("Error al quitar de la biblioteca");
+    try {
+      const result = await removeFromLibraryAction(bookId);
+      if (result.success) {
+        toast.info(`"${bookTitle}" quitado de tu biblioteca`);
+        queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
+      } else {
+        toast.error(result.error || "Error al quitar de la biblioteca");
+      }
+    } catch (err) {
+      toast.error("Error del servidor");
+    } finally {
+      setIsProcessing(false);
+      setShowMenu(false);
     }
-    setIsProcessing(false);
-    setShowMenu(false);
   };
 
   return (

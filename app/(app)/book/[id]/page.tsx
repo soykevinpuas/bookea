@@ -15,6 +15,7 @@ import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckC
 import ReviewForm from "@/components/community/ReviewForm";
 import ReviewList from "@/components/community/ReviewList";
 import { addToLibrary } from "@/lib/books";
+import { addToLibraryAction } from "@/lib/actions/library";
 import { createClientClient } from "@/lib/supabase";
 
 // 3.5.1 - Componente principal de la página de detalle
@@ -102,12 +103,13 @@ export default function BookDetailPage() {
     setAddingToLib(true);
     try {
       const accessType = subscription?.isActive ? 'subscription' : 'permanent';
-      const result = await addToLibrary(supabase, userId, id, accessType as any);
-      if (result) {
+      const result = await addToLibraryAction(id, accessType as any);
+      
+      if (result.success) {
         toast.success("¡Libro añadido a tu biblioteca!");
-        refetch(); // Actualizar lista local
+        refetch(); // Sincronizar cache de React Query
       } else {
-        toast.error("No se pudo añadir el libro");
+        toast.error(result.error || "No se pudo añadir el libro");
       }
     } catch (error) {
       toast.error("Error al conectar con el servidor");

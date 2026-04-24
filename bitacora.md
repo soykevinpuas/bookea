@@ -4,6 +4,15 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-24-E] - Estabilización de Biblioteca, Stripe y Navegación
+- **Biblioteca (Server Actions):** Se migraron las funciones de "Añadir" y "Quitar" de biblioteca a **Server Actions** (`lib/actions/library.ts`) para garantizar el cumplimiento de RLS y mejorar la reactividad mediante `revalidatePath`.
+- **Auto-Add en Lector:** Se implementó la lógica de auto-añadido en `ReaderPage.tsx`. Ahora, si un usuario con acceso (Premium/Admin) abre un libro, este se agrega automáticamente a su biblioteca personal.
+- **Stripe (Lazy Proxy):** Se refactorizó la inicialización del cliente de Stripe en `lib/stripe.ts` utilizando un **Proxy**. Esto difiere la conexión hasta el primer uso, evitando errores de inicialización durante el build o carga de módulos por variables de entorno faltantes.
+- **Navegación:** Se eliminó la animación `PageTransition` de `RootLayout` y se simplificó el componente para cumplir con la fluidez estándar solicitada por el usuario.
+- **Robustez de Datos:** Se mejoró `getUserBooks` con un `left join` más limpio y se refactorizó `addToLibrary` para verificar existencia previa, evitando errores de duplicidad.
+
+---
+
 ## [2026-04-24-D] - Sincronización Realtime y Optimización de Biblioteca
 **Objetivo:** Resolver el problema de adhesión a biblioteca, mejorar la fluidez de navegación y expandir las acciones rápidas con sincronización instantánea.
 

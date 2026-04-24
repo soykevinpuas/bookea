@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { PwaListener } from "@/components/PwaListener";
 import { SplashScreen } from "@/components/SplashScreen";
 import { BottomNav } from "@/components/BottomNav";
-import { PageTransition } from "@/components/PageTransition";
+
 
 // 1.5 - Configuración de fuentes y Metadata global
 const geistSans = Geist({
@@ -114,9 +114,7 @@ export default async function RootLayout({
           <QueryProvider>
             <Header initialUser={user ? { id: user.id, email: user.email } : null} />
             <main className="flex-1 pb-safe px-safe flex flex-col">
-              <PageTransition>
-                {children}
-              </PageTransition>
+              {children}
             </main>
             <BottomNav />
           </QueryProvider>
