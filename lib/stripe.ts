@@ -11,7 +11,8 @@ let stripeInstance: Stripe | null = null;
  * Garantiza que las variables de entorno estén cargadas antes de la inicialización.
  */
 export function getStripeClient() {
-  if (stripeInstance) return stripeInstance;
+  // 3.5.11 - Forzar lectura fresca de variables de entorno para evitar persistencia de cuentas antiguas en Vercel
+  // if (stripeInstance) return stripeInstance;
   
   // Acceso directo a process.env para mayor confiabilidad
   const secretKey = process.env.STRIPE_SECRET_KEY || "";
