@@ -6,6 +6,7 @@ import { createClientClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useUserId } from "@/hooks/useUser";
 import { AnimalEngine } from "./avatars/AnimalEngine";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 
@@ -25,7 +26,8 @@ export function UserMenu({ email, avatarConfig }: UserMenuProps) {
   const router = useRouter();
   const supabase = createClientClient();
 
-  const { data: subscription } = useSubscription();
+  const { userId } = useUserId();
+  const { data: subscription } = useSubscription(userId);
 
   // 6.2.1 - Cerrar menú al hacer click fuera
   useEffect(() => {
