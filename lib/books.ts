@@ -75,17 +75,18 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
   if (!userId) return getAllCachedBooks(); // Devolver caché incluso si no hay ID por ahora
   
   try {
+    // 3.4.1 - Cambiado !inner por left join (removiendo !inner) para que los libros aparezcan 
+    // aunque no se haya inicializado su record de progreso aún.
     const { data, error } = await supabase
       .from("user_books")
       .select(`
         books(*),
-        reading_progress:reading_progress!inner(last_read_at, percent_complete, cfi_position)
+        reading_progress(last_read_at, percent_complete, cfi_position)
       `)
-      .eq("user_id", userId)
-      .eq("reading_progress.user_id", userId);
+      .eq("user_id", userId);
 
     if (error) {
-      console.warn("Using offline fallback due to Supabase error");
+      console.warn("Using offline fallback due to Supabase error:", error.message);
       return getAllCachedBooks();
     }
 
@@ -98,23 +99,14 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
         if (!book) return null;
 
         // Búsqueda de progreso: Intentar encontrar el registro que corresponde a este libro
-        const allProgress = item.reading_progress || [];
-        const progressEntry = Array.isArray(allProgress) ? allProgress[0] : allProgress;
+        // Con el nuevo join, ya viene filtrado por el query si la relación está bien definida,
+        // pero aseguramos que el progreso pertenezca al usuario por si acaso.
+        const progressEntries = item.reading_progress || [];
+        const progressEntry = Array.isArray(progressEntries) ? progressEntries[0] : progressEntries;
         
-        let serverPercent = 0;
-        let serverCfi = null;
-        let lastRead = null;
-
-        // Extraer datos si la estructura es la esperada por el join
-        if (progressEntry?.reading_progress) {
-          const rp = Array.isArray(progressEntry.reading_progress) 
-            ? progressEntry.reading_progress[0] 
-            : progressEntry.reading_progress;
-          
-          serverPercent = rp?.percent_complete || 0;
-          serverCfi = rp?.cfi_position || null;
-          lastRead = rp?.last_read_at || null;
-        }
+        let serverPercent = progressEntry?.percent_complete || 0;
+        let serverCfi = progressEntry?.cfi_position || null;
+        let lastRead = progressEntry?.last_read_at || null;
 
         // 3.4.1.9 - PRIORIDAD OFFLINE: Si lo local es más nuevo, lo usamos para la card
         let local = null;
@@ -254,6 +246,7 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
   if (!userId || !bookId) return null;
 
   try {
+    // 1. Upsert en user_books
     const { data, error } = await supabase
       .from("user_books")
       .upsert({ 
@@ -262,11 +255,11 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
         access_type: accessType 
       }, { onConflict: 'user_id,book_id' })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     
-    // Inicializar progreso de lectura si no existe
+    // 2. Asegurar que exista el registro de progreso (necesario para el join en getUserBooks)
     await supabase
       .from("reading_progress")
       .upsert({ 

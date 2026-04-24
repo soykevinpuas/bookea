@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getBooks, getBook, getUserBooks } from "@/lib/books";
 import { createClientClient } from "@/lib/supabase";
 
@@ -32,12 +33,47 @@ export function useBook(id: string) {
 
 export function useUserBooks(userId: string, options?: { search?: string; category?: string }) {
   const supabase = createClientClient();
-  return useQuery({
+  const queryClient = useQueryClient();
+  const channelRef = useRef<any>(null);
+
+  const query = useQuery({
     queryKey: ["userBooks", userId, options?.search, options?.category],
     queryFn: () => getUserBooks(supabase, userId!, options),
     // Habilitado si hay usuario O si estamos offline (para ver lo que hay en caché)
     enabled: !!userId || (typeof window !== 'undefined' && !navigator.onLine),
     ...BOOK_QUERY_OPTIONS,
   });
+
+  // 3.2.1 - Sincronización Realtime para la biblioteca del usuario
+  useEffect(() => {
+    if (!userId) return;
+    if (channelRef.current) return;
+
+    const channel = supabase
+      .channel(`user-books-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'user_books',
+          filter: `user_id=eq.${userId}`
+        },
+        () => {
+          // Invalidar todas las queries de libros del usuario
+          queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [userId, queryClient, supabase]);
+
+  return query;
 }
 

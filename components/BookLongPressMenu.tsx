@@ -2,19 +2,20 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Download, Eye, Trash2, X, Loader2, CheckCircle, MoreVertical } from "lucide-react";
+import { Download, Eye, Trash2, X, Loader2, CheckCircle, MoreVertical, BookmarkPlus } from "lucide-react";
 import { isBookDownloaded, downloadBook, removeBookDownload } from "@/lib/downloads";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserId } from "@/hooks/useUser";
 import { createClientClient } from "@/lib/supabase";
-import { removeFromLibrary } from "@/lib/books";
+import { removeFromLibrary, addToLibrary } from "@/lib/books";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookOpen } from "lucide-react";
+import { useUserBooks } from "@/hooks/useBooks";
+import { useSubscription } from "@/hooks/useSubscription";
 
 /**
  * 8.5 - BookLongPressMenu: Menú contextual que aparece al mantener presionado un libro
- * Opciones: Ver Detalles, Descargar, Eliminar Descarga
+ * Opciones: Ver Detalles, Descargar, Eliminar Descarga, Añadir/Quitar de Biblioteca
  */
 interface BookLongPressMenuProps {
   book: import("@/types/book").Book;
@@ -31,6 +32,11 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   const { userId } = useUserId();
   const queryClient = useQueryClient();
   const supabase = createClientClient();
+
+  // Obtener estado de biblioteca y suscripción
+  const { data: userBooks } = useUserBooks(userId || "");
+  const { data: subscription } = useSubscription(userId);
+  const isInLibrary = userBooks?.some(b => b.id === bookId);
 
   // Verificar estado de descarga al montar
   useEffect(() => {
@@ -114,6 +120,30 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     }
     setIsProcessing(false);
     setShowMenu(false);
+  };
+
+  const handleAddToLibrary = async () => {
+    if (!userId) {
+      toast.error("Debes iniciar sesión");
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const accessType = subscription?.isActive ? 'subscription' : 'permanent';
+      const result = await addToLibrary(supabase, userId, bookId, accessType as any);
+      if (result) {
+        toast.success(`"${bookTitle}" añadido a tu biblioteca`);
+        // Actualizar queries
+        queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
+      } else {
+        toast.error("No se pudo añadir a la biblioteca");
+      }
+    } catch (err) {
+      toast.error("Error al conectar con el servidor");
+    } finally {
+      setIsProcessing(false);
+      setShowMenu(false);
+    }
   };
 
   const handleRemoveFromLibrary = async () => {
@@ -234,18 +264,33 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
 
               <div className="border-t border-white/5 my-1" />
 
-              <button
-                onClick={handleRemoveFromLibrary}
-                disabled={isProcessing}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 transition-colors text-red-500/80"
-              >
-                {isProcessing ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-red-500" />
-                ) : (
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                )}
-                <span className="text-sm font-bold">Quitar de Biblioteca</span>
-              </button>
+              {!isInLibrary ? (
+                <button
+                  onClick={handleAddToLibrary}
+                  disabled={isProcessing}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-500/10 transition-colors text-amber-500/80"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                  ) : (
+                    <BookmarkPlus className="w-4 h-4 text-amber-500" />
+                  )}
+                  <span className="text-sm font-bold">Añadir a Biblioteca</span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleRemoveFromLibrary}
+                  disabled={isProcessing}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 transition-colors text-red-500/80"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                  ) : (
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  )}
+                  <span className="text-sm font-bold">Quitar de Biblioteca</span>
+                </button>
+              )}
             </div>
           </motion.div>
         )}

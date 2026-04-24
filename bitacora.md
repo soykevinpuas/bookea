@@ -4,6 +4,30 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-24-D] - Sincronización Realtime y Optimización de Biblioteca
+**Objetivo:** Resolver el problema de adhesión a biblioteca, mejorar la fluidez de navegación y expandir las acciones rápidas con sincronización instantánea.
+
+### Añadido
+- **Acción Rápida de Biblioteca:**
+  - Se integró la opción **"Añadir a Biblioteca"** directamente en el menú de pulsación larga (`BookLongPressMenu`).
+  - El menú ahora detecta dinámicamente si el libro ya está en la colección para alternar entre "Añadir" y "Quitar".
+- **Sincronización Realtime (Library):**
+  - Implementación de un **listener de Supabase Realtime** en el hook `useUserBooks`.
+  - Ahora, cualquier cambio en la tabla `user_books` (desde cualquier dispositivo o menú) invalida automáticamente el caché de React Query, reflejando el cambio al instante sin recargar la página.
+- **Animaciones Premium V2:**
+  - Rediseño de `PageTransition.tsx` con una curva de velocidad **Cubic-Bezier (ExpoOut)**.
+  - La transición ahora incluye un sutil efecto de **escala (99.5%) y desplazamiento en el eje Y**, proporcionando una sensación de profundidad y fluidez nivel "App Nativa".
+
+### Arreglos y Mejoras
+- **Fix Crítico de Visibilidad (Library):**
+  - Se cambió el join de la consulta `getUserBooks` de **Inner Join** a **Left Join** para el progreso de lectura.
+  - Esto soluciona el "desvanecimiento" de libros recién añadidos que aún no tenían un registro de progreso inicializado, asegurando que aparezcan en la biblioteca de inmediato.
+- **Robustez en addToLibrary:**
+  - Refactorización de la lógica de inserción para usar `.maybeSingle()` y asegurar que la creación del registro de progreso no bloquee la confirmación visual de "Añadido".
+- **Navegación Intuitiva:** El menú de pulsación larga ahora incluye estados de carga (`Loader2`) y toast dinámicos para todas las acciones de biblioteca.
+
+---
+
 ## [2026-04-24-C] - Gestión Manual de Biblioteca y Accesibilidad de Mouse
 **Objetivo:** Sustituir la automatización de biblioteca por una acción manual deliberada y mejorar la usabilidad del menú contextual en dispositivos sin pantalla táctil.
 
