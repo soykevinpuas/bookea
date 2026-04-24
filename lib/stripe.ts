@@ -11,20 +11,19 @@ let stripeInstance: Stripe | null = null;
  * Garantiza que las variables de entorno estén cargadas antes de la inicialización.
  */
 export function getStripeClient() {
-  // 3.5.11 - Forzar lectura fresca de variables de entorno para evitar persistencia de cuentas antiguas en Vercel
+  // 3.5.11 - Forzar lectura fresca de variables de entorno
   // if (stripeInstance) return stripeInstance;
   
-  // Acceso directo a process.env para mayor confiabilidad
   const secretKey = process.env.STRIPE_SECRET_KEY || "";
   
-  if (!secretKey || secretKey === "sk_test_dummy") {
-    // Solo permitir dummy en fase de build
-    if (process.env.NEXT_PHASE === 'phase-production-build') {
-      return new Stripe('sk_test_dummy', { apiVersion: '2024-06-20' as any, typescript: true });
-    }
-    // Si llegamos aquí en runtime, algo anda mal con el entorno
-    console.error("[getStripeClient] ERROR: STRIPE_SECRET_KEY no encontrada en process.env");
-    throw new Error("Clave API de Stripe no configurada en el servidor.");
+  if (!secretKey) {
+    console.error("FATAL ERROR: STRIPE_SECRET_KEY is missing from process.env!");
+    throw new Error("Configuración incompleta: STRIPE_SECRET_KEY no encontrada.");
+  }
+
+  // Verificar si la clave es la correcta (6ANc)
+  if (!secretKey.includes("SBSopQgC67T6ANc")) {
+    console.warn("ADVERTENCIA: La clave de Stripe NO parece pertenecer a la cuenta 6ANc deseada.");
   }
 
   stripeInstance = new Stripe(secretKey.trim(), {

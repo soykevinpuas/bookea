@@ -321,3 +321,17 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - **Integridad de Código (Auditoría Continua):** Establecimiento del protocolo de revisión por IA desde la concepción del proyecto para garantizar que cada componente sea seguro (RLS) y fiel a los estándares de documentación jerárquica.
 
 ---
+
+### [2026-04-24-G] Estabilización de Biblioteca y Sincronización de Pagos
+
+**Cambios Realizados:**
+- **Sincronización Automática de Suscripciones:** Se implementó `verifySubscriptionAction` para validar pagos directamente con Stripe mediante el `session_id`, eliminando la dependencia crítica de los Webhooks para pruebas.
+- **Fijación de Error 400 en Biblioteca:** Se reestructuró la consulta `getUserBooks` en `lib/books.ts` para separar las peticiones a `user_books` y `reading_progress`, resolviendo el error de relación inexistente.
+- **Gestión de Cuentas de Stripe:** Se añadieron logs de diagnóstico (Account ID) para identificar discrepancias entre cuentas y se forzó la lectura fresca de variables de entorno para evitar persistencia de claves antiguas en servidores de Vercel.
+- **Restricciones de Biblioteca:** Solo usuarios con Premium activo pueden añadir libros premium a su colección, pero todos pueden quitarlos.
+- **Notificaciones en Dashboard:** Se añadieron mensajes de éxito dinámicos y persistentes al regresar de un pago exitoso.
+
+**Estado Final:**
+- Pagos vinculados correctamente a la cuenta `acct_1SBSopQgC67T6ANc`.
+- Acceso premium funcional y sincronizado.
+- Biblioteca estable y sin errores de base de datos.
