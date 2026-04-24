@@ -75,34 +75,43 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
   if (!userId) return getAllCachedBooks(); // Devolver caché incluso si no hay ID por ahora
   
   try {
-    // 3.4.1 - Cambiado !inner por left join (removiendo !inner)
-    // El select books(*) trae el registro del libro asociado.
-    const { data, error } = await supabase
+    // 1. Obtener los libros en la biblioteca del usuario
+    const { data: userBooksData, error: ubError } = await supabase
       .from("user_books")
       .select(`
-        books(*),
-        reading_progress(last_read_at, percent_complete, cfi_position)
+        access_type,
+        book_id,
+        books(*)
       `)
       .eq("user_id", userId);
 
-    if (error) {
-      console.warn("Supabase error in getUserBooks:", error.message);
+    if (ubError) {
+      console.warn("Supabase error in user_books fetch:", ubError.message);
       return getAllCachedBooks();
     }
 
-    if (!data || !Array.isArray(data)) return getAllCachedBooks();
+    if (!userBooksData || !Array.isArray(userBooksData)) return getAllCachedBooks();
 
-    const books = data
+    // 2. Obtener el progreso de lectura por separado para evitar errores de relación
+    const { data: progressData } = await supabase
+      .from("reading_progress")
+      .select("book_id, last_read_at, percent_complete, cfi_position")
+      .eq("user_id", userId);
+
+    // Crear un mapa de progreso para búsqueda rápida O(1)
+    const progressMap = new Map();
+    progressData?.forEach(p => {
+      progressMap.set(p.book_id, p);
+    });
+
+    const books = userBooksData
       .map((item: any) => {
-        // Manejo defensivo: A veces Supabase devuelve la relación como un objeto único o un array de un elemento
         const bookData = item.books;
         const book = Array.isArray(bookData) ? bookData[0] : bookData;
         
         if (!book || !book.id) return null;
 
-        // Búsqueda de progreso: Con left join, viene como array o nulo
-        const progressEntries = item.reading_progress;
-        const progressEntry = Array.isArray(progressEntries) ? progressEntries[0] : progressEntries;
+        const progressEntry = progressMap.get(book.id);
         
         let serverPercent = progressEntry?.percent_complete || 0;
         let lastRead = progressEntry?.last_read_at || null;
