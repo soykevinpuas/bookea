@@ -6,14 +6,15 @@ import { revalidatePath } from 'next/cache'
 
 export async function addToLibraryAction(bookId: string, accessType: 'subscription' | 'permanent' = 'subscription') {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-  if (!user) {
-    return { success: false, error: 'No autorizado' }
+  if (authError || !user) {
+    console.error("[addToLibraryAction] NO USER SESSION FOUND ON SERVER:", authError);
+    return { success: false, error: 'Tu sesión ha expirado o no se detecta en el servidor. Por favor, reinicia sesión.' }
   }
 
   try {
-    console.log(`[addToLibraryAction] Attempting to add book ${bookId} for user ${user.id}`);
+    console.log(`[addToLibraryAction] User ${user.id} adding book ${bookId}`);
     const result = await libAddToLibrary(supabase, user.id, bookId, accessType)
     if (result) {
       console.log(`[addToLibraryAction] Successfully added book ${bookId}`);
