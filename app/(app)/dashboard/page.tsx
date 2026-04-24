@@ -40,17 +40,18 @@ export default function DashboardPage() {
               id,
               description: "Tu suscripción se ha activado correctamente. Ya puedes disfrutar de todo el catálogo.",
               icon: <Sparkles className="w-5 h-5 text-amber-500" />,
-              duration: 8000,
+              duration: 10000,
             });
+            // Esperar un poco antes de limpiar la URL para evitar parpadeos
+            setTimeout(() => {
+              const newPath = window.location.pathname;
+              window.history.replaceState({}, '', newPath);
+            }, 2000);
           } else {
             toast.error("Hubo un problema al sincronizar", { id, description: result.error });
           }
         } catch (e) {
           toast.error("Error de conexión", { id });
-        } finally {
-          // Limpiar la URL para no repetir el mensaje
-          const newPath = window.location.pathname;
-          window.history.replaceState({}, '', newPath);
         }
       };
       verify();

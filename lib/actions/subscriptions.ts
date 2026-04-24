@@ -21,12 +21,16 @@ export async function verifySubscriptionAction(sessionId: string) {
     const session = await stripe.checkout.sessions.retrieve(sessionId)
 
     if (session.payment_status === 'paid') {
+      // Calcular fecha de vencimiento (30 días a partir de hoy)
+      const endsAt = new Date();
+      endsAt.setDate(endsAt.getDate() + 30);
+
       // Actualizar el rol del usuario a suscriptor en la base de datos
       const { error: updateError } = await supabase
         .from('users')
         .update({ 
           role: 'subscriber',
-          subscription_ends_at: null // Suscripción activa
+          subscription_ends_at: endsAt.toISOString()
         })
         .eq('id', user.id)
 
