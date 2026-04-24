@@ -255,7 +255,8 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
       record = data;
     } else {
       // Si no existe, insertar
-      const { data, error } = await supabase
+      console.log(`[addToLibrary] DEBUG: Realizando inserción para user=${userId}, book=${bookId}`);
+      const { data, error: insertError } = await supabase
         .from("user_books")
         .insert({ 
           user_id: userId, 
@@ -264,8 +265,13 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
         })
         .select()
         .single();
-      if (error) throw error;
+
+      if (insertError) {
+        console.error("[addToLibrary] ERROR CRÍTICO SUPABASE:", insertError);
+        throw insertError;
+      }
       record = data;
+      console.log("[addToLibrary] ÉXITO: Registro creado:", record.id);
     }
     
     // 2. Asegurar que exista el registro de progreso (necesario para el join)

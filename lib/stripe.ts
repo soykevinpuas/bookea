@@ -13,15 +13,17 @@ let stripeInstance: Stripe | null = null;
 export function getStripeClient() {
   if (stripeInstance) return stripeInstance;
   
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    console.error("STRIPE_SECRET_KEY is not defined in environment variables");
-    // Fallback para evitar crashes fatales durante el build, 
-    // pero lanzará error descriptivo en runtime.
-    return new Stripe('sk_test_dummy', {
-      apiVersion: '2024-06-20' as any,
-      typescript: true,
-    });
+  // Acceso directo a process.env para mayor confiabilidad
+  const secretKey = process.env.STRIPE_SECRET_KEY || "";
+  
+  if (!secretKey || secretKey === "sk_test_dummy") {
+    // Solo permitir dummy en fase de build
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+      return new Stripe('sk_test_dummy', { apiVersion: '2024-06-20' as any, typescript: true });
+    }
+    // Si llegamos aquí en runtime, algo anda mal con el entorno
+    console.error("[getStripeClient] ERROR: STRIPE_SECRET_KEY no encontrada en process.env");
+    throw new Error("Clave API de Stripe no configurada en el servidor.");
   }
 
   stripeInstance = new Stripe(secretKey.trim(), {

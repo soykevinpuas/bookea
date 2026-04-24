@@ -269,7 +269,7 @@ export default function BookDetailPage() {
                         : (hasPremiumAccess
                           ? "bg-amber-500 border-amber-600 text-white hover:bg-amber-600 shadow-amber-500/20"
                           : "bg-white dark:bg-white/5 border-white/10 hover:border-blue-500/40 text-gray-900 dark:text-white")
-                      }`}
+                      } ${addingToLib ? "opacity-70 cursor-not-allowed pointer-events-none" : ""}`}
                     >
                       {addingToLib ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
