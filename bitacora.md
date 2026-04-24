@@ -4,6 +4,28 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-24-B] - Branding Dinámico Premium y Gestión de Biblioteca Realtime
+**Objetivo:** Refinar la identidad visual para diferenciar usuarios Premium de Free y automatizar la experiencia de gestión de biblioteca personal.
+
+### Añadido
+- **Branding Condicional:**
+  - Implementación de lógica de color dinámica: el logo de **Bookea (la letra "B")** y acentos principales ahora son **azul neón** para usuarios gratuitos y **ámbar dorado** para usuarios Premium.
+  - Actualización de `ProfilePage.tsx` para usar variables de color (`primaryColor`) que reaccionan al estado de suscripción del usuario.
+- **Automatización de Biblioteca:**
+  - Integración de **Auto-Add**: Al abrir un libro del catálogo como usuario Premium, el libro se añade automáticamente a la biblioteca personal con `access_type = 'subscription'`.
+  - Nueva acción `removeFromLibrary` en el menú de **Long Press** (`BookLongPressMenu`) para permitir a los usuarios limpiar su biblioteca manualmente.
+- **Control de Acceso Avanzado:**
+  - Refactorización de `hasBookAccess` para validar no solo la persistencia del libro sino también la validez de la suscripción si el acceso es de tipo `subscription`.
+
+### Cambios y Mejoras
+- **UX de Lector:** El motor `ReaderPage` ahora valida permisos en tiempo real antes de inicializar `epubjs`, mostrando mensajes claros si se intenta acceder a contenido Premium sin suscripción.
+- **Header Premium:** El botón de "Catálogo" se adaptó para ser más llamativo (azul sólido) para usuarios Free, incentivando la exploración.
+
+### Arreglos
+- **Build de Vercel:** Resolución definitiva de errores de tipos en `UserMenu.tsx` (pasando `userId` requerido al hook) y referencias obsoletas en las server actions de compra.
+
+---
+
 ## [2026-04-24] - Stripe Premium y Animal Avatar Builder (V2)
 **Objetivo:** Finalizar la monetización mediante Stripe prioritario y renovar el sistema de identidad visual con un constructor de avatars SVG dinámico y personalizable.
 
