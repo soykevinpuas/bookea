@@ -14,12 +14,16 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - **Accesibilidad de Menú (Mouse):**
   - Se añadió un botón de **"Tres Puntos" (`...`)** en la esquina superior izquierda de las portadas de los libros.
   - Este botón permite abrir las opciones (Descargar, Eliminar, Ver Detalles) con un simple clic, solucionando la limitación de la pulsación larga en PCs y Laptops.
-- **Animación del Lector:**
-  - Implementación de un efecto de **"Slide & Fade"** mediante Framer Motion que se activa al navegar entre páginas, haciendo la transición más fluida y dinámica.
+- **Transiciones Globales (App):**
+  - Implementación de un sistema de navegación dinámica mediante `PageTransition.tsx`. Ahora, al moverte entre el Dashboard, Perfil y Catálogo, las páginas tienen un efecto de deslizamiento elegante ("afuera" del lector).
+- **Acceso Administrativo Total:**
+  - Corrección en la lógica de permisos: los Administradores ahora tienen bypass automático para acceder a cualquier libro, eliminando errores de "Premium requerido" para cuentas de gestión.
+- **Botón de Biblioteca Mejorado:**
+  - El botón "Añadir a mi Biblioteca" en la página de detalles ahora es más prominente, de color ámbar y con sombra dinámica, facilitando su localización.
 
 ### Cambios y Mejoras
-- **Reversión de Auto-Add:** Se eliminó el intento de añadir libros automáticamente al abrir el lector para dar total control al usuario desde la página de detalles.
-- **Branding de Transición:** El enlace "Hazte Premium" en el menú de usuario ahora es azul ( branding gratuito) para usuarios sin suscripción, reservando el dorado exclusivamente para el estado Premium activo.
+- **Reversión de Animación en Lector:** Se eliminó el efecto de slide dentro del libro a petición del usuario para mantener una lectura estática y sin interrupciones visuales.
+- **Limpieza de UI:** El botón de los tres puntos para mouse se mantiene para asegurar la usabilidad en desktop.
 
 ---
 
