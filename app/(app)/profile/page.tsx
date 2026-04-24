@@ -1,6 +1,20 @@
+"use client";
+
+import { createClientClient } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles, BookOpen } from "lucide-react";
+import { toast } from "sonner";
+import Link from "next/link";
+import { useUserId } from "@/hooks/useUser";
+import { useProfile } from "@/hooks/useAvatars";
+import { useSubscription } from "@/hooks/useSubscription";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 import AvatarSelector from "@/components/profile/AvatarSelector";
+
+/**
+ * 3.3.3 - Renderizado del perfil del usuario mejorado.
+ */
 
 export default function ProfilePage() {
   const { userId, isLoading: authLoading } = useUserId();
@@ -89,10 +103,10 @@ export default function ProfilePage() {
   // 3.3.2 - Determinar si el usuario tiene suscripción activa
   const isSubscriber = subscription?.isActive;
 
-  // 3.3.3 - Renderizado del perfil del usuario
   return (
     <div className="min-h-screen bg-[#070708] text-white py-12 px-6">
       <div className="max-w-5xl mx-auto">
+        {/* Header de perfil */}
         <div className="mb-12 text-center sm:text-left flex flex-col sm:flex-row justify-between items-end gap-4">
           <div>
             <h1 className="text-4xl font-black mb-2 tracking-tight">Mi Perfil</h1>
@@ -107,10 +121,9 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* User Info Card */}
+          {/* Columna Izquierda: Info Usuario */}
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 text-center relative overflow-hidden group">
-              {/* Background glow behind avatar */}
               <div className="absolute top-0 left-0 w-full h-full bg-amber-600/5 blur-3xl -z-10 group-hover:bg-amber-600/10 transition-colors" />
               
               <div className="relative w-32 h-32 mx-auto mb-8">
@@ -127,7 +140,6 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </div>
-                
                 {isSubscriber && (
                   <div className="absolute -bottom-1 -right-1 bg-amber-500 p-2 rounded-full shadow-lg border-4 border-[#070708]">
                     <Zap className="w-4 h-4 text-black fill-current" />
@@ -145,26 +157,16 @@ export default function ProfilePage() {
                     autoFocus
                   />
                   <div className="flex gap-2">
-                    <button 
-                      onClick={handleSaveName}
-                      disabled={isUpdatingName}
-                      className="flex-1 bg-white text-black font-bold text-xs py-2.5 rounded-xl transition-all hover:opacity-80 disabled:opacity-50"
-                    >
+                    <button onClick={handleSaveName} disabled={isUpdatingName} className="flex-1 bg-white text-black font-bold text-xs py-2.5 rounded-xl transition-all hover:opacity-80 disabled:opacity-50">
                       {isUpdatingName ? "..." : "Guardar"}
                     </button>
-                    <button 
-                      onClick={() => setIsEditingName(false)}
-                      className="flex-1 bg-white/5 hover:bg-white/10 text-xs py-2.5 rounded-xl transition-all"
-                    >
+                    <button onClick={() => setIsEditingName(false)} className="flex-1 bg-white/5 hover:bg-white/10 text-xs py-2.5 rounded-xl transition-all">
                       Cancelar
                     </button>
                   </div>
                 </div>
               ) : (
-                <h2 
-                  onClick={() => setIsEditingName(true)}
-                  className="font-black text-2xl mb-1 truncate cursor-pointer hover:text-amber-500 transition-colors flex items-center justify-center gap-2 group-hover:translate-y-[-2px]"
-                >
+                <h2 onClick={() => setIsEditingName(true)} className="font-black text-2xl mb-1 truncate cursor-pointer hover:text-amber-500 transition-colors flex items-center justify-center gap-2 group-hover:translate-y-[-2px]">
                   {profile?.name || dbUser?.email?.split('@')[0]}
                   <Settings className="w-4 h-4 opacity-0 group-hover:opacity-40 transition-opacity" />
                 </h2>
@@ -174,9 +176,7 @@ export default function ProfilePage() {
               
               <div className={`inline-flex items-center gap-2 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] w-fit ${
                 subLoading ? 'bg-white/5 text-white/20 animate-pulse border border-white/10' :
-                isSubscriber 
-                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
-                  : 'bg-white/5 text-white/40 border border-white/10'
+                isSubscriber ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-white/5 text-white/40 border border-white/10'
               }`}>
                 {subLoading ? 'Cargando...' : (subscription?.role === 'admin' ? 'Premium Admin' : (isSubscriber ? 'Miembro Premium' : 'Nivel Gratis'))}
               </div>
@@ -184,7 +184,7 @@ export default function ProfilePage() {
 
             <div className="bg-white/5 border border-white/10 rounded-[2rem] p-4 divide-y divide-white/5 overflow-hidden">
               <Link href="/dashboard" className="flex items-center gap-4 px-4 py-4 text-sm font-bold text-white/60 hover:text-white hover:bg-white/5 transition-all">
-                <Sparkles className="w-4 h-4 text-amber-400 font-bold" /> Mi Biblioteca
+                <Sparkles className="w-4 h-4 text-amber-400" /> Mi Biblioteca
               </Link>
               <Link href="/dashboard?tab=reading" className="flex items-center gap-4 px-4 py-4 text-sm font-bold text-white/60 hover:text-white hover:bg-white/5 transition-all">
                 <BookOpen className="w-4 h-4" /> Progreso
@@ -192,78 +192,65 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Configuration Sections (Right) */}
+          {/* Columna Derecha: Configuración */}
           <div className="lg:col-span-8 space-y-8">
-            
             {/* Animal Builder Section */}
             <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-10">
-              <div className="flex items-center justify-between mb-10">
-                <h3 className="text-2xl font-black flex items-center gap-3">
-                  <Sparkles className="w-6 h-6 text-amber-500" />
-                  Personalizar Avatar
-                </h3>
-              </div>
-              
+              <h3 className="text-2xl font-black flex items-center gap-3 mb-10">
+                <Sparkles className="w-6 h-6 text-amber-500" />
+                Personalizar Avatar
+              </h3>
               <AvatarSelector 
                 currentAvatarConfig={profile?.avatar_url}
                 onSelect={handleSaveAvatar}
                 isUpdating={isUpdatingAvatar}
               />
             </div>
-               {/* Decorative glow */}
+
+            {/* Facturación Section */}
+            <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-10 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8 opacity-10">
                 <Shield className="w-32 h-32 text-blue-500" />
               </div>
 
-              <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-blue-400" />
+              <h3 className="text-2xl font-black flex items-center gap-3 mb-8">
+                <CreditCard className="w-6 h-6 text-blue-400" />
                 Facturación y Plan
               </h3>
 
               {!isSubscriber ? (
-                <div className="space-y-6">
-                  <div className="p-5 bg-gradient-to-br from-blue-600/10 to-transparent border border-blue-500/20 rounded-xl">
-                    <p className="text-sm leading-relaxed mb-4">
-                      Actualmente estás en el nivel gratuito. Actualiza a Premium para obtener acceso ilimitado a toda nuestra biblioteca digital y lectura offline.
-                    </p>
-                    <Link 
-                      href="/subscribe"
-                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-sm transition-all hover:scale-105"
-                    >
-                      <Zap className="w-4 h-4" /> Activar Premium
-                    </Link>
-                  </div>
+                <div className="p-6 bg-gradient-to-br from-blue-600/10 to-transparent border border-blue-500/20 rounded-2xl">
+                  <p className="text-sm leading-relaxed mb-6">
+                    Actualmente estás en el nivel gratuito. Actualiza a Premium para obtener acceso ilimitado a toda nuestra biblioteca digital y lectura offline.
+                  </p>
+                  <Link href="/subscribe" className="inline-flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all hover:scale-105">
+                    <Zap className="w-4 h-4" /> Activar Premium
+                  </Link>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                      <p className="text-xs text-white/30 uppercase tracking-wider mb-1">Estado</p>
-                      <p className={`text-lg font-bold ${subscription?.role === 'admin' ? 'text-purple-400' : 'text-green-400'}`}>
-                        {subscription?.role === 'admin' ? 'Acceso VIP Admin' : 'Premium Activo'}
+                    <div className="p-5 bg-white/5 rounded-2xl border border-white/10 text-center">
+                      <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Estado</p>
+                      <p className={`text-xl font-black ${subscription?.role === 'admin' ? 'text-purple-400' : 'text-green-400'}`}>
+                        {subscription?.role === 'admin' ? 'Acceso VIP' : 'Premium Activo'}
                       </p>
                     </div>
-                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                      <p className="text-xs text-white/30 uppercase tracking-wider mb-1">Expiración</p>
-                      <p className="text-lg font-bold">
-                        {subscription?.role === 'admin' ? 'Acceso Vitalicio' : `${subscription?.daysRemaining ?? 0} días restantes`}
+                    <div className="p-5 bg-white/5 rounded-2xl border border-white/10 text-center">
+                      <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Expiración</p>
+                      <p className="text-xl font-black">
+                        {subscription?.role === 'admin' ? 'Vitalicio' : `${subscription?.daysRemaining ?? 0} días`}
                       </p>
                     </div>
                   </div>
 
-                  <div className="p-5 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between gap-4">
-                    <div>
-                      <p className="font-bold mb-1">Gestionar suscripción en Stripe</p>
-                      <p className="text-xs text-white/40 leading-relaxed">
-                        Actualiza tu método de pago, descarga facturas o cancela tu suscripción cómodamente.
-                      </p>
+                  <div className="p-6 bg-white/5 border border-white/10 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="text-center md:text-left">
+                      <p className="font-bold mb-1">Gestionar en Stripe</p>
+                      <p className="text-xs text-white/40">Actualiza tu método de pago o descarga facturas.</p>
                     </div>
-                    <button
-                      onClick={handlePortal}
-                      disabled={portalLoading}
-                      className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-xs transition-all flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
-                    >
-                      {portalLoading ? <Loader2 className="w-3 h-3 animate-spin"/> : <CreditCard className="w-3 h-3" />}
+                    <button onClick={handlePortal} disabled={portalLoading} className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-3">
+                      {portalLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : <CreditCard className="w-4 h-4" />}
                       Abrir Portal
                     </button>
                   </div>
@@ -271,15 +258,13 @@ export default function ProfilePage() {
               )}
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-              <h3 className="text-xl font-bold mb-4">Seguridad</h3>
-              <p className="text-sm text-white/40 mb-6 font-light">
-                Para cambios de contraseña o seguridad avanzada, gestionamos todo a través de Supabase Auth para tu mayor tranquilidad.
+            {/* Seguridad Section */}
+            <div className="bg-white/5 border border-white/10 rounded-[2.2rem] p-8">
+              <h3 className="text-xl font-black mb-4">Seguridad</h3>
+              <p className="text-sm text-white/40 font-light mb-2">
+                Para cambios de contraseña y seguridad avanzada, gestionamos todo a través de Supabase Auth.
               </p>
-              <div className="flex gap-4">
-                 {/* Empty for now but ready for actions */}
-                 <span className="text-xs text-white/20 italic">No hay acciones adicionales requeridas.</span>
-              </div>
+              <span className="text-[10px] text-white/20 italic">No hay acciones adicionales requeridas.</span>
             </div>
           </div>
         </div>
