@@ -94,8 +94,11 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
 
     const books = data
       .map((item: any) => {
-        const book = item.books;
-        if (!book) return null;
+        // Manejo defensivo: A veces Supabase devuelve la relación como un objeto único o un array de un elemento
+        const bookData = item.books;
+        const book = Array.isArray(bookData) ? bookData[0] : bookData;
+        
+        if (!book || !book.id) return null;
 
         // Búsqueda de progreso: Con left join, viene como array o nulo
         const progressEntries = item.reading_progress;
@@ -170,7 +173,7 @@ export async function hasBookAccess(supabase: SupabaseClient, userId: string, bo
   if (!userId || !bookId) return false;
   
   try {
-    // 1. Verificar el rol del usuario primero para bypass de admin
+    // 1. Obtener datos del usuario (rol y fin de suscripción)
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("role, subscription_ends_at")
@@ -179,39 +182,42 @@ export async function hasBookAccess(supabase: SupabaseClient, userId: string, bo
 
     if (userError || !userData) return false;
 
-    // Administradores tienen acceso total SIEMPRE
+    // Administradores tienen acceso total
     if (userData.role === 'admin') return true;
 
-    // 2. Para otros usuarios, verificar si el libro está en su biblioteca
-    const { data: userBook, error: ubError } = await supabase
+    // Verificar si es Premium activo
+    const now = new Date();
+    const endsAt = userData.subscription_ends_at ? new Date(userData.subscription_ends_at) : null;
+    const isPremiumActive = userData.role === 'subscriber' && (!endsAt || endsAt > now);
+
+    // 2. Obtener datos del libro para ver si es Premium
+    const { data: book, error: bookError } = await supabase
+      .from("books")
+      .select("is_premium")
+      .eq("id", bookId)
+      .single();
+
+    if (!book || bookError) return false;
+
+    // Si el usuario es Premium activo y el libro es Premium, permitir acceso (para Auto-Add en el lector)
+    if (isPremiumActive && book.is_premium) return true;
+    
+    // Si el libro NO es premium (gratis), permitir acceso? 
+    // (Generalmente queremos que lo agreguen igual, pero por ahora si es gratis damos paso)
+    if (!book.is_premium) return true;
+
+    // 3. Verificar acceso específico en biblioteca (Compras permanentes o regalos)
+    const { data: userBook } = await supabase
       .from("user_books")
-      .select(`
-        id,
-        access_type
-      `)
+      .select("access_type")
       .eq("user_id", userId)
       .eq("book_id", bookId)
       .maybeSingle();
 
-    // Si no tiene el libro en la biblioteca, no tiene acceso (a menos que sea admin, ya manejado arriba)
-    if (ubError || !userBook) return false;
-
-    const accessType = userBook.access_type;
-
-    // 3. Acceso Permanente o Regalo siempre es TRUE
-    if (accessType === 'permanent' || accessType === 'gift') {
-      return true;
-    }
-
-    // 4. Acceso por Suscripción requiere validación de Premium activo
-    if (accessType === 'subscription') {
-      const now = new Date();
-      const endsAt = userData.subscription_ends_at ? new Date(userData.subscription_ends_at) : null;
-      
-      const isPremium = userData.role === 'subscriber' && 
-                       (!endsAt || endsAt > now);
-      
-      return isPremium;
+    if (!userBook && !isPremiumActive) return false;
+    if (userBook) {
+      if (userBook.access_type === 'permanent' || userBook.access_type === 'gift') return true;
+      if (userBook.access_type === 'subscription' && isPremiumActive) return true;
     }
 
     return false;

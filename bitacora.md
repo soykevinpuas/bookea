@@ -4,6 +4,16 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-24-F] - Corrección de Acceso Premium y Precio de Stripe
+- **Stripe Price ID:** Se corrigió una discrepancia en el nombre de la variable de entorno en `lib/stripe.ts`. Cambiado `STRIPE_PREMIUM_PRICE_ID` por `STRIPE_SUBSCRIPTION_PRICE_ID`.
+- **Acceso Premium:** Se refactorizó la lógica en `hasBookAccess` para permitir que usuarios activos tengan acceso inmediato a libros Premium, arreglando el flujo de Auto-Add.
+- **Toggle de Biblioteca:** Se actualizó `BookDetailPage.tsx` para incluir soporte dinámico de añadir/quitar de biblioteca.
+- **UI Condicional:** Se ocultan las opciones de pago de suscripción si el usuario ya esPremium, evitando cargos duplicados.
+- **Defensiva en Datos:** Mejora en el mapeo de `getUserBooks` para evitar fallos de visualización en el cliente.
+- **Logging Telemetría:** Se añadió telemetría de errores detallada en las rutas de Stripe.
+
+---
+
 ## [2026-04-24-E] - Estabilización de Biblioteca, Stripe y Navegación
 - **Biblioteca (Server Actions):** Se migraron las funciones de "Añadir" y "Quitar" de biblioteca a **Server Actions** (`lib/actions/library.ts`) para garantizar el cumplimiento de RLS y mejorar la reactividad mediante `revalidatePath`.
 - **Auto-Add en Lector:** Se implementó la lógica de auto-añadido en `ReaderPage.tsx`. Ahora, si un usuario con acceso (Premium/Admin) abre un libro, este se agrega automáticamente a su biblioteca personal.

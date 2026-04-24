@@ -94,10 +94,14 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (error) {
-    console.error('Error creando sesión de checkout:', error);
+  } catch (error: any) {
+    console.error('CRITICAL: Error creando sesión de checkout:', {
+      message: error.message,
+      stack: error.stack,
+      raw: error
+    });
     return NextResponse.json(
-      { error: 'Error al crear la sesión de pago' },
+      { error: 'Error al crear la sesión de pago: ' + (error.message || 'Desconocido') },
       { status: 500 }
     );
   }

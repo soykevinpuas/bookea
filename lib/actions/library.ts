@@ -13,16 +13,18 @@ export async function addToLibraryAction(bookId: string, accessType: 'subscripti
   }
 
   try {
+    console.log(`[addToLibraryAction] Attempting to add book ${bookId} for user ${user.id}`);
     const result = await libAddToLibrary(supabase, user.id, bookId, accessType)
     if (result) {
+      console.log(`[addToLibraryAction] Successfully added book ${bookId}`);
       revalidatePath('/dashboard')
       revalidatePath(`/book/${bookId}`)
       return { success: true, record: result }
     }
-    return { success: false, error: 'No se pudo añadir a la biblioteca' }
-  } catch (error) {
+    return { success: false, error: 'La base de datos no devolvió el registro. Verifique el ID del libro.' }
+  } catch (error: any) {
     console.error('Error in addToLibraryAction:', error)
-    return { success: false, error: 'Error del servidor' }
+    return { success: false, error: `Error del servidor: ${error.message || 'Desconocido'}` }
   }
 }
 
@@ -35,15 +37,17 @@ export async function removeFromLibraryAction(bookId: string) {
   }
 
   try {
+    console.log(`[removeFromLibraryAction] Removing book ${bookId} for user ${user.id}`);
     const success = await libRemoveFromLibrary(supabase, user.id, bookId)
     if (success) {
+      console.log(`[removeFromLibraryAction] Successfully removed book ${bookId}`);
       revalidatePath('/dashboard')
       revalidatePath(`/book/${bookId}`)
       return { success: true }
     }
     return { success: false, error: 'No se pudo quitar de la biblioteca' }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in removeFromLibraryAction:', error)
-    return { success: false, error: 'Error del servidor' }
+    return { success: false, error: `Error del servidor: ${error.message || 'Desconocido'}` }
   }
 }

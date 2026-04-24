@@ -15,7 +15,7 @@ import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckC
 import ReviewForm from "@/components/community/ReviewForm";
 import ReviewList from "@/components/community/ReviewList";
 import { addToLibrary } from "@/lib/books";
-import { addToLibraryAction } from "@/lib/actions/library";
+import { addToLibraryAction, removeFromLibraryAction } from "@/lib/actions/library";
 import { createClientClient } from "@/lib/supabase";
 
 // 3.5.1 - Componente principal de la página de detalle
@@ -113,6 +113,24 @@ export default function BookDetailPage() {
       }
     } catch (error) {
       toast.error("Error al conectar con el servidor");
+    } finally {
+      setAddingToLib(false);
+    }
+  };
+
+  const handleRemoveFromLibrary = async () => {
+    if (!userId) return;
+    setAddingToLib(true);
+    try {
+      const result = await removeFromLibraryAction(id);
+      if (result.success) {
+        toast.info("Libro quitado de tu biblioteca");
+        refetch();
+      } else {
+        toast.error(result.error || "Error al quitar el libro");
+      }
+    } catch (error) {
+      toast.error("Error de red");
     } finally {
       setAddingToLib(false);
     }
@@ -241,36 +259,34 @@ export default function BookDetailPage() {
                       {isDownloading ? 'Descargando...' : isDownloaded ? 'Disponible Offline' : 'Descargar Offline'}
                     </button>
 
-                    {/* Botón Agregar a Biblioteca (Visible para quienes tienen acceso pero no el libro) */}
-                    {!isInLibrary && (
-                      <button
-                        onClick={handleAddToLibrary}
-                        disabled={addingToLib}
-                        className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl font-black transition-all border shadow-lg ${
-                          subscription?.isActive || subscription?.role === 'admin'
+                    {/* 3.5.10.2.3.1.2 - Botón de Biblioteca (Toggle) */}
+                    <button
+                      onClick={isInLibrary ? handleRemoveFromLibrary : handleAddToLibrary}
+                      disabled={addingToLib}
+                      className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl font-black transition-all border shadow-lg ${
+                        isInLibrary 
+                        ? "bg-white dark:bg-[#1a1a1a] border-amber-500/50 text-amber-500 hover:bg-amber-500/5 shadow-amber-500/10" 
+                        : (hasPremiumAccess
                           ? "bg-amber-500 border-amber-600 text-white hover:bg-amber-600 shadow-amber-500/20"
-                          : "bg-white dark:bg-white/5 border-white/10 hover:border-blue-500/40 text-gray-900 dark:text-white"
-                        }`}
-                      >
-                        {addingToLib ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <BookmarkPlus className="w-6 h-6" />
-                        )}
-                        {addingToLib ? 'Agregando...' : 'Añadir a mi Biblioteca'}
-                      </button>
-                    )}
-
-                    {isInLibrary && (
-                      <div className="flex items-center justify-center gap-2 py-3 text-amber-500 font-black uppercase tracking-widest text-[10px]">
-                        <BookmarkCheck className="w-4 h-4" /> Ya en tu biblioteca
-                      </div>
-                    )}
+                          : "bg-white dark:bg-white/5 border-white/10 hover:border-blue-500/40 text-gray-900 dark:text-white")
+                      }`}
+                    >
+                      {addingToLib ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : isInLibrary ? (
+                        <BookmarkCheck className="w-6 h-6" />
+                      ) : (
+                        <BookmarkPlus className="w-6 h-6" />
+                      )}
+                      {addingToLib 
+                        ? (isInLibrary ? 'Quitando...' : 'Agregando...') 
+                        : (isInLibrary ? 'En tu Biblioteca (Quitar)' : 'Añadir a mi Biblioteca')}
+                    </button>
                   </div>
                 )}
 
-                {/* 3.5.10.2.3.2 - Estado: Usuario NO tiene acceso Premium */}
-                {!canRead && (
+                {/* 3.5.10.2.3.2 - Estado: Usuario NO tiene acceso Premium (y no es admin) */}
+                {!hasPremiumAccess && !canRead && (
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 rounded-2xl gap-4 group">
                       <div className="flex items-center gap-4">

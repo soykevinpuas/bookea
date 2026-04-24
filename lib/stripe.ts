@@ -49,10 +49,11 @@ export const stripe = new Proxy({} as Stripe, {
 // Útiles para suscripciones y productos predefinidos
 export const PRICE_IDS = {
   // Plan mensual Premium (Suscripción)
-  premium: process.env.STRIPE_PREMIUM_PRICE_ID || 'price_monthly_99',
+  // NOTA: Se actualizó de STRIPE_PREMIUM_PRICE_ID a STRIPE_SUBSCRIPTION_PRICE_ID para coincidir con el .env.local
+  premium: process.env.STRIPE_SUBSCRIPTION_PRICE_ID || 'price_monthly_99',
   
   // Otros productos (Pagos únicos)
-  digital_permanent: process.env.STRIPE_DIGITAL_PERMANENT_PRICE_ID || 'price_digital_49',
+  digital_permanent: process.env.STRIPE_DIGITAL_PERMANENT_PRICE_ID || 'price_1TDdl0EKGOOZEccNCLD8qa2F',
   physical_basic: process.env.STRIPE_PHYSICAL_PRICE_ID || 'price_physical_199',
   bundle: process.env.STRIPE_BUNDLE_PRICE_ID || 'price_bundle_229',
 };
