@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { type, bookId } = body;
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    // 7.1.2 - Determinar la URL base dinámicamente
+    const { origin: baseUrl } = request.nextUrl;
 
     // 7.1.3 - Manejo de suscripción mensual
     if (type === 'subscription') {
