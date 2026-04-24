@@ -195,16 +195,100 @@ export async function hasBookAccess(supabase: SupabaseClient, userId: string, bo
   if (!userId || !bookId) return false;
   
   try {
-    const { data, error } = await supabase
+    // 1. Obtener el registro de acceso y el estado de suscripción del usuario en una sola consulta
+    const { data: userBook, error: ubError } = await supabase
       .from("user_books")
-      .select("id")
+      .select(`
+        id,
+        access_type,
+        users:user_id (role, subscription_ends_at)
+      `)
       .eq("user_id", userId)
       .eq("book_id", bookId)
       .maybeSingle();
 
-    if (error) return false;
-    return !!(data && typeof data === 'object' && 'id' in data);
+    if (ubError || !userBook) return false;
+
+    const accessType = userBook.access_type;
+    const userData = (userBook as any).users;
+
+    // 2. Acceso Permanente o Regalo siempre es TRUE
+    if (accessType === 'permanent' || accessType === 'gift') {
+      return true;
+    }
+
+    // 3. Acceso por Suscripción requiere validación de Premium activo
+    if (accessType === 'subscription') {
+      if (!userData) return false;
+      
+      const isPremium = userData.role === 'admin' || 
+                       (userData.role === 'subscriber' && 
+                        (!userData.subscription_ends_at || new Date(userData.subscription_ends_at) > new Date()));
+      
+      return isPremium;
+    }
+
+    return false;
   } catch (error) {
+    console.error("Error checking book access:", error);
+    return false;
+  }
+}
+
+/**
+ * 3.3.4 - Agregar un libro a la biblioteca del usuario.
+ * Se usa cuando un suscriptor premium abre un libro del catálogo.
+ */
+export async function addToLibrary(supabase: SupabaseClient, userId: string, bookId: string, accessType: 'subscription' | 'permanent' = 'subscription') {
+  if (!userId || !bookId) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from("user_books")
+      .upsert({ 
+        user_id: userId, 
+        book_id: bookId, 
+        access_type: accessType 
+      }, { onConflict: 'user_id,book_id' })
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    // Inicializar progreso de lectura si no existe
+    await supabase
+      .from("reading_progress")
+      .upsert({ 
+        user_id: userId, 
+        book_id: bookId,
+        percent_complete: 0,
+        last_read_at: new Date().toISOString()
+      }, { onConflict: 'user_id,book_id' });
+
+    return data;
+  } catch (error) {
+    console.error("Error adding book to library:", error);
+    return null;
+  }
+}
+
+/**
+ * 3.3.5 - Quitar un libro de la biblioteca personal.
+ */
+export async function removeFromLibrary(supabase: SupabaseClient, userId: string, bookId: string) {
+  if (!userId || !bookId) return false;
+
+  try {
+    const { error } = await supabase
+      .from("user_books")
+      .delete()
+      .eq("user_id", userId)
+      .eq("book_id", bookId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error removing book from library:", error);
     return false;
   }
 }

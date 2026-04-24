@@ -6,6 +6,11 @@ import { Download, Eye, Trash2, X, Loader2, CheckCircle } from "lucide-react";
 import { isBookDownloaded, downloadBook, removeBookDownload } from "@/lib/downloads";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUserId } from "@/hooks/useUser";
+import { createClientClient } from "@/lib/supabase";
+import { removeFromLibrary } from "@/lib/books";
+import { useQueryClient } from "@tanstack/react-query";
+import { BookOpen } from "lucide-react";
 
 /**
  * 8.5 - BookLongPressMenu: Menú contextual que aparece al mantener presionado un libro
@@ -23,6 +28,9 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   const [isProcessing, setIsProcessing] = useState(false);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { userId } = useUserId();
+  const queryClient = useQueryClient();
+  const supabase = createClientClient();
 
   // Verificar estado de descarga al montar
   useEffect(() => {
@@ -103,6 +111,24 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       toast.info(`"${bookTitle}" eliminado del almacenamiento offline`);
     } else {
       toast.error("Error al eliminar la descarga");
+    }
+    setIsProcessing(false);
+    setShowMenu(false);
+  };
+
+  const handleRemoveFromLibrary = async () => {
+    if (!userId) {
+      toast.error("Debes iniciar sesión");
+      return;
+    }
+    setIsProcessing(true);
+    const success = await removeFromLibrary(supabase, userId, bookId);
+    if (success) {
+      toast.info(`"${bookTitle}" quitado de tu biblioteca`);
+      // Invalidar queries para que desaparezca del dashboard
+      queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
+    } else {
+      toast.error("Error al quitar de la biblioteca");
     }
     setIsProcessing(false);
     setShowMenu(false);
@@ -193,6 +219,21 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
                   </span>
                 </button>
               )}
+
+              <div className="border-t border-white/5 my-1" />
+
+              <button
+                onClick={handleRemoveFromLibrary}
+                disabled={isProcessing}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 transition-colors text-red-500/80"
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                ) : (
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                )}
+                <span className="text-sm font-bold">Quitar de Biblioteca</span>
+              </button>
             </div>
           </motion.div>
         )}

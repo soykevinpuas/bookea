@@ -13,6 +13,9 @@ import ePub, { Book, Rendition } from "epubjs";
 import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2, Bookmark, FileText, X, Trash2, Check, PenSquare } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
+import { createClientClient } from "@/lib/supabase";
+import { addToLibrary, hasBookAccess } from "@/lib/books";
+import { useSubscription } from "@/hooks/useSubscription";
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 export default function ReaderPage() {
@@ -55,6 +58,7 @@ export default function ReaderPage() {
 
   const { data: book, isLoading: loadingBook } = useBook(bookId);
   const { userId } = useUserId();
+  const { data: subscription } = useSubscription(userId);
   const queryClient = useQueryClient();
   
   // 4.2.1 - Estado local del lector
@@ -224,6 +228,31 @@ export default function ReaderPage() {
       try {
         setIsLoading(true);
         setError(null);
+
+        // 4.2.5.0 - VALIDACIÓN DE ACCESO Y AUTO-ADD
+        const supabase = createClientClient();
+        if (userId && bookId) {
+          const hasAccess = await hasBookAccess(supabase, userId, bookId);
+          
+          if (!hasAccess) {
+            // Si es premium, intentamos agregarlo automáticamente
+            if (subscription?.isActive) {
+              const added = await addToLibrary(supabase, userId, bookId, 'subscription');
+              if (!added) {
+                setError("No se pudo agregar el libro a tu biblioteca. Reintenta.");
+                setIsLoading(false);
+                return;
+              }
+              // Notificar al dashboard que hay un nuevo libro
+              queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
+            } else {
+              // No es premium y no tiene acceso
+              setError("Este libro es Premium. Suscríbete para leerlo o cómpralo permanentemente.");
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
 
         const epubUrl = book.epub_url as string;
         

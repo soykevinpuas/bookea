@@ -82,7 +82,7 @@ export function Header({ initialUser = null }: HeaderProps) {
           href="/" 
           className="text-xl sm:text-2xl font-black tracking-tighter text-gray-900 dark:text-white flex items-center gap-0 hover:opacity-80 transition-opacity flex-shrink-0"
         >
-          <span className="text-amber-500">B</span>ookea
+          <span className={subscription?.isActive ? "text-amber-500" : "text-blue-600 dark:text-blue-500"}>B</span>ookea
         </Link>
         
         {/* 6.1.4.2 - Navegación principal */}
@@ -90,7 +90,11 @@ export function Header({ initialUser = null }: HeaderProps) {
           {isOnline && (
             <Link 
               href="/catalog" 
-              className="text-[10px] sm:text-xs font-black bg-white dark:bg-[#151515] hover:bg-gray-50 border border-gray-200 dark:border-white/5 text-gray-900 dark:text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all shadow-sm transform hover:-translate-y-0.5 hidden sm:block uppercase tracking-wider"
+              className={`text-[10px] sm:text-xs font-black px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all shadow-sm transform hover:-translate-y-0.5 hidden sm:block uppercase tracking-wider border ${
+                subscription?.isActive 
+                ? "bg-white dark:bg-[#151515] border-gray-200 dark:border-white/5 text-gray-900 dark:text-white"
+                : "bg-blue-600 hover:bg-blue-500 border-transparent text-white"
+              }`}
             >
               Catálogo
             </Link>

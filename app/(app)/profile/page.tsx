@@ -102,6 +102,10 @@ export default function ProfilePage() {
 
   // 3.3.2 - Determinar si el usuario tiene suscripción activa
   const isSubscriber = subscription?.isActive;
+  const primaryColor = isSubscriber ? "amber" : "blue";
+  const primaryClass = isSubscriber ? "text-amber-500" : "text-blue-500";
+  const primaryBgClass = isSubscriber ? "bg-amber-500" : "bg-blue-600";
+  const primaryBorderClass = isSubscriber ? "border-amber-500/20" : "border-blue-500/20";
 
   return (
     <div className="min-h-screen bg-[#070708] text-white py-12 px-6">
@@ -113,7 +117,7 @@ export default function ProfilePage() {
             <p className="text-white/40">Gestiona tu identidad y suscripción Premium.</p>
           </div>
           {isSubscriber && (
-            <div className="px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-2">
+            <div className={`px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-2`}>
               <Zap className="w-4 h-4 text-amber-500 fill-current" />
               <span className="text-amber-500 font-bold text-xs uppercase tracking-widest">Miembro Premium</span>
             </div>
@@ -135,7 +139,7 @@ export default function ProfilePage() {
                       size="100%" 
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-amber-600 text-4xl font-black">
+                    <div className={`w-full h-full flex items-center justify-center ${primaryBgClass} text-4xl font-black`}>
                       {dbUser?.email?.charAt(0) || "U"}
                     </div>
                   )}
@@ -152,7 +156,7 @@ export default function ProfilePage() {
                   <input 
                     value={tempName}
                     onChange={(e) => setTempName(e.target.value)}
-                    className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-center outline-none focus:border-amber-500 transition-colors"
+                    className={`bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-center outline-none focus:border-${primaryColor}-500 transition-colors`}
                     placeholder="Tu nombre público..."
                     autoFocus
                   />
@@ -166,7 +170,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
               ) : (
-                <h2 onClick={() => setIsEditingName(true)} className="font-black text-2xl mb-1 truncate cursor-pointer hover:text-amber-500 transition-colors flex items-center justify-center gap-2 group-hover:translate-y-[-2px]">
+                <h2 onClick={() => setIsEditingName(true)} className={`font-black text-2xl mb-1 truncate cursor-pointer hover:text-${primaryColor}-500 transition-colors flex items-center justify-center gap-2 group-hover:translate-y-[-2px]`}>
                   {profile?.name || dbUser?.email?.split('@')[0]}
                   <Settings className="w-4 h-4 opacity-0 group-hover:opacity-40 transition-opacity" />
                 </h2>
@@ -176,15 +180,15 @@ export default function ProfilePage() {
               
               <div className={`inline-flex items-center gap-2 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] w-fit ${
                 subLoading ? 'bg-white/5 text-white/20 animate-pulse border border-white/10' :
-                isSubscriber ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-white/5 text-white/40 border border-white/10'
+                isSubscriber ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-600/10 text-blue-500 border border-blue-500/20'
               }`}>
                 {subLoading ? 'Cargando...' : (subscription?.role === 'admin' ? 'Premium Admin' : (isSubscriber ? 'Miembro Premium' : 'Nivel Gratis'))}
               </div>
             </div>
 
             <div className="bg-white/5 border border-white/10 rounded-[2rem] p-4 divide-y divide-white/5 overflow-hidden">
-              <Link href="/dashboard" className="flex items-center gap-4 px-4 py-4 text-sm font-bold text-white/60 hover:text-white hover:bg-white/5 transition-all">
-                <Sparkles className="w-4 h-4 text-amber-400" /> Mi Biblioteca
+              <Link href="/dashboard" className={`flex items-center gap-4 px-4 py-4 text-sm font-bold text-white/60 hover:text-white hover:bg-white/5 transition-all`}>
+                <Sparkles className={`w-4 h-4 ${primaryClass}`} /> Mi Biblioteca
               </Link>
               <Link href="/dashboard?tab=reading" className="flex items-center gap-4 px-4 py-4 text-sm font-bold text-white/60 hover:text-white hover:bg-white/5 transition-all">
                 <BookOpen className="w-4 h-4" /> Progreso
@@ -197,7 +201,7 @@ export default function ProfilePage() {
             {/* Animal Builder Section */}
             <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-10">
               <h3 className="text-2xl font-black flex items-center gap-3 mb-10">
-                <Sparkles className="w-6 h-6 text-amber-500" />
+                <Sparkles className={`w-6 h-6 ${primaryClass}`} />
                 Personalizar Avatar
               </h3>
               <AvatarSelector 
