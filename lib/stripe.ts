@@ -14,11 +14,11 @@ export function getStripeClient() {
   // 3.5.11 - Forzar lectura fresca de variables de entorno
   // if (stripeInstance) return stripeInstance;
   
-  const secretKey = process.env.STRIPE_SECRET_KEY || "";
+  const secretKey = process.env.STRIPE_SECRET_KEY_V2 || process.env.STRIPE_SECRET_KEY || "";
   
   if (!secretKey) {
-    console.error("FATAL ERROR: STRIPE_SECRET_KEY is missing from process.env!");
-    throw new Error("Configuración incompleta: STRIPE_SECRET_KEY no encontrada.");
+    console.error("FATAL ERROR: STRIPE_SECRET_KEY_V2 is missing!");
+    throw new Error("Configuración incompleta: STRIPE_SECRET_KEY_V2 no encontrada.");
   }
 
   // Verificar si la clave es la correcta (6ANc)

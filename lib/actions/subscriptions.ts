@@ -18,8 +18,8 @@ export async function verifySubscriptionAction(sessionId: string) {
 
   try {
     const stripe = getStripeClient()
-    const secretKey = process.env.STRIPE_SECRET_KEY || "";
-    console.log(`[DIAGNÓSTICO] Verificando pago con clave que empieza por: ${secretKey.substring(0, 10)}...`);
+    const secretKey = process.env.STRIPE_SECRET_KEY_V2 || process.env.STRIPE_SECRET_KEY || "";
+    console.log(`[DIAGNÓSTICO] Verificando pago con clave que empieza por: ${secretKey.substring(0, 15)}...`);
     
     const session = await stripe.checkout.sessions.retrieve(sessionId)
 
