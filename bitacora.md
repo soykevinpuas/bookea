@@ -14,6 +14,8 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - **Accesibilidad de Menú (Mouse):**
   - Se añadió un botón de **"Tres Puntos" (`...`)** en la esquina superior izquierda de las portadas de los libros.
   - Este botón permite abrir las opciones (Descargar, Eliminar, Ver Detalles) con un simple clic, solucionando la limitación de la pulsación larga en PCs y Laptops.
+- **Animación del Lector:**
+  - Implementación de un efecto de **"Slide & Fade"** mediante Framer Motion que se activa al navegar entre páginas, haciendo la transición más fluida y dinámica.
 
 ### Cambios y Mejoras
 - **Reversión de Auto-Add:** Se eliminó el intento de añadir libros automáticamente al abrir el lector para dar total control al usuario desde la página de detalles.
