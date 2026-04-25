@@ -11,12 +11,19 @@ let stripeInstance: Stripe | null = null;
  * Garantiza que las variables de entorno estén cargadas antes de la inicialización.
  */
 export function getStripeClient() {
-  // 3.5.11 - Usar versión V2 para asegurar que Vercel no use caché antigua
+  // Priorizar V2 sobre V1 para forzar la actualización
   const secretKey = process.env.STRIPE_SECRET_KEY_V2 || process.env.STRIPE_SECRET_KEY || "";
   
   if (!secretKey) {
-    console.error("FATAL ERROR: STRIPE_SECRET_KEY_V2 no encontrada.");
-    throw new Error("Configuración incompleta: STRIPE_SECRET_KEY_V2.");
+    console.error("DEBUG: No se encontró clave de Stripe en ninguna variable.");
+    throw new Error("Error: Clave de Stripe no configurada.");
+  }
+
+  // Log interno para que veas en Vercel cuál está usando (puedes borrarlo luego)
+  if (process.env.STRIPE_SECRET_KEY_V2) {
+    console.log("INFO: Usando Clave V2 correctamente.");
+  } else if (process.env.STRIPE_SECRET_KEY) {
+    console.warn("ADVERTENCIA: Usando Clave V1 (podría estar desactualizada).");
   }
 
   // Verificar si la clave es la correcta (6ANc)
