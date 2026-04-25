@@ -202,19 +202,29 @@ export async function hasBookAccess(supabase: SupabaseClient, userId: string, bo
     // 2. Obtener datos del libro para ver si es Premium
     const { data: book, error: bookError } = await supabase
       .from("books")
-      .select("is_premium")
+      .select("is_premium, title")
       .eq("id", bookId)
       .single();
 
-    if (!book || bookError) return false;
+    if (!book || bookError) {
+      console.warn(`[hasBookAccess] Error obteniendo libro ${bookId}:`, bookError);
+      return false;
+    }
 
-    // Si el usuario es Premium activo y el libro es Premium, permitir acceso (para Auto-Add en el lector)
-    if (isPremiumActive && book.is_premium) return true;
+    // --- REGLA DE ORO DE LIBROS GRATIS ---
+    // Si el libro NO es premium, cualquier usuario (incluso gratis) puede leerlo.
+    if (!book.is_premium) {
+      console.log(`[hasBookAccess] Acceso CONCEDIDO (Libro Gratis): ${book.title}`);
+      return true;
+    }
+
+    // --- REGLA DE LIBROS PREMIUM ---
+    // Si el usuario es Premium activo y el libro es Premium, permitir acceso
+    if (isPremiumActive && book.is_premium) {
+      console.log(`[hasBookAccess] Acceso CONCEDIDO (Premium Activo): ${book.title}`);
+      return true;
+    }
     
-    // Si el libro NO es premium (gratis), permitir acceso? 
-    // (Generalmente queremos que lo agreguen igual, pero por ahora si es gratis damos paso)
-    if (!book.is_premium) return true;
-
     // 3. Verificar acceso específico en biblioteca (Compras permanentes o regalos)
     const { data: userBook } = await supabase
       .from("user_books")
@@ -223,12 +233,18 @@ export async function hasBookAccess(supabase: SupabaseClient, userId: string, bo
       .eq("book_id", bookId)
       .maybeSingle();
 
-    if (!userBook && !isPremiumActive) return false;
     if (userBook) {
-      if (userBook.access_type === 'permanent' || userBook.access_type === 'gift') return true;
-      if (userBook.access_type === 'subscription' && isPremiumActive) return true;
+      if (userBook.access_type === 'permanent' || userBook.access_type === 'gift') {
+        console.log(`[hasBookAccess] Acceso CONCEDIDO (Compra Permanente): ${book.title}`);
+        return true;
+      }
+      if (userBook.access_type === 'subscription' && isPremiumActive) {
+        console.log(`[hasBookAccess] Acceso CONCEDIDO (Suscripción): ${book.title}`);
+        return true;
+      }
     }
 
+    console.warn(`[hasBookAccess] Acceso DENEGADO: ${book.title}. UserRole=${userData.role}, isPremiumActive=${isPremiumActive}`);
     return false;
   } catch (error) {
     console.error("Error checking book access:", error);

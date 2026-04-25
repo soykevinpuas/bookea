@@ -30,11 +30,15 @@ export async function verifySubscriptionAction(sessionId: string) {
       const endsAt = new Date();
       endsAt.setDate(endsAt.getDate() + 30);
 
-      // Actualizar el rol del usuario a suscriptor en la base de datos
+      // SOLO actualizar el rol si el usuario es 'free'. Si es 'admin', NO tocarlo.
+      const currentRole = user.role;
+      const newRole = currentRole === 'admin' ? 'admin' : 'subscriber';
+
+      // Actualizar la base de datos
       const { error: updateError } = await supabase
         .from('users')
         .update({ 
-          role: 'subscriber',
+          role: newRole,
           subscription_ends_at: endsAt.toISOString()
         })
         .eq('id', user.id)

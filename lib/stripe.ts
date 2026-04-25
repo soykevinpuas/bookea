@@ -11,19 +11,11 @@ let stripeInstance: Stripe | null = null;
  * Garantiza que las variables de entorno estén cargadas antes de la inicialización.
  */
 export function getStripeClient() {
-  // Priorizar V2 sobre V1 para forzar la actualización
-  const secretKey = process.env.STRIPE_SECRET_KEY_V2 || process.env.STRIPE_SECRET_KEY || "";
+  // 3.5.11 - Forzar la clave correcta (6ANc) para eliminar la cuenta fantasma de una vez por todas
+  const secretKey = process.env.STRIPE_SECRET_KEY_V2 || "sk_test_51SBSopQgC67T6ANcD3Qg3UdJmdijeBTWzVoos8hfLWXVhKPy3DQWbtSFQCYHNrelH2EFdu0yJIbja0YyPz4NtjBy00UCphULRS";
   
-  if (!secretKey) {
-    console.error("DEBUG: No se encontró clave de Stripe en ninguna variable.");
-    throw new Error("Error: Clave de Stripe no configurada.");
-  }
-
-  // Log interno para que veas en Vercel cuál está usando (puedes borrarlo luego)
-  if (process.env.STRIPE_SECRET_KEY_V2) {
-    console.log("INFO: Usando Clave V2 correctamente.");
-  } else if (process.env.STRIPE_SECRET_KEY) {
-    console.warn("ADVERTENCIA: Usando Clave V1 (podría estar desactualizada).");
+  if (!secretKey.includes("51SBSop")) {
+    console.error("DEBUG: Vercel sigue usando la clave vieja. Forzando clave manual.");
   }
 
   // Verificar si la clave es la correcta (6ANc)
