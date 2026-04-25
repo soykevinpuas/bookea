@@ -304,42 +304,37 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
         .single();
 
       if (insertError) {
-        console.error("[addToLibrary] ERROR CRÍTICO SUPABASE:", insertError);
-        throw insertError;
-      }
-      record = data;
-      console.log("[addToLibrary] ÉXITO: Registro creado:", record.id);
+      console.error("[addToLibrary] ERROR DE SUPABASE AL INSERTAR:", insertError.message, insertError.details, insertError.hint);
+      throw new Error(`Error de base de datos: ${insertError.message}`);
     }
-    
-    // 2. Asegurar que exista el registro de progreso (necesario para el join)
-    console.log(`[addToLibrary] Ensuring reading_progress for book=${bookId}`);
-    const { data: existingProgress, error: progressCheckError } = await supabase
-      .from("reading_progress")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("book_id", bookId)
-      .maybeSingle();
-
-    if (progressCheckError) {
-      console.warn("[addToLibrary] Non-fatal: reading_progress check error:", progressCheckError);
-    }
-
-    if (!existingProgress) {
-      await supabase
-        .from("reading_progress")
-        .insert({ 
-          user_id: userId, 
-          book_id: bookId,
-          percent_complete: 0,
-          last_read_at: new Date().toISOString()
-        });
-    }
-
-    return record;
-  } catch (error) {
-    console.error("Critical error in addToLibrary:", error);
-    return null;
+    record = data;
+    console.log("[addToLibrary] ÉXITO: Registro creado:", record.id);
   }
+
+  // 2. Asegurar que exista el registro de progreso (necesario para el join)
+  const { data: existingProgress } = await supabase
+    .from("reading_progress")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("book_id", bookId)
+    .maybeSingle();
+
+  if (!existingProgress) {
+    await supabase
+      .from("reading_progress")
+      .insert({ 
+        user_id: userId, 
+        book_id: bookId,
+        percent_complete: 0,
+        last_read_at: new Date().toISOString()
+      });
+  }
+
+  return record;
+} catch (error: any) {
+  console.error("Critical error in addToLibrary:", error.message);
+  return null;
+}
 }
 
 /**
