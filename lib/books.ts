@@ -333,7 +333,7 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
   return record;
 } catch (error: any) {
   console.error("Critical error in addToLibrary:", error.message);
-  return null;
+  return { error: error.message || "Error desconocido" };
 }
 }
 

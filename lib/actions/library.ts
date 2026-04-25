@@ -28,12 +28,19 @@ export async function addToLibraryAction(bookId: string, accessType: 'subscripti
 
     console.log(`[addToLibraryAction] Book verified. Proceeding to add...`);
     const result = await libAddToLibrary(supabase, user.id, bookId, accessType)
-    if (result) {
+    
+    // Si el resultado es un objeto con error o es nulo
+    if (result && 'error' in result) {
+      return { success: false, error: `Base de Datos: ${result.error}` }
+    }
+
+    if (result && 'id' in result) {
       console.log(`[addToLibraryAction] Successfully added book ${bookId}`);
       revalidatePath('/dashboard')
       revalidatePath(`/book/${bookId}`)
       return { success: true, record: result }
     }
+    
     return { success: false, error: 'La base de datos no devolvió el registro. Verifique el ID del libro.' }
   } catch (error: any) {
     console.error('Error in addToLibraryAction:', error)
