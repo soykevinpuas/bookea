@@ -18,7 +18,7 @@ export async function verifySubscriptionAction(sessionId: string) {
 
   try {
     const stripe = getStripeClient()
-    const secretKey = process.env.STRIPE_SECRET_KEY_V2 || process.env.STRIPE_SECRET_KEY || "";
+    const secretKey = process.env.STRIPE_SECRET_KEY;
     console.log(`[DIAGNÓSTICO] Verificando pago con clave que empieza por: ${secretKey.substring(0, 15)}...`);
     
     const session = await stripe.checkout.sessions.retrieve(sessionId)
@@ -30,8 +30,14 @@ export async function verifySubscriptionAction(sessionId: string) {
       const endsAt = new Date();
       endsAt.setDate(endsAt.getDate() + 30);
 
-      // SOLO actualizar el rol si el usuario es 'free'. Si es 'admin', NO tocarlo.
-      const currentRole = user.role;
+      // Obtener el rol ACTUAL de la tabla users (no de Supabase Auth metadata)
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      
+      const currentRole = userData?.role || 'free';
       const newRole = currentRole === 'admin' ? 'admin' : 'subscriber';
 
       // Actualizar la base de datos
