@@ -45,8 +45,16 @@ export async function register(formData: FormData) {
     redirect('/error')
   }
 
-  console.log('Usuario creado:', signupData.user)
-  console.log('Session:', signupData.session)
+  // 2.3.1 - Tracking de analytics: nuevo registro
+  try {
+    await supabase.rpc('track_event', {
+      event_name: 'user_signed_up',
+      event_data: JSON.stringify({ method: 'email' }),
+      user_email: data.email,
+    })
+  } catch (trackError) {
+    console.warn('[Analytics] Error al trackear registro:', trackError)
+  }
 
   revalidatePath('/', 'layout')
   redirect('/login?message=Cuenta creada. Inicia sesión.')

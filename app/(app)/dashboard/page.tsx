@@ -12,6 +12,7 @@ import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X,
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { verifySubscriptionAction } from "@/lib/actions/subscriptions";
+import { track } from "@/lib/analytics";
 
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
 export default function DashboardPage() {
@@ -24,6 +25,11 @@ export default function DashboardPage() {
   const [category, setCategory] = useState("all");
   const [view, setView] = useState<"grid" | "list" | "compact">("grid");
   const [isOnline, setIsOnline] = useState(true);
+
+  // 3.4.1 - Tracking de analytics: visita a dashboard
+  useEffect(() => {
+    track('page_view', { page: 'dashboard' }).catch(console.warn);
+  }, []);
 
   // Detectar éxito de pago y verificar automáticamente
   useEffect(() => {

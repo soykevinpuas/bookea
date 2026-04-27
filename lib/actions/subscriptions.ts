@@ -64,6 +64,22 @@ export async function verifySubscriptionAction(sessionId: string) {
         });
       }
 
+      // 7.1.1 - Tracking de analytics: pago completado
+      try {
+        await supabase.rpc('track_event', {
+          event_name: 'payment_completed',
+          event_data: JSON.stringify({ 
+            amount: session.amount_total ? session.amount_total / 100 : 99,
+            currency: session.currency,
+            product: session.mode === 'subscription' ? 'subscription' : 'digital',
+            session_id: sessionId,
+          }),
+          user_email: user.email,
+        })
+      } catch (trackError) {
+        console.warn('[Analytics] Error al trackear pago:', trackError)
+      }
+
       revalidatePath('/')
       revalidatePath('/dashboard')
       
