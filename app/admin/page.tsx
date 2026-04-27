@@ -15,6 +15,9 @@ import {
   Activity,
 } from "lucide-react";
 
+// 5.2 - Forzar renderizado dinámico (usa cookies para auth)
+export const dynamic = 'force-dynamic';
+
 interface AdminStats {
   totalBooks: number;
   activeBooks: number;
