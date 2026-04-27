@@ -515,3 +515,29 @@ main {
 [data-page="reader"] {
   animation: none;
 }
+
+/* 1.7.7 - Animación de Resplandor Dorado para Libros Completados (100%) */
+@keyframes goldShimmer {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateX(-100%);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes goldPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4), 0 0 40px rgba(255, 215, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.6), 0 0 60px rgba(255, 215, 0, 0.3);
+  }
+}
+
+/* Aplicar animación de pulso dorado a libros completados */
+.group:has([data-book-cover]) .shadow-\[0_0_20px_rgba\(255,215,0,0\.6\)\] {
+  animation: goldPulse 3s ease-in-out infinite;
+}

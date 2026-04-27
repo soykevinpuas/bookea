@@ -5,6 +5,7 @@ import Book3D from "@/components/Book3D";
 import CatalogBookCard from "@/components/CatalogBookCard";
 import { createClient } from "@/lib/server";
 import { SearchFilters } from "@/components/SearchFilters";
+import { getServerSession } from "@/lib/session";
 
 interface PageProps {
   searchParams: Promise<{
@@ -22,6 +23,26 @@ export default async function CatalogPage({ searchParams }: PageProps) {
   // 3.1.1 - Inicialización del cliente Supabase en servidor y obtención de la colección filtrada
   const supabase = await createClient();
   const books = await getBooks(supabase, { search, author, category });
+
+  // 3.1.2 - Obtener sesión del usuario para progreso de lectura
+  const session = await getServerSession();
+  let booksWithProgress = books;
+
+  if (session?.user?.id) {
+    // Obtener progreso de lectura del usuario para estos libros
+    const { data: progressData } = await supabase
+      .from("reading_progress")
+      .select("book_id, percent_complete")
+      .eq("user_id", session.user.id);
+
+    if (progressData) {
+      const progressMap = new Map(progressData.map(p => [p.book_id, p.percent_complete]));
+      booksWithProgress = books.map(book => ({
+        ...book,
+        percent_complete: progressMap.get(book.id) || 0
+      }));
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">
@@ -45,7 +66,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
         />
 
         {/* 3.1.2 - Renderizado condicional para estado vacío (Empty State) */}
-        {books.length === 0 ? (
+        {booksWithProgress.length === 0 ? (
           <div className="text-center py-20 bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm">
             <span className="text-4xl block mb-4">🔍</span>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Sin resultados</h3>
@@ -59,12 +80,12 @@ export default async function CatalogPage({ searchParams }: PageProps) {
               ? "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
               : "flex flex-col gap-4"
           }>
-            {books.map((book) => (
+            {booksWithProgress.map((book) => (
               view === "compact" ? (
                 <CatalogBookCard key={book.id} book={book}>
                   <Link href={`/book/${book.id}`} className="group block">
                     <div className="aspect-[2/3] relative rounded-2xl overflow-hidden shadow-sm group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-300">
-                      <Book3D src={book.cover_url || ""} title={book.title} />
+                      <Book3D src={book.cover_url || ""} title={book.title} percentComplete={book.percent_complete} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
                          <h4 className="text-white text-xs font-bold truncate">{book.title}</h4>
                       </div>
@@ -92,6 +113,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
                         title={book.title} 
                         className="w-full h-full"
                         objectFit={view === "list" ? "contain" : "cover"}
+                        percentComplete={book.percent_complete}
                       />
                     </Link>
                   ) : (

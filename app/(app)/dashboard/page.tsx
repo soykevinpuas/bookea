@@ -165,9 +165,9 @@ export default function DashboardPage() {
               href={`/reader/${recentBook.id}`}
               className="group relative flex flex-col sm:flex-row items-center gap-6 p-6 bg-white/5 border border-white/10 rounded-3xl overflow-hidden hover:border-blue-500/30 transition-all shadow-2xl"
             >
-              <div className="w-24 h-36 flex-shrink-0 shadow-xl group-hover:scale-105 transition-transform">
-                <Book3D src={recentBook.cover_url || ""} title={recentBook.title} />
-              </div>
+                <div className="w-24 h-36 flex-shrink-0 shadow-xl group-hover:scale-105 transition-transform">
+                 <Book3D src={recentBook.cover_url || ""} title={recentBook.title} percentComplete={recentBook.percent_complete} />
+               </div>
               <div className="flex-1 text-center sm:text-left z-10">
                 <div className="flex items-center justify-center sm:justify-start gap-4 mb-2">
                   <h3 className="text-xl font-black group-hover:text-blue-400 transition-colors truncate">{recentBook.title}</h3>
@@ -272,7 +272,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-3 group">
                       <Link href={`/reader/${book.id}`}>
                     <div className="aspect-[2/3] transition-transform group-hover:scale-105 relative">
-                      <Book3D src={book.cover_url || ""} title={book.title} />
+                      <Book3D src={book.cover_url || ""} title={book.title} percentComplete={book.percent_complete} />
                       {book.percent_complete !== undefined && (
                         <div className="absolute -bottom-2 -right-2 z-20 bg-[#0a0a0a] rounded-full p-1 shadow-xl border border-white/10">
                           <ProgressCircle progress={book.percent_complete} size={30} />
@@ -290,7 +290,7 @@ export default function DashboardPage() {
                 <BookLongPressMenu book={book} key={book.id}>
                   <Link href={`/reader/${book.id}`} className="block group">
                     <div className="aspect-[2/3] transition-transform group-hover:scale-110 relative shadow-lg rounded-lg overflow-hidden">
-                      <Book3D src={book.cover_url || ""} title={book.title} />
+                      <Book3D src={book.cover_url || ""} title={book.title} percentComplete={book.percent_complete} />
                       {book.percent_complete !== undefined && (
                         <div className="absolute bottom-1 right-1 z-20">
                           <ProgressCircle progress={book.percent_complete} size={22} strokeWidth={2} />
@@ -302,7 +302,7 @@ export default function DashboardPage() {
               ) : (
                 <BookLongPressMenu book={book} key={book.id}>
                   <Link href={`/reader/${book.id}`} className="flex items-center gap-4 p-2 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all">
-                    <div className="w-10 h-14 flex-shrink-0"><Book3D src={book.cover_url || ""} title={book.title} /></div>
+                    <div className="w-10 h-14 flex-shrink-0"><Book3D src={book.cover_url || ""} title={book.title} percentComplete={book.percent_complete} /></div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-bold truncate">{book.title}</h3>
                       <p className="text-xs text-white/40 truncate">{book.author}</p>

@@ -183,13 +183,28 @@ export async function hasBookAccess(supabase: SupabaseClient, userId: string, bo
   
   try {
     // 1. Obtener datos del usuario (rol y fin de suscripción)
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("role, subscription_ends_at")
-      .eq("id", userId)
-      .single();
+const { data: userData, error: userError } = await supabase
+  .from("users")
+  .select("role, subscription_ends_at")
+  .eq("id", userId)
+  .single();
 
-    if (userError || !userData) return false;
+if (userError || !userData) {
+  // 3.3.1 - Fallback offline: verificar rol cacheado
+  if (typeof window !== 'undefined') {
+    const cachedRole = localStorage.getItem('bookea-user-role');
+    if (cachedRole === 'admin') {
+      console.log('[hasBookAccess] Acceso admin concedido vía caché offline');
+      return true;
+    }
+  }
+  return false;
+}
+
+// 3.3.2 - Cachear rol para acceso offline
+if (typeof window !== 'undefined') {
+  localStorage.setItem('bookea-user-role', userData.role);
+}
 
     // Administradores tienen acceso total
     if (userData.role === 'admin') return true;
