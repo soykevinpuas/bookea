@@ -19,6 +19,14 @@ export default function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
+  // DEBUG: Verificar variables de entorno
+  useEffect(() => {
+    fetch('/api/debug/env')
+      .then(r => r.json())
+      .then(data => console.log('[DEBUG ENV]', data))
+      .catch(e => console.error('[DEBUG ENV ERROR]', e));
+  }, []);
+  
   const [search, setSearch] = useState("");
   const [authorSearch, setAuthorSearch] = useState("");
   const [category, setCategory] = useState("all");
