@@ -9,12 +9,28 @@ import React from "react";
 
 export type AnimalType = "dog" | "cat" | "rabbit" | "panda";
 
+export interface AvatarConfig {
+  type: AnimalType;
+  color: string;
+}
+
 interface AnimalAvatarProps {
   type: AnimalType;
   color: string;
   size?: number | string;
   className?: string;
 }
+
+interface AnimalAvatarConfigProps {
+  config: AvatarConfig;
+  size?: number | string;
+  className?: string;
+}
+
+export const DEFAULT_AVATAR: AvatarConfig = {
+  type: "dog",
+  color: "#F59E0B",
+};
 
 export const AVATAR_COLORS = [
   "#F59E0B", "#EF4444", "#3B82F6", "#10B981", "#8B5CF6", 
@@ -71,7 +87,12 @@ const PandaAvatar = ({ color }: { color: string }) => (
   </svg>
 );
 
-export function AnimalEngine({ type, color, size = 48, className = "" }: AnimalAvatarProps) {
+export function AnimalEngine(props: AnimalAvatarProps | AnimalAvatarConfigProps) {
+  // Support both modes: direct props or config object
+  const { type, color, size = 48, className = "" } = 'config' in props 
+    ? { type: props.config.type, color: props.config.color, size: props.size, className: props.className }
+    : props;
+
   const renderAvatar = () => {
     switch (type) {
       case "dog": return <DogAvatar color={color} />;

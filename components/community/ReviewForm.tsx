@@ -8,7 +8,8 @@ import StarRating from "./StarRating";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Loader2, MessageSquarePlus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { ANIMAL_AVATARS, getAvatarStyle } from "@/lib/avatars";
+import { AnimalEngine } from "@/components/avatars/AnimalEngine";
+import { parseAvatarConfig } from "@/lib/avatars-v2";
 
 /**
  * 6.8 - ReviewForm: Formulario dinámico para la participación ciudadana en Bookea
@@ -88,18 +89,18 @@ export default function ReviewForm({ bookId }: ReviewFormProps) {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-full border-2 border-white/5 overflow-hidden flex-shrink-0 bg-white/5">
-             {profile?.avatar_url?.startsWith("avatar:") ? (
-                <div 
-                  className="w-full h-full"
-                  style={getAvatarStyle(profile.avatar_url)}
+<div className="w-12 h-12 rounded-full border-2 border-white/5 overflow-hidden flex-shrink-0">
+              {profile?.avatar_url ? (
+                <AnimalEngine 
+                  config={parseAvatarConfig(profile.avatar_url)} 
+                  size={48}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-blue-600 font-bold text-white">
                    {profile?.name?.charAt(0).toUpperCase() || "?"}
                 </div>
               )}
-          </div>
+            </div>
           
           <div className="flex-1 space-y-1">
              <p className="text-sm font-bold text-gray-900 dark:text-white">
