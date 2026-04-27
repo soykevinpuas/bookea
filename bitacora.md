@@ -401,6 +401,47 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-27-J] - Integración de Analytics y Mejoras UX
+
+### Analytics Integrado en Flujos
+
+**1. Registro (`app/auth/actions.ts`)**
+- Evento `user_signed_up` con método (email)
+- Disparado después de signup exitoso
+
+**2. Pagos (`lib/actions/subscriptions.ts`)**
+- Evento `payment_completed` con:
+  - amount (en MXN)
+  - currency
+  - product (subscription/digital)
+  - session_id
+
+**3. Dashboard (`app/(app)/dashboard/page.tsx`)**
+- Evento `page_view` con nombre de página
+
+### Mejoras UX
+
+**1. Login (`app/(auth)/login/page.tsx`)**
+- Estado de loading con spinner
+- Botón deshabilitado durante submit
+- Feedback visual "Iniciando sesión..."
+
+**2. Register (`app/(auth)/register/page.tsx`)**
+- Ya tenía validación de contraseñas
+- Mejor feedback de errores
+
+### Estado Final
+- ✅ Analytics trackeando registro, pago y visitas
+- ✅ Loading states en auth pages
+- ✅ Build exitoso
+
+### Lecciones Aprendidas
+- Analytics via RPC bypassea RLS para inserciones
+- Server Actions + useState para estados de loading
+- Importar desde lib/analytics en componentes cliente
+
+---
+
 ## [2026-04-26-H] - Corrección de IDs de Precios de Stripe y Profiles RLS
 
 ### Problemas Identificados
