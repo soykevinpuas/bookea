@@ -37,7 +37,7 @@ export default function Book3D({
       {/* 6.4.2.1 - Contenedor con efecto hover: zoom suave y degradado inferior */}
       <div className={`relative h-full shadow-lg rounded-lg overflow-hidden transition-all duration-300 group-hover:-translate-y-2 group-hover:scale-[1.03] ${
         isCompleted 
-          ? 'shadow-[0_0_20px_rgba(255,215,0,0.6)] ring-2 ring-amber-400/80' 
+          ? 'shadow-[0_0_20px_rgba(255,215,0,0.6)] ring-2 ring-amber-400/80 golden-glow' 
           : 'group-hover:shadow-2xl'
       }`}>
         {/* Imagen de la portada: filter CSS aplica el efecto de mejora visual de forma nativa */}

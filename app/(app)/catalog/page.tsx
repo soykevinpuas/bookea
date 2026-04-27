@@ -5,7 +5,6 @@ import Book3D from "@/components/Book3D";
 import CatalogBookCard from "@/components/CatalogBookCard";
 import { createClient } from "@/lib/server";
 import { SearchFilters } from "@/components/SearchFilters";
-import { getServerSession } from "@/lib/session";
 
 interface PageProps {
   searchParams: Promise<{
@@ -23,26 +22,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
   // 3.1.1 - Inicialización del cliente Supabase en servidor y obtención de la colección filtrada
   const supabase = await createClient();
   const books = await getBooks(supabase, { search, author, category });
-
-  // 3.1.2 - Obtener sesión del usuario para progreso de lectura
-  const session = await getServerSession();
-  let booksWithProgress = books;
-
-  if (session?.user?.id) {
-    // Obtener progreso de lectura del usuario para estos libros
-    const { data: progressData } = await supabase
-      .from("reading_progress")
-      .select("book_id, percent_complete")
-      .eq("user_id", session.user.id);
-
-    if (progressData) {
-      const progressMap = new Map(progressData.map(p => [p.book_id, p.percent_complete]));
-      booksWithProgress = books.map(book => ({
-        ...book,
-        percent_complete: progressMap.get(book.id) || 0
-      }));
-    }
-  }
+  const booksWithProgress = books; // El progreso se maneja en el cliente vía hooks
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">

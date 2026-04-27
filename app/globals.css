@@ -537,7 +537,7 @@ main {
   }
 }
 
-/* Aplicar animación de pulso dorado a libros completados */
-.group:has([data-book-cover]) .shadow-\[0_0_20px_rgba\(255,215,0,0\.6\)\] {
+/* Clase para aplicar pulso dorado a libros completados */
+.golden-glow {
   animation: goldPulse 3s ease-in-out infinite;
 }
