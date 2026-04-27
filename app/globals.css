@@ -417,3 +417,80 @@
   -webkit-user-select: none !important;
   user-select: none !important;
 }
+
+/* 1.7.5 - UX Improvements: Navigation Feel */
+
+/* Transición suave en todos los elementos interactivos */
+button, a, [role="button"] {
+  transition: transform 100ms ease-out, opacity 150ms ease-out, background-color 200ms ease-out, box-shadow 200ms ease-out;
+}
+
+/* Feedback táctil en botones */
+button:active:not(:disabled), [role="button"]:active {
+  transform: scale(0.97);
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Transición de opacidad para skeleton loaders */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Transiciones de página más suaves */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.page-transition-exit {
+  opacity: 1;
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+/* Mejor feedback visual en hover */
+.group:hover .group-hover-scale {
+  transform: scale(1.02);
+}
+
+/* Links con hint visual de que son clickeables */
+a[href]:hover, button {
+  cursor: pointer;
+}
+
+/* Reducir parpadeo durante carga */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
