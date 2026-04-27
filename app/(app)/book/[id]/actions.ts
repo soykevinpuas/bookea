@@ -16,22 +16,26 @@ export async function createPurchaseSession(formData: FormData) {
   const price = formData.get('price') as string
 
   let priceId = ''
-  
+
   switch (type) {
     case 'subscription':
-      priceId = PRICE_IDS.premium
+      priceId = PRICE_IDS.premium || ''
       break
     case 'digital_permanent':
-      priceId = price || PRICE_IDS.digital_permanent
+      priceId = price || PRICE_IDS.digital_permanent || ''
       break
     case 'physical':
-      priceId = price || PRICE_IDS.physical_basic
+      priceId = price || PRICE_IDS.physical_basic || ''
       break
     case 'bundle':
-      priceId = price || PRICE_IDS.bundle
+      priceId = price || PRICE_IDS.bundle || ''
       break
     default:
       return { error: 'Tipo de compra inválido' }
+  }
+
+  if (!priceId) {
+    return { error: 'ID de precio no configurado' }
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'

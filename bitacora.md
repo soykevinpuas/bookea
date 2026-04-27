@@ -335,3 +335,57 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 - Pagos vinculados correctamente a la cuenta `acct_1SBSopQgC67T6ANc`.
 - Acceso premium funcional y sincronizado.
 - Biblioteca estable y sin errores de base de datos.
+
+---
+
+## [2026-04-26-H] - Corrección de IDs de Precios de Stripe y Profiles RLS
+
+### Problemas Identificados
+- **Price IDs hardcodeados:** El código tenía fallbacks con IDs de Stripe antiguos que ya no existían.
+- **Rol de admin sobreescrito:** El sistema de pagos usaba `user.role` de Supabase Auth metadata en vez del rol real de la tabla `users`, causando que admins se convirtieran en subscribers al pagar.
+- **Error 406 en profiles:** Usuarios antiguos sin perfil en la tabla `profiles` causaban fallos al intentar consultarlos.
+- **Build fails en Vercel:** TypeScript fallaba por tipos `undefined` en las variables de entorno.
+
+### Cambios Realizados
+
+**1. `lib/stripe.ts`:**
+- Removidos todos los fallbacks hardcodeados de Price IDs
+- Limpieza del código de verificación de claves (comentarios de diagnóstico)
+- Ahora solo usa variables de entorno sin alternativas
+
+**2. `lib/actions/subscriptions.ts`:**
+- Fix crítico: ahora obtiene el rol desde la tabla `users` (no de Supabase Auth metadata)
+- Antes: `const currentRole = user.role;` (provenía de metadata)
+- Después: consulta `supabase.from('users').select('role')` para obtener el valor real
+- Esto impide que los admins pierdan su rol al hacer pagos
+
+**3. `lib/actions/subscriptions.ts` y `app/(app)/book/[id]/actions.ts`:**
+- Agregada validación explícita para tipos `undefined`
+- Mejora en el manejo de errores
+
+**4. Base de datos (Supabase SQL Editor):**
+- Recreación de políticas RLS para la tabla `profiles`:
+  - `Users can view own profile` (SELECT)
+  - `Users can insert own profile` (INSERT)
+  - `Users can update own profile` (UPDATE)
+  - `Admins can manage all profiles` (ALL)
+- Creación de perfiles faltantes para usuarios antiguos via INSERT
+
+**5. Migración creada:**
+- `supabase/migrations/011_fix_profiles_rls.sql` - Para reference futura
+
+**6. Debug temporal:**
+- Creada ruta `/api/debug/env` para verificar variables de entorno
+- Añadidos logs temporales en dashboard (luego removidos)
+
+### Estado Final
+- ✅ Pagos funcionan con nuevos Price IDs de Stripe
+- ✅ Admins mantienen su rol al pagar suscripciones
+- ✅ Profiles RLS corregido, error 406 resuelto
+- ✅ Build en Vercel exitoso
+- ✅ Variables de entorno verificadas (confirmado via `/api/debug/env`)
+
+### Lecciones Aprendidas
+- Nunca hardcodear IDs de APIs externas
+- El rol de Supabase Auth metadata puede no reflejar el estado real de la base de datos
+- Siempre verificar que usuarios antiguos tengan registros en todas las tablas依赖

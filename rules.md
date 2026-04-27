@@ -157,18 +157,19 @@ chore: añadir dependencia epubjs
 
 ## 11. ESTADO ACTUAL DEL PROYECTO
 
-✅ Auth email/password funcionando  
-✅ Tabla `books` en Supabase con libro de prueba  
-✅ Catálogo `/catalog` mostrando libros  
-✅ Lector EPUB básico en `/reader/[id]`  
-✅ Estructura de carpetas creada  
-✅ Migraciones iniciales aplicadas  
-⬜ Dashboard del usuario  
-⬜ Página de detalle `/book/[id]`  
-⬜ Navbar y layout general  
-⬜ Stripe integrado  
-⬜ Panel admin  
-⬜ Formulario de compra física  
+✅ Auth email/password funcionando
+✅ Tabla `books` en Supabase con libro de prueba
+✅ Catálogo `/catalog` mostrando libros
+✅ Lector EPUB funcional en `/reader/[id]`
+✅ Suscripción con Stripe (Price IDs via env vars)
+✅ Panel admin con gestión de usuarios
+✅ Biblioteca del usuario `/dashboard`
+✅ Highlights y notas en lector
+✅ Profiles con RLS corregido (2026-04-26)
+✅ Compra permanente y física con Stripe
+✅ PWA básico (service worker activo)
+⏳ Reseñas y ratings (en desarrollo)
+⏳ Pagos físicos con tracking  
 
 ---
 

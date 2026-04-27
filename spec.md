@@ -40,16 +40,25 @@ El operador (tú) administra el catálogo, inventario físico, órdenes y precio
 - El sistema utiliza **Créditos** como moneda interna para suscripciones.
 - **1 Crédito = 1 Libro por 30 días.**
 - Al canjear un crédito, el libro se añade a `user_books` con una fecha de expiración de 30 días.
-- El usuario puede comprar paquetes de créditos vía pago manual.
+- El usuario puede comprar paquetes de créditos vía Stripe.
 
-### 3.3 Pagos e Ingreso Manual
-- **Pasarela:** No automatizada por ahora (Pivot de Stripe).
-- **Métodos:** PayPal (`link directo`), Transferencia SPEI (México).
+### 3.3 Pagos con Stripe
+- **Pasarela:** Stripe Checkout (suscripciones + pagos únicos)
+- **Configuración de Entorno:**
+  ```
+  STRIPE_SECRET_KEY=sk_live_... o sk_test_...
+  STRIPE_SUBSCRIPTION_PRICE_ID=price_...
+  STRIPE_DIGITAL_PERMANENT_PRICE_ID=price_...
+  STRIPE_PHYSICAL_PRICE_ID=price_...
+  STRIPE_BUNDLE_PRICE_ID=price_...
+  STRIPE_WEBHOOK_SECRET=whsec_...
+  ```
+- **Nota:** Todos los Price IDs deben existir en tu cuenta de Stripe. Verificar antes de desplegar.
 - **Flujo de Activación:**
-  1. El usuario realiza el pago.
-  2. Envía comprobante y correo por WhatsApp al Administrador.
-  3. El Administrador busca al usuario en el **Panel Admin** y le asigna los créditos correspondientes.
-  4. Los créditos aparecen instantáneamente en la cuenta del usuario.
+  1. El usuario selecciona producto en la app
+  2. Se crea sesión de checkout en Stripe
+  3. El usuario completa el pago en Stripe Checkout
+  4. El webhook o `verifySubscriptionAction` actualiza el rol en la base de datos
 
 ---
 
