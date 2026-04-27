@@ -12,6 +12,8 @@ import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X,
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { verifySubscriptionAction } from "@/lib/actions/subscriptions";
+import { track } from "@/lib/analytics";
+import { DashboardSkeleton } from "@/components/ui/LoadingStates";
 
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
 export default function DashboardPage() {
@@ -24,6 +26,11 @@ export default function DashboardPage() {
   const [category, setCategory] = useState("all");
   const [view, setView] = useState<"grid" | "list" | "compact">("grid");
   const [isOnline, setIsOnline] = useState(true);
+
+  // 3.4.1 - Tracking de analytics: visita a dashboard
+  useEffect(() => {
+    track('page_view', { page: 'dashboard' }).catch(console.warn);
+  }, []);
 
   // Detectar éxito de pago y verificar automáticamente
   useEffect(() => {
@@ -125,8 +132,8 @@ export default function DashboardPage() {
   // 3.4.6 - Loading con soporte offline: no quedarnos en loading si el hook ya devolvió algo (aunque sea del caché)
   if (isLoading && isOnline && displayBooks.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500/50" />
+      <div className="min-h-screen bg-[#0a0a0a] p-6">
+        <DashboardSkeleton />
       </div>
     );
   }

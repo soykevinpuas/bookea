@@ -17,6 +17,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { createClientClient } from "@/lib/supabase";
 import { addToLibrary, hasBookAccess } from "@/lib/books";
 import { addToLibraryAction } from "@/lib/actions/library";
+import type { EpubContents } from "@/types/epub";
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 export default function ReaderPage() {
@@ -24,8 +25,9 @@ export default function ReaderPage() {
   useEffect(() => {
     const lockPortrait = async () => {
       try {
-        if ('screen' in window && 'orientation' in window.screen && (window.screen.orientation as any).lock) {
-          await (window.screen.orientation as any).lock('portrait');
+        const screen = window.screen as Screen & { orientation?: { lock: (o: string) => Promise<void>; unlock: () => void } };
+        if (screen?.orientation?.lock) {
+          await screen.orientation.lock('portrait');
         }
       } catch (err) {
         console.warn("Screen orientation lock failed:", err);
@@ -34,8 +36,9 @@ export default function ReaderPage() {
     lockPortrait();
     return () => {
       try {
-        if ('screen' in window && 'orientation' in window.screen && (window.screen.orientation as any).unlock) {
-          (window.screen.orientation as any).unlock();
+        const screen = window.screen as Screen & { orientation?: { lock: (o: string) => Promise<void>; unlock: () => void } };
+        if (screen?.orientation?.unlock) {
+          screen.orientation.unlock();
         }
       } catch (err) {}
     };
@@ -288,7 +291,7 @@ export default function ReaderPage() {
 
         // 4.2.5.2 - Inyección de CSS interno (Hooks) para asegurar diseño base constante (saltando estilos del autor/epub original)
         if (rendition.hooks && rendition.hooks.content) {
-          rendition.hooks.content.register((contents: any) => {
+          rendition.hooks.content.register((contents: EpubContents) => {
             if (!contents || !contents.document) return;
             
             const style = contents.document.createElement("style");
@@ -362,7 +365,7 @@ export default function ReaderPage() {
             
             // 4.2.5.3 - Event Listener del Iframe: Detecta clicks en toda la hoja para accionar la interfaz HUD central, en lugar de pasar de página
             contents.document.documentElement.addEventListener('click', (e: MouseEvent) => {
-              const selection = contents.window.getSelection();
+              const selection = contents.window?.getSelection();
               const text = selection?.toString() || "";
               
               if (text.trim().length > 0) {
@@ -471,8 +474,8 @@ export default function ReaderPage() {
         });
 
         // 4.2.7.2 - Capturar eventos de Selección de texto (Highlights)
-        rendition.on("selected", (cfiRange: string, contents: any) => {
-          const selection = contents.window.getSelection();
+        rendition.on("selected", (cfiRange: string, contents: EpubContents) => {
+          const selection = contents.window?.getSelection();
           const text = selection?.toString() || "";
           
           if (text && text.trim().length > 0) {
@@ -738,12 +741,8 @@ export default function ReaderPage() {
         try {
           const DOMTargets = `g[data-epubcfi="${activeSelection.cfiRange}"], mark[data-epubcfi="${activeSelection.cfiRange}"]`;
           document.querySelectorAll(DOMTargets).forEach(n => n.remove());
-          const contents = renditionRef.current?.getContents() as any;
-          if (Array.isArray(contents)) {
-            contents.forEach(c => c.document?.querySelectorAll(DOMTargets).forEach((n: any) => n.remove()));
-          } else if (contents) {
-            contents.document?.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
-          }
+const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
+        contents?.forEach(c => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
         } catch (err) {}
         
         // Plamar el color nuevo
@@ -785,14 +784,10 @@ export default function ReaderPage() {
     
     // Deseleccionar el texto dentro del Iframe
     if (renditionRef.current) {
-      const contents = renditionRef.current.getContents() as any;
-      if (Array.isArray(contents)) {
-        contents.forEach((content: any) => {
-          content.window?.getSelection()?.removeAllRanges();
-        });
-      } else {
-        contents?.window?.getSelection()?.removeAllRanges();
-      }
+      const contentsArray = renditionRef.current.getContents() as unknown as EpubContents[];
+      contentsArray?.forEach((content) => {
+        content.window?.getSelection()?.removeAllRanges();
+      });
     }
   };
 
@@ -800,14 +795,10 @@ export default function ReaderPage() {
     setActiveSelection(null);
     // Deseleccionar el texto (la previsualización nativa) dentro del Iframe
     if (renditionRef.current) {
-      const contents = renditionRef.current.getContents() as any;
-      if (Array.isArray(contents)) {
-        contents.forEach((content: any) => {
-          content.window?.getSelection()?.removeAllRanges();
-        });
-      } else {
-        contents?.window?.getSelection()?.removeAllRanges();
-      }
+      const contentsArray = renditionRef.current.getContents() as unknown as EpubContents[];
+      contentsArray?.forEach((content) => {
+        content.window?.getSelection()?.removeAllRanges();
+      });
     }
   };
 
@@ -821,12 +812,8 @@ export default function ReaderPage() {
       try {
         const DOMTargets = `g[data-epubcfi="${cfi}"], mark[data-epubcfi="${cfi}"]`;
         document.querySelectorAll(DOMTargets).forEach(n => n.remove());
-        const contents = renditionRef.current?.getContents() as any;
-        if (Array.isArray(contents)) {
-          contents.forEach(c => c.document?.querySelectorAll(DOMTargets).forEach((n: any) => n.remove()));
-        } else if (contents) {
-          contents.document?.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
-        }
+        const contentsArray = renditionRef.current?.getContents() as unknown as EpubContents[];
+        contentsArray?.forEach(c => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
       } catch (err) {}
 
       toast.info("Subrayado eliminado");

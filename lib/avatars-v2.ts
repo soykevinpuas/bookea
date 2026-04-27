@@ -2,12 +2,9 @@
  * 6.9 - Avatares V2: Utilidades para el manejo de avatars dinámicos
  */
 
-import { AnimalType, AVATAR_COLORS } from "@/components/avatars/AnimalEngine";
+import { AnimalType, AVATAR_COLORS, AvatarConfig } from "@/components/avatars/AnimalEngine";
 
-export interface AvatarConfig {
-  type: AnimalType;
-  color: string;
-}
+export type { AvatarConfig };
 
 export const DEFAULT_AVATAR: AvatarConfig = {
   type: "dog",

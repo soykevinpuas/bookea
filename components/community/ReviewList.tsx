@@ -2,7 +2,8 @@
 
 import { useReviews } from "@/hooks/useReviews";
 import StarRating from "./StarRating";
-import { ANIMAL_AVATARS, getAvatarStyle } from "@/lib/avatars";
+import { AnimalEngine } from "@/components/avatars/AnimalEngine";
+import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Calendar, Trash2, Loader2, Sparkles } from "lucide-react";
 import { useUserId } from "@/hooks/useUser";
@@ -65,7 +66,6 @@ export default function ReviewList({ bookId }: ReviewListProps) {
         <AnimatePresence>
           {reviews.map((review, index) => {
             const isOwner = review.user_id === userId;
-            const avatar = ANIMAL_AVATARS.find(a => `avatar:${a.id}` === review.profiles?.avatar_url);
             
             return (
               <motion.div
@@ -76,12 +76,12 @@ export default function ReviewList({ bookId }: ReviewListProps) {
                 className="group relative bg-white dark:bg-white/2 bg-opacity-50 dark:bg-opacity-20 border border-gray-100 dark:border-white/5 rounded-2xl p-6 transition-all hover:bg-white dark:hover:bg-white/5 hover:border-gray-200 dark:hover:border-white/10"
               >
                 <div className="flex items-start gap-4">
-                  {/* Avatar con sprite clipping */}
-                  <div className="w-10 h-10 rounded-full border border-white/10 overflow-hidden flex-shrink-0 bg-white/10 shadow-sm relative">
-                    {review.profiles?.avatar_url?.startsWith("avatar:") ? (
-                        <div 
-                          className="w-full h-full"
-                          style={getAvatarStyle(review.profiles.avatar_url)}
+                  {/* Avatar con AnimalEngine */}
+                  <div className="w-10 h-10 rounded-full border border-white/10 overflow-hidden flex-shrink-0 shadow-sm relative">
+                    {review.profiles?.avatar_url ? (
+                        <AnimalEngine 
+                          config={parseAvatarConfig(review.profiles.avatar_url)} 
+                          size={40}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-blue-600 font-bold text-white text-xs">

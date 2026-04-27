@@ -338,6 +338,110 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-27-I] - Sistema de Analytics, Dashboard Admin Expandido y Tipado de epub.js
+
+### Nuevas Funcionalidades
+
+**1. Sistema de Analytics (`lib/analytics.ts`)**
+- Sistema de tracking de eventos para Bookea
+- Registra eventos en Supabase (`analytics_events`)
+- Constantes de eventos predefinidos: `USER_SIGNED_UP`, `PAYMENT_COMPLETED`, `BOOK_ADDED_LIBRARY`, etc.
+- API endpoint `/api/analytics/track` para registrar eventos
+- Hook `useAnalytics()` para uso en componentes
+
+**2. Tabla `analytics_events` en Supabase**
+- Migration `012_analytics_system.sql`
+- Registra: event_name, event_data (JSONB), user_id, user_email, user_agent, created_at
+- RPC `track_event()` para insertar sin problemas de RLS
+- Políticas RLS: solo admins ven, todos pueden insertar
+
+**3. Dashboard Admin Expandido (`app/admin/page.tsx`)**
+- Nueva interfaz más completa con 5 secciones:
+  - **Catálogo**: Total libros, activos, nuevos esta semana
+  - **Órdenes Físicas**: Total, pendientes, completadas, ingresos
+  - **Usuarios**: Total, nuevos, suscriptores, free
+  - **Pagos Digitales**: Ingresos, suscripciones, pagos recientes
+  - **Engagement**: Libros leídos, reseñas de la semana
+- Métricas semanales automáticas
+- Tipado fuerte con interfaz `AdminCard`
+
+**4. Tipos para epub.js (`types/epub.ts`)**
+- Interfaces: `EpubBook`, `EpubRendition`, `EpubContents`, `EpubSpineItem`
+- Eliminado uso de `any` en `reader/page.tsx`
+- Cast con `unknown` para compatibilidad de tipos
+
+### Cambios Técnicos
+
+**Reader (`reader/[id]/page.tsx`):**
+- Tipado de `contents.window` con optional chaining (`?.`)
+- Uso de tipo `EpubContents[]` para getContents()
+- Eliminación de múltiples `as any`
+
+**Admin Dashboard:**
+- Interfaz `AdminCard` para tipado fuerte
+- Estructura de datos optimizada para métricas semanales
+
+### Métricas Disponibles
+- `booksReadThisWeek` - Libros añadidos a biblioteca esta semana
+- `reviewsThisWeek` - Reseñas creadas esta semana
+- `newUsersThisWeek` - Nuevos registros
+- `subscriptionPayments` - Pagos de suscripción (de analytics)
+- `recentPayments` - Pagos de la semana (de analytics)
+
+### Estado Final
+- ✅ Sistema de analytics implementado
+- ✅ Dashboard admin con métricas completas
+- ✅ Tipado de epub.js mejorado
+- ✅ Build exitoso
+
+### Próximos Pasos
+- Integrar tracking en flujos de usuario (registro, pago, lectura)
+- Ejecutar migración `012_analytics_system.sql` en Supabase
+- Considerar gráficos visuales para dashboard
+
+---
+
+## [2026-04-27-J] - Integración de Analytics y Mejoras UX
+
+### Analytics Integrado en Flujos
+
+**1. Registro (`app/auth/actions.ts`)**
+- Evento `user_signed_up` con método (email)
+- Disparado después de signup exitoso
+
+**2. Pagos (`lib/actions/subscriptions.ts`)**
+- Evento `payment_completed` con:
+  - amount (en MXN)
+  - currency
+  - product (subscription/digital)
+  - session_id
+
+**3. Dashboard (`app/(app)/dashboard/page.tsx`)**
+- Evento `page_view` con nombre de página
+
+### Mejoras UX
+
+**1. Login (`app/(auth)/login/page.tsx`)**
+- Estado de loading con spinner
+- Botón deshabilitado durante submit
+- Feedback visual "Iniciando sesión..."
+
+**2. Register (`app/(auth)/register/page.tsx`)**
+- Ya tenía validación de contraseñas
+- Mejor feedback de errores
+
+### Estado Final
+- ✅ Analytics trackeando registro, pago y visitas
+- ✅ Loading states en auth pages
+- ✅ Build exitoso
+
+### Lecciones Aprendidas
+- Analytics via RPC bypassea RLS para inserciones
+- Server Actions + useState para estados de loading
+- Importar desde lib/analytics en componentes cliente
+
+---
+
 ## [2026-04-26-H] - Corrección de IDs de Precios de Stripe y Profiles RLS
 
 ### Problemas Identificados

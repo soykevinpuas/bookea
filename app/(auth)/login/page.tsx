@@ -1,8 +1,18 @@
+"use client";
+
 import { login } from '@/app/auth/actions'
 import Link from 'next/link'
+import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
 
 // 2.1 - LoginPage: Componente de formulario para inicio de sesión de usuarios existentes
 export default function LoginPage() {
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    setIsLoading(true)
+  }
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">
       <div className="w-full max-w-md p-8 bg-white dark:bg-white/5 rounded-2xl shadow-lg border border-gray-100 dark:border-white/10 backdrop-blur-sm">
@@ -17,7 +27,7 @@ export default function LoginPage() {
           </p>
         </div>
         {/* 2.1.1 - Formulario conectado a la Subrutina Server Action 'login' externa */}
-        <form action={login} className="flex flex-col gap-5">
+        <form action={login} onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* 2.1.2 - Campo de Email (Validado nativamente en navegador) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="email">
@@ -50,9 +60,17 @@ export default function LoginPage() {
           
           <button 
             type="submit"
-            className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-medium p-3 rounded-xl transition-all shadow-sm shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5"
+            disabled={isLoading}
+            className="w-full mt-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium p-3 rounded-xl transition-all shadow-sm shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5 flex items-center justify-center gap-2"
           >
-            Iniciar sesión
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Iniciando sesión...
+              </>
+            ) : (
+              "Iniciar sesión"
+            )}
           </button>
         </form>
 
