@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
 
     // 7.1.3 - Manejo de suscripción mensual
     if (type === 'subscription') {
+      console.log('[DEBUG] PRICE_IDS.premium:', PRICE_IDS.premium);
+      console.log('[DEBUG] ENV STRIPE_SUBSCRIPTION_PRICE_ID:', process.env.STRIPE_SUBSCRIPTION_PRICE_ID);
+      
       const session = await createCheckoutSession({
         priceId: PRICE_IDS.premium,
         userId: user.id,

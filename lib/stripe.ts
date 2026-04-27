@@ -11,7 +11,7 @@ let stripeInstance: Stripe | null = null;
  * Garantiza que las variables de entorno estén cargadas antes de la inicialización.
  */
 export function getStripeClient() {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const secretKey = process.env.STRIPE_SECRET_KEY_V2 || process.env.STRIPE_SECRET_KEY;
   
   if (!secretKey) {
     throw new Error("STRIPE_SECRET_KEY no está configurada");
