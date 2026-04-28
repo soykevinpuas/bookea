@@ -13,11 +13,13 @@ export type DiceBearStyle = "avataaars" | "bottts" | "botttsNeutral" | "identico
 export interface AvatarConfig {
   type: DiceBearStyle;
   color: string;
+  seed?: string;
 }
 
 interface AnimalAvatarProps {
   type: DiceBearStyle;
   color: string;
+  seed?: string;
   size?: number | string;
   className?: string;
 }
@@ -55,22 +57,24 @@ function getDiceBearUrl(style: DiceBearStyle, seed: string, backgroundColor: str
   return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=${bgColor}&radius=50`;
 }
 
+/**
+ * 6.8.3 - Componente principal AnimalEngine (DiceBear)
+ */
 export function AnimalEngine(props: AnimalAvatarProps | AnimalAvatarConfigProps) {
   // Support both modes: direct props or config object
-  const { type, color, size = 48, className = "" } = 'config' in props 
-    ? { type: props.config.type, color: props.config.color, size: props.size, className: props.className }
+  const { type, color, seed, size = 48, className = "" } = 'config' in props 
+    ? { type: props.config.type, color: props.config.color, seed: props.config.seed, size: props.size, className: props.className }
     : props;
 
-  const svgUrl = getDiceBearUrl(type, type, color);
+  const url = getDiceBearUrl(type, seed || type, color);
 
   return (
     <div 
       className={`relative flex items-center justify-center overflow-hidden rounded-full ${className}`}
       style={{ width: size, height: size }}
     >
-      {/* 6.8.3 - Renderizado de SVG via img tag para evitar CORS */}
       <img 
-        src={svgUrl}
+        src={url}
         alt="Avatar"
         className="w-full h-full rounded-full"
         style={{ width: size, height: size }}
@@ -78,4 +82,11 @@ export function AnimalEngine(props: AnimalAvatarProps | AnimalAvatarConfigProps)
       />
     </div>
   );
+}
+
+/**
+ * 6.8.4 - Genera una semilla aleatoria
+ */
+export function generateRandomSeed(): string {
+  return Math.random().toString(36).substring(2, 10);
 }

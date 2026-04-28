@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Check, Loader2, Info } from "lucide-react";
-import { AnimalEngine, DiceBearStyle, AVATAR_COLORS } from "@/components/avatars/AnimalEngine";
+import { AnimalEngine, DiceBearStyle, AVATAR_COLORS, generateRandomSeed } from "@/components/avatars/AnimalEngine";
 import { useState, useEffect } from "react";
 import { parseAvatarConfig, stringifyAvatarConfig } from "@/lib/avatars-v2";
 
@@ -30,16 +30,29 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
   const initialConfig = parseAvatarConfig(currentAvatarConfig);
   const [selectedType, setSelectedType] = useState<DiceBearStyle>(initialConfig.type as DiceBearStyle || "avataaars");
   const [selectedColor, setSelectedColor] = useState<string>(initialConfig.color || "b6e3f4");
+  const [seed, setSeed] = useState<string>(initialConfig.seed || generateRandomSeed());
 
   // Sincronizar con props externas cuando carguen
   useEffect(() => {
     const config = parseAvatarConfig(currentAvatarConfig);
     setSelectedType((config.type as DiceBearStyle) || "avataaars");
     setSelectedColor(config.color || "b6e3f4");
+    setSeed(config.seed || generateRandomSeed());
   }, [currentAvatarConfig]);
 
+  // Cuando cambia el estilo, generar nueva semilla
+  const handleStyleChange = (newType: DiceBearStyle) => {
+    setSelectedType(newType);
+    setSeed(generateRandomSeed());
+  };
+
+  // Mezclar: generar nueva semilla sin cambiar estilo
+  const handleShuffle = () => {
+    setSeed(generateRandomSeed());
+  };
+
   const handleSave = () => {
-    const configStr = stringifyAvatarConfig({ type: selectedType, color: selectedColor });
+    const configStr = stringifyAvatarConfig({ type: selectedType, color: selectedColor, seed });
     onSelect(configStr);
   };
 
@@ -51,12 +64,23 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
       <div className="flex flex-col items-center">
         <div className="relative group">
           <div className="absolute -inset-4 bg-gradient-to-r from-amber-500/20 to-blue-500/20 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
-          <AnimalEngine 
-            type={selectedType} 
-            color={selectedColor} 
-            size={140} 
-            className="relative bg-white dark:bg-[#151515] shadow-2xl border-4 border-white dark:border-white/5 outline outline-1 outline-white/10" 
-          />
+          <div className="relative">
+            <AnimalEngine 
+              type={selectedType} 
+              color={selectedColor} 
+              seed={seed}
+              size={140} 
+              className="relative bg-white dark:bg-[#151515] shadow-2xl border-4 border-white dark:border-white/5 outline outline-1 outline-white/10" 
+            />
+            {/* Botón de mezclar/shuffle */}
+            <button
+              onClick={handleShuffle}
+              className="absolute bottom-2 right-2 p-2 bg-white/80 dark:bg-black/80 rounded-full hover:scale-110 transition-transform shadow-lg"
+              title="Generar nuevo avatar"
+            >
+              🎲
+            </button>
+          </div>
         </div>
         <p className="mt-4 text-sm font-bold text-gray-900 dark:text-white uppercase tracking-widest">Tu Identidad</p>
       </div>
@@ -70,14 +94,14 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
           {STYLES.map((style) => (
             <button
               key={style.id}
-              onClick={() => setSelectedType(style.id)}
+              onClick={() => handleStyleChange(style.id)}
               className={`relative aspect-square rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-1 p-2 ${
                 selectedType === style.id 
                   ? "border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/10" 
                   : "border-gray-100 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/10 bg-white dark:bg-white/5"
               }`}
             >
-              <AnimalEngine type={style.id} color={selectedType === style.id ? selectedColor : "94a3b8"} size={40} />
+              <AnimalEngine type={style.id} color={selectedType === style.id ? selectedColor : "94a3b8"} seed={selectedType === style.id ? seed : style.id} size={40} />
               <span className="text-[8px] font-bold uppercase tracking-wider text-gray-400 mt-1">{style.name}</span>
               {selectedType === style.id && (
                 <div className="absolute top-1 right-1">
