@@ -459,6 +459,79 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-28-M] - Transiciones de Página y Feedback Visual
+
+**Objetivo:** Hacer la navegación más "víva" con transiciones suaves y feedback inmediato.
+
+### Cambios Realizados
+
+**1. `components/PageTransition.tsx` y `components/PageTransitionWrapper.tsx`:**
+- Implementada animación de entrada/salida con Framer Motion (fade + slide)
+- Creado wrapper como Client Component para usar `usePathname`
+
+**2. `app/layout.tsx`:**
+- Integración de `PageTransitionWrapper` para animar cambios de ruta
+- Las páginas se deslizan suavemente con curva de aceleración nativa
+
+**3. `components/BottomNav.tsx` y `components/Header.tsx`:**
+- Agregado spinner de carga inmediato al navegar
+- Texto "Cargando..." temporal en botones de navegación
+- Limpieza automática del estado de carga al cambiar ruta
+
+### Estado Final
+- ✅ Transiciones fluidas entre páginas (fade + slide Y)
+- ✅ Feedback visual inmediato al hacer clic
+- ✅ Sensación de app "víva" y responsiva
+- ✅ Build exitoso
+
+---
+
+## [2026-04-28-N] - Mejoras de Rendimiento y UI Premium
+
+**Objetivo:** Optimizar tiempos de carga y mejorar la experiencia visual durante la navegación.
+
+### Cambios Realizados
+
+**1. `app/(app)/*/loading.tsx` (Catalog, Dashboard, Profile, Book, Reader):**
+- Reemplazados spinners simples por **Skeleton UI premium**
+- Nuevo componente `SkeletonBox` en `components/ui/SkeletonBox.tsx`
+- Esqueletos animados que simulan la estructura real de cada página
+- ProfileSkeleton con diseño idéntico a la página final
+
+**2. `components/profile/AvatarSelector.tsx`:**
+- Spinner en botón 🎲 dura 2 segundos hasta que el SVG se renderiza
+- Evita que el spinner desaparezca antes de ver el nuevo avatar
+
+**3. `components/BottomNav.tsx`:**
+- Corregido spinner que se quedaba pegado después de la navegación
+- Limpieza automática con `useEffect` al detectar cambio de ruta
+
+**4. `lib/providers.tsx`:**
+- Optimizado cache de React Query: `staleTime: 5 min`, `gcTime: 10 min`
+- `refetchOnMount: false` para usar cache si existe
+- Reduce tiempo de carga percibido en páginas visitadas
+
+**5. `app/(app)/profile/page.tsx`:**
+- Eliminada consulta duplicada a tabla `users` (ya viene en `useSubscription`)
+- Uso de `ProfileSkeleton` en lugar de spinner simple
+- Carga más rápida al evitar peticiones innecesarias
+
+**6. Integración de `PrefetchLink`:**
+- Componente en `components/ui/LoadingStates.tsx` precarga páginas al hacer hover
+- Header y BottomNav usan `PrefetchLink` para "Catálogo"
+
+### Estado Final
+- ✅ Skeleton UI premium en todas las páginas principales
+- ✅ Cache de React Query optimizado (5 min)
+- ✅ Prefetching en navegación principal
+- ✅ Spinner de avatar sincronizado con renderizado SVG
+- ✅ Profile page sin consultas duplicadas
+- ✅ BottomNav sin spinners pegados
+- ✅ Navegación "víva" y rápida
+- ✅ Build exitoso
+
+---
+
 ## [2026-04-27-J] - Integración de Analytics y Mejoras UX
 
 ### Analytics Integrado en Flujos
