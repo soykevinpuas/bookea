@@ -1,13 +1,13 @@
 /**
- * 6.9 - Avatares V2: Utilidades para el manejo de avatars dinámicos
+ * 6.9 - Avatares V2: Utilidades para el manejo de avatars dinámicos (DiceBear)
  */
 
-import { AnimalType, AVATAR_COLORS, AvatarConfig } from "@/components/avatars/AnimalEngine";
+import { DiceBearStyle, AVATAR_COLORS, AvatarConfig } from "@/components/avatars/AnimalEngine";
 
 export type { AvatarConfig };
 
 export const DEFAULT_AVATAR: AvatarConfig = {
-  type: "dog",
+  type: "avataaars",
   color: AVATAR_COLORS[0],
 };
 
@@ -21,10 +21,14 @@ export function parseAvatarConfig(configStr: string | null | undefined): AvatarC
 
   const parts = configStr.split(":");
   if (parts.length < 3) return DEFAULT_AVATAR;
-
+  
+  // Validar que el tipo sea un estilo DiceBear válido
+  const validStyles: DiceBearStyle[] = ["avataaars", "bottts", "botttsNeutral", "identicon", "shapes", "lorelei"];
+  const type = validStyles.includes(parts[1] as DiceBearStyle) ? parts[1] as DiceBearStyle : "avataaars";
+    
   return {
-    type: parts[1] as AnimalType,
-    color: parts[2],
+    type,
+    color: parts[2] || AVATAR_COLORS[0],
   };
 }
 
