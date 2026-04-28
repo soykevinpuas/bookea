@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Check, Loader2, Info } from "lucide-react";
 import { AnimalEngine, AvatarStyleType, AVATAR_COLORS, generateRandomSeed } from "@/components/avatars/AnimalEngine";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { parseAvatarConfig, stringifyAvatarConfig } from "@/lib/avatars-v2";
 
 /**
@@ -59,16 +59,14 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
   const [selectedType, setSelectedType] = useState<AvatarStyleType>(initialConfig.type as AvatarStyleType || "avataaars");
   const [selectedColor, setSelectedColor] = useState<string>(initialConfig.color || "b6e3f4");
 
-  // Sincronizar con props externas SOLO en el primer montaje (no en cada cambio)
-  // Usar useRef para evitar re-sincronizar
-  const isInitialized = React.useRef(false);
+  // Sincronizar con props externas SOLO en el primer montaje
+  const isInitialized = useRef(false);
   
   useEffect(() => {
-    if (!isInitialized.current) {
+    if (!isInitialized.current && currentAvatarConfig) {
       const config = parseAvatarConfig(currentAvatarConfig);
       setSelectedType((config.type as AvatarStyleType) || "avataaars");
       setSelectedColor(config.color || "b6e3f4");
-      // Solo actualizar seed si viene en el config Y no está vacío
       if (config.seed && config.seed !== "") {
         setSeed(config.seed);
       }
