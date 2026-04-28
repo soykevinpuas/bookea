@@ -42,15 +42,27 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
   const handleStyleChange = (newType: AvatarStyleType) => {
     setSelectedType(newType);
     setSeed(generateRandomSeed());
+    // Guardar inmediatamente en caché
+    const config = { type: newType, color: selectedColor, seed: generateRandomSeed() };
+    localStorage.setItem('bookea-avatar-cache', JSON.stringify(config));
   };
 
   // Mezclar: generar nueva semilla sin cambiar estilo
   const handleShuffle = () => {
-    setSeed(generateRandomSeed());
+    const newSeed = generateRandomSeed();
+    setSeed(newSeed);
+    // Guardar inmediatamente en caché
+    const config = { type: selectedType, color: selectedColor, seed: newSeed };
+    localStorage.setItem('bookea-avatar-cache', JSON.stringify(config));
   };
 
   const handleSave = () => {
-    const configStr = stringifyAvatarConfig({ type: selectedType, color: selectedColor, seed });
+    const config = { type: selectedType, color: selectedColor, seed };
+    const configStr = stringifyAvatarConfig(config);
+    // Guardar en caché local también
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bookea-avatar-cache', JSON.stringify(config));
+    }
     onSelect(configStr);
   };
 
