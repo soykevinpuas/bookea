@@ -110,7 +110,7 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
                   : "border-gray-100 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/10 bg-white dark:bg-white/5"
               }`}
             >
-              <AnimalEngine type={style.id} color={selectedType === style.id ? selectedColor : "94a3b8"} seed={selectedType === style.id ? seed : style.id} size={40} />
+              <AnimalEngine type={style.id} color={selectedType === style.id ? selectedColor : "94a3b8"} seed={seed} size={40} />
               <span className="text-[8px] font-bold uppercase tracking-wider text-gray-400 mt-1">{style.name}</span>
               {selectedType === style.id && (
                 <div className="absolute top-1 right-1">
