@@ -24,7 +24,7 @@ export function parseAvatarConfig(configStr: string | null | undefined): AvatarC
   if (parts.length < 3) return { ...DEFAULT_AVATAR, seed: Math.random().toString(36).substring(2, 10) };
   
   // Validar que el tipo sea un estilo válido
-  const validStyles: AvatarStyleType[] = ["avataaars", "bottts", "animal", "lorelei"];
+  const validStyles: AvatarStyleType[] = ["avataaars", "bottts", "lorelei"];
   const type = validStyles.includes(parts[1] as AvatarStyleType) ? parts[1] as AvatarStyleType : "avataaars";
     
   return {

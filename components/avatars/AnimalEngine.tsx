@@ -8,7 +8,7 @@ import React from "react";
  * Paleta de colores clara/oscura
  */
 
-export type AvatarStyleType = "avataaars" | "bottts" | "animal" | "lorelei";
+export type AvatarStyleType = "avataaars" | "bottts" | "lorelei";
 
 export interface AvatarConfig {
   type: AvatarStyleType;

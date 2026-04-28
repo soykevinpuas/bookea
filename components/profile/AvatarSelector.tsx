@@ -20,7 +20,6 @@ interface AvatarSelectorProps {
 const STYLES: { id: AvatarStyleType; name: string }[] = [
   { id: "avataaars", name: "Persona" },
   { id: "bottts", name: "Robot" },
-  { id: "animal", name: "Animal" },
   { id: "lorelei", name: "Artístico" },
 ];
 
