@@ -8,7 +8,7 @@ import React from "react";
  * https://api.dicebear.com/7.x/{style}/svg?seed={seed}&backgroundColor={color}
  */
 
-export type DiceBearStyle = "avataaars" | "bottts" | "botttsNeutral" | "identicon" | "shapes" | "lorelei";
+export type DiceBearStyle = "avataaars" | "lorelei";
 
 export interface AvatarConfig {
   type: DiceBearStyle;

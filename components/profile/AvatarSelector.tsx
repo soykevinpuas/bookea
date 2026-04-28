@@ -19,10 +19,6 @@ interface AvatarSelectorProps {
 
 const STYLES: { id: DiceBearStyle; name: string }[] = [
   { id: "avataaars", name: "Persona" },
-  { id: "bottts", name: "Robot" },
-  { id: "botttsNeutral", name: "Robot Neutro" },
-  { id: "identicon", name: "Geométrico" },
-  { id: "shapes", name: "Formas" },
   { id: "lorelei", name: "Artístico" },
 ];
 

@@ -24,7 +24,7 @@ export function parseAvatarConfig(configStr: string | null | undefined): AvatarC
   if (parts.length < 3) return { ...DEFAULT_AVATAR, seed: Math.random().toString(36).substring(2, 10) };
   
   // Validar que el tipo sea un estilo DiceBear válido
-  const validStyles: DiceBearStyle[] = ["avataaars", "bottts", "botttsNeutral", "identicon", "shapes", "lorelei"];
+  const validStyles: DiceBearStyle[] = ["avataaars", "lorelei"];
   const type = validStyles.includes(parts[1] as DiceBearStyle) ? parts[1] as DiceBearStyle : "avataaars";
     
   return {
