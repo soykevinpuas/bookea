@@ -26,7 +26,7 @@ const STYLES: { id: AvatarStyleType; name: string }[] = [
 export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdating }: AvatarSelectorProps) {
   const initialConfig = parseAvatarConfig(currentAvatarConfig);
   
-  // Inicializar semilla UNA SOLA VEZ y guardarla en caché
+  // Inicializar semilla: leer del config o caché, NUNCA generar una nueva automáticamente
   const [seed, setSeed] = useState<string>(() => {
     // 1. Intentar usar la semilla del config actual
     if (initialConfig.seed && initialConfig.seed !== "") {
@@ -44,16 +44,8 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
         }
       } catch {}
     }
-    // 3. Generar nueva semilla y guardarla
-    const newSeed = generateRandomSeed();
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('bookea-avatar-cache', JSON.stringify({
-        type: initialConfig.type || "avataaars",
-        color: initialConfig.color || "b6e3f4",
-        seed: newSeed
-      }));
-    }
-    return newSeed;
+    // 3. Si no hay semilla, usar "default" (NO generar una nueva)
+    return "default";
   });
   
   const [selectedType, setSelectedType] = useState<AvatarStyleType>(initialConfig.type as AvatarStyleType || "avataaars");
