@@ -87,8 +87,8 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
     // Guardar inmediatamente en caché
     const config = { type: selectedType, color: selectedColor, seed: newSeed };
     localStorage.setItem('bookea-avatar-cache', JSON.stringify(config));
-    // Simular breve delay para feedback visual
-    setTimeout(() => setIsShuffling(false), 300);
+    // Esperar a que el SVG se renderice (2 segundos para dar tiempo)
+    setTimeout(() => setIsShuffling(false), 2000);
   };
 
   const handleSave = () => {

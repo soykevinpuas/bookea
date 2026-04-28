@@ -19,6 +19,11 @@ export function BottomNav() {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [loadingHref, setLoadingHref] = useState<string | null>(null);
 
+  // Limpiar loading cuando cambie la ruta
+  useEffect(() => {
+    setLoadingHref(null);
+  }, [pathname]);
+
   // 6.6.1 - Lógica de detección de scroll para mostrar/ocultar
   useEffect(() => {
     const controlNavbar = () => {

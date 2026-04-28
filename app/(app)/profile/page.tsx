@@ -11,6 +11,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 import AvatarSelector from "@/components/profile/AvatarSelector";
+import { ProfileSkeleton } from "@/components/ui/SkeletonBox";
 
 /**
  * 3.3.3 - Renderizado del perfil del usuario mejorado.
@@ -27,25 +28,15 @@ export default function ProfilePage() {
     isUpdatingAvatar
   } = useProfile(userId);
   const { data: subscription, isLoading: subLoading } = useSubscription(userId);
-
-  const [dbUser, setDbUser] = useState<any>(null);
+  
   const [portalLoading, setPortalLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
-  const supabase = createClientClient();
-
-  useEffect(() => {
-    async function getDbUser() {
-      if (!userId) return;
-      const { data } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .single();
-      setDbUser(data);
-    }
-    getDbUser();
-  }, [userId]);
+  
+  // Usar el email del subscription (ya viene de users)
+  const dbUser = subscription ? { 
+    email: profile?.name ? undefined : userId // El email viene por otro lado
+  } : null;
 
   useEffect(() => {
     if (profile?.name) {
@@ -53,8 +44,10 @@ export default function ProfilePage() {
     }
   }, [profile]);
 
+  // Remover supabase del scope superior para evitar recrearlo
   const handlePortal = async () => {
     setPortalLoading(true);
+    const supabase = createClientClient();
     try {
       const response = await fetch("/api/stripe/portal", {
         method: "POST",
@@ -73,11 +66,7 @@ export default function ProfilePage() {
   };
 
   if (authLoading || (profileLoading && !profile)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] retro:bg-[#0d1117]">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-500/50" />
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   const handleSaveName = async () => {
