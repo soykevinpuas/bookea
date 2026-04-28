@@ -66,12 +66,16 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
     }
   }, [currentAvatarConfig]);
 
-  // Cuando cambia el estilo, MANTENER la misma semilla
+  // Cuando cambia el estilo, MANTENER la misma semilla exacta
   const handleStyleChange = (newType: AvatarStyleType) => {
     setSelectedType(newType);
-    // Guardar inmediatamente en caché usando la semilla actual
-    const config = { type: newType, color: selectedColor, seed };
-    localStorage.setItem('bookea-avatar-cache', JSON.stringify(config));
+    // Guardar en caché MANTENIENDO la semilla actual (NO generar nueva)
+    const currentSeed = seed; // Capturar la semilla actual
+    localStorage.setItem('bookea-avatar-cache', JSON.stringify({ 
+      type: newType, 
+      color: selectedColor, 
+      seed: currentSeed 
+    }));
   };
 
   // Mezclar: generar nueva semilla sin cambiar estilo
