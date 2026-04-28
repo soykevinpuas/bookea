@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useTransition } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserMenu } from "./UserMenu";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useProfile } from "@/hooks/useAvatars";
-import { Zap } from "lucide-react";
+import { Zap, Loader2 } from "lucide-react";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { AnimalEngine } from "./avatars/AnimalEngine";
 
@@ -21,11 +21,12 @@ interface HeaderProps {
   initialUser?: { id: string; email?: string } | null;
 }
 
-// 6.1.1 - Componente Header con autenticación en tiempo real
+  // 6.1.1 - Componente Header con autenticación en tiempo real
 export function Header({ initialUser = null }: HeaderProps) {
   const [user, setUser] = useState<{ id: string; email?: string } | null>(initialUser);
   const [isLoading, setIsLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [isPending, startTransition] = useTransition();
   
   const supabase = useMemo(() => createClientClient(), []);
   const pathname = usePathname();
@@ -86,19 +87,27 @@ export function Header({ initialUser = null }: HeaderProps) {
         </Link>
         
         {/* 6.1.4.2 - Navegación principal */}
-        <nav className="flex items-center gap-2 sm:gap-6">
-          {isOnline && (
-            <Link 
-              href="/catalog" 
-              className={`text-[10px] sm:text-xs font-black px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all shadow-sm transform hover:-translate-y-0.5 hidden sm:block uppercase tracking-wider border ${
-                subscription?.isActive 
-                ? "bg-white dark:bg-[#151515] border-gray-200 dark:border-white/5 text-gray-900 dark:text-white"
-                : "bg-blue-600 hover:bg-blue-500 border-transparent text-white"
-              }`}
-            >
-              Catálogo
-            </Link>
-          )}
+         <nav className="flex items-center gap-2 sm:gap-6">
+           {isOnline && (
+             <button 
+               onClick={() => startTransition(() => router.push('/catalog'))}
+               className={`text-[10px] sm:text-xs font-black px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all shadow-sm transform hover:-translate-y-0.5 hidden sm:block uppercase tracking-wider border ${
+                 subscription?.isActive 
+                 ? "bg-white dark:bg-[#151515] border-gray-200 dark:border-white/5 text-gray-900 dark:text-white"
+                 : "bg-blue-600 hover:bg-blue-500 border-transparent text-white"
+               } ${isPending ? 'opacity-70' : ''}`}
+               disabled={isPending}
+             >
+               {isPending ? (
+                 <span className="flex items-center gap-2">
+                   <Loader2 className="w-3 h-3 animate-spin" />
+                   Cargando...
+                 </span>
+               ) : (
+                 "Catálogo"
+               )}
+             </button>
+           )}
           
           {/* Toggle de tema claro/oscuro */}
           <ThemeToggle />

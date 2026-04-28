@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Compass, Bookmark, User, Library } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Compass, Bookmark, User, Library, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTransition } from "react";
 
 // ============================================
 // 6.6 - BottomNav: Barra de navegación inferior móvil
@@ -13,8 +14,24 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [isPending, startTransition] = useTransition();
+  const [loadingHref, setLoadingHref] = useState<string | null>(null);
+
+  // Detectar cuando inicia la navegación
+  useEffect(() => {
+    if (isPending && loadingHref) {
+      // Cuando termin de cargar, limpiar
+      const timer = setTimeout(() => {
+        if (!isPending) {
+          setLoadingHref(null);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isPending, loadingHref]);
 
   // 6.6.1 - Lógica de detección de scroll para mostrar/ocultar
   useEffect(() => {
@@ -75,33 +92,46 @@ export function BottomNav() {
           className="fixed bottom-0 left-0 right-0 z-[60] flex justify-center pb-safe px-4"
         >
           <div className="mb-4 mx-auto max-w-sm bg-white/70 dark:bg-black/80 retro:bg-[#0d1117]/90 navy:bg-[#0a0f1e]/90 backdrop-blur-xl border border-black/5 dark:border-white/10 retro:border-[#3fb950]/30 navy:border-[#7986cb]/30 rounded-2xl shadow-2xl flex items-center justify-around py-3 px-2">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex flex-col items-center gap-1 transition-all duration-300 relative group px-4 py-1 rounded-xl ${
-                  item.active 
-                    ? "text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb]" 
-                    : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                }`}
-              >
-                {/* Indicador de activo (pestaña) */}
-                {item.active && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute inset-0 bg-blue-500/10 dark:bg-blue-400/10 retro:bg-[#3fb950]/10 navy:bg-[#7986cb]/10 rounded-xl"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                
-                <div className="relative">
-                  {item.icon}
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-tighter">
-                  {item.label}
-                </span>
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const isLoading = loadingHref === item.href && isPending;
+              return (
+                <button
+                  key={item.href}
+                  onClick={() => {
+                    setLoadingHref(item.href);
+                    startTransition(() => {
+                      router.push(item.href);
+                    });
+                  }}
+                  className={`flex flex-col items-center gap-1 transition-all duration-300 relative group px-4 py-1 rounded-xl ${
+                    item.active 
+                      ? "text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb]" 
+                      : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                  } ${isLoading ? 'opacity-70' : ''} disabled:opacity-50`}
+                  disabled={isLoading}
+                >
+                  {/* Indicador de activo (pestaña) */}
+                  {item.active && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute inset-0 bg-blue-500/10 dark:bg-blue-400/10 retro:bg-[#3fb950]/10 navy:bg-[#7986cb]/10 rounded-xl"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  
+                  <div className="relative">
+                    {isLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      item.icon
+                    )}
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-tighter">
+                    {isLoading ? 'Cargando...' : item.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </motion.div>
       )}

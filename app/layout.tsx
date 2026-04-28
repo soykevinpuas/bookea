@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { PwaListener } from "@/components/PwaListener";
 import { SplashScreen } from "@/components/SplashScreen";
 import { BottomNav } from "@/components/BottomNav";
+import { PageTransitionWrapper } from "@/components/PageTransitionWrapper";
 
 
 // 1.5 - Configuración de fuentes y Metadata global
@@ -113,9 +114,11 @@ export default async function RootLayout({
           <SplashScreen />
           <QueryProvider>
             <Header initialUser={user ? { id: user.id, email: user.email } : null} />
-            <main className="flex-1 pb-safe px-safe flex flex-col">
-              {children}
-            </main>
+            <PageTransitionWrapper>
+              <main className="flex-1 pb-safe px-safe flex flex-col">
+                {children}
+              </main>
+            </PageTransitionWrapper>
             <BottomNav />
           </QueryProvider>
           <Toaster 
