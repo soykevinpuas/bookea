@@ -52,14 +52,11 @@ export default function Book3D({
         {/* 6.4.2.2 - Efecto dorado para libros completados (100%) */}
         {isCompleted && (
           <>
-            {/* Capa dorada con brillo */}
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-400/20 via-yellow-300/10 to-amber-600/20 rounded-lg pointer-events-none animate-pulse" />
+            {/* Borde dorado que pulsa con brillo */}
+            <div className="absolute inset-0 rounded-lg border-2 border-amber-400 animate-[goldPulse_2s_ease-in-out_infinite] pointer-events-none" />
             
-            {/* Borde dorado brillante con animación */}
-            <div className="absolute inset-0 rounded-lg border-2 border-amber-400/80 shadow-[inset_0_0_15px_rgba(255,215,0,0.4)] pointer-events-none">
-              {/* Efecto de resplandor animado en los bordes */}
-              <div className="absolute -inset-[1px] rounded-lg bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 opacity-40 blur-sm animate-[goldShimmer_3s_ease-in-out_infinite]" />
-            </div>
+            {/* Brillo exterior suave */}
+            <div className="absolute inset-0 rounded-lg shadow-[0_0_20px_rgba(255,215,0,0.4)] pointer-events-none" />
             
             {/* Esquinas doradas decorativas */}
             <div className="absolute top-1 left-1 w-3 h-3 border-t-2 border-l-2 border-amber-400/90 rounded-tl-sm" />
