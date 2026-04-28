@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Check, Loader2, Info } from "lucide-react";
-import { AnimalEngine, DiceBearStyle, AVATAR_COLORS, generateRandomSeed } from "@/components/avatars/AnimalEngine";
+import { AnimalEngine, AvatarStyleType, AVATAR_COLORS, generateRandomSeed } from "@/components/avatars/AnimalEngine";
 import { useState, useEffect } from "react";
 import { parseAvatarConfig, stringifyAvatarConfig } from "@/lib/avatars-v2";
 
@@ -17,27 +17,29 @@ interface AvatarSelectorProps {
   isUpdating?: boolean;
 }
 
-const STYLES: { id: DiceBearStyle; name: string }[] = [
+const STYLES: { id: AvatarStyleType; name: string }[] = [
   { id: "avataaars", name: "Persona" },
+  { id: "bottts", name: "Robot" },
+  { id: "animal", name: "Animal" },
   { id: "lorelei", name: "Artístico" },
 ];
 
 export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdating }: AvatarSelectorProps) {
   const initialConfig = parseAvatarConfig(currentAvatarConfig);
-  const [selectedType, setSelectedType] = useState<DiceBearStyle>(initialConfig.type as DiceBearStyle || "avataaars");
+  const [selectedType, setSelectedType] = useState<AvatarStyleType>(initialConfig.type as AvatarStyleType || "avataaars");
   const [selectedColor, setSelectedColor] = useState<string>(initialConfig.color || "b6e3f4");
   const [seed, setSeed] = useState<string>(initialConfig.seed || generateRandomSeed());
 
   // Sincronizar con props externas cuando carguen
   useEffect(() => {
     const config = parseAvatarConfig(currentAvatarConfig);
-    setSelectedType((config.type as DiceBearStyle) || "avataaars");
+    setSelectedType((config.type as AvatarStyleType) || "avataaars");
     setSelectedColor(config.color || "b6e3f4");
     setSeed(config.seed || generateRandomSeed());
   }, [currentAvatarConfig]);
 
   // Cuando cambia el estilo, generar nueva semilla
-  const handleStyleChange = (newType: DiceBearStyle) => {
+  const handleStyleChange = (newType: AvatarStyleType) => {
     setSelectedType(newType);
     setSeed(generateRandomSeed());
   };
