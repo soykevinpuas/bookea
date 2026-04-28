@@ -59,16 +59,21 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
   const [selectedType, setSelectedType] = useState<AvatarStyleType>(initialConfig.type as AvatarStyleType || "avataaars");
   const [selectedColor, setSelectedColor] = useState<string>(initialConfig.color || "b6e3f4");
 
-  // Sincronizar con props externas cuando carguen (SOLO si hay seed en el config)
+  // Sincronizar con props externas SOLO en el primer montaje (no en cada cambio)
+  // Usar useRef para evitar re-sincronizar
+  const isInitialized = React.useRef(false);
+  
   useEffect(() => {
-    const config = parseAvatarConfig(currentAvatarConfig);
-    setSelectedType((config.type as AvatarStyleType) || "avataaars");
-    setSelectedColor(config.color || "b6e3f4");
-    // Solo actualizar seed si viene en el config Y no está vacío
-    if (config.seed && config.seed !== "") {
-      setSeed(config.seed);
+    if (!isInitialized.current) {
+      const config = parseAvatarConfig(currentAvatarConfig);
+      setSelectedType((config.type as AvatarStyleType) || "avataaars");
+      setSelectedColor(config.color || "b6e3f4");
+      // Solo actualizar seed si viene en el config Y no está vacío
+      if (config.seed && config.seed !== "") {
+        setSeed(config.seed);
+      }
+      isInitialized.current = true;
     }
-    // Si no hay seed, mantener la actual (no generar nueva)
   }, [currentAvatarConfig]);
 
   // Cuando cambia el estilo, MANTENER la misma semilla
