@@ -50,6 +50,7 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
   
   const [selectedType, setSelectedType] = useState<AvatarStyleType>(initialConfig.type as AvatarStyleType || "avataaars");
   const [selectedColor, setSelectedColor] = useState<string>(initialConfig.color || "b6e3f4");
+  const [isShuffling, setIsShuffling] = useState(false);
 
   // Sincronizar con props externas SOLO en el primer montaje
   const isInitialized = useRef(false);
@@ -80,11 +81,14 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
 
   // Mezclar: generar nueva semilla sin cambiar estilo
   const handleShuffle = () => {
+    setIsShuffling(true);
     const newSeed = generateRandomSeed();
     setSeed(newSeed);
     // Guardar inmediatamente en caché
     const config = { type: selectedType, color: selectedColor, seed: newSeed };
     localStorage.setItem('bookea-avatar-cache', JSON.stringify(config));
+    // Simular breve delay para feedback visual
+    setTimeout(() => setIsShuffling(false), 300);
   };
 
   const handleSave = () => {
@@ -114,13 +118,18 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
               className="relative bg-white dark:bg-[#151515] shadow-2xl border-4 border-white dark:border-white/5 outline outline-1 outline-white/10" 
             />
             {/* Botón de mezclar/shuffle */}
-            <button
-              onClick={handleShuffle}
-              className="absolute bottom-2 right-2 p-2 bg-white/80 dark:bg-black/80 rounded-full hover:scale-110 transition-transform shadow-lg"
-              title="Generar nuevo avatar"
-            >
-              🎲
-            </button>
+             <button
+               onClick={handleShuffle}
+               disabled={isShuffling}
+               className="absolute bottom-2 right-2 p-2 bg-white/80 dark:bg-black/80 rounded-full hover:scale-110 transition-transform shadow-lg disabled:opacity-50"
+               title="Generar nuevo avatar"
+             >
+               {isShuffling ? (
+                 <Loader2 className="w-6 h-6 animate-spin" />
+               ) : (
+                 '🎲'
+               )}
+             </button>
           </div>
         </div>
         <p className="mt-4 text-sm font-bold text-gray-900 dark:text-white uppercase tracking-widest">Tu Identidad</p>

@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Compass, Bookmark, User, Library, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTransition } from "react";
+import { PrefetchLink } from "@/components/ui/LoadingStates";
 
 // ============================================
 // 6.6 - BottomNav: Barra de navegación inferior móvil
@@ -14,24 +15,9 @@ import { useTransition } from "react";
 
 export function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const [isPending, startTransition] = useTransition();
   const [loadingHref, setLoadingHref] = useState<string | null>(null);
-
-  // Detectar cuando inicia la navegación
-  useEffect(() => {
-    if (isPending && loadingHref) {
-      // Cuando termin de cargar, limpiar
-      const timer = setTimeout(() => {
-        if (!isPending) {
-          setLoadingHref(null);
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isPending, loadingHref]);
 
   // 6.6.1 - Lógica de detección de scroll para mostrar/ocultar
   useEffect(() => {
@@ -95,20 +81,15 @@ export function BottomNav() {
             {navItems.map((item) => {
               const isLoading = loadingHref === item.href && isPending;
               return (
-                <button
+                <PrefetchLink
                   key={item.href}
-                  onClick={() => {
-                    setLoadingHref(item.href);
-                    startTransition(() => {
-                      router.push(item.href);
-                    });
-                  }}
+                  href={item.href}
                   className={`flex flex-col items-center gap-1 transition-all duration-300 relative group px-4 py-1 rounded-xl ${
                     item.active 
                       ? "text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb]" 
                       : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                  } ${isLoading ? 'opacity-70' : ''} disabled:opacity-50`}
-                  disabled={isLoading}
+                  } ${isLoading ? 'opacity-70' : ''}`}
+                  onClick={() => setLoadingHref(item.href)}
                 >
                   {/* Indicador de activo (pestaña) */}
                   {item.active && (
@@ -129,7 +110,7 @@ export function BottomNav() {
                   <span className="text-[10px] font-bold uppercase tracking-tighter">
                     {isLoading ? 'Cargando...' : item.label}
                   </span>
-                </button>
+                </PrefetchLink>
               );
             })}
           </div>
