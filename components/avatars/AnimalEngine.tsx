@@ -85,11 +85,13 @@ export function generateRandomSeed(): string {
  */
 export function AnimalEngine(props: AnimalAvatarProps | AnimalAvatarConfigProps) {
   // Support both modes: direct props or config object
-  const { type, color, seed = "default", size = 48, className = "" } = 'config' in props 
+  const { type, color, seed, size = 48, className = "" } = 'config' in props 
     ? { type: props.config.type, color: props.config.color, seed: props.config.seed, size: props.size, className: props.className }
     : props;
 
-  const url = getDiceBearUrl(type, seed, color);
+  // Seed determinista: si no hay seed, usar el tipo como fallback (consistente)
+  const effectiveSeed = seed && seed !== "" ? seed : `bookea-${type}`;
+  const url = getDiceBearUrl(type, effectiveSeed, color);
 
   return (
     <div 
