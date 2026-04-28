@@ -401,6 +401,64 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-28-K] - Corrección de Persistencia de Semilla en Avatares
+
+**Objetivo:** Solucionar que la semilla (seed) del avatar seleccionado por el usuario no se guardaba correctamente y no se mostraba en todo el sitio.
+
+### Problemas Identificados
+- **Seed no guardada en perfil:** Al seleccionar un avatar con una semilla específica, esta no se persistía correctamente al actualizar el perfil.
+- **Seed no mostrada en perfil:** El componente `AnimalEngine` en `profile/page.tsx` no recibía la prop `seed`, mostrando siempre el avatar por defecto basado en el tipo.
+- **Detección de cambios incorrecta:** En `AvatarSelector.tsx`, la variable `hasChanges` no incluía la semilla en la comparación, impidiendo detectar cambios en la semilla.
+
+### Cambios Realizados
+
+**1. `app/(app)/profile/page.tsx`:**
+- Agregada la prop `seed` al componente `AnimalEngine` para mostrar el avatar con la semilla correcta del usuario:
+  ```tsx
+  <AnimalEngine 
+    type={parseAvatarConfig(profile.avatar_url).type} 
+    color={parseAvatarConfig(profile.avatar_url).color}
+    seed={parseAvatarConfig(profile.avatar_url).seed}
+    size="100%" 
+  />
+  ```
+
+**2. `components/profile/AvatarSelector.tsx`:**
+- Corregida la verificación de cambios para incluir la semilla:
+  ```typescript
+  const hasChanges = stringifyAvatarConfig({ type: selectedType, color: selectedColor, seed }) !== (currentAvatarConfig || "");
+  ```
+
+### Estado Final
+- ✅ Seed se guarda correctamente en la base de datos (`avatar_url` con formato `v2:tipo:color:seed`)
+- ✅ Seed se recupera y muestra en el perfil del usuario
+- ✅ El avatar personalizado se muestra consistentemente en todo el sitio (Header, UserMenu, reseñas)
+- ✅ Detección de cambios funciona correctamente al cambiar la semilla
+- ✅ Build exitoso
+
+---
+
+## [2026-04-28-L] - Selector de Color RGB para Avatares
+
+**Objetivo:** Reemplazar los 15 colores fijos por un selector de color completo (color picker) para mayor personalización.
+
+### Cambios Realizados
+
+**1. `components/profile/AvatarSelector.tsx`:**
+- Eliminado el grid de 15 colores fijos (`AVATAR_COLORS`)
+- Agregado `input type="color"` para selección visual del color de fondo
+- Agregado campo de texto para ingresar código hex manual (sin `#`)
+- Muestra el código hex actual del color seleccionado
+- Validación de entrada: solo permite caracteres hexadecimales (0-9, a-f, A-F) hasta 6 dígitos
+
+### Estado Final
+- ✅ Usuario puede elegir cualquier color RGB (no limitado a 15)
+- ✅ Input visual tipo picker + campo de texto hex
+- ✅ Validación de formato hex en tiempo real
+- ✅ Build exitoso
+
+---
+
 ## [2026-04-27-J] - Integración de Analytics y Mejoras UX
 
 ### Analytics Integrado en Flujos

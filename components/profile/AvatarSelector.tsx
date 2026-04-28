@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Check, Loader2, Info } from "lucide-react";
-import { AnimalEngine, AvatarStyleType, AVATAR_COLORS, generateRandomSeed } from "@/components/avatars/AnimalEngine";
+import { AnimalEngine, AvatarStyleType, generateRandomSeed } from "@/components/avatars/AnimalEngine";
 import { useState, useEffect, useRef } from "react";
 import { parseAvatarConfig, stringifyAvatarConfig } from "@/lib/avatars-v2";
 
@@ -97,7 +97,7 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
     onSelect(configStr);
   };
 
-  const hasChanges = stringifyAvatarConfig({ type: selectedType, color: selectedColor }) !== (currentAvatarConfig || "");
+  const hasChanges = stringifyAvatarConfig({ type: selectedType, color: selectedColor, seed }) !== (currentAvatarConfig || "");
 
   return (
     <div className="space-y-10">
@@ -154,28 +154,39 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
         </div>
       </div>
 
-      {/* 6.4.3 - Selector de Color */}
-      <div className="space-y-4">
-        <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-white/30 flex items-center gap-2">
-          2. Personaliza el Color de Fondo
-        </h3>
-        <div className="grid grid-cols-5 gap-3">
-          {AVATAR_COLORS.map((color) => (
-            <button
-              key={color}
-              onClick={() => setSelectedColor(color)}
-              className={`w-full aspect-square rounded-full border-4 transition-all transform hover:scale-110 flex items-center justify-center ${
-                selectedColor === color 
-                  ? "border-white dark:border-amber-500 shadow-lg scale-110" 
-                  : "border-transparent"
-              }`}
-              style={{ backgroundColor: `#${color}` }}
-            >
-              {selectedColor === color && <Check className="w-4 h-4 text-white drop-shadow-md" />}
-            </button>
-          ))}
-        </div>
-      </div>
+       {/* 6.4.3 - Selector de Color */}
+       <div className="space-y-4">
+         <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-white/30 flex items-center gap-2">
+           2. Personaliza el Color de Fondo
+         </h3>
+         <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+           <input
+             type="color"
+             value={`#${selectedColor}`}
+             onChange={(e) => setSelectedColor(e.target.value.replace('#', ''))}
+             className="w-20 h-20 rounded-2xl border-4 border-gray-200 dark:border-white/10 cursor-pointer shadow-lg hover:scale-105 transition-transform"
+           />
+           <div className="flex-1 space-y-2">
+             <div>
+               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/30 mb-1">Color seleccionado</p>
+               <p className="text-lg font-mono font-black text-gray-900 dark:text-white">#{selectedColor}</p>
+             </div>
+             <input
+               type="text"
+               value={selectedColor}
+               onChange={(e) => {
+                 const val = e.target.value.replace('#', '');
+                 if (/^[0-9a-fA-F]{0,6}$/.test(val)) {
+                   setSelectedColor(val);
+                 }
+               }}
+               placeholder="Hex sin # (ej: b6e3f4)"
+               className="w-full bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
+               maxLength={6}
+             />
+           </div>
+         </div>
+       </div>
 
       {/* 6.4.4 - Botón de Guardado */}
       <button

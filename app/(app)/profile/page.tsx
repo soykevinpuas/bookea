@@ -131,14 +131,15 @@ export default function ProfilePage() {
               <div className="absolute top-0 left-0 w-full h-full bg-amber-600/5 blur-3xl -z-10 group-hover:bg-amber-600/10 transition-colors" />
               
               <div className="relative w-32 h-32 mx-auto mb-8">
-                <div className="w-full h-full rounded-full border-4 border-white/5 overflow-hidden bg-[#111] shadow-2xl relative flex items-center justify-center">
-                  {profile?.avatar_url ? (
-                    <AnimalEngine 
-                      type={parseAvatarConfig(profile.avatar_url).type} 
-                      color={parseAvatarConfig(profile.avatar_url).color} 
-                      size="100%" 
-                    />
-                  ) : (
+               <div className="w-full h-full rounded-full border-4 border-white/5 overflow-hidden bg-[#111] shadow-2xl relative flex items-center justify-center">
+                   {profile?.avatar_url ? (
+                     <AnimalEngine 
+                       type={parseAvatarConfig(profile.avatar_url).type} 
+                       color={parseAvatarConfig(profile.avatar_url).color}
+                       seed={parseAvatarConfig(profile.avatar_url).seed}
+                       size="100%" 
+                     />
+                   ) : (
                     <div className={`w-full h-full flex items-center justify-center ${primaryBgClass} text-4xl font-black`}>
                       {dbUser?.email?.charAt(0) || "U"}
                     </div>
