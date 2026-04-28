@@ -36,7 +36,8 @@ export function parseAvatarConfig(configStr: string | null | undefined): AvatarC
 
 /**
  * Genera un string de configuración a partir de un objeto
+ * NO genera semillas aleatorias - usa la que viene en config
  */
 export function stringifyAvatarConfig(config: AvatarConfig): string {
-  return `v2:${config.type}:${config.color}:${config.seed}`;
+  return `v2:${config.type}:${config.color}:${config.seed || ""}`;
 }
