@@ -79,47 +79,55 @@ function getDiceBearUrl(style: string, seed: string, backgroundColor: string): s
 const AnimalSvgs = {
   dog: ({ color, size }: { color: string; size: number | string }) => (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: size, height: size }}>
-      <circle cx="50" cy="50" r="45" fill={color} fillOpacity="0.2" />
-      <path d="M30 40C30 30 40 20 50 20C60 20 70 30 70 40V70H30V40Z" fill={color} />
-      <path d="M25 35C25 25 30 20 35 20V45C35 45 25 45 25 35Z" fill={color} opacity="0.8" />
-      <path d="M75 35C75 25 70 20 65 20V45C65 45 75 45 75 35Z" fill={color} opacity="0.8" />
-      <circle cx="40" cy="45" r="3" fill="white" />
-      <circle cx="60" cy="45" r="3" fill="white" />
+      {/* Fondo circular con el color seleccionado */}
+      <circle cx="50" cy="50" r="48" fill={color} />
+      {/* Perro en blanco para contrastar */}
+      <path d="M30 40C30 30 40 20 50 20C60 20 70 30 70 40V70H30V40Z" fill="white" fillOpacity="0.9" />
+      <path d="M25 35C25 25 30 20 35 20V45C35 45 25 45 25 35Z" fill="white" fillOpacity="0.7" />
+      <path d="M75 35C75 25 70 20 65 20V45C65 45 75 45 75 35Z" fill="white" fillOpacity="0.7" />
+      <circle cx="40" cy="45" r="3" fill={color} />
+      <circle cx="60" cy="45" r="3" fill={color} />
       <path d="M45 55C45 55 50 60 55 55" stroke="white" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   cat: ({ color, size }: { color: string; size: number | string }) => (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: size, height: size }}>
-      <circle cx="50" cy="50" r="45" fill={color} fillOpacity="0.2" />
-      <path d="M30 45C30 35 40 25 50 25C60 25 70 35 70 45V75H30V45Z" fill={color} />
-      <path d="M30 30L40 45H30V30Z" fill={color} />
-      <path d="M70 30L60 45H70V30Z" fill={color} />
-      <circle cx="42" cy="48" r="3" fill="white" />
-      <circle cx="58" cy="48" r="3" fill="white" />
+      {/* Fondo circular con el color seleccionado */}
+      <circle cx="50" cy="50" r="48" fill={color} />
+      {/* Gato en blanco para contrastar */}
+      <path d="M30 45C30 35 40 25 50 25C60 25 70 35 70 45V75H30V45Z" fill="white" fillOpacity="0.9" />
+      <path d="M30 30L40 45H30V30Z" fill="white" fillOpacity="0.7" />
+      <path d="M70 30L60 45H70V30Z" fill="white" fillOpacity="0.7" />
+      <circle cx="42" cy="48" r="3" fill={color} />
+      <circle cx="58" cy="48" r="3" fill={color} />
       <path d="M40 60C40 60 50 65 60 60" stroke="white" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   rabbit: ({ color, size }: { color: string; size: number | string }) => (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: size, height: size }}>
-      <circle cx="50" cy="50" r="45" fill={color} fillOpacity="0.2" />
-      <path d="M35 50C35 40 42 33 50 33C58 33 65 40 65 50V75H35V50Z" fill={color} />
-      <path d="M40 10C40 10 35 25 40 40H48V10H40Z" fill={color} />
-      <path d="M60 10C60 10 65 25 60 40H52V10H60Z" fill={color} />
-      <circle cx="44" cy="52" r="2.5" fill="white" />
-      <circle cx="56" cy="52" r="2.5" fill="white" />
-      <circle cx="50" cy="58" r="1.5" fill="#ffd5dc" />
+      {/* Fondo circular con el color seleccionado */}
+      <circle cx="50" cy="50" r="48" fill={color} />
+      {/* Conejo en blanco para contrastar */}
+      <path d="M35 50C35 40 42 33 50 33C58 33 65 40 65 50V75H35V50Z" fill="white" fillOpacity="0.9" />
+      <path d="M40 10C40 10 35 25 40 40H48V10H40Z" fill="white" fillOpacity="0.7" />
+      <path d="M60 10C60 10 65 25 60 40H52V10H60Z" fill="white" fillOpacity="0.7" />
+      <circle cx="44" cy="52" r="2.5" fill={color} />
+      <circle cx="56" cy="52" r="2.5" fill={color} />
+      <circle cx="50" cy="58" r="1.5" fill="white" />
     </svg>
   ),
   panda: ({ color, size }: { color: string; size: number | string }) => (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: size, height: size }}>
-      <circle cx="50" cy="50" r="45" fill={color} fillOpacity="0.2" />
-      <circle cx="50" cy="55" r="25" fill={color} />
-      <circle cx="35" cy="35" r="10" fill={color} />
-      <circle cx="65" cy="35" r="10" fill={color} />
-      <circle cx="42" cy="52" r="5" fill="white" />
-      <circle cx="58" cy="52" r="5" fill="white" />
-      <circle cx="42" cy="52" r="2" fill={color} />
-      <circle cx="58" cy="52" r="2" fill={color} />
+      {/* Fondo circular con el color seleccionado */}
+      <circle cx="50" cy="50" r="48" fill={color} />
+      {/* Panda en blanco para contrastar */}
+      <circle cx="50" cy="55" r="25" fill="white" fillOpacity="0.9" />
+      <circle cx="35" cy="35" r="10" fill="white" fillOpacity="0.7" />
+      <circle cx="65" cy="35" r="10" fill="white" fillOpacity="0.7" />
+      <circle cx="42" cy="52" r="5" fill={color} />
+      <circle cx="58" cy="52" r="5" fill={color} />
+      <circle cx="42" cy="52" r="2" fill="white" />
+      <circle cx="58" cy="52" r="2" fill="white" />
     </svg>
   ),
   fox: ({ color, size }: { color: string; size: number | string }) => (
