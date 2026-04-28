@@ -85,7 +85,7 @@ export function generateRandomSeed(): string {
  */
 export function AnimalEngine(props: AnimalAvatarProps | AnimalAvatarConfigProps) {
   // Support both modes: direct props or config object
-  const { type, color, seed = generateRandomSeed(), size = 48, className = "" } = 'config' in props 
+  const { type, color, seed = "default", size = 48, className = "" } = 'config' in props 
     ? { type: props.config.type, color: props.config.color, seed: props.config.seed, size: props.size, className: props.className }
     : props;
 

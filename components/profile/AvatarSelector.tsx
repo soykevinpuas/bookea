@@ -25,24 +25,57 @@ const STYLES: { id: AvatarStyleType; name: string }[] = [
 
 export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdating }: AvatarSelectorProps) {
   const initialConfig = parseAvatarConfig(currentAvatarConfig);
+  
+  // Inicializar semilla UNA SOLA VEZ y guardarla en caché
+  const [seed, setSeed] = useState<string>(() => {
+    // 1. Intentar usar la semilla del config actual
+    if (initialConfig.seed && initialConfig.seed !== "") {
+      return initialConfig.seed;
+    }
+    // 2. Intentar leer del caché local
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('bookea-avatar-cache');
+        if (cached) {
+          const config = JSON.parse(cached);
+          if (config.seed && config.seed !== "") {
+            return config.seed;
+          }
+        }
+      } catch {}
+    }
+    // 3. Generar nueva semilla y guardarla
+    const newSeed = generateRandomSeed();
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bookea-avatar-cache', JSON.stringify({
+        type: initialConfig.type || "avataaars",
+        color: initialConfig.color || "b6e3f4",
+        seed: newSeed
+      }));
+    }
+    return newSeed;
+  });
+  
   const [selectedType, setSelectedType] = useState<AvatarStyleType>(initialConfig.type as AvatarStyleType || "avataaars");
   const [selectedColor, setSelectedColor] = useState<string>(initialConfig.color || "b6e3f4");
-  const [seed, setSeed] = useState<string>(initialConfig.seed || generateRandomSeed());
 
-  // Sincronizar con props externas cuando carguen
+  // Sincronizar con props externas cuando carguen (SOLO si hay seed en el config)
   useEffect(() => {
     const config = parseAvatarConfig(currentAvatarConfig);
     setSelectedType((config.type as AvatarStyleType) || "avataaars");
     setSelectedColor(config.color || "b6e3f4");
-    setSeed(config.seed || generateRandomSeed());
+    // Solo actualizar seed si viene en el config Y no está vacío
+    if (config.seed && config.seed !== "") {
+      setSeed(config.seed);
+    }
+    // Si no hay seed, mantener la actual (no generar nueva)
   }, [currentAvatarConfig]);
 
-  // Cuando cambia el estilo, generar nueva semilla
+  // Cuando cambia el estilo, MANTENER la misma semilla
   const handleStyleChange = (newType: AvatarStyleType) => {
     setSelectedType(newType);
-    setSeed(generateRandomSeed());
-    // Guardar inmediatamente en caché
-    const config = { type: newType, color: selectedColor, seed: generateRandomSeed() };
+    // Guardar inmediatamente en caché usando la semilla actual
+    const config = { type: newType, color: selectedColor, seed };
     localStorage.setItem('bookea-avatar-cache', JSON.stringify(config));
   };
 

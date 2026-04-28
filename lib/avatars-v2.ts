@@ -17,11 +17,11 @@ export const DEFAULT_AVATAR: AvatarConfig = {
  */
 export function parseAvatarConfig(configStr: string | null | undefined): AvatarConfig {
   if (!configStr || !configStr.startsWith("v2:")) {
-    return { ...DEFAULT_AVATAR, seed: Math.random().toString(36).substring(2, 10) };
+    return { ...DEFAULT_AVATAR };
   }
 
   const parts = configStr.split(":");
-  if (parts.length < 3) return { ...DEFAULT_AVATAR, seed: Math.random().toString(36).substring(2, 10) };
+  if (parts.length < 3) return { ...DEFAULT_AVATAR };
   
   // Validar que el tipo sea un estilo válido
   const validStyles: AvatarStyleType[] = ["avataaars", "bottts", "lorelei"];
@@ -30,7 +30,7 @@ export function parseAvatarConfig(configStr: string | null | undefined): AvatarC
   return {
     type,
     color: parts[2] || AVATAR_COLORS[0],
-    seed: parts[3] || Math.random().toString(36).substring(2, 10),
+    seed: parts[3] || "",
   };
 }
 
@@ -38,5 +38,5 @@ export function parseAvatarConfig(configStr: string | null | undefined): AvatarC
  * Genera un string de configuración a partir de un objeto
  */
 export function stringifyAvatarConfig(config: AvatarConfig): string {
-  return `v2:${config.type}:${config.color}:${config.seed || Math.random().toString(36).substring(2, 10)}`;
+  return `v2:${config.type}:${config.color}:${config.seed}`;
 }

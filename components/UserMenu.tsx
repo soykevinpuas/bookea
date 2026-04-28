@@ -54,13 +54,12 @@ export function UserMenu({ email, avatarConfig }: UserMenuProps) {
         className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-white/5 transition-all"
       >
         <div className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] overflow-hidden flex items-center justify-center relative">
-          {avatarConfig ? (
-             <AnimalEngine 
-              type={parseAvatarConfig(avatarConfig).type} 
-              color={parseAvatarConfig(avatarConfig).color} 
-              size="100%" 
-             />
-          ) : (
+           {avatarConfig ? (
+              <AnimalEngine 
+               config={parseAvatarConfig(avatarConfig)}
+               size="100%" 
+              />
+           ) : (
             <span className="text-sm font-bold uppercase text-gray-400">
               {email?.charAt(0) || "U"}
             </span>
