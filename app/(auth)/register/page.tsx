@@ -2,13 +2,24 @@
 
 import { register } from '@/app/auth/actions'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 // 2.2 - RegisterPage: Componente de formulario para creación de nuevas cuentas de usuario
 export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [referrerId, setReferrerId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  // 2.2.0 - Detectar parámetro de referido ?ref= en URL
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setReferrerId(ref);
+    }
+  }, [searchParams]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     if (password !== confirmPassword) {
@@ -37,9 +48,18 @@ export default function RegisterPage() {
           <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
             Crea tu cuenta y empieza a leer
           </p>
+          {referrerId && (
+            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+              Te invitó un amigo 🎉
+            </p>
+          )}
         </div>
         {/* 2.2.1 - Formulario conectado a la Subrutina Server Action 'register' externa */}
         <form action={register} onSubmit={handleSubmit} className="flex flex-col gap-5">
+          {/* Hidden field for referral tracking */}
+          {referrerId && (
+            <input type="hidden" name="referrer_id" value={referrerId} />
+          )}
           {/* 2.2.2 - Campo de captura para el nuevo Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="email">

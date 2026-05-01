@@ -9,9 +9,11 @@ import { ThemeToggle } from "./ThemeToggle";
 import { UserMenu } from "./UserMenu";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useProfile } from "@/hooks/useAvatars";
-import { Zap, Loader2 } from "lucide-react";
+import { useCoins } from "@/hooks/useCoins";
+import { Zap, Loader2, Coins } from "lucide-react";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { AnimalEngine } from "./avatars/AnimalEngine";
+import { CoinBalanceDisplay } from "@/components/ui/CoinBalance";
 
 // ============================================
 // 6.1 - Header: Barra de navegación global de la aplicación
@@ -28,6 +30,7 @@ export function Header({ initialUser = null }: HeaderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const [showCoins, setShowCoins] = useState(false);
   
   const supabase = useMemo(() => createClientClient(), []);
   const pathname = usePathname();
@@ -36,6 +39,7 @@ export function Header({ initialUser = null }: HeaderProps) {
   // 6.1.1.1 - Obtención del estado de suscripción
   const { data: subscription } = useSubscription(user?.id);
   const { profile } = useProfile(user?.id);
+  const { data: coinsBalance } = useCoins(user?.id);
 
   // 6.1.2a - Cuando el RSC del layout se re-ejecuta (por router.refresh()),
   // el prop `initialUser` cambia — este efecto lo sincroniza al state local.
@@ -106,11 +110,29 @@ export function Header({ initialUser = null }: HeaderProps) {
           <ThemeToggle />
 
           {/* 6.1.4.3 - Menú de autenticación condicional */}
-          {!isLoading && (
-            user ? (
-              // Usuario autenticado: mostrar créditos, avatar y menú de usuario
-              <div className="flex items-center gap-3">
-                <Link 
+           {!isLoading && (
+             user ? (
+               // Usuario autenticado: mostrar monedas, premium, avatar y menú de usuario
+               <div className="flex items-center gap-3">
+                 {/* Botón de monedas */}
+                 <button
+                   onClick={() => setShowCoins(!showCoins)}
+                   className="relative flex items-center gap-1 px-2 py-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-all text-xs font-bold hover:bg-amber-500/20"
+                 >
+                   <Coins className="w-3.5 h-3.5" />
+                   {coinsBalance && (
+                     <span>{coinsBalance.bronze + coinsBalance.silver + coinsBalance.gold + coinsBalance.diamond}</span>
+                   )}
+                 </button>
+
+                 {/* Dropdown de monedas */}
+                 {showCoins && coinsBalance && (
+                   <div className="absolute top-14 right-20 z-50">
+                     <CoinBalanceDisplay balance={coinsBalance} variant="full" />
+                   </div>
+                 )}
+
+                 <Link
                   href="/subscribe"
                   className={`flex items-center gap-1 px-2 py-1 rounded-full border transition-all text-[10px] sm:text-xs font-black ${
                     subscription?.isActive 

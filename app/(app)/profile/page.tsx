@@ -2,16 +2,20 @@
 
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles, BookOpen } from "lucide-react";
+import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles, BookOpen, Coins, Flame, Gift } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useUserId } from "@/hooks/useUser";
 import { useProfile } from "@/hooks/useAvatars";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useCoins, useStreak, useReferral } from "@/hooks/useCoins";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 import AvatarSelector from "@/components/profile/AvatarSelector";
 import { ProfileSkeleton } from "@/components/ui/SkeletonBox";
+import { CoinBalanceDisplay } from "@/components/ui/CoinBalance";
+import { ReferralQR } from "@/components/profile/ReferralQR";
+import { StreakBadge } from "@/components/gamification/StreakBadge";
 
 /**
  * 3.3.3 - Renderizado del perfil del usuario mejorado.
@@ -28,6 +32,9 @@ export default function ProfilePage() {
     isUpdatingAvatar
   } = useProfile(userId);
   const { data: subscription, isLoading: subLoading } = useSubscription(userId);
+  const { data: coinsBalance } = useCoins(userId);
+  const { data: streak } = useStreak(userId);
+  const { link: referralLink, count: referralCount } = useReferral(userId);
   
   const [portalLoading, setPortalLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -168,11 +175,21 @@ export default function ProfilePage() {
               
               <p className="text-xs text-white/30 truncate mb-8 px-4">{dbUser?.email}</p>
               
-              <div className={`inline-flex items-center gap-2 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] w-fit ${
+               <div className={`inline-flex items-center gap-2 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] w-fit ${
                 subLoading ? 'bg-white/5 text-white/20 animate-pulse border border-white/10' :
                 isSubscriber ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-600/10 text-blue-500 border border-blue-500/20'
               }`}>
                 {subLoading ? 'Cargando...' : (subscription?.role === 'admin' ? 'Premium Admin' : (isSubscriber ? 'Miembro Premium' : 'Nivel Gratis'))}
+              </div>
+
+              {/* Mini streak + coins */}
+              <div className="flex items-center justify-center gap-3 mt-4">
+                {streak !== undefined && <StreakBadge streak={streak} variant="compact" />}
+                {coinsBalance && (
+                  <span className="flex items-center gap-1 text-xs text-amber-500 font-bold">
+                    🪙 {coinsBalance.bronze + coinsBalance.silver + coinsBalance.gold + coinsBalance.diamond}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -251,6 +268,68 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
+
+            {/* Monedas Section */}
+            {coinsBalance && (
+              <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-10">
+                <h3 className="text-2xl font-black flex items-center gap-3 mb-6">
+                  <Coins className="w-6 h-6 text-amber-400" />
+                  Mis Monedas
+                </h3>
+                <CoinBalanceDisplay balance={coinsBalance} variant="full" />
+                <p className="text-xs text-white/30 mt-4">
+                  Gana monedas completando libros, escribiendo reseñas, manteniendo tu racha de lectura e invitando amigos.
+                </p>
+              </div>
+            )}
+
+            {/* Racha Section */}
+            {streak !== undefined && (
+              <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-10">
+                <h3 className="text-2xl font-black flex items-center gap-3 mb-6">
+                  <Flame className="w-6 h-6 text-orange-400" />
+                  Racha de Lectura
+                </h3>
+                <div className="flex items-center gap-4">
+                  <StreakBadge streak={streak} variant="full" />
+                  {streak === 0 && (
+                    <p className="text-sm text-white/40">Lee hoy para comenzar tu racha</p>
+                  )}
+                </div>
+                <div className="mt-6 space-y-2">
+                  <p className="text-xs text-white/30 font-semibold">Recompensas por racha:</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="text-center p-2 rounded-lg bg-white/5">
+                      <p className="text-xs font-bold text-amber-600 dark:text-amber-400">3 días</p>
+                      <p className="text-[10px] text-white/40">🪙 Bronce</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-white/5">
+                      <p className="text-xs font-bold text-amber-600 dark:text-amber-400">5 días</p>
+                      <p className="text-[10px] text-white/40">🪙 Bronce</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-white/5">
+                      <p className="text-xs font-bold text-yellow-500">10 días</p>
+                      <p className="text-[10px] text-white/40">🥇 Oro</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-white/5">
+                      <p className="text-xs font-bold text-cyan-400">30 días</p>
+                      <p className="text-[10px] text-white/40">💎 Diamante</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Referidos Section */}
+            {referralLink && (
+              <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-10">
+                <h3 className="text-2xl font-black flex items-center gap-3 mb-6">
+                  <Gift className="w-6 h-6 text-green-400" />
+                  Invita a un Amigo
+                </h3>
+                <ReferralQR referralLink={referralLink} referralCount={referralCount} />
+              </div>
+            )}
 
             {/* Seguridad Section */}
             <div className="bg-white/5 border border-white/10 rounded-[2.2rem] p-8">

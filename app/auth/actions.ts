@@ -35,6 +35,8 @@ export async function register(formData: FormData) {
     password: formData.get('password') as string,
   }
 
+  const referrerId = formData.get('referrer_id') as string | null
+
   const { error, data: signupData } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
@@ -49,11 +51,23 @@ export async function register(formData: FormData) {
   try {
     await supabase.rpc('track_event', {
       event_name: 'user_signed_up',
-      event_data: JSON.stringify({ method: 'email' }),
+      event_data: JSON.stringify({ method: 'email', referred: !!referrerId }),
       user_email: data.email,
     })
   } catch (trackError) {
     console.warn('[Analytics] Error al trackear registro:', trackError)
+  }
+
+  // 2.3.2 - Procesar referido si existe
+  if (referrerId && signupData?.user) {
+    try {
+      await supabase.rpc('track_referral', {
+        p_referrer_id: referrerId,
+        p_referred_id: signupData.user.id,
+      })
+    } catch (referralError) {
+      console.warn('[Referral] Error procesando referido:', referralError)
+    }
   }
 
   revalidatePath('/', 'layout')

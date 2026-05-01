@@ -7,16 +7,18 @@
 import { useBook, useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useCoins } from "@/hooks/useCoins";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2, BookmarkPlus, BookmarkCheck } from "lucide-react";
+import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2, BookmarkPlus, BookmarkCheck, Coins } from "lucide-react";
 import ReviewForm from "@/components/community/ReviewForm";
 import ReviewList from "@/components/community/ReviewList";
 import { addToLibrary } from "@/lib/books";
 import { addToLibraryAction, removeFromLibraryAction } from "@/lib/actions/library";
 import { createClientClient } from "@/lib/supabase";
+import { CoinRedemptionModal } from "@/components/book/CoinRedemptionModal";
 
 // 3.5.1 - Componente principal de la página de detalle
 export default function BookDetailPage() {
@@ -45,6 +47,8 @@ export default function BookDetailPage() {
 
   // 3.5.5.1 - Obtención del estado de suscripción del usuario
   const { data: subscription } = useSubscription(userId);
+  const { data: coinsBalance, redeemCoin } = useCoins(userId);
+  const [showCoinModal, setShowCoinModal] = useState(false);
 
   // 3.5.6 - Determinación del tipo de acceso
   const isPremiumBook = book?.is_premium !== false; // Por defecto es premium si no se especifica
@@ -138,6 +142,20 @@ export default function BookDetailPage() {
     } finally {
       setAddingToLib(false);
     }
+  };
+
+  const handleCoinRedeem = async (coinType: string) => {
+    if (!userId) return;
+    redeemCoin({ bookId: id, coinType: coinType as any }, {
+      onSuccess: (data) => {
+        if (data.success) {
+          toast.success(`¡Libro desbloqueado! Acceso por ${data.result?.days_granted} días`)
+          refetch()
+        } else {
+          toast.error(data.error || "Error al canjear")
+        }
+      },
+    })
   };
 
   // 3.5.9 - Estados de carga y error
@@ -322,6 +340,17 @@ export default function BookDetailPage() {
                         Activar Premium
                       </Link>
                     </div>
+
+                    {/* Botón de desbloqueo con monedas */}
+                    {coinsBalance && (coinsBalance.bronze + coinsBalance.silver + coinsBalance.gold + coinsBalance.diamond) > 0 && (
+                      <button
+                        onClick={() => setShowCoinModal(true)}
+                        className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold transition-all"
+                      >
+                        <Coins className="w-5 h-5" />
+                        Desbloquear con monedas
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -392,10 +421,22 @@ export default function BookDetailPage() {
                 </div>
              </div>
              
-             <ReviewList bookId={id} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+              <ReviewList bookId={id} />
+           </div>
+         </div>
+       </div>
+
+       {/* Coin Redemption Modal */}
+       {coinsBalance && (
+         <CoinRedemptionModal
+           isOpen={showCoinModal}
+           onClose={() => setShowCoinModal(false)}
+           balance={coinsBalance}
+           onRedeem={handleCoinRedeem}
+           bookTitle={book?.title || ''}
+           alreadyHasAccess={canRead}
+         />
+       )}
+     </div>
+   );
+ }

@@ -240,10 +240,10 @@ if (typeof window !== 'undefined') {
       return true;
     }
     
-    // 3. Verificar acceso específico en biblioteca (Compras permanentes o regalos)
+    // 3. Verificar acceso específico en biblioteca (Compras permanentes, regalos, o canjes con monedas)
     const { data: userBook } = await supabase
       .from("user_books")
-      .select("access_type")
+      .select("access_type, expires_at")
       .eq("user_id", userId)
       .eq("book_id", bookId)
       .maybeSingle();
@@ -256,6 +256,13 @@ if (typeof window !== 'undefined') {
       if (userBook.access_type === 'subscription' && isPremiumActive) {
         console.log(`[hasBookAccess] Acceso CONCEDIDO (Suscripción): ${book.title}`);
         return true;
+      }
+      if (userBook.access_type === 'coin_redemption') {
+        const expiresAt = userBook.expires_at ? new Date(userBook.expires_at) : null;
+        if (expiresAt && expiresAt > now) {
+          console.log(`[hasBookAccess] Acceso CONCEDIDO (Canje de Moneda): ${book.title}`);
+          return true;
+        }
       }
     }
 

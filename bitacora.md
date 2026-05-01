@@ -4,6 +4,78 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-04-30-GAMIFICATION] — Sistema de Monedas de Gamificación y Anti-Abuse
+
+### Objetivo
+Crear un sistema de monedas de 4 denominaciones (Bronce, Plata, Oro, Diamante) para gamificación, coexistiendo con la suscripción mensual. Monedas se ganan por logros y se canjean por acceso temporal a libros específicos.
+
+### Nuevas Tablas (Migración 013)
+- **`coins`**: Balance de monedas por usuario (bronze, silver, gold, diamond). UNIQUE(user_id, coin_type)
+- **`coin_transactions`**: Historial de todos los movimientos de monedas (ganar/gastar)
+- **`coin_redemptions`**: Canjes de monedas por acceso a libros. UNIQUE(user_id, book_id) — no se puede canjear el mismo libro 2 veces
+- **`streak_milestones`**: Tracking de milestones de racha alcanzados (anti-repetición)
+- **`referrals`**: Registro de referidos (referrer_id → referred_id)
+- **`monthly_limits_tracker`**: Tracker de límites mensuales anti-abuse
+
+### Modificación Existente
+- **`user_books.access_type`**: Añadido valor `'coin_redemption'` al CHECK constraint
+
+### RPCs Creados
+- **`add_coins()`**: Suma monedas con anti-abuse integrado (límites mensuales, milestone check)
+- **`redeem_coin()`**: Canjea moneda por acceso a libro, verifica límites, crea registro en user_books
+- **`track_referral()`**: Registra referido y otorga moneda de plata al referidor (anti-auto-referencia)
+- **`get_user_coins()`**: Obtiene balance del usuario
+- **`update_streak_and_check_milestones()`**: Actualiza racha de lectura y otorga monedas por milestones
+
+### Nuevos Archivos
+- `types/coins.ts` — Tipos TypeScript + constantes COIN_DAYS, COIN_COLORS, ANTI_ABUSE_LIMITS
+- `lib/actions/coins.ts` — Server actions: getUserCoins, redeemCoin, addCoins, updateStreak, etc.
+- `lib/streaks.ts` — Utilería de rachas con validación anti-abuse (min 2 min lectura)
+- `hooks/useCoins.ts` — Hooks: useCoins, useStreak, useReferral, useCoinTransactions, useCoinRedemptions
+- `components/ui/CoinBalance.tsx` — Display de balance de monedas
+- `components/profile/ReferralQR.tsx` — QR de referido + link copiable
+- `components/book/CoinRedemptionModal.tsx` — Modal de canje con 4 opciones de moneda
+- `components/gamification/StreakBadge.tsx` — Badge visual de racha de lectura
+- `components/gamification/BookCompletionQuiz.tsx` — Quiz de 5 preguntas al completar libro
+
+### Archivos Modificados
+- `supabase/migrations/013_coins_gamification.sql` — Nueva migración con todo el esquema
+- `lib/books.ts` — hasBookAccess() ahora verifica 'coin_redemption' con expires_at
+- `app/auth/actions.ts` — register() ahora procesa referido con ?ref= parameter
+- `app/(auth)/register/page.tsx` — Detecta ?ref= de URL y lo envía como hidden field
+- `components/Header.tsx` — Indicador de monedas + dropdown de balance
+- `app/(app)/profile/page.tsx` — Secciones: Mis Monedas, Racha, Invita a un Amigo (QR)
+- `app/(app)/book/[id]/page.tsx` — Botón "Desbloquear con monedas" + modal
+
+### Sistema Anti-Abuse Implementado
+| Protección | Detalle |
+|-----------|---------|
+| Reseñas spam | Máx 3 monedas/mes por reseñas |
+| Reseñas de baja calidad | Mínimo 50 caracteres + rating ≥ 3 estrellas |
+| Scroll al final del libro | Quiz de 5 preguntas al completar |
+| Progreso insuficiente para quiz | Mínimo 10% de lectura requerido |
+| Referidos fantasma | Máx 3 monedas/mes por referidos |
+| Auto-referencia | Verificación p_referrer_id ≠ p_referred_id |
+| Rachas artificiales | Mínimo 2 min de lectura para contar día |
+| Re-canje del mismo libro | UNIQUE(user_id, book_id) en coin_redemptions |
+| Acumulación masiva | Máx 5 canjes/mes en total |
+| Milestones repetidos | Tabla streak_milestones UNIQUE por user+milestone |
+
+### Valores de Monedas
+| Moneda | Acceso | Se gana por |
+|--------|--------|-------------|
+| 🪙 Bronce | 3 días | Reseña, completar libro, racha 3/5 días |
+| 🥈 Plata | 7 días | Referir un amigo |
+| 🥇 Oro | 14 días | Racha de 10 días |
+| 💎 Diamante | 30 días | Racha de 30 días |
+
+### Notas
+- Migración 013 debe ejecutarse en Supabase SQL Editor antes de usar
+- Trigger `on_user_created_init_coins` auto-crea 4 registros de monedas (0 cada una) al registrarse
+- Coexiste con suscripción mensual de $99 MXN sin conflictos
+
+---
+
 ## [2026-04-24-F] - Corrección de Acceso Premium y Precio de Stripe
 - **Stripe Price ID:** Se corrigió una discrepancia en el nombre de la variable de entorno en `lib/stripe.ts`. Cambiado `STRIPE_PREMIUM_PRICE_ID` por `STRIPE_SUBSCRIPTION_PRICE_ID`.
 - **Acceso Premium:** Se refactorizó la lógica en `hasBookAccess` para permitir que usuarios activos tengan acceso inmediato a libros Premium, arreglando el flujo de Auto-Add.
