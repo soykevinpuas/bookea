@@ -89,10 +89,10 @@ export const COIN_LABELS: Record<CoinType, string> = {
 };
 
 export const COIN_ICONS: Record<CoinType, string> = {
-  bronze: '🪙',
-  silver: '🥈',
-  gold: '🥇',
-  diamond: '💎',
+  bronze: 'Bronce',
+  silver: 'Plata',
+  gold: 'Oro',
+  diamond: 'Diamante',
 };
 
 export const SOURCE_LABELS: Record<string, string> = {

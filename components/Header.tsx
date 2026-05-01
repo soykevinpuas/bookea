@@ -10,7 +10,7 @@ import { UserMenu } from "./UserMenu";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useProfile } from "@/hooks/useAvatars";
 import { useCoins } from "@/hooks/useCoins";
-import { Zap, Loader2, Coins } from "lucide-react";
+import { Zap, Loader2, Coins, Circle } from "lucide-react";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { AnimalEngine } from "./avatars/AnimalEngine";
 import { CoinBalanceDisplay } from "@/components/ui/CoinBalance";
@@ -114,23 +114,25 @@ export function Header({ initialUser = null }: HeaderProps) {
              user ? (
                // Usuario autenticado: mostrar monedas, premium, avatar y menú de usuario
                <div className="flex items-center gap-3">
-                 {/* Botón de monedas */}
-                 <button
-                   onClick={() => setShowCoins(!showCoins)}
-                   className="relative flex items-center gap-1 px-2 py-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-all text-xs font-bold hover:bg-amber-500/20"
-                 >
-                   <Coins className="w-3.5 h-3.5" />
-                   {coinsBalance && (
-                     <span>{coinsBalance.bronze + coinsBalance.silver + coinsBalance.gold + coinsBalance.diamond}</span>
-                   )}
-                 </button>
+                 {/* Botón de monedas con dropdown */}
+                 <div className="relative">
+                   <button
+                     onClick={() => setShowCoins(!showCoins)}
+                     className="flex items-center gap-1 px-2 py-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-all text-xs font-bold hover:bg-amber-500/20"
+                   >
+                     <Circle className="w-3 h-3 fill-current" />
+                     {coinsBalance && (
+                       <span>{coinsBalance.bronze + coinsBalance.silver + coinsBalance.gold + coinsBalance.diamond}</span>
+                     )}
+                   </button>
 
-                 {/* Dropdown de monedas */}
-                 {showCoins && coinsBalance && (
-                   <div className="absolute top-14 right-20 z-50">
-                     <CoinBalanceDisplay balance={coinsBalance} variant="full" />
-                   </div>
-                 )}
+                   {/* Dropdown vertical debajo del botón */}
+                   {showCoins && coinsBalance && (
+                     <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50">
+                       <CoinBalanceDisplay balance={coinsBalance} variant="full" />
+                     </div>
+                   )}
+                 </div>
 
                  <Link
                   href="/subscribe"

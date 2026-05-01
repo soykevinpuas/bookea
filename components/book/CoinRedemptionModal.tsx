@@ -3,7 +3,8 @@
 
 import { useState } from 'react'
 import { X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
-import { CoinBalance, COIN_DAYS, COIN_COLORS, COIN_LABELS, COIN_ICONS, ANTI_ABUSE_LIMITS } from '@/types/coins'
+import { CoinBalance, COIN_DAYS, COIN_COLORS, COIN_LABELS, ANTI_ABUSE_LIMITS } from '@/types/coins'
+import { Circle, Medal, Award, Gem } from 'lucide-react'
 
 interface CoinRedemptionModalProps {
   isOpen: boolean
@@ -12,6 +13,13 @@ interface CoinRedemptionModalProps {
   onRedeem: (coinType: string) => void
   bookTitle: string
   alreadyHasAccess: boolean
+}
+
+const COIN_LUCIDE_ICONS = {
+  bronze: Circle,
+  silver: Medal,
+  gold: Award,
+  diamond: Gem,
 }
 
 const COIN_OPTIONS = [
@@ -134,7 +142,10 @@ export function CoinRedemptionModal({
                       } ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{COIN_ICONS[type]}</span>
+                        {(() => {
+                          const Icon = COIN_LUCIDE_ICONS[type]
+                          return <Icon className="w-6 h-6" style={{ color }} />
+                        })()}
                         <div className="text-left">
                           <p className="text-sm font-bold text-gray-900 dark:text-white">{COIN_LABELS[type]}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">{days} días de acceso</p>

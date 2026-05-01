@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useBook } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
+import { useCoins } from "@/hooks/useCoins";
 import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
 import { Highlight } from "@/types/reading";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
@@ -18,6 +19,8 @@ import { createClientClient } from "@/lib/supabase";
 import { addToLibrary, hasBookAccess } from "@/lib/books";
 import { addToLibraryAction } from "@/lib/actions/library";
 import type { EpubContents } from "@/types/epub";
+import { recordReadingSession, canCountStreakDay } from "@/lib/streaks";
+import { BookCompletionQuiz } from "@/components/gamification/BookCompletionQuiz";
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 export default function ReaderPage() {
@@ -64,6 +67,7 @@ export default function ReaderPage() {
   const { userId } = useUserId();
   const { data: subscription } = useSubscription(userId);
   const queryClient = useQueryClient();
+  const { updateStreak } = useCoins(userId);
   
   // 4.2.1 - Estado local del lector
   const [isLoading, setIsLoading] = useState(true);
@@ -79,6 +83,18 @@ export default function ReaderPage() {
       }
     };
   }, [userId, queryClient]);
+
+  // 4.2.1.1 - Tracking de racha de lectura: inicia sesión al montar, actualiza al desmontar
+  useEffect(() => {
+    if (!userId) return;
+    recordReadingSession(bookId);
+
+    return () => {
+      if (canCountStreakDay()) {
+        updateStreak?.();
+      }
+    };
+  }, [userId, bookId]);
 
   const [fontSize, setFontSize] = useState(18);
   const [fontFamily, setFontFamily] = useState<string>("sans");
@@ -96,6 +112,19 @@ export default function ReaderPage() {
   const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [editingNote, setEditingNote] = useState<{ id: string; note: string } | null>(null);
   const [isSavingHighlight, setIsSavingHighlight] = useState(false);
+
+  // 4.2.2.5 - Estado para gamificación (quiz de finalización y racha)
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [bookCompleted, setBookCompleted] = useState(false);
+  const [alreadyClaimedCoin, setAlreadyClaimedCoin] = useState(false);
+
+  // 4.2.1.2 - Detectar cuando el libro se completa (100%) y mostrar quiz
+  useEffect(() => {
+    if (progress >= 99.5 && !bookCompleted && !alreadyClaimedCoin) {
+      setBookCompleted(true);
+      setShowQuiz(true);
+    }
+  }, [progress, bookCompleted, alreadyClaimedCoin]);
 
   const themeRef = useRef<string | undefined>(theme);
   const fontRef = useRef<string>(fontFamily);
@@ -841,6 +870,37 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     );
   }
 
+  // 4.2.10 - Handler para completar libro (pasar quiz)
+  const handleBookComplete = async () => {
+    if (alreadyClaimedCoin) return;
+    try {
+      const supabase = createClientClient();
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return;
+
+      const { data: result, error } = await supabase
+        .rpc('add_coins', {
+          p_user_id: user.user.id,
+          p_coin_type: 'bronze',
+          p_amount: 1,
+          p_source: 'complete_book',
+          p_book_id: bookId,
+        });
+
+      if (error) {
+        console.error('[BookComplete] RPC error:', error.message);
+        return;
+      }
+
+      if (result?.success) {
+        toast.success('¡Libro completado! Ganaste una moneda de bronce 🪙');
+        setAlreadyClaimedCoin(true);
+      }
+    } catch (err) {
+      console.error('[BookComplete] Exception:', err);
+    }
+  };
+
   if (error) {
     return (
       <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-[#0a0a0a] retro:bg-[#0d1117] text-white px-4 text-center">
@@ -1205,6 +1265,16 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
           </button>
         </div>
       </div>
+
+      {/* Quiz de finalización de libro */}
+      {book && (
+        <BookCompletionQuiz
+          isOpen={showQuiz}
+          onClose={() => setShowQuiz(false)}
+          onComplete={handleBookComplete}
+          bookTitle={book.title}
+        />
+      )}
     </div>
   );
 }

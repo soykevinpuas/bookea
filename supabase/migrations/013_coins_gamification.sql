@@ -459,25 +459,31 @@ BEGIN
     SET reading_streak = v_current_streak, updated_at = NOW()
     WHERE user_id = p_user_id;
 
-    -- Verificar milestones y otorgar monedas
+    -- Verificar milestones y otorgar monedas (solo en milestones exactos)
     DECLARE
         v_coins_awarded JSONB := '[]'::jsonb;
         v_milestone_result JSONB;
         v_coin_type TEXT;
+        v_milestone_source TEXT;
     BEGIN
-        IF v_current_streak >= 30 THEN
-            v_coin_type := 'diamond';
-        ELSIF v_current_streak >= 10 THEN
+        -- Solo otorgar en milestones exactos
+        IF v_current_streak = 3 THEN
+            v_coin_type := 'bronze';
+            v_milestone_source := 'streak_3';
+        ELSIF v_current_streak = 5 THEN
+            v_coin_type := 'bronze';
+            v_milestone_source := 'streak_5';
+        ELSIF v_current_streak = 10 THEN
             v_coin_type := 'gold';
-        ELSIF v_current_streak >= 5 THEN
-            v_coin_type := 'bronze';
-        ELSIF v_current_streak >= 3 THEN
-            v_coin_type := 'bronze';
+            v_milestone_source := 'streak_10';
+        ELSIF v_current_streak = 30 THEN
+            v_coin_type := 'diamond';
+            v_milestone_source := 'streak_30';
         ELSE
             RETURN jsonb_build_object('success', true, 'streak', v_current_streak, 'coins_awarded', '[]'::jsonb);
         END IF;
 
-        v_milestone_result := public.add_coins(p_user_id, v_coin_type, 1, 'streak_' || v_current_streak::TEXT, NULL);
+        v_milestone_result := public.add_coins(p_user_id, v_coin_type, 1, v_milestone_source, NULL);
 
         IF (v_milestone_result->>'success')::BOOLEAN THEN
             v_coins_awarded := jsonb_build_array(

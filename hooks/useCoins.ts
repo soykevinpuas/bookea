@@ -76,6 +76,7 @@ export function useCoins(userId: string | undefined) {
     ...query,
     redeemCoin: redeemMutation.mutate,
     isRedeeming: redeemMutation.isPending,
+    updateStreak: updateStreakAction,
   }
 }
 

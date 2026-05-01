@@ -2,7 +2,7 @@
 
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles, BookOpen, Coins, Flame, Gift } from "lucide-react";
+import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles, BookOpen, Coins, Flame, Gift, Circle, BookOpenCheck, CalendarDays, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useUserId } from "@/hooks/useUser";
@@ -173,23 +173,34 @@ export default function ProfilePage() {
                 </h2>
               )}
               
-              <p className="text-xs text-white/30 truncate mb-8 px-4">{dbUser?.email}</p>
-              
-               <div className={`inline-flex items-center gap-2 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] w-fit ${
+               <p className="text-xs text-white/30 truncate mb-4 px-4">{dbUser?.email}</p>
+
+              {/* Mini stats: racha + libros leídos + monedas */}
+              <div className="grid grid-cols-3 gap-2 px-4 mb-6">
+                <div className="text-center p-2 rounded-xl bg-white/5 border border-white/5">
+                  <Flame className="w-4 h-4 mx-auto text-orange-400 mb-1" />
+                  <p className="text-sm font-bold text-white">{streak ?? 0}</p>
+                  <p className="text-[9px] text-white/30">Racha</p>
+                </div>
+                <div className="text-center p-2 rounded-xl bg-white/5 border border-white/5">
+                  <BookOpenCheck className="w-4 h-4 mx-auto text-blue-400 mb-1" />
+                  <p className="text-sm font-bold text-white">{profile?.total_books_read ?? 0}</p>
+                  <p className="text-[9px] text-white/30">Leídos</p>
+                </div>
+                <div className="text-center p-2 rounded-xl bg-white/5 border border-white/5">
+                  <Circle className="w-4 h-4 mx-auto text-amber-400 fill-current mb-1" />
+                  <p className="text-sm font-bold text-white">
+                    {coinsBalance ? coinsBalance.bronze + coinsBalance.silver + coinsBalance.gold + coinsBalance.diamond : 0}
+                  </p>
+                  <p className="text-[9px] text-white/30">Monedas</p>
+                </div>
+              </div>
+
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.15em] mx-auto ${
                 subLoading ? 'bg-white/5 text-white/20 animate-pulse border border-white/10' :
                 isSubscriber ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-600/10 text-blue-500 border border-blue-500/20'
               }`}>
                 {subLoading ? 'Cargando...' : (subscription?.role === 'admin' ? 'Premium Admin' : (isSubscriber ? 'Miembro Premium' : 'Nivel Gratis'))}
-              </div>
-
-              {/* Mini streak + coins */}
-              <div className="flex items-center justify-center gap-3 mt-4">
-                {streak !== undefined && <StreakBadge streak={streak} variant="compact" />}
-                {coinsBalance && (
-                  <span className="flex items-center gap-1 text-xs text-amber-500 font-bold">
-                    🪙 {coinsBalance.bronze + coinsBalance.silver + coinsBalance.gold + coinsBalance.diamond}
-                  </span>
-                )}
               </div>
             </div>
 
@@ -269,52 +280,45 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Monedas Section */}
+            {/* Gamificación: Monedas + Racha */}
             {coinsBalance && (
-              <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-10">
-                <h3 className="text-2xl font-black flex items-center gap-3 mb-6">
-                  <Coins className="w-6 h-6 text-amber-400" />
-                  Mis Monedas
+              <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-6 sm:p-8">
+                <h3 className="text-lg font-black flex items-center gap-2 mb-4">
+                  <Trophy className="w-5 h-5 text-amber-400" />
+                  Progreso
                 </h3>
-                <CoinBalanceDisplay balance={coinsBalance} variant="full" />
-                <p className="text-xs text-white/30 mt-4">
-                  Gana monedas completando libros, escribiendo reseñas, manteniendo tu racha de lectura e invitando amigos.
-                </p>
-              </div>
-            )}
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Monedas */}
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Coins className="w-4 h-4 text-amber-400" />
+                      <span className="text-sm font-bold">Monedas</span>
+                    </div>
+                    <CoinBalanceDisplay balance={coinsBalance} variant="full" />
+                  </div>
 
-            {/* Racha Section */}
-            {streak !== undefined && (
-              <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-10">
-                <h3 className="text-2xl font-black flex items-center gap-3 mb-6">
-                  <Flame className="w-6 h-6 text-orange-400" />
-                  Racha de Lectura
-                </h3>
-                <div className="flex items-center gap-4">
-                  <StreakBadge streak={streak} variant="full" />
-                  {streak === 0 && (
-                    <p className="text-sm text-white/40">Lee hoy para comenzar tu racha</p>
-                  )}
-                </div>
-                <div className="mt-6 space-y-2">
-                  <p className="text-xs text-white/30 font-semibold">Recompensas por racha:</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <div className="text-center p-2 rounded-lg bg-white/5">
-                      <p className="text-xs font-bold text-amber-600 dark:text-amber-400">3 días</p>
-                      <p className="text-[10px] text-white/40">🪙 Bronce</p>
+                  {/* Racha */}
+                  <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Flame className="w-4 h-4 text-orange-400" />
+                      <span className="text-sm font-bold">Racha: {streak ?? 0} días</span>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-white/5">
-                      <p className="text-xs font-bold text-amber-600 dark:text-amber-400">5 días</p>
-                      <p className="text-[10px] text-white/40">🪙 Bronce</p>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      <div className="text-center p-1.5 rounded bg-white/5">
+                        <p className="text-[10px] font-bold text-amber-500">3d</p>
+                      </div>
+                      <div className="text-center p-1.5 rounded bg-white/5">
+                        <p className="text-[10px] font-bold text-amber-500">5d</p>
+                      </div>
+                      <div className="text-center p-1.5 rounded bg-white/5">
+                        <p className="text-[10px] font-bold text-yellow-500">10d</p>
+                      </div>
+                      <div className="text-center p-1.5 rounded bg-white/5">
+                        <p className="text-[10px] font-bold text-cyan-400">30d</p>
+                      </div>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-white/5">
-                      <p className="text-xs font-bold text-yellow-500">10 días</p>
-                      <p className="text-[10px] text-white/40">🥇 Oro</p>
-                    </div>
-                    <div className="text-center p-2 rounded-lg bg-white/5">
-                      <p className="text-xs font-bold text-cyan-400">30 días</p>
-                      <p className="text-[10px] text-white/40">💎 Diamante</p>
-                    </div>
+                    <p className="text-[10px] text-white/30 mt-2">Lee 2+ min para contar</p>
                   </div>
                 </div>
               </div>
@@ -322,9 +326,9 @@ export default function ProfilePage() {
 
             {/* Referidos Section */}
             {referralLink && (
-              <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-10">
-                <h3 className="text-2xl font-black flex items-center gap-3 mb-6">
-                  <Gift className="w-6 h-6 text-green-400" />
+              <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-6 sm:p-8">
+                <h3 className="text-lg font-black flex items-center gap-2 mb-4">
+                  <Gift className="w-5 h-5 text-green-400" />
                   Invita a un Amigo
                 </h3>
                 <ReferralQR referralLink={referralLink} referralCount={referralCount} />
