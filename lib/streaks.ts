@@ -1,45 +1,50 @@
 // 4.x - Utilería para gestión de rachas de lectura con anti-abuse
-// Un día cuenta como "activo" solo si el usuario leyó al menos 2 minutos o avanzó 1 página
+// Un día cuenta como "activo" solo si el usuario leyó al menos 2 minutos
 
 import { createClientClient } from '@/lib/supabase'
 import { ANTI_ABUSE_LIMITS } from '@/types/coins'
 
 const STREAK_SESSION_KEY = 'bookea-streak-session-start'
+const STREAK_UPDATED_KEY = 'bookea-streak-updated-date'
 
-export async function recordReadingSession(bookId: string): Promise<void> {
+export function startReadingSession(): void {
   if (typeof window === 'undefined') return
-
-  const sessionStart = sessionStorage.getItem(STREAK_SESSION_KEY)
-
-  if (!sessionStart) {
+  if (!sessionStorage.getItem(STREAK_SESSION_KEY)) {
     sessionStorage.setItem(STREAK_SESSION_KEY, Date.now().toString())
-    return
-  }
-
-  const elapsed = Date.now() - parseInt(sessionStart, 10)
-  const minMinutes = ANTI_ABUSE_LIMITS.min_reading_minutes_for_streak
-  const minMs = minMinutes * 60 * 1000
-
-  if (elapsed >= minMs) {
-    await updateStreakOnServer()
   }
 }
 
-async function updateStreakOnServer() {
-  try {
-    const supabase = createClientClient()
-    const { data: { user } } = await supabase.auth.getUser()
+export function endReadingSession(): void {
+  if (typeof window === 'undefined') return
+  const elapsed = getReadingSessionElapsedMs()
+  const minMs = ANTI_ABUSE_LIMITS.min_reading_minutes_for_streak * 60 * 1000
 
-    if (!user) return
+  if (elapsed >= minMs) {
+    const today = new Date().toDateString()
+    const lastUpdated = sessionStorage.getItem(STREAK_UPDATED_KEY)
 
-    const { data } = await supabase
-      .rpc('update_streak_and_check_milestones', { p_user_id: user.id })
-
-    if (data?.coins_awarded && data.coins_awarded.length > 0) {
-      console.log(`[Streak] ¡Monedas otorgadas! Racha: ${data.streak}`, data.coins_awarded)
+    if (lastUpdated !== today) {
+      sessionStorage.setItem(STREAK_UPDATED_KEY, today)
+      triggerStreakUpdate()
     }
-  } catch (err) {
-    console.warn('[Streak] Error actualizando racha:', err)
+  }
+  sessionStorage.removeItem(STREAK_SESSION_KEY)
+}
+
+function triggerStreakUpdate(): void {
+  if (typeof window === 'undefined') return
+
+  const data = new FormData()
+  data.append('action', 'update_streak')
+
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon('/api/streak', data)
+  } else {
+    fetch('/api/streak', {
+      method: 'POST',
+      body: data,
+      keepalive: true,
+    }).catch(() => {})
   }
 }
 
@@ -55,10 +60,27 @@ export function getReadingSessionElapsedMs(): number {
 export function resetReadingSession(): void {
   if (typeof window === 'undefined') return
   sessionStorage.removeItem(STREAK_SESSION_KEY)
+  sessionStorage.removeItem(STREAK_UPDATED_KEY)
 }
 
-export function canCountStreakDay(): boolean {
-  const elapsed = getReadingSessionElapsedMs()
-  const minMs = ANTI_ABUSE_LIMITS.min_reading_minutes_for_streak * 60 * 1000
-  return elapsed >= minMs
+export async function updateStreakOnServer(): Promise<{ streak: number; coins: Array<{ coin_type: string; amount: number }> | null }> {
+  const supabase = createClientClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { streak: 0, coins: null }
+
+  try {
+    const { data, error } = await supabase
+      .rpc('update_streak_and_check_milestones', { p_user_id: user.id })
+
+    if (error) {
+      console.warn('[Streak] RPC error:', error.message)
+      return { streak: 0, coins: null }
+    }
+
+    return { streak: data?.streak || 0, coins: data?.coins_awarded || null }
+  } catch (err) {
+    console.warn('[Streak] Exception:', err)
+    return { streak: 0, coins: null }
+  }
 }

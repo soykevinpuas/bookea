@@ -91,7 +91,7 @@ export default function ReaderPage() {
 
     return () => {
       if (canCountStreakDay()) {
-        updateStreak?.();
+        updateStreak().catch(() => {});
       }
     };
   }, [userId, bookId]);
@@ -877,6 +877,18 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       const supabase = createClientClient();
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
+
+      // Incrementar total_books_read
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('total_books_read')
+        .eq('user_id', user.user.id)
+        .single();
+
+      await supabase
+        .from('profiles')
+        .update({ total_books_read: (profile?.total_books_read || 0) + 1 })
+        .eq('user_id', user.user.id);
 
       const { data: result, error } = await supabase
         .rpc('add_coins', {
