@@ -21,6 +21,7 @@ import { addToLibraryAction } from "@/lib/actions/library";
 import type { EpubContents } from "@/types/epub";
 import { recordReadingSession, canCountStreakDay } from "@/lib/streaks";
 import { BookCompletionQuiz } from "@/components/gamification/BookCompletionQuiz";
+import { completeBookAndAwardCoinAction } from "@/lib/actions/coins";
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 export default function ReaderPage() {
@@ -955,39 +956,19 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
   const handleBookComplete = async () => {
     if (alreadyClaimedCoin) return;
     try {
-      const supabase = createClientClient();
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return;
+      const result = await completeBookAndAwardCoinAction(bookId);
 
-      // Incrementar total_books_read
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('total_books_read')
-        .eq('user_id', user.user.id)
-        .single();
-
-      await supabase
-        .from('profiles')
-        .update({ total_books_read: (profile?.total_books_read || 0) + 1 })
-        .eq('user_id', user.user.id);
-
-      const { data: result, error } = await supabase
-        .rpc('add_coins', {
-          p_user_id: user.user.id,
-          p_coin_type: 'bronze',
-          p_amount: 1,
-          p_source: 'complete_book',
-          p_book_id: bookId,
-        });
-
-      if (error) {
-        console.error('[BookComplete] RPC error:', error.message);
-        return;
-      }
-
-      if (result?.success) {
-        toast.success('¡Libro completado! Ganaste una moneda de bronce 🪙');
+      if (result.success) {
+        toast.success('¡Libro completado! Has ganado una moneda de bronce 🪙');
         setAlreadyClaimedCoin(true);
+        // Invalidar queries para refrescar el balance en otros componentes
+        queryClient.invalidateQueries({ queryKey: ['user-coins', userId] });
+      } else {
+        if (result.error === 'insufficient_progress') {
+          toast.error('Debes leer un poco más del libro para ganar la moneda.');
+        } else {
+          console.error('[BookComplete] Error:', result.error);
+        }
       }
     } catch (err) {
       console.error('[BookComplete] Exception:', err);
