@@ -311,7 +311,7 @@ export async function getReferralLinkAction() {
     return { success: false, error: 'No autorizado', link: '' }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://bookea.mx')
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://bookea-nine.vercel.app'
   const referralLink = `${baseUrl}/?ref=${user.id}`
 
   return { success: true, link: referralLink, userId: user.id }
