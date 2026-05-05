@@ -1,14 +1,15 @@
 // 6.x - Quiz de finalización de lectura para otorgar monedas
 'use client'
 
-import { useState } from 'react'
-import { CheckCircle, X, Award } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { CheckCircle, X, Award, Loader2 } from 'lucide-react'
 
 interface BookCompletionQuizProps {
   isOpen: boolean
   onClose: () => void
   onComplete: () => void
   bookTitle: string
+  bookId: string
 }
 
 interface QuizQuestion {
@@ -17,25 +18,45 @@ interface QuizQuestion {
   correctIndex: number
 }
 
-const QUIZ_QUESTIONS: QuizQuestion[][] = [
-  [
-    { question: '¿De qué trataba principalmente el libro?', options: ['No recuerdo', 'Lo leí por completo', 'Solo vi algunas partes'], correctIndex: 1 },
-    { question: '¿Cuál era el tema central?', options: ['No estoy seguro', 'El desarrollo del argumento principal', 'Solo el inicio'], correctIndex: 1 },
-    { question: '¿Qué opinas de la conclusión?', options: ['No la leí', 'Me pareció coherente con el resto', 'N/A'], correctIndex: 1 },
-    { question: '¿Recomendarías este libro?', options: ['Sí', 'No', 'Tal vez'], correctIndex: 0 },
-    { question: '¿Qué parte te gustó más?', options: ['El inicio', 'El desarrollo', 'La conclusión'], correctIndex: 1 },
-  ],
+const DEFAULT_QUESTIONS: QuizQuestion[] = [
+  { question: '¿De qué trataba principalmente el libro?', options: ['No recuerdo', 'Lo leí por completo', 'Solo vi algunas partes'], correctIndex: 1 },
+  { question: '¿Cuál era el tema central?', options: ['No estoy seguro', 'El desarrollo del argumento principal', 'Solo el inicio'], correctIndex: 1 },
+  { question: '¿Qué opinas de la conclusión?', options: ['No la leí', 'Me pareció coherente con el resto', 'N/A'], correctIndex: 1 },
+  { question: '¿Recomendarías este libro?', options: ['Sí', 'No', 'Tal vez'], correctIndex: 0 },
+  { question: '¿Qué parte te gustó más?', options: ['El inicio', 'El desarrollo', 'La conclusión'], correctIndex: 1 },
 ]
 
-export function BookCompletionQuiz({ isOpen, onClose, onComplete, bookTitle }: BookCompletionQuizProps) {
+export function BookCompletionQuiz({ isOpen, onClose, onComplete, bookTitle, bookId }: BookCompletionQuizProps) {
+  const [questions, setQuestions] = useState<QuizQuestion[]>(DEFAULT_QUESTIONS)
+  const [isLoading, setIsLoading] = useState(false)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [answers, setAnswers] = useState<number[]>([])
   const [finished, setFinished] = useState(false)
   const [allCorrect, setAllCorrect] = useState(false)
 
+  useEffect(() => {
+    if (isOpen && bookId) {
+      const fetchQuiz = async () => {
+        setIsLoading(true)
+        try {
+          const res = await fetch(`/api/books/${bookId}/quiz`)
+          const data = await res.json()
+          if (data.questions && data.questions.length > 0) {
+            setQuestions(data.questions)
+          }
+        } catch (err) {
+          console.error("Error fetching quiz questions, using defaults:", err)
+          setQuestions(DEFAULT_QUESTIONS)
+        } finally {
+          setIsLoading(false)
+        }
+      }
+      fetchQuiz()
+    }
+  }, [isOpen, bookId])
+
   if (!isOpen) return null
 
-  const questions = QUIZ_QUESTIONS[0]
   const q = questions[currentQuestion]
 
   const handleAnswer = (optionIndex: number) => {
@@ -85,7 +106,12 @@ export function BookCompletionQuiz({ isOpen, onClose, onComplete, bookTitle }: B
 
         {/* Content */}
         <div className="px-6 py-4 space-y-4">
-          {!finished ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Generando preguntas inteligentes...</p>
+            </div>
+          ) : !finished ? (
             <>
               {/* Progress */}
               <div className="flex items-center gap-2">

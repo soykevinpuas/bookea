@@ -1393,6 +1393,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
           onClose={() => setShowQuiz(false)}
           onComplete={handleBookComplete}
           bookTitle={book.title}
+          bookId={bookId}
         />
       )}
     </div>
