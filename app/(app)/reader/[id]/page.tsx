@@ -118,6 +118,11 @@ export default function ReaderPage() {
   const [bookCompleted, setBookCompleted] = useState(false);
   const [alreadyClaimedCoin, setAlreadyClaimedCoin] = useState(false);
 
+  // 4.2.2.6 - Estado para Diccionario Inteligente
+  const [dictionaryData, setDictionaryData] = useState<{ word: string; definition: string; context: string } | null>(null);
+  const [isDictionaryLoading, setIsDictionaryLoading] = useState(false);
+  const [dictionaryPos, setDictionaryPos] = useState<{ x: number; y: number } | null>(null);
+
   // 4.2.1.2 - Detectar cuando el libro se completa (100%) y mostrar quiz
   useEffect(() => {
     if (progress >= 99.5 && !bookCompleted && !alreadyClaimedCoin) {
@@ -140,6 +145,26 @@ export default function ReaderPage() {
     { name: "Azul", value: "#60a5fa" },
     { name: "Rosa", value: "#f472b6" },
   ];
+
+  const handleFetchDefinition = async (word: string, context: string) => {
+    setIsDictionaryLoading(true);
+    setDictionaryData(null);
+    try {
+      const response = await fetch('/api/dictionary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word, context })
+      });
+      const data = await response.json();
+      if (data.definition) {
+        setDictionaryData({ word, definition: data.definition, context });
+      }
+    } catch (err) {
+      console.error("Error fetching definition:", err);
+    } finally {
+      setIsDictionaryLoading(false);
+    }
+  };
 
   // 4.2.2.2 - Validador de contraste entre texto y fondo
   const handleSetTextColor = (color: string) => {
@@ -393,7 +418,7 @@ export default function ReaderPage() {
             contents.document.head.appendChild(style);
             
             // 4.2.5.3 - Event Listener del Iframe: Detecta clicks en toda la hoja para accionar la interfaz HUD central, en lugar de pasar de página
-            contents.document.documentElement.addEventListener('click', (e: MouseEvent) => {
+            contents.document.documentElement.addEventListener('click', async (e: MouseEvent) => {
               const selection = contents.window?.getSelection();
               const text = selection?.toString() || "";
               
@@ -403,8 +428,54 @@ export default function ReaderPage() {
                 return;
               }
               
+              // Lógica de Diccionario: Si el HUD está oculto, intentamos definir palabra
+              if (!showControls) {
+                const target = e.target as HTMLElement;
+                // Evitar disparar si se hace clic en imágenes o elementos interactivos
+                if (target.tagName === 'IMG' || target.tagName === 'A') return;
+
+                const doc = contents.document;
+                let range;
+                let textNode;
+                let offset;
+
+                if (doc.caretRangeFromPoint) {
+                  range = doc.caretRangeFromPoint(e.clientX, e.clientY);
+                  textNode = range.startContainer;
+                  offset = range.startOffset;
+                }
+
+                if (textNode?.nodeType === 3) {
+                  const fullText = textNode.textContent || "";
+                  // Encontrar límites de la palabra
+                  const start = fullText.lastIndexOf(" ", offset) + 1;
+                  let end = fullText.indexOf(" ", offset);
+                  if (end === -1) end = fullText.length;
+                  const word = fullText.substring(start, end).replace(/[.,!?;:()]/g, "").trim();
+
+                  if (word.length > 2) {
+                    // Obtener contexto (oración aproximada)
+                    const sStart = Math.max(0, offset - 60);
+                    const sEnd = Math.min(fullText.length, offset + 60);
+                    const context = fullText.substring(sStart, sEnd).trim();
+
+                    // Posición relativa al visor para el tooltip
+                    const rect = viewerRef.current?.getBoundingClientRect();
+                    if (rect) {
+                      setDictionaryPos({ 
+                        x: e.clientX, 
+                        y: e.clientY 
+                      });
+                      handleFetchDefinition(word, context);
+                    }
+                    return; // Importante: si es una palabra, no abrimos el HUD
+                  }
+                }
+              }
+
               toggleControls();
               setActiveSelection(null);
+              setDictionaryData(null);
             });
           });
         }
@@ -1237,6 +1308,43 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
           )}
         </div>
       </div>
+
+      {/* 4.2.18 - Tooltip de Diccionario Inteligente */}
+      {dictionaryPos && (isDictionaryLoading || dictionaryData) && (
+        <div 
+          className="fixed z-[80] pointer-events-none"
+          style={{ 
+            left: `${dictionaryPos.x}px`, 
+            top: `${dictionaryPos.y}px`,
+            transform: 'translate(-50%, calc(-100% - 20px))' // Posicionar arriba de la palabra con margen
+          }}
+        >
+          <div className="bg-white/95 dark:bg-[#1a1a1a]/95 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl p-4 max-w-[280px] pointer-events-auto animate-in fade-in zoom-in duration-200">
+            {isDictionaryLoading ? (
+              <div className="flex items-center gap-2 py-2 px-4">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                <span className="text-xs font-medium opacity-70">Definiendo...</span>
+              </div>
+            ) : dictionaryData && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-xs font-black uppercase tracking-widest text-blue-500 dark:text-blue-400">
+                    {dictionaryData.word}
+                  </span>
+                  <button onClick={() => setDictionaryPos(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+                <p className="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300 font-medium">
+                  {dictionaryData.definition}
+                </p>
+              </div>
+            )}
+          </div>
+          {/* Triangulito del tooltip */}
+          <div className="w-3 h-3 bg-white/95 dark:bg-[#1a1a1a]/95 border-b border-r border-gray-200 dark:border-white/10 rotate-45 mx-auto -mt-1.5 shadow-xl"></div>
+        </div>
+      )}
 
       {/* 4.2.17 - Barra inferior central (Bottom HUD) de navegación de hojas y rastreo de progreso porcentual estricto */}
       <div 
