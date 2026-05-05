@@ -434,15 +434,19 @@ export default function ReaderPage() {
                 // Evitar disparar si se hace clic en imágenes o elementos interactivos
                 if (target.tagName === 'IMG' || target.tagName === 'A') return;
 
-                const doc = contents.document;
+                const doc = contents?.document;
+                if (!doc) return;
+
                 let range;
                 let textNode;
                 let offset;
 
                 if (doc.caretRangeFromPoint) {
                   range = doc.caretRangeFromPoint(e.clientX, e.clientY);
-                  textNode = range.startContainer;
-                  offset = range.startOffset;
+                  if (range) {
+                    textNode = range.startContainer;
+                    offset = range.startOffset;
+                  }
                 }
 
                 if (textNode?.nodeType === 3) {
