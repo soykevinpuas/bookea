@@ -8,10 +8,10 @@ const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const bookId = params.id
+    const { id: bookId } = await params
     const supabase = await createClient()
 
     // 1. Obtener información del libro
