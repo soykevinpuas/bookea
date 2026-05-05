@@ -162,8 +162,8 @@ CREATE INDEX idx_monthly_limits_user_id ON public.monthly_limits_tracker(user_id
 CREATE OR REPLACE FUNCTION public.add_coins(
     p_user_id UUID,
     p_coin_type TEXT,
-    p_amount INTEGER DEFAULT 1,
     p_source TEXT,
+    p_amount INTEGER DEFAULT 1,
     p_book_id UUID DEFAULT NULL
 )
 RETURNS JSONB
@@ -385,7 +385,7 @@ BEGIN
     VALUES (p_referrer_id, p_referred_id);
 
     -- Otorgar moneda de plata al referidor (+ anti-abuse en add_coins)
-    RETURN public.add_coins(p_referrer_id, 'silver', 1, 'referral', NULL);
+    RETURN public.add_coins(p_referrer_id, 'silver', 'referral', 1, NULL);
 END;
 $$;
 
@@ -483,7 +483,7 @@ BEGIN
             RETURN jsonb_build_object('success', true, 'streak', v_current_streak, 'coins_awarded', '[]'::jsonb);
         END IF;
 
-        v_milestone_result := public.add_coins(p_user_id, v_coin_type, 1, v_milestone_source, NULL);
+        v_milestone_result := public.add_coins(p_user_id, v_coin_type, v_milestone_source, 1, NULL);
 
         IF (v_milestone_result->>'success')::BOOLEAN THEN
             v_coins_awarded := jsonb_build_array(
