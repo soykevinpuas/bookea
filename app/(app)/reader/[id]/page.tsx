@@ -449,7 +449,7 @@ export default function ReaderPage() {
                   }
                 }
 
-                if (textNode?.nodeType === 3) {
+                if (textNode?.nodeType === 3 && typeof offset === 'number') {
                   const fullText = textNode.textContent || "";
                   // Encontrar límites de la palabra
                   const start = fullText.lastIndexOf(" ", offset) + 1;
