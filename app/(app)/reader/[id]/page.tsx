@@ -463,12 +463,12 @@ export default function ReaderPage() {
                     const sEnd = Math.min(fullText.length, offset + 60);
                     const context = fullText.substring(sStart, sEnd).trim();
 
-                    // Posición relativa al visor para el tooltip
+                    // Posición absoluta en la ventana principal para el tooltip
                     const rect = viewerRef.current?.getBoundingClientRect();
                     if (rect) {
                       setDictionaryPos({ 
-                        x: e.clientX, 
-                        y: e.clientY 
+                        x: rect.left + e.clientX, 
+                        y: rect.top + e.clientY 
                       });
                       handleFetchDefinition(word, context);
                     }
