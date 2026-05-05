@@ -63,6 +63,22 @@ export function resetReadingSession(): void {
   sessionStorage.removeItem(STREAK_UPDATED_KEY)
 }
 
+export function recordReadingSession(bookId: string): void {
+  // Guardamos el ID del libro por si fuera necesario en el futuro,
+  // aunque la racha es por día de lectura global.
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('bookea-current-reading-book', bookId)
+  }
+  startReadingSession()
+}
+
+export function canCountStreakDay(): boolean {
+  if (typeof window === 'undefined') return false
+  const elapsed = getReadingSessionElapsedMs()
+  const minMs = ANTI_ABUSE_LIMITS.min_reading_minutes_for_streak * 60 * 1000
+  return elapsed >= minMs
+}
+
 export async function updateStreakOnServer(): Promise<{ streak: number; coins: Array<{ coin_type: string; amount: number }> | null }> {
   const supabase = createClientClient()
   const { data: { user } } = await supabase.auth.getUser()
