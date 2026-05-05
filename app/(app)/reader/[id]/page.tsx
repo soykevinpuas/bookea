@@ -447,6 +447,12 @@ export default function ReaderPage() {
                     textNode = range.startContainer;
                     offset = range.startOffset;
                   }
+                } else if ((doc as any).caretPositionFromPoint) {
+                  const pos = (doc as any).caretPositionFromPoint(e.clientX, e.clientY);
+                  if (pos) {
+                    textNode = pos.offsetNode;
+                    offset = pos.offset;
+                  }
                 }
 
                 if (textNode?.nodeType === 3 && typeof offset === 'number') {

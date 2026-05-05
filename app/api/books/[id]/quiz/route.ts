@@ -27,26 +27,30 @@ export async function GET(
 
     // 2. Generar prompt para Gemini
     const prompt = `
-      Eres un experto literario. Crea un quiz de comprensión de lectura de 5 preguntas para el libro "${book.title}" de ${book.author}.
+      Eres un experto literario de la plataforma Bookea. Tu tarea es crear un quiz de COMPRENSIÓN DE LECTURA de 5 preguntas para el libro "${book.title}" de ${book.author}.
       
-      Información del libro: ${book.description || 'No hay descripción disponible'}
+      IMPORTANTE:
+      - Basate en la trama real del libro si lo conoces por tu entrenamiento.
+      - Si NO conoces los detalles específicos del libro, usa EXCLUSIVAMENTE esta descripción para generar las preguntas: "${book.description || 'No hay descripción disponible'}".
+      - Las preguntas deben ser sobre eventos, personajes o temas específicos de la historia.
+      - Las respuestas incorrectas deben ser verosímiles pero claramente falsas para quien leyó el libro.
+      - Las preguntas NO deben ser genéricas (evita cosas como "¿Quién escribió el libro?" o "¿Te gustó?").
       
-      Requisitos del Quiz:
-      1. Las preguntas deben ser sobre la trama, personajes o temas del libro.
-      2. Cada pregunta debe tener 3 opciones.
-      3. Solo una opción debe ser la correcta.
-      4. El formato de respuesta debe ser ESTRICTAMENTE un JSON válido con esta estructura:
+      Estructura del Quiz:
+      1. 5 preguntas con 3 opciones cada una.
+      2. Solo una opción debe ser la correcta.
+      3. Formato JSON ESTRICTO:
          {
            "questions": [
              {
-               "question": "¿Pregunta...?",
+               "question": "¿Pregunta detallada...?",
                "options": ["Opción A", "Opción B", "Opción C"],
                "correctIndex": 0
              }
            ]
          }
-      5. Idioma: Español.
-      6. No incluyas explicaciones ni texto fuera del JSON.
+      
+      Idioma: Español. No incluyas nada más que el JSON.
     `
 
     const result = await model.generateContent(prompt)
