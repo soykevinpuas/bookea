@@ -276,11 +276,9 @@ export default function ReaderPage() {
     if (!canInit) return;
 
     // 4.2.4b - Timeout de seguridad para el cargador
-    const loadingTimeout = setTimeout(() => {
-      if (isLoading && !bookRef.current) {
-        setIsLoading(false);
-        setError("El libro está tardando demasiado en cargar. Por favor, reintenta o verifica tu conexión.");
-      }
+    let loadingTimeout: NodeJS.Timeout | null = setTimeout(() => {
+      setIsLoading(false);
+      setError("El libro está tardando demasiado en cargar. Por favor, reintenta o verifica tu conexión.");
     }, 15000);
 
     const initEpub = async () => {
@@ -580,6 +578,7 @@ export default function ReaderPage() {
 
         // EVENTOS PRE-RENDER: El event listener DEBE registrarse antes del display para no perder el primer trigger
         rendition.on("rendered", () => {
+          if (loadingTimeout) clearTimeout(loadingTimeout);
           setIsLoading(false);
           renderHighlights();
         });
@@ -597,14 +596,20 @@ export default function ReaderPage() {
         });
 
         // ACCIÓN DE RENDERIZADO (RESOLVER POSICIÓN INICIAL)
-        if (savedProgress?.cfi_position) {
-          await rendition.display(savedProgress.cfi_position);
-        } else {
+        try {
+          if (savedProgress?.cfi_position) {
+            await rendition.display(savedProgress.cfi_position);
+          } else {
+            await rendition.display();
+          }
+        } catch (e) {
+          console.warn("CFI inválido, cargando inicio", e);
           await rendition.display();
         }
 
         // FALLBACK A PRUEBA DE FALLOS: Si el evento on('rendered') se disparó demasiado rápido 
         // o si epub.js no lo dispara por estar en modo continuous-scroll, lo quitamos manualmente aquí
+        if (loadingTimeout) clearTimeout(loadingTimeout);
         setIsLoading(false);
         renderHighlights();
 
@@ -646,12 +651,14 @@ export default function ReaderPage() {
         
         bookInstance.on("openFailed", (err: unknown) => {
           console.error("EPUB Open Failed:", err);
+          if (loadingTimeout) clearTimeout(loadingTimeout);
           setError("No se pudo abrir el archivo EPUB. Es posible que el archivo esté dañado o el formato no sea compatible.");
           setIsLoading(false);
         });
 
       } catch (err) {
         console.error("Error loading EPUB (Catch Block):", err);
+        if (loadingTimeout) clearTimeout(loadingTimeout);
         setError("Error al cargar el libro digital. Es posible que el archivo esté corrupto o incompleto.");
         setIsLoading(false);
       }
@@ -661,6 +668,7 @@ export default function ReaderPage() {
     initEpub();
 
     return () => {
+      if (loadingTimeout) clearTimeout(loadingTimeout);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
       renditionRef.current?.clear();

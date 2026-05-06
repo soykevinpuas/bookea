@@ -41,18 +41,8 @@ export default function GlobalError({
             <span style={{ color: '#3b82f6' }}>B</span>ookea
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', marginBottom: '2rem' }}>
-            Cargando la aplicación...
+            Recuperando vista...
           </p>
-          <div style={{
-            width: '3rem',
-            height: '3rem',
-            border: '3px solid rgba(59,130,246,0.2)',
-            borderTopColor: '#3b82f6',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto'
-          }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       </body>
     </html>

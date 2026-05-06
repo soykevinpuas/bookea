@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { AnimatePresence } from "framer-motion";
 import { PageTransition } from "@/components/PageTransition";
 
 /**
@@ -12,10 +11,8 @@ export function PageTransitionWrapper({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   
   return (
-    <AnimatePresence mode="wait">
-      <PageTransition key={pathname}>
-        {children}
-      </PageTransition>
-    </AnimatePresence>
+    <PageTransition key={pathname}>
+      {children}
+    </PageTransition>
   );
 }
