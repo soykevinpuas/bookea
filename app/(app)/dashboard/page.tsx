@@ -102,6 +102,10 @@ function DashboardContent() {
     return sorted[0];
   }, [displayBooks, isOnline]);
 
+  const totalCompleted = useMemo(() => {
+    return displayBooks?.filter((b: any) => (b.percent_complete || 0) >= 100).length ?? 0;
+  }, [displayBooks]);
+
   const books = useMemo(() => {
     if (!displayBooks) return [];
     let filtered = [...displayBooks];
@@ -169,22 +173,26 @@ function DashboardContent() {
         )}
 
         <div className="grid grid-cols-3 gap-3 mb-12">
-          <div className="text-center p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-            <Flame className="w-5 h-5 mx-auto text-orange-400 mb-1" />
-            <p className="text-lg font-bold text-white">{streak ?? 0}</p>
-            <p className="text-[10px] text-white/40 uppercase font-medium">Racha</p>
+          <div className={`text-center p-3 rounded-2xl bg-white/5 border backdrop-blur-md transition-all duration-500 ${
+            (streak || 0) > 0 ? 'border-orange-500/30 shadow-[0_0_20px_rgba(244,114,44,0.1)]' : 'border-white/10'
+          }`}>
+            <Flame className={`w-5 h-5 mx-auto mb-1 transition-colors ${(streak || 0) > 0 ? 'text-orange-500 animate-pulse' : 'text-white/20'}`} />
+            <p className="text-lg font-black text-white">{streak ?? 0}</p>
+            <p className="text-[10px] text-white/40 uppercase font-bold tracking-tight">Racha</p>
           </div>
-          <div className="text-center p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-            <Trophy className="w-5 h-5 mx-auto text-blue-400 mb-1" />
-            <p className="text-lg font-bold text-white">{profile?.total_books_read ?? 0}</p>
-            <p className="text-[10px] text-white/40 uppercase font-medium">Leídos</p>
+          <div className={`text-center p-3 rounded-2xl bg-white/5 border backdrop-blur-md transition-all duration-500 ${
+            totalCompleted > 0 ? 'border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]' : 'border-white/10'
+          }`}>
+            <Trophy className={`w-5 h-5 mx-auto mb-1 ${(totalCompleted || 0) > 0 ? 'text-blue-400' : 'text-white/20'}`} />
+            <p className="text-lg font-black text-white">{totalCompleted}</p>
+            <p className="text-[10px] text-white/40 uppercase font-bold tracking-tight">Leídos</p>
           </div>
           <div className="text-center p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
             <Circle className="w-5 h-5 mx-auto text-amber-400 fill-current mb-1" />
-            <p className="text-lg font-bold text-white">
+            <p className="text-lg font-black text-white">
               {coinsBalance ? (coinsBalance.bronze || 0) + (coinsBalance.silver || 0) + (coinsBalance.gold || 0) + (coinsBalance.diamond || 0) : 0}
             </p>
-            <p className="text-[10px] text-white/40 uppercase font-medium">Monedas</p>
+            <p className="text-[10px] text-white/40 uppercase font-bold tracking-tight">Monedas</p>
           </div>
         </div>
 

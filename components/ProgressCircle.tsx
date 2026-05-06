@@ -21,6 +21,8 @@ export default function ProgressCircle({
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (validProgress / 100) * circumference;
 
+  const isComplete = validProgress >= 100;
+  
   return (
     <div 
       className={`relative inline-flex items-center justify-center ${className}`}
@@ -48,12 +50,18 @@ export default function ProgressCircle({
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          className="text-blue-500 transition-all duration-500 ease-out"
+          className={`${isComplete ? 'text-amber-500' : 'text-blue-500'} transition-all duration-500 ease-out`}
+          style={{
+            filter: isComplete ? 'drop-shadow(0 0 3px rgba(245, 158, 11, 0.6))' : 'none'
+          }}
         />
       </svg>
       {/* Percentage Text */}
-      <span className="text-[9px] font-black text-white/90">
-        {Math.round(validProgress)}%
+      <span className={`
+        ${isComplete ? 'text-[7.5px] text-amber-500' : 'text-[9px] text-white/90'} 
+        font-black leading-none tabular-nums tracking-tighter
+      `}>
+        {Math.round(validProgress)}{!isComplete && '%'}
       </span>
     </div>
   );
