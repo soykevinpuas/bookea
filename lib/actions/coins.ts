@@ -216,6 +216,18 @@ export async function completeBookAndAwardCoinAction(bookId: string) {
   }
 
   try {
+    // 8.x.1 - ANTI-FARMING: Verificar si ya se otorgó una moneda por este libro y fuente
+    const { data: existingTransaction } = await supabase
+      .from('coin_transactions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('book_id', bookId)
+      .eq('source', 'complete_book')
+      .maybeSingle()
+
+    if (existingTransaction) {
+      return { success: false, error: 'already_awarded' }
+    }
     // Verificar que el usuario tenga al menos 10% de progreso
     const { data: progress } = await supabase
       .from('reading_progress')

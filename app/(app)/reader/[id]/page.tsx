@@ -6,12 +6,12 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useBook } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
-import { useCoins } from "@/hooks/useCoins";
+import { useCoins, useCoinTransactions } from "@/hooks/useCoins";
 import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
 import { Highlight } from "@/types/reading";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2, Bookmark, FileText, X, Trash2, Check, PenSquare, Sparkles } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2, Bookmark, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -117,7 +117,8 @@ export default function ReaderPage() {
   // 4.2.2.5 - Estado para gamificación (quiz de finalización y racha)
   const [showQuiz, setShowQuiz] = useState(false);
   const [bookCompleted, setBookCompleted] = useState(false);
-  const [alreadyClaimedCoin, setAlreadyClaimedCoin] = useState(false);
+  const { data: transactions } = useCoinTransactions(userId);
+  const alreadyClaimedCoin = transactions?.some(t => t.book_id === bookId && t.source === 'complete_book');
 
   // 4.2.2.6 - Estado para Diccionario Inteligente
   const [dictionaryData, setDictionaryData] = useState<{ word: string; definition: string; context: string } | null>(null);
@@ -367,7 +368,7 @@ export default function ReaderPage() {
                 padding-left: max(5%, env(safe-area-inset-left)) !important;
                 padding-right: max(5%, env(safe-area-inset-right)) !important;
                 padding-top: max(20px, env(safe-area-inset-top)) !important;
-                padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+                padding-bottom: max(60px, env(safe-area-inset-bottom)) !important;
                 max-width: 800px !important;
                 margin: 0 auto !important;
                 transition: color 0.3s ease, background-color 0.3s ease, font-family 0.2s ease;
@@ -1159,7 +1160,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
       {/* 4.2.15 - Ventana principal de visualización del objeto renderizado (Viewport) */}
       <div 
-        className="flex-1 relative w-full h-full pt-10 sm:pt-12 md:pt-8 pb-4 md:pb-6"
+        className="flex-1 relative w-full h-full pt-20 sm:pt-24 md:pt-20 pb-20 sm:pb-24"
         onClick={() => toggleControls()}
       >
         {isLoading && (

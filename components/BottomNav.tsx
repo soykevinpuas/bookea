@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Compass, Bookmark, User, Library } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useTransition } from "react";
 import { PrefetchLink } from "@/components/ui/LoadingStates";
 
@@ -42,7 +42,7 @@ export function BottomNav() {
   // Si estamos en el lector o en páginas de auth, no mostramos el nav
   const isReader = pathname?.includes("/reader/");
   const isAuth = pathname?.includes("/login") || pathname?.includes("/register");
-  
+
   if (isReader || isAuth) return null;
 
   const navItems = [
@@ -67,11 +67,13 @@ export function BottomNav() {
   ];
 
   return (
-    <>
+    <AnimatePresence>
       {isVisible && (
         <motion.div
+          key="bottom-nav"
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
           className="fixed bottom-0 left-0 right-0 z-[60] flex justify-center pb-safe px-4"
         >
@@ -81,11 +83,10 @@ export function BottomNav() {
                 <PrefetchLink
                   key={item.href}
                   href={item.href}
-                  className={`flex flex-col items-center gap-1 transition-all duration-300 relative group px-4 py-1 rounded-xl ${
-                    item.active 
-                      ? "text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb]" 
+                  className={`flex flex-col items-center gap-1 transition-all duration-300 relative group px-4 py-1 rounded-xl ${item.active
+                      ? "text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb]"
                       : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                  }`}
+                    }`}
                 >
                   {/* Indicador de activo (pestaña) */}
                   {item.active && (
@@ -95,7 +96,7 @@ export function BottomNav() {
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}
-                  
+
                   <div className="relative">
                     {item.icon}
                   </div>
@@ -108,6 +109,6 @@ export function BottomNav() {
           </div>
         </motion.div>
       )}
-    </>
+    </AnimatePresence>
   );
 }

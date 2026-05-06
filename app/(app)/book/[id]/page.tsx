@@ -19,6 +19,7 @@ import { addToLibrary } from "@/lib/books";
 import { addToLibraryAction, removeFromLibraryAction } from "@/lib/actions/library";
 import { createClientClient } from "@/lib/supabase";
 import { CoinRedemptionModal } from "@/components/book/CoinRedemptionModal";
+import BookLoading from "./loading";
 
 // 3.5.1 - Componente principal de la página de detalle
 function BookDetailContent() {
@@ -158,13 +159,8 @@ function BookDetailContent() {
     })
   };
 
-  // 3.5.9 - Estados de carga y error
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117]">
-        <div className="text-lg text-gray-600 dark:text-gray-400">Cargando libro...</div>
-      </div>
-    );
+    return <BookLoading />;
   }
 
   if (error || !book) {
@@ -443,7 +439,7 @@ function BookDetailContent() {
 
 export default function BookDetailPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white/40 font-bold uppercase tracking-widest text-xs">Cargando Libro...</div>}>
+    <Suspense fallback={<BookLoading />}>
       <BookDetailContent />
     </Suspense>
   )
