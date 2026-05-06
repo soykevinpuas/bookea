@@ -33,7 +33,15 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Manejo defensivo: si getUser falla (red, cold start), dejar pasar la request
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (err) {
+    // Si falla, dejamos pasar — el layout del cliente maneja el estado no-auth
+    console.warn('⚠️ Middleware: getUser falló, dejando pasar:', err)
+  }
 
   // Protección de rutas (basado en proxy.ts anterior)
   const { pathname } = request.nextUrl
