@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Compass, Bookmark, User, Library, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Compass, Bookmark, User, Library } from "lucide-react";
+import { motion } from "framer-motion";
 import { useTransition } from "react";
 import { PrefetchLink } from "@/components/ui/LoadingStates";
 
@@ -17,12 +17,6 @@ export function BottomNav() {
   const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const [loadingHref, setLoadingHref] = useState<string | null>(null);
-
-  // Limpiar loading cuando cambie la ruta
-  useEffect(() => {
-    setLoadingHref(null);
-  }, [pathname]);
 
   // 6.6.1 - Lógica de detección de scroll para mostrar/ocultar
   useEffect(() => {
@@ -73,18 +67,16 @@ export function BottomNav() {
   ];
 
   return (
-    <AnimatePresence>
+    <>
       {isVisible && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
           className="fixed bottom-0 left-0 right-0 z-[60] flex justify-center pb-safe px-4"
         >
           <div className="mb-4 mx-auto max-w-sm bg-white/70 dark:bg-black/80 retro:bg-[#0d1117]/90 navy:bg-[#0a0f1e]/90 backdrop-blur-xl border border-black/5 dark:border-white/10 retro:border-[#3fb950]/30 navy:border-[#7986cb]/30 rounded-2xl shadow-2xl flex items-center justify-around py-3 px-2">
             {navItems.map((item) => {
-              const isLoading = loadingHref === item.href;
               return (
                 <PrefetchLink
                   key={item.href}
@@ -93,8 +85,7 @@ export function BottomNav() {
                     item.active 
                       ? "text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb]" 
                       : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                  } ${isLoading ? 'opacity-70' : ''}`}
-                  onClick={() => setLoadingHref(item.href)}
+                  }`}
                 >
                   {/* Indicador de activo (pestaña) */}
                   {item.active && (
@@ -106,14 +97,10 @@ export function BottomNav() {
                   )}
                   
                   <div className="relative">
-                    {isLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      item.icon
-                    )}
+                    {item.icon}
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-tighter">
-                    {isLoading ? 'Cargando...' : item.label}
+                    {item.label}
                   </span>
                 </PrefetchLink>
               );
@@ -121,6 +108,6 @@ export function BottomNav() {
           </div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

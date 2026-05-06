@@ -18,13 +18,13 @@ export function SplashScreen() {
     if (hasShown) {
       // Ya se mostró en esta sesión: ocultar inmediatamente
       splash.classList.add("splash-hide");
-      setTimeout(() => splash.remove(), 600);
+      setTimeout(() => { splash.style.display = "none"; }, 600);
     } else {
       // Primera vez: dejar que la animación termine (2s) y luego ocultar
       sessionStorage.setItem("bookea-splash-shown", "true");
       setTimeout(() => {
         splash.classList.add("splash-hide");
-        setTimeout(() => splash.remove(), 600);
+        setTimeout(() => { splash.style.display = "none"; }, 600);
       }, 2200);
     }
   }, []);
