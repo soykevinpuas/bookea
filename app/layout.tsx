@@ -71,31 +71,78 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  const shown = sessionStorage.getItem('bookea-splash-shown');
-                  if (!shown) {
-                    document.documentElement.classList.add('splash-pending');
-                  }
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
         <style
           dangerouslySetInnerHTML={{
             __html: `
-              .splash-pending body {
-                opacity: 0 !important;
-                visibility: hidden !important;
+              /* 1.7 - Splash Screen puro CSS: se muestra ANTES de que React cargue */
+              #bookea-splash {
+                position: fixed;
+                inset: 0;
+                z-index: 99999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #0a0a0a;
+                transition: opacity 0.6s ease-out, visibility 0.6s ease-out;
               }
-              .splash-ready body {
-                opacity: 1 !important;
-                visibility: visible !important;
-                transition: opacity 0.5s ease-in;
+              #bookea-splash.splash-hide {
+                opacity: 0;
+                visibility: hidden;
+                pointer-events: none;
+              }
+              #bookea-splash .splash-logo {
+                font-size: clamp(3rem, 10vw, 5rem);
+                font-weight: 900;
+                letter-spacing: -0.05em;
+                color: white;
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+                animation: splashFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+              }
+              #bookea-splash .splash-logo span { color: #3b82f6; }
+              #bookea-splash .splash-sub {
+                font-size: 0.75rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.4em;
+                color: rgba(96, 165, 250, 0.7);
+                margin-top: 1rem;
+                opacity: 0;
+                animation: splashFadeIn 0.8s ease 0.5s forwards;
+              }
+              #bookea-splash .splash-bar {
+                margin-top: 2rem;
+                width: 12rem;
+                height: 2px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 9999px;
+                overflow: hidden;
+              }
+              #bookea-splash .splash-bar-fill {
+                height: 100%;
+                background: #3b82f6;
+                box-shadow: 0 0 15px rgba(59,130,246,0.5);
+                transform: translateX(-100%);
+                animation: splashProgress 1.8s ease-in-out 0.3s forwards;
+              }
+              #bookea-splash .splash-glow {
+                position: absolute;
+                width: 200px;
+                height: 200px;
+                background: rgba(37, 99, 235, 0.15);
+                border-radius: 50%;
+                filter: blur(80px);
+                animation: splashPulse 2s ease-in-out infinite alternate;
+              }
+              @keyframes splashFadeIn {
+                to { opacity: 1; transform: translateY(0) scale(1); }
+              }
+              @keyframes splashProgress {
+                to { transform: translateX(0); }
+              }
+              @keyframes splashPulse {
+                from { transform: scale(0.8); opacity: 0.1; }
+                to { transform: scale(1.4); opacity: 0.2; }
               }
             `,
           }}
@@ -104,6 +151,16 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 transition-colors duration-300 dark:bg-[#0a0a0a] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-gray-100 retro:text-white navy:text-[#e8eaf6] flex flex-col`}
       >
+        {/* 1.7 - Splash Screen HTML puro: visible instantáneamente sin esperar a React */}
+        <div id="bookea-splash">
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div className="splash-glow" />
+            <div className="splash-logo"><span>B</span>ookea</div>
+            <div className="splash-sub">Tu biblioteca premium</div>
+            <div className="splash-bar"><div className="splash-bar-fill" /></div>
+          </div>
+        </div>
+
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
