@@ -15,6 +15,7 @@ import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2, Bookmark, Fil
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
+import { DashboardSkeleton } from "@/components/ui/LoadingStates";
 import { createClientClient } from "@/lib/supabase";
 import { addToLibrary, hasBookAccess } from "@/lib/books";
 import { addToLibraryAction } from "@/lib/actions/library";
@@ -65,6 +66,8 @@ export default function ReaderPage() {
   const lastCfiRef = useRef<string | null>(null);
 
   const { data: book, isLoading: loadingBook } = useBook(bookId);
+  const [isExiting, setIsExiting] = useState(false);
+
   const { userId } = useUserId();
   const { data: subscription } = useSubscription(userId);
   const queryClient = useQueryClient();
@@ -1044,8 +1047,11 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       >
         <div className="flex items-center gap-3 sm:gap-4">
           <button
-            onClick={() => router.push("/dashboard")}
-            className={`p-2 rounded-full transition ${iconBgClass}`}
+            onClick={() => {
+              setIsExiting(true);
+              router.push('/dashboard');
+            }}
+            className={`p-2 rounded-full transition-colors ${iconBgClass}`}
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -1368,6 +1374,15 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
           </div>
           {/* Triangulito del tooltip */}
           <div className="w-3 h-3 bg-white/95 dark:bg-[#1a1a1a]/95 border-b border-r border-gray-200 dark:border-white/10 rotate-45 mx-auto -mt-1.5 shadow-xl"></div>
+        </div>
+      )}
+
+      {/* Overlay de salida con esqueletos para feedback instantáneo */}
+      {isExiting && (
+        <div className="fixed inset-0 z-[100] bg-gray-50 dark:bg-[#0a0a0a] animate-in fade-in duration-300 p-6 flex flex-col">
+          <div className="max-w-7xl mx-auto w-full pt-12">
+            <DashboardSkeleton />
+          </div>
         </div>
       )}
 
