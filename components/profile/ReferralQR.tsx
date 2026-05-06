@@ -57,7 +57,7 @@ export function ReferralQR({ referralLink, referralCount }: ReferralQRProps) {
         </p>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
         {/* QR Code */}
         <div className="flex-shrink-0">
           <div className="w-[200px] h-[200px] bg-white rounded-xl p-2 shadow-lg">

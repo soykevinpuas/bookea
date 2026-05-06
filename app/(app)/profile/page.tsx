@@ -190,7 +190,7 @@ export default function ProfilePage() {
                 <div className="text-center p-2 rounded-xl bg-white/5 border border-white/5">
                   <Circle className="w-4 h-4 mx-auto text-amber-400 fill-current mb-1" />
                   <p className="text-sm font-bold text-white">
-                    {coinsBalance ? coinsBalance.bronze + coinsBalance.silver + coinsBalance.gold + coinsBalance.diamond : 0}
+                    {coinsBalance ? (coinsBalance.bronze || 0) + (coinsBalance.silver || 0) + (coinsBalance.gold || 0) + (coinsBalance.diamond || 0) : 0}
                   </p>
                   <p className="text-[9px] text-white/30">Monedas</p>
                 </div>

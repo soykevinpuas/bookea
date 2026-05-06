@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
 import { useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
+import { useCoins, useStreak } from "@/hooks/useCoins";
+import { useProfile } from "@/hooks/useAvatars";
 import Book3D from "@/components/Book3D";
 import BookLongPressMenu from "@/components/BookLongPressMenu";
 import ProgressCircle from "@/components/ProgressCircle";
-import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History, User, Grid3X3, Sparkles } from "lucide-react";
+import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History, User, Grid3X3, Sparkles, Circle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { verifySubscriptionAction } from "@/lib/actions/subscriptions";
@@ -138,11 +140,9 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = [
-    { label: "Colección", value: displayBooks?.length || 0, icon: BookOpen, color: "text-blue-400" },
-    { label: "Terminados", value: 0, icon: Trophy, color: "text-yellow-400" },
-    { label: "Racha", value: "1 día", icon: Flame, color: "text-orange-500" },
-  ];
+  const { data: coinsBalance } = useCoins(userId);
+  const { data: streak } = useStreak(userId);
+  const { profile } = useProfile(userId);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30">
@@ -184,18 +184,25 @@ export default function DashboardPage() {
           </section>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
-          {stats.map((stat) => (
-            <div key={stat.label} className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
-              <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-xl bg-white/5 ${stat.color}`}><stat.icon className="w-5 h-5" /></div>
-                <div>
-                  <p className="text-white/40 text-[10px] font-medium uppercase tracking-wider">{stat.label}</p>
-                  <p className="text-xl font-bold">{stat.value}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+        {/* Mini stats: racha + libros leídos + monedas - Estilo Unificado */}
+        <div className="grid grid-cols-3 gap-3 mb-12">
+          <div className="text-center p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+            <Flame className="w-5 h-5 mx-auto text-orange-400 mb-1" />
+            <p className="text-lg font-bold text-white">{streak ?? 0}</p>
+            <p className="text-[10px] text-white/40 uppercase font-medium">Racha</p>
+          </div>
+          <div className="text-center p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+            <Trophy className="w-5 h-5 mx-auto text-blue-400 mb-1" />
+            <p className="text-lg font-bold text-white">{profile?.total_books_read ?? 0}</p>
+            <p className="text-[10px] text-white/40 uppercase font-medium">Leídos</p>
+          </div>
+          <div className="text-center p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+            <Circle className="w-5 h-5 mx-auto text-amber-400 fill-current mb-1" />
+            <p className="text-lg font-bold text-white">
+              {coinsBalance ? (coinsBalance.bronze || 0) + (coinsBalance.silver || 0) + (coinsBalance.gold || 0) + (coinsBalance.diamond || 0) : 0}
+            </p>
+            <p className="text-[10px] text-white/40 uppercase font-medium">Monedas</p>
+          </div>
         </div>
 
         <div className="flex items-center justify-between mb-8">
