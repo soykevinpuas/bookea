@@ -124,19 +124,24 @@ export default function ReaderPage() {
   useEffect(() => {
     if (!mounted) return;
     const metaTheme = document.querySelector('meta[name="theme-color"]');
+    const metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     
     if (!showControls) {
       // Modo inmersivo: Fondo del tema
-      const bgColor = theme === 'retro' ? '#0d1117' : theme === 'navy' ? '#0a0f1e' : '#0a0a0a';
+      const bgColor = theme === 'retro' ? '#0d1117' : theme === 'navy' ? '#0a0f1e' : theme === 'dark' ? '#0a0a0a' : '#ffffff';
       if (metaTheme) metaTheme.setAttribute('content', bgColor);
       
-      // Intentar Fullscreen para ocultar hora/batería en dispositivos compatibles
+      // Intentar ocultar la barra en iOS PWA
+      if (metaApple) metaApple.setAttribute('content', 'black-translucent');
+      
+      // Intentar Fullscreen
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(() => {});
       }
     } else {
       // Modo navegación: Restaurar sistema
       if (metaTheme) metaTheme.setAttribute('content', theme === 'light' ? '#ffffff' : '#000000');
+      if (metaApple) metaApple.setAttribute('content', 'default');
       
       // Salir de Fullscreen
       if (document.fullscreenElement && document.exitFullscreen) {
@@ -397,12 +402,12 @@ export default function ReaderPage() {
               }
               body {
                 line-height: 1.8 !important;
-                padding: 20px 5% 20px !important;
-                padding-left: max(5%, env(safe-area-inset-left)) !important;
-                padding-right: max(5%, env(safe-area-inset-right)) !important;
-                padding-top: max(40px, env(safe-area-inset-top)) !important;
-                padding-bottom: max(32px, env(safe-area-inset-bottom)) !important;
-                max-width: 800px !important;
+                padding: 10px 3% 10px !important;
+                padding-left: max(3%, env(safe-area-inset-left)) !important;
+                padding-right: max(3%, env(safe-area-inset-right)) !important;
+                padding-top: max(10px, env(safe-area-inset-top)) !important;
+                padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+                max-width: 900px !important;
                 margin: 0 auto !important;
                 transition: color 0.3s ease, background-color 0.3s ease, font-family 0.2s ease;
                 /* --bookea-text-color se actualiza vía override() para cada tema */
@@ -1202,7 +1207,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
       {/* 4.2.15 - Ventana principal de visualización del objeto renderizado (Viewport) */}
       <div 
-        className="flex-1 relative w-full h-full pt-16 sm:pt-20 pb-12 sm:pb-16"
+        className="flex-1 relative w-full h-full pt-4 sm:pt-8 pb-4 sm:pb-8"
         onClick={() => toggleControls()}
       >
         {isLoading && (
