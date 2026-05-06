@@ -30,7 +30,7 @@ export default function ReviewForm({ bookId }: ReviewFormProps) {
 
   // 6.8.1 - Buscar si el usuario ya tiene una reseña para precargar
   useEffect(() => {
-    const existing = reviews.find(r => r.user_id === userId);
+    const existing = reviews.find((r: any) => r.user_id === userId);
     if (existing) {
       setRating(existing.rating);
       setContent(existing.content);
@@ -139,7 +139,7 @@ export default function ReviewForm({ bookId }: ReviewFormProps) {
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      {reviews.some(r => r.user_id === userId) ? "Actualizar Reseña" : "Publicar Reseña"}
+                      {reviews.some((r: any) => r.user_id === userId) ? "Actualizar Reseña" : "Publicar Reseña"}
                     </>
                   )}
                 </button>

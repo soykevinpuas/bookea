@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
   const metrics = {
     total_events: data?.length || 0,
     events_by_type: {} as Record<string, number>,
-    unique_users: new Set(data?.map(e => e.event_data?.user_id).filter(Boolean)).size,
+    unique_users: new Set(data?.map((e: any) => e.event_data?.user_id).filter(Boolean)).size,
     period,
   };
 

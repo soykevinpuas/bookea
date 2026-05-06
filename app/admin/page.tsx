@@ -65,24 +65,24 @@ async function getAdminStats(): Promise<AdminStats> {
   ]);
 
   const totalBooks = booksRes.count ?? 0;
-  const activeBooks = booksRes.data?.filter((b) => b.is_active).length ?? 0;
-  const newBooksThisWeek = booksRes.data?.filter((b) => new Date(b.created_at) >= oneWeekAgo).length ?? 0;
+  const activeBooks = booksRes.data?.filter((b: any) => b.is_active).length ?? 0;
+  const newBooksThisWeek = booksRes.data?.filter((b: any) => new Date(b.created_at) >= oneWeekAgo).length ?? 0;
 
   const totalOrders = ordersRes.count ?? 0;
-  const pendingOrders = ordersRes.data?.filter((o) => o.status === "pending").length ?? 0;
-  const completedOrders = ordersRes.data?.filter((o) => o.status === "delivered").length ?? 0;
-  const revenuePhysical = ordersRes.data?.reduce((sum, o) => sum + (Number(o.total) || 0), 0) ?? 0;
+  const pendingOrders = ordersRes.data?.filter((o: any) => o.status === "pending").length ?? 0;
+  const completedOrders = ordersRes.data?.filter((o: any) => o.status === "delivered").length ?? 0;
+  const revenuePhysical = ordersRes.data?.reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0) ?? 0;
 
   const totalUsers = usersRes.count ?? 0;
-  const newUsersThisWeek = usersRes.data?.filter((u) => new Date(u.created_at) >= oneWeekAgo).length ?? 0;
-  const subscribers = usersRes.data?.filter((u) => u.role === "subscriber").length ?? 0;
-  const admins = usersRes.data?.filter((u) => u.role === "admin").length ?? 0;
-  const freeUsers = usersRes.data?.filter((u) => u.role === "free").length ?? 0;
+  const newUsersThisWeek = usersRes.data?.filter((u: any) => new Date(u.created_at) >= oneWeekAgo).length ?? 0;
+  const subscribers = usersRes.data?.filter((u: any) => u.role === "subscriber").length ?? 0;
+  const admins = usersRes.data?.filter((u: any) => u.role === "admin").length ?? 0;
+  const freeUsers = usersRes.data?.filter((u: any) => u.role === "free").length ?? 0;
 
   const analyticsEvents = analyticsRes.data ?? [];
-  const paymentCompleted = analyticsEvents.filter(e => e.event_name === 'payment_completed');
-  const digitalRevenue = paymentCompleted.reduce((sum, e) => sum + (Number(e.event_data?.amount) || 0), 0);
-  const subscriptionPayments = analyticsEvents.filter(e => e.event_name === 'subscription_upgraded').length;
+  const paymentCompleted = analyticsEvents.filter((e: any) => e.event_name === 'payment_completed');
+  const digitalRevenue = paymentCompleted.reduce((sum: number, e: any) => sum + (Number(e.event_data?.amount) || 0), 0);
+  const subscriptionPayments = analyticsEvents.filter((e: any) => e.event_name === 'subscription_upgraded').length;
 
   const booksReadThisWeek = userBooksRes.count ?? 0;
   const reviewsThisWeek = reviewsRes.count ?? 0;
@@ -154,7 +154,7 @@ export default async function AdminDashboard() {
 
   const CardGrid = ({ cards }: { cards: AdminCard[] }) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4">
-      {cards.map((card) => (
+      {cards.map((card: any) => (
         <Link key={card.label} href={card.href} className="group relative bg-white/5 border border-white/8 rounded-2xl p-5 hover:bg-white/8 transition-all">
           <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${colorMap[card.color]}`}>
             <card.icon className="w-5 h-5" />

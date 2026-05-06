@@ -37,7 +37,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   // Obtener estado de biblioteca y suscripción
   const { data: userBooks } = useUserBooks(userId || "");
   const { data: subscription } = useSubscription(userId);
-  const isInLibrary = userBooks?.some(b => b.id === bookId);
+  const isInLibrary = userBooks?.some((b: import("@/types/book").Book) => b.id === bookId);
 
   // Verificar estado de descarga al montar
   useEffect(() => {
