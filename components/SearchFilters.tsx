@@ -181,53 +181,73 @@ export function SearchFilters({
       </div>
 
       {/* 6.3.4.3 - Modal de filtros para dispositivos móviles */}
-      {showMobileFilters && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm md:hidden animate-in fade-in duration-200">
-          <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 rounded-t-3xl p-6 pb-10 animate-in slide-in-from-bottom-full duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Filtros</h2>
-              <button 
-                onClick={() => setShowMobileFilters(false)}
-                className="p-2 bg-gray-100 dark:bg-white/10 rounded-full"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
+      <AnimatePresence>
+        {showMobileFilters && (
+          <div className="fixed inset-0 z-[100] md:hidden">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileFilters(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
             
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Categoría
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    "all", "Ficción", "No Ficción", "Novela", "Clásicos", 
-                    "Misterio y Suspenso", "Fantasía", "Ciencia Ficción", 
-                    "Romance", "Terror", "Autoayuda", "Negocios y Finanzas", 
-                    "Historia", "Biografías", "Cuentos", "Poesía", "Otros"
-                  ].map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => {
-                        setCategory(cat);
-                        updateFilters({ category: cat });
-                        setShowMobileFilters(false);
-                      }}
-                      className={`px-4 py-2 rounded-xl text-sm transition-all border ${
-                        category === cat 
-                          ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/20" 
-                          : "bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 border-gray-100 dark:border-white/10"
-                      }`}
-                    >
-                      {cat === "all" ? "Todas" : cat}
-                    </button>
-                  ))}
+            {/* Modal Content */}
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 rounded-t-3xl p-6 pb-10 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Filtros</h2>
+                <button 
+                  onClick={() => setShowMobileFilters(false)}
+                  className="p-2 bg-gray-100 dark:bg-white/10 rounded-full"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              
+              <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                      Categoría
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        "all", "Ficción", "No Ficción", "Novela", "Clásicos", 
+                        "Misterio y Suspenso", "Fantasía", "Ciencia Ficción", 
+                        "Romance", "Terror", "Autoayuda", "Negocios y Finanzas", 
+                        "Historia", "Biografías", "Cuentos", "Poesía", "Otros"
+                      ].map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => {
+                            setCategory(cat);
+                            updateFilters({ category: cat });
+                            setShowMobileFilters(false);
+                          }}
+                          className={`px-4 py-2 rounded-xl text-sm transition-all border ${
+                            category === cat 
+                              ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/20" 
+                              : "bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 border-gray-100 dark:border-white/10"
+                          }`}
+                        >
+                          {cat === "all" ? "Todas" : cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* 6.3.4.4 - Indicador visual de carga durante transición */}
       {isPending && (
