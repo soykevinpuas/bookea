@@ -11,7 +11,7 @@ import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
 import { Highlight } from "@/types/reading";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2, Bookmark, FileText, X, Trash2, Check, PenSquare } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2, Bookmark, FileText, X, Trash2, Check, PenSquare, Sparkles } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
