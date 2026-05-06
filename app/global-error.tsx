@@ -1,8 +1,9 @@
 'use client'
 
-// Global error boundary - catches unhandled errors at the root level
-// This prevents the ugly Next.js "Application error" page from flashing
-// during hydration or transient network failures.
+import { useEffect } from 'react'
+
+// 1.9 - Barrera de error global: atrapa errores no manejados a nivel raíz.
+// Intenta recuperarse automáticamente en lugar de mostrar una pantalla rota.
 export default function GlobalError({
   error,
   reset,
@@ -10,23 +11,48 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  useEffect(() => {
+    // Registrar el error real en consola para diagnóstico
+    console.error('🔴 [GlobalError] Error atrapado:', error.message, error.digest)
+    
+    // Intento automático de recuperación después de 1 segundo
+    const timer = setTimeout(() => {
+      reset()
+    }, 1000)
+    
+    return () => clearTimeout(timer)
+  }, [error, reset])
+
   return (
     <html lang="en">
-      <body className="bg-[#0a0a0a] text-white min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md px-6">
-          <div className="text-6xl mb-6">📚</div>
-          <h2 className="text-2xl font-black mb-3 tracking-tight">
-            <span className="text-blue-500">B</span>ookea
+      <body style={{
+        backgroundColor: '#0a0a0a',
+        color: 'white',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        margin: 0
+      }}>
+        <div style={{ textAlign: 'center', maxWidth: '400px', padding: '1.5rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>📚</div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.75rem' }}>
+            <span style={{ color: '#3b82f6' }}>B</span>ookea
           </h2>
-          <p className="text-white/50 text-sm mb-8 leading-relaxed">
-            Algo salió mal al cargar la aplicación. Esto suele resolverse al recargar.
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', marginBottom: '2rem' }}>
+            Cargando la aplicación...
           </p>
-          <button
-            onClick={() => reset()}
-            className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-600/20"
-          >
-            Reintentar
-          </button>
+          <div style={{
+            width: '3rem',
+            height: '3rem',
+            border: '3px solid rgba(59,130,246,0.2)',
+            borderTopColor: '#3b82f6',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto'
+          }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       </body>
     </html>
