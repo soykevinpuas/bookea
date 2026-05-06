@@ -94,9 +94,9 @@ export default async function RootLayout({
                 font-weight: 900;
                 letter-spacing: -0.05em;
                 color: white;
-                opacity: 0;
-                transform: translateY(20px) scale(0.95);
-                animation: splashFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                animation: splashFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
               }
               #bookea-splash .splash-logo span { color: #3b82f6; }
               #bookea-splash .splash-sub {
@@ -106,8 +106,8 @@ export default async function RootLayout({
                 letter-spacing: 0.4em;
                 color: rgba(96, 165, 250, 0.7);
                 margin-top: 1rem;
-                opacity: 0;
-                animation: splashFadeIn 0.8s ease 0.5s forwards;
+                opacity: 1;
+                animation: splashFadeIn 0.8s ease 0.5s backwards;
               }
               #bookea-splash .splash-bar {
                 margin-top: 2rem;
@@ -121,8 +121,8 @@ export default async function RootLayout({
                 height: 100%;
                 background: #3b82f6;
                 box-shadow: 0 0 15px rgba(59,130,246,0.5);
-                transform: translateX(-100%);
-                animation: splashProgress 1.8s ease-in-out 0.3s forwards;
+                transform: translateX(0);
+                animation: splashProgress 1.8s ease-in-out 0.3s backwards;
               }
               #bookea-splash .splash-glow {
                 position: absolute;
@@ -134,10 +134,10 @@ export default async function RootLayout({
                 animation: splashPulse 2s ease-in-out infinite alternate;
               }
               @keyframes splashFadeIn {
-                to { opacity: 1; transform: translateY(0) scale(1); }
+                from { opacity: 0; transform: translateY(20px) scale(0.95); }
               }
               @keyframes splashProgress {
-                to { transform: translateX(0); }
+                from { transform: translateX(-100%); }
               }
               @keyframes splashPulse {
                 from { transform: scale(0.8); opacity: 0.1; }
