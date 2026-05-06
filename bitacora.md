@@ -4,6 +4,17 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-05-06] - Fix Crítico de UI: Eliminación de Pantallas de Carga Intermedias
+
+### Objetivo
+Resolver excepciones y errores de hidratación/Suspense que rompían la aplicación al navegar entre rutas, ocasionados por la implementación previa de esqueletos de carga (`SkeletonBox`).
+
+### Cambios Realizados
+- **Eliminación de `loading.tsx`:** Se borraron los archivos `loading.tsx` en las rutas de `catalog`, `dashboard`, `profile`, `book/[id]` y `reader/[id]`.
+- **Restauración de Flujo de Carga:** La aplicación ahora se apoya exclusivamente en el `SplashScreen.tsx` inicial y las transiciones de ruta nativas de Next.js, previniendo errores globales de UI.
+
+---
+
 ## [2026-04-30-GAMIFICATION] — Sistema de Monedas de Gamificación y Anti-Abuse
 
 ### Objetivo
