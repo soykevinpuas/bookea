@@ -62,7 +62,7 @@ function BookDetailContent() {
   const [addingToLib, setAddingToLib] = useState(false);
   const supabase = createClientClient();
 
-  const isInLibrary = userBooks?.some(b => b.id.toLowerCase() === id.toLowerCase());
+  const isInLibrary = userBooks?.some((b: any) => b.id.toLowerCase() === id.toLowerCase());
   const isCurrentlyInLibrary = !!isInLibrary; // Booleano estable
 
   useEffect(() => {

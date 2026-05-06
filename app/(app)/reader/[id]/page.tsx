@@ -118,7 +118,7 @@ export default function ReaderPage() {
   const [showQuiz, setShowQuiz] = useState(false);
   const [bookCompleted, setBookCompleted] = useState(false);
   const { data: transactions } = useCoinTransactions(userId);
-  const alreadyClaimedCoin = transactions?.some(t => t.book_id === bookId && t.source === 'complete_book');
+  const alreadyClaimedCoin = transactions?.some((t: any) => t.book_id === bookId && t.source === 'complete_book');
 
   // 4.2.2.6 - Estado para Diccionario Inteligente
   const [dictionaryData, setDictionaryData] = useState<{ word: string; definition: string; context: string } | null>(null);
@@ -863,7 +863,7 @@ export default function ReaderPage() {
       // FLUJO DE ACTUALIZACIÓN DE COLOR
       const success = await updateHighlightColor(activeSelection.isExistingId, color);
       if (success) {
-        setHighlights(prev => prev.map(h => h.id === activeSelection.isExistingId ? { ...h, color } : h));
+        setHighlights(prev => prev.map((h: any) => h.id === activeSelection.isExistingId ? { ...h, color } : h));
         toast.success("Color de subrayado actualizado");
         // Limpiar registro viejo en epubjs PRIMERO para evitar que se queje de nodos huerfanos
         renditionRef.current?.annotations.remove(activeSelection.cfiRange, "highlight");
@@ -879,7 +879,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         // Plamar el color nuevo
         renditionRef.current?.annotations.highlight(activeSelection.cfiRange, { id: activeSelection.isExistingId }, () => {
           // El objeto actualizado no lo tenemos aquí directo, así que pasamos un mock parcial 
-          const target = highlights.find(h => h.id === activeSelection.isExistingId);
+          const target = highlights.find((h: any) => h.id === activeSelection.isExistingId);
           if (target) handleHighlightClick({...target, color});
         }, undefined, { "fill": color, "fill-opacity": "0.3", "mix-blend-mode": "multiply" });
         
@@ -936,7 +936,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
   const handleDeleteHighlight = async (id: string, cfi: string) => {
     const success = await deleteHighlight(id);
     if (success) {
-      setHighlights(prev => prev.filter(h => h.id !== id));
+      setHighlights(prev => prev.filter((h: any) => h.id !== id));
       renditionRef.current?.annotations.remove(cfi, "highlight");
       
       // Exorcismo visual: Destrucción manual del nodo en el DOM en caso de que el bug de epubjs evite soltar la capa
@@ -956,7 +956,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
   const handleUpdateNote = async (id: string, note: string) => {
     const success = await updateHighlightNote(id, note);
     if (success) {
-      setHighlights(prev => prev.map(h => h.id === id ? { ...h, note } : h));
+      setHighlights(prev => prev.map((h: any) => h.id === id ? { ...h, note } : h));
       setEditingNote(null);
       toast.success("Nota guardada");
     } else {

@@ -97,7 +97,7 @@ function DashboardContent() {
     });
 
     if (!isOnline) {
-      return sorted.find(b => (b as any).isOfflineReady === true) || sorted[0];
+      return sorted.find((b: any) => (b as any).isOfflineReady === true) || sorted[0];
     }
     return sorted[0];
   }, [displayBooks, isOnline]);
@@ -105,17 +105,17 @@ function DashboardContent() {
   const books = useMemo(() => {
     if (!displayBooks) return [];
     let filtered = [...displayBooks];
-    if (!isOnline) filtered = filtered.filter(b => (b as any).isOfflineReady === true);
+    if (!isOnline) filtered = filtered.filter((b: any) => (b as any).isOfflineReady === true);
     if (search) {
       const s = search.toLowerCase();
-      filtered = filtered.filter(b => b.title?.toLowerCase().includes(s));
+      filtered = filtered.filter((b: any) => b.title?.toLowerCase().includes(s));
     }
     if (authorSearch) {
       const a = authorSearch.toLowerCase();
-      filtered = filtered.filter(b => b.author?.toLowerCase().includes(a));
+      filtered = filtered.filter((b: any) => b.author?.toLowerCase().includes(a));
     }
     if (category && category !== "all") {
-      filtered = filtered.filter(b => b.category === category);
+      filtered = filtered.filter((b: any) => b.category === category);
     }
     return filtered;
   }, [displayBooks, search, authorSearch, category, isOnline]);
@@ -235,7 +235,7 @@ function DashboardContent() {
               className="px-3 bg-white/5 border border-white/10 rounded-xl text-xs"
             >
               <option value="all">Todo</option>
-              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              {categories.map((c: any) => <option key={c} value={c}>{c}</option>)}
             </select>
             <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
                <button onClick={() => setView("grid")} className={`p-2 rounded-lg ${view === "grid" ? "bg-white/10" : "text-white/40"}`} title="Cuadrícula"><LayoutGrid className="w-4 h-4" /></button>
