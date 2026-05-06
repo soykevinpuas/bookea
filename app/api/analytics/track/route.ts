@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     period,
   };
 
-  data?.forEach(event => {
+  data?.forEach((event: any) => {
     const name = event.event_name;
     metrics.events_by_type[name] = (metrics.events_by_type[name] || 0) + 1;
   });

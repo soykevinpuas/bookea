@@ -571,7 +571,7 @@ export default function ReaderPage() {
 
         // Registrar función visual para cada highlight
         const renderHighlights = () => {
-          savedHighlights.forEach(h => {
+          savedHighlights.forEach((h: any) => {
              try {
                rendition.annotations.highlight(h.cfi_start, { id: h.id }, (e: Event) => {
                  handleHighlightClick(h);
@@ -695,11 +695,11 @@ export default function ReaderPage() {
   useEffect(() => {
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
-        renditionRef.current?.prev().catch(err => console.warn("EPUB key prev error:", err));
+        renditionRef.current?.prev().catch((err: any) => console.warn("EPUB key prev error:", err));
         resetControlsTimeout();
       }
       if (e.key === 'ArrowRight') {
-        renditionRef.current?.next().catch(err => console.warn("EPUB key next error:", err));
+        renditionRef.current?.next().catch((err: any) => console.warn("EPUB key next error:", err));
         resetControlsTimeout();
       }
     };
@@ -845,12 +845,12 @@ export default function ReaderPage() {
 
   // 4.2.9.1 - Controladores de paginación explícitos (Adelante/Atrás) operados mediante los botones HUD
   const handlePrev = () => {
-    renditionRef.current?.prev().catch(err => console.warn("EPUB prev error:", err));
+    renditionRef.current?.prev().catch((err: any) => console.warn("EPUB prev error:", err));
     resetControlsTimeout();
   };
 
   const handleNext = () => {
-    renditionRef.current?.next().catch(err => console.warn("EPUB next error:", err));
+    renditionRef.current?.next().catch((err: any) => console.warn("EPUB next error:", err));
     resetControlsTimeout();
   };
 
@@ -871,9 +871,9 @@ export default function ReaderPage() {
         // Exorcismo visual manual para borrar cualquier trazo testarudo que epub.js haya fallado en remover
         try {
           const DOMTargets = `g[data-epubcfi="${activeSelection.cfiRange}"], mark[data-epubcfi="${activeSelection.cfiRange}"]`;
-          document.querySelectorAll(DOMTargets).forEach(n => n.remove());
+          document.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
 const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
-        contents?.forEach(c => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
+        contents?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
         } catch (err) {}
         
         // Plamar el color nuevo
@@ -916,7 +916,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     // Deseleccionar el texto dentro del Iframe
     if (renditionRef.current) {
       const contentsArray = renditionRef.current.getContents() as unknown as EpubContents[];
-      contentsArray?.forEach((content) => {
+      contentsArray?.forEach((content: any) => {
         content.window?.getSelection()?.removeAllRanges();
       });
     }
@@ -927,7 +927,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     // Deseleccionar el texto (la previsualización nativa) dentro del Iframe
     if (renditionRef.current) {
       const contentsArray = renditionRef.current.getContents() as unknown as EpubContents[];
-      contentsArray?.forEach((content) => {
+      contentsArray?.forEach((content: any) => {
         content.window?.getSelection()?.removeAllRanges();
       });
     }
@@ -942,9 +942,9 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       // Exorcismo visual: Destrucción manual del nodo en el DOM en caso de que el bug de epubjs evite soltar la capa
       try {
         const DOMTargets = `g[data-epubcfi="${cfi}"], mark[data-epubcfi="${cfi}"]`;
-        document.querySelectorAll(DOMTargets).forEach(n => n.remove());
+        document.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
         const contentsArray = renditionRef.current?.getContents() as unknown as EpubContents[];
-        contentsArray?.forEach(c => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
+        contentsArray?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
       } catch (err) {}
 
       toast.info("Subrayado eliminado");

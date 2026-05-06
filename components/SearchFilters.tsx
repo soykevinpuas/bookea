@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, LayoutGrid, List, SlidersHorizontal, X, User, Grid3X3 } from "lucide-react";
 import { useState, useEffect, useTransition } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ============================================
 // 6.3 - SearchFilters: Componente de búsqueda y filtrado para el catálogo de libros
@@ -223,7 +224,7 @@ export function SearchFilters({
                         "Misterio y Suspenso", "Fantasía", "Ciencia Ficción", 
                         "Romance", "Terror", "Autoayuda", "Negocios y Finanzas", 
                         "Historia", "Biografías", "Cuentos", "Poesía", "Otros"
-                      ].map((cat) => (
+                      ].map((cat: any) => (
                         <button
                           key={cat}
                           onClick={() => {

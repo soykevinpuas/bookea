@@ -69,8 +69,8 @@ function BookDetailContent() {
     // Verificar si el libro está en el caché al cargar
     if (book?.epub_url) {
       const url = book.epub_url;
-      caches.open('bookea-books').then(cache => {
-        cache.match(url).then(match => {
+    caches.open('bookea-books').then((cache: any) => {
+      cache.match(url).then((match: any) => {
           if (match) setIsDownloaded(true);
         });
       });
