@@ -372,8 +372,8 @@ export default function ReaderPage() {
                 padding: 20px 5% 20px !important;
                 padding-left: max(5%, env(safe-area-inset-left)) !important;
                 padding-right: max(5%, env(safe-area-inset-right)) !important;
-                padding-top: max(20px, env(safe-area-inset-top)) !important;
-                padding-bottom: max(60px, env(safe-area-inset-bottom)) !important;
+                padding-top: max(40px, env(safe-area-inset-top)) !important;
+                padding-bottom: max(32px, env(safe-area-inset-bottom)) !important;
                 max-width: 800px !important;
                 margin: 0 auto !important;
                 transition: color 0.3s ease, background-color 0.3s ease, font-family 0.2s ease;
@@ -1171,7 +1171,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
       {/* 4.2.15 - Ventana principal de visualización del objeto renderizado (Viewport) */}
       <div 
-        className="flex-1 relative w-full h-full pt-20 sm:pt-24 md:pt-20 pb-20 sm:pb-24"
+        className="flex-1 relative w-full h-full pt-16 sm:pt-20 pb-12 sm:pb-16"
         onClick={() => toggleControls()}
       >
         {isLoading && (
@@ -1203,7 +1203,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
       {/* 4.2.16.1 - Popup fijo interactivo para Subrayados cuando hay Selección */}
       {activeSelection && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-white dark:bg-[#1a1a1a] shadow-xl border border-gray-200 dark:border-white/10 rounded-2xl flex flex-col sm:flex-row items-center gap-2 p-3 px-4 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 pointer-events-auto">
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] w-[90vw] sm:w-auto max-w-lg bg-white dark:bg-[#1a1a1a] shadow-2xl border border-gray-200 dark:border-white/10 rounded-2xl flex flex-col sm:flex-row items-center gap-2 p-3 px-4 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 pointer-events-auto">
           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px] sm:max-w-[200px]">
              "{activeSelection.text}"
           </span>
@@ -1339,7 +1339,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         <div 
           className="fixed z-[80] pointer-events-none"
           style={{ 
-            left: `${dictionaryPos.x}px`, 
+            left: `${Math.max(150, Math.min((typeof window !== 'undefined' ? window.innerWidth : 300) - 150, dictionaryPos.x))}px`, 
             top: `${dictionaryPos.y}px`,
             transform: 'translate(-50%, calc(-100% - 20px))' // Posicionar arriba de la palabra con margen
           }}
@@ -1373,7 +1373,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
       {/* 4.2.17 - Barra inferior central (Bottom HUD) de navegación de hojas y rastreo de progreso porcentual estricto */}
       <div 
-        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 pt-4 pb-[max(env(safe-area-inset-bottom),24px)] transition-all duration-300 pointer-events-auto ${
+        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 pt-4 pb-[max(env(safe-area-inset-bottom),32px)] transition-all duration-300 pointer-events-auto ${
             showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
         } ${isDark ? 'bg-black/60 backdrop-blur-xl border-t border-white/10' : 
             isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-t border-[#3fb950]/20' : 
