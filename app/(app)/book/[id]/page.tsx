@@ -10,7 +10,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useCoins } from "@/hooks/useCoins";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2, BookmarkPlus, BookmarkCheck, Coins } from "lucide-react";
 import ReviewForm from "@/components/community/ReviewForm";
