@@ -126,6 +126,17 @@ export default function ReaderPage() {
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     const metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     
+    // Actualizar variable CSS en el iframe para manejar el padding superior dinámicamente
+    const updateIframePadding = () => {
+      const iframe = viewerRef.current?.querySelector('iframe');
+      if (iframe?.contentDocument?.body) {
+        // Si el HUD está oculto, necesitamos proteger el espacio de la hora/batería si el sistema no los oculta
+        // 44px es el estándar del notch de iPhone, env(safe-area-inset-top) es ideal si funciona
+        const safeTop = !showControls ? 'max(44px, env(safe-area-inset-top))' : '10px';
+        iframe.contentDocument.body.style.setProperty('--reader-safe-top', safeTop);
+      }
+    };
+
     if (!showControls) {
       // Modo inmersivo: Fondo del tema
       const bgColor = theme === 'retro' ? '#0d1117' : theme === 'navy' ? '#0a0f1e' : theme === 'dark' ? '#0a0a0a' : '#ffffff';
@@ -148,6 +159,11 @@ export default function ReaderPage() {
         document.exitFullscreen().catch(() => {});
       }
     }
+
+    updateIframePadding();
+    // Re-intentar después de un breve delay por si el iframe aún carga
+    const timer = setTimeout(updateIframePadding, 500);
+    return () => clearTimeout(timer);
   }, [showControls, theme, mounted]);
   const [bookCompleted, setBookCompleted] = useState(false);
   const { data: transactions } = useCoinTransactions(userId);
@@ -405,8 +421,8 @@ export default function ReaderPage() {
                 padding: 10px 3% 10px !important;
                 padding-left: max(3%, env(safe-area-inset-left)) !important;
                 padding-right: max(3%, env(safe-area-inset-right)) !important;
-                padding-top: max(10px, env(safe-area-inset-top)) !important;
-                padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+                padding-top: var(--reader-safe-top, 20px) !important;
+                padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
                 max-width: 900px !important;
                 margin: 0 auto !important;
                 transition: color 0.3s ease, background-color 0.3s ease, font-family 0.2s ease;
