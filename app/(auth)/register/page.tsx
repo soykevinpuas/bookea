@@ -2,11 +2,10 @@
 
 import { register } from '@/app/auth/actions'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-// 2.2 - RegisterPage: Componente de formulario para creación de nuevas cuentas de usuario
-export default function RegisterPage() {
+function RegisterContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -133,5 +132,13 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white/40 font-bold uppercase tracking-widest text-xs">Cargando Registro...</div>}>
+      <RegisterContent />
+    </Suspense>
   )
 }

@@ -21,7 +21,7 @@ import { createClientClient } from "@/lib/supabase";
 import { CoinRedemptionModal } from "@/components/book/CoinRedemptionModal";
 
 // 3.5.1 - Componente principal de la página de detalle
-export default function BookDetailPage() {
+function BookDetailContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -234,6 +234,9 @@ export default function BookDetailPage() {
                 <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-3">
                   Descripción
                 </h2>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-3">
+                  Descripción
+                </h2>
                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
                   {book.description || "No hay descripción disponible."}
                 </p>
@@ -438,5 +441,13 @@ export default function BookDetailPage() {
          />
        )}
      </div>
-   );
- }
+  );
+}
+
+export default function BookDetailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white/40 font-bold uppercase tracking-widest text-xs">Cargando Libro...</div>}>
+      <BookDetailContent />
+    </Suspense>
+  )
+}
