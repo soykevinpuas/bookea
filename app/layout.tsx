@@ -148,6 +148,7 @@ export default async function RootLayout({
         />
       </head>
       <body
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 transition-colors duration-300 dark:bg-[#0a0a0a] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-gray-100 retro:text-white navy:text-[#e8eaf6] flex flex-col`}
       >
         {/* 1.7 - Splash Screen HTML puro: visible instantáneamente sin esperar a React */}

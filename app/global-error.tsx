@@ -15,10 +15,20 @@ export default function GlobalError({
     // Registrar el error real en consola para diagnóstico
     console.error('🔴 [GlobalError] Error atrapado:', error.message, error.digest)
     
+    // Si la app crashea por culpa de una versión antigua cacheada por la PWA,
+    // debemos desregistrar el Service Worker para romper el bucle infinito de errores.
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+
     // Intento automático de recuperación después de 1 segundo
     const timer = setTimeout(() => {
-      reset()
-    }, 1000)
+      window.location.reload(); // Forzar recarga completa en lugar de reset() para limpiar caché
+    }, 1500)
     
     return () => clearTimeout(timer)
   }, [error, reset])
