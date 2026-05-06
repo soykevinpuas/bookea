@@ -119,6 +119,31 @@ export default function ReaderPage() {
 
   // 4.2.2.5 - Estado para gamificación (quiz de finalización y racha)
   const [showQuiz, setShowQuiz] = useState(false);
+  
+  // 4.2.4.1 - Efecto inmersivo: Ocultar barra de estado (hora/batería) al ocultar HUD
+  useEffect(() => {
+    if (!mounted) return;
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    
+    if (!showControls) {
+      // Modo inmersivo: Fondo del tema
+      const bgColor = theme === 'retro' ? '#0d1117' : theme === 'navy' ? '#0a0f1e' : '#0a0a0a';
+      if (metaTheme) metaTheme.setAttribute('content', bgColor);
+      
+      // Intentar Fullscreen para ocultar hora/batería en dispositivos compatibles
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else {
+      // Modo navegación: Restaurar sistema
+      if (metaTheme) metaTheme.setAttribute('content', theme === 'light' ? '#ffffff' : '#000000');
+      
+      // Salir de Fullscreen
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  }, [showControls, theme, mounted]);
   const [bookCompleted, setBookCompleted] = useState(false);
   const { data: transactions } = useCoinTransactions(userId);
   const alreadyClaimedCoin = transactions?.some((t: any) => t.book_id === bookId && t.source === 'complete_book');
@@ -1388,12 +1413,12 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
       {/* 4.2.17 - Barra inferior central (Bottom HUD) de navegación de hojas y rastreo de progreso porcentual estricto */}
       <div 
-        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 pt-4 pb-[max(env(safe-area-inset-bottom),32px)] transition-all duration-300 pointer-events-auto ${
+        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 pt-4 pb-[max(env(safe-area-inset-bottom),56px)] transition-all duration-300 pointer-events-auto ${
             showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
         } ${isDark ? 'bg-black/60 backdrop-blur-xl border-t border-white/10' : 
             isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-t border-[#3fb950]/20' : 
             isNavy ? 'bg-[#0a0f1e]/90 backdrop-blur-xl border-t border-[#7986cb]/20' :
-            'bg-white/70 backdrop-blur-xl border-t border-black/5'} shadow-[0_-4px_20px_rgba(0,0,0,0.05)]`}
+            'bg-white/70 backdrop-blur-xl border-t border-black/5'} shadow-[0_-8px_30px_rgba(0,0,0,0.15)]`}
       >
         <div className="flex items-center justify-between max-w-4xl mx-auto w-full gap-2 sm:gap-4">
           <button
