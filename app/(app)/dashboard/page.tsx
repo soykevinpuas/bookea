@@ -147,21 +147,21 @@ function DashboardContent() {
             </div>
             <Link 
               href={`/reader/${recentBook.id}`}
-              className="group relative flex flex-col sm:flex-row items-center gap-6 p-6 bg-white/5 border border-white/10 rounded-3xl overflow-hidden hover:border-blue-500/30 transition-all shadow-2xl"
+              className="group relative flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all shadow-xl"
             >
-                <div className="w-24 h-36 flex-shrink-0 shadow-xl group-hover:scale-105 transition-transform">
+                <div className="w-16 h-24 flex-shrink-0 shadow-lg group-hover:scale-105 transition-transform">
                  <Book3D src={recentBook.cover_url || ""} title={recentBook.title} percentComplete={recentBook.percent_complete} />
                </div>
-              <div className="flex-1 text-center sm:text-left z-10">
-                <div className="flex items-center justify-center sm:justify-start gap-4 mb-2">
-                  <h3 className="text-xl font-black group-hover:text-blue-400 transition-colors truncate">{recentBook.title}</h3>
+              <div className="flex-1 min-w-0 z-10">
+                <div className="flex items-center gap-3 mb-1">
+                  <h3 className="text-lg font-black group-hover:text-blue-400 transition-colors truncate max-w-[180px] sm:max-w-md">{recentBook.title}</h3>
                   {recentBook.percent_complete !== undefined && (
-                    <ProgressCircle progress={recentBook.percent_complete} size={32} />
+                    <ProgressCircle progress={recentBook.percent_complete} size={24} />
                   )}
                 </div>
-                <p className="text-white/40 text-sm mb-4">{recentBook.author}</p>
-                <div className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-600/20">
-                  Reanudar lectura
+                <p className="text-white/40 text-xs mb-3 truncate">{recentBook.author}</p>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-600 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider">
+                  Continuar
                 </div>
               </div>
             </Link>

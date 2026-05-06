@@ -607,3 +607,10 @@ main {
   from { transform: scale(0.8); opacity: 0.1; }
   to { transform: scale(1.4); opacity: 0.2; }
 }
+
+/* 1.7.1 - Ocultar splash inmediatamente si ya se mostró en la sesión (Head Script support) */
+html.splash-ready #bookea-splash {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

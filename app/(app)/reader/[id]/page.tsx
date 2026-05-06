@@ -138,6 +138,11 @@ export default function ReaderPage() {
   const sizeRef = useRef<number>(fontSize);
   const alignRef = useRef<"left" | "center" | "right" | "justify">(textAlign);
   const colorRef = useRef<string>(textColor);
+  const progressRef = useRef<number>(progress);
+
+  useEffect(() => {
+    progressRef.current = progress;
+  }, [progress]);
 
   // 4.2.2.1 - Colores disponibles para el texto del lector
   const textColors = [
@@ -671,7 +676,13 @@ export default function ReaderPage() {
     return () => {
       if (loadingTimeout) clearTimeout(loadingTimeout);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+        // FORZAR GUARDADO AL SALIR SI HABIA PENDIENTE
+        if (lastCfiRef.current && userId) {
+          saveReadingProgress(bookId, userId, lastCfiRef.current, progressRef.current);
+        }
+      }
       renditionRef.current?.clear();
       renditionRef.current = null;
       bookRef.current?.destroy();
@@ -969,9 +980,9 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
       if (result.success) {
         toast.success('¡Libro completado! Has ganado una moneda de bronce 🪙');
-        setAlreadyClaimedCoin(true);
-        // Invalidar queries para refrescar el balance en otros componentes
+        // Invalidar queries para refrescar el balance y las transacciones (esto actualizará alreadyClaimedCoin)
         queryClient.invalidateQueries({ queryKey: ['user-coins', userId] });
+        queryClient.invalidateQueries({ queryKey: ['user-coin-transactions', userId] });
       } else {
         if (result.error === 'insufficient_progress') {
           toast.error('Debes leer un poco más del libro para ganar la moneda.');

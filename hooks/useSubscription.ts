@@ -32,8 +32,6 @@ export function useSubscription(userId: string | undefined) {
         throw error;
       }
 
-      console.log("[useSubscription] Fetched from DB:", data);
-
       let endsAt: Date | null = null;
       if (data.subscription_ends_at) {
         const parsedDate = new Date(data.subscription_ends_at);
@@ -53,17 +51,37 @@ export function useSubscription(userId: string | undefined) {
         daysRemaining = Math.ceil((endsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       }
 
-      return {
+      const subscription = {
         role: data.role as SubscriptionData['role'],
         subscription_ends_at: data.subscription_ends_at,
         isActive,
         isExpired,
         daysRemaining
       };
+
+      // 2.3 - Cache local para reconocimiento instantáneo en el próximo inicio
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`bookea-sub-${userId}`, JSON.stringify(subscription));
+      }
+
+      return subscription;
+    },
+    initialData: () => {
+      if (typeof window !== 'undefined' && userId) {
+        const cached = localStorage.getItem(`bookea-sub-${userId}`);
+        if (cached) {
+          try {
+            return JSON.parse(cached);
+          } catch (e) {
+            return undefined;
+          }
+        }
+      }
+      return undefined;
     },
     enabled: !!userId,
-    staleTime: 0, // SIEMPRE refrescar del servidor — sin cache engañoso
-    refetchOnWindowFocus: true, // Refrescar al volver a la pestaña
+    staleTime: 5000, // Permitimos 5s de cache para evitar spam al navegar
+    refetchOnWindowFocus: true,
   });
 
   // 2.2 - Suscripción Realtime: Escuchar cambios en el rol del usuario

@@ -38,7 +38,27 @@ export function useUserBooks(userId: string, options?: { search?: string; catego
 
   const query = useQuery({
     queryKey: ["userBooks", userId, options?.search, options?.category],
-    queryFn: () => getUserBooks(supabase, userId!, options),
+    queryFn: async () => {
+      const data = await getUserBooks(supabase, userId!, options);
+      // Solo cacheamos la vista principal (sin filtros) para el inicio rápido
+      if (data && !options?.search && !options?.category && typeof window !== 'undefined') {
+        localStorage.setItem(`bookea-library-${userId}`, JSON.stringify(data));
+      }
+      return data;
+    },
+    initialData: () => {
+      if (typeof window !== 'undefined' && userId && !options?.search && !options?.category) {
+        const cached = localStorage.getItem(`bookea-library-${userId}`);
+        if (cached) {
+          try {
+            return JSON.parse(cached);
+          } catch (e) {
+            return undefined;
+          }
+        }
+      }
+      return undefined;
+    },
     // Habilitado si hay usuario O si estamos offline (para ver lo que hay en caché)
     enabled: !!userId || (typeof window !== 'undefined' && !navigator.onLine),
     ...BOOK_QUERY_OPTIONS,

@@ -13,7 +13,26 @@ export function useProfile(userId: string | undefined) {
   // 6.3.1 - Consulta del perfil actual
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
-    queryFn: () => getProfile(userId!),
+    queryFn: async () => {
+      const data = await getProfile(userId!);
+      if (data && typeof window !== 'undefined') {
+        localStorage.setItem(`bookea-profile-${userId}`, JSON.stringify(data));
+      }
+      return data;
+    },
+    initialData: () => {
+      if (typeof window !== 'undefined' && userId) {
+        const cached = localStorage.getItem(`bookea-profile-${userId}`);
+        if (cached) {
+          try {
+            return JSON.parse(cached);
+          } catch (e) {
+            return undefined;
+          }
+        }
+      }
+      return undefined;
+    },
     enabled: !!userId,
     staleTime: 10 * 60 * 1000,
   });
