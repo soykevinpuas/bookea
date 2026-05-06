@@ -234,9 +234,6 @@ function BookDetailContent() {
                 <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-3">
                   Descripción
                 </h2>
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-3">
-                  Descripción
-                </h2>
                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
                   {book.description || "No hay descripción disponible."}
                 </p>

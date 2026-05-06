@@ -80,7 +80,10 @@ function DashboardContent() {
   }, []);
 
   const { data: allBooks, isLoading } = useUserBooks(userId);
-  
+  const { data: coinsBalance } = useCoins(userId);
+  const { data: streak } = useStreak(userId);
+  const { profile } = useProfile(userId);
+
   const displayBooks = useMemo(() => {
     return allBooks || [];
   }, [allBooks]);
@@ -126,10 +129,6 @@ function DashboardContent() {
       </div>
     );
   }
-
-  const { data: coinsBalance } = useCoins(userId);
-  const { data: streak } = useStreak(userId);
-  const { profile } = useProfile(userId);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30">
