@@ -27,30 +27,32 @@ export async function GET(
 
     // 2. Generar prompt para Gemini
     const prompt = `
-      Eres un experto literario de la plataforma Bookea. Tu tarea es crear un quiz de COMPRENSIÓN DE LECTURA de 5 preguntas para el libro "${book.title}" de ${book.author}.
+      Eres un experto literario crítico de la plataforma Bookea. Tu tarea es crear un quiz de ALTO NIVEL de comprensión de lectura para el libro "${book.title}" de ${book.author}.
       
       IMPORTANTE:
-      - Basate en la trama real del libro si lo conoces por tu entrenamiento.
-      - Si NO conoces los detalles específicos del libro, usa EXCLUSIVAMENTE esta descripción para generar las preguntas: "${book.description || 'No hay descripción disponible'}".
-      - Las preguntas deben ser sobre eventos, personajes o temas específicos de la historia.
-      - Las respuestas incorrectas deben ser verosímiles pero claramente falsas para quien leyó el libro.
-      - Las preguntas NO deben ser genéricas (evita cosas como "¿Quién escribió el libro?" o "¿Te gustó?").
+      - Tienes prohibido usar preguntas genéricas como "¿Quién escribió el libro?", "¿Te gustó?", "¿De qué trata?".
+      - Las preguntas deben ser ESPECÍFICAS sobre la trama, giros narrativos, nombres de personajes secundarios o eventos clave.
+      - Si conoces el libro por tu entrenamiento, usa detalles que solo alguien que leyó el libro sabría.
+      - Si NO conoces los detalles específicos, analiza profundamente esta descripción: "${book.description || 'No hay descripción disponible'}". 
+      - En caso de usar la descripción, no te limites a repetir palabras; infiere situaciones basadas en el género del libro.
+      - Las respuestas incorrectas (distractores) deben ser muy verosímiles, no pongas opciones como "No sé" o "N/A".
       
       Estructura del Quiz:
-      1. 5 preguntas con 3 opciones cada una.
-      2. Solo una opción debe ser la correcta.
-      3. Formato JSON ESTRICTO:
+      1. EXACTAMENTE 5 preguntas.
+      2. 3 opciones por pregunta.
+      3. Una sola opción correcta.
+      4. Formato JSON ESTRICTO:
          {
            "questions": [
              {
-               "question": "¿Pregunta detallada...?",
+               "question": "¿Pregunta muy específica...?",
                "options": ["Opción A", "Opción B", "Opción C"],
                "correctIndex": 0
              }
            ]
          }
       
-      Idioma: Español. No incluyas nada más que el JSON.
+      Idioma: Español. Responde ÚNICAMENTE con el objeto JSON.
     `
 
     const result = await model.generateContent(prompt)

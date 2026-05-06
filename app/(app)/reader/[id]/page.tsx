@@ -1188,18 +1188,32 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
              "{activeSelection.text}"
           </span>
           <div className="w-px h-6 bg-gray-200 dark:bg-white/10 hidden sm:block mx-2"></div>
-          <div className="flex items-center gap-3">
-             <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#FFEB3B')} className="w-6 h-6 rounded-full bg-[#FFEB3B] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
-             <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#3fb950')} className="w-6 h-6 rounded-full bg-[#3fb950] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
-             <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#60a5fa')} className="w-6 h-6 rounded-full bg-[#60a5fa] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
-             <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#f472b6')} className="w-6 h-6 rounded-full bg-[#f472b6] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
-             
-             <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-1"></div>
-             
-             <button onClick={handleCancelSelection} className="p-1 px-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300 font-medium text-sm transition-colors cursor-pointer">
-               Cancelar
-             </button>
-          </div>
+           <div className="flex items-center gap-3">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDictionaryPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                  handleFetchDefinition(activeSelection.text, "");
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors border border-blue-500/20 group/ai"
+              >
+                <Sparkles className="w-4 h-4 group-hover/ai:animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-wider">Definición IA</span>
+              </button>
+
+              <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-1"></div>
+
+              <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#FFEB3B')} className="w-6 h-6 rounded-full bg-[#FFEB3B] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
+              <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#3fb950')} className="w-6 h-6 rounded-full bg-[#3fb950] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
+              <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#60a5fa')} className="w-6 h-6 rounded-full bg-[#60a5fa] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
+              <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#f472b6')} className="w-6 h-6 rounded-full bg-[#f472b6] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
+              
+              <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-1"></div>
+              
+              <button onClick={handleCancelSelection} className="p-1 px-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300 font-medium text-sm transition-colors cursor-pointer">
+                Cancelar
+              </button>
+           </div>
         </div>
       )}
 

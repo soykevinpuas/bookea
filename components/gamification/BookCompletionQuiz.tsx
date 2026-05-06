@@ -19,11 +19,11 @@ interface QuizQuestion {
 }
 
 const DEFAULT_QUESTIONS: QuizQuestion[] = [
-  { question: '¿De qué trataba principalmente el libro?', options: ['No recuerdo', 'Lo leí por completo', 'Solo vi algunas partes'], correctIndex: 1 },
-  { question: '¿Cuál era el tema central?', options: ['No estoy seguro', 'El desarrollo del argumento principal', 'Solo el inicio'], correctIndex: 1 },
-  { question: '¿Qué opinas de la conclusión?', options: ['No la leí', 'Me pareció coherente con el resto', 'N/A'], correctIndex: 1 },
-  { question: '¿Recomendarías este libro?', options: ['Sí', 'No', 'Tal vez'], correctIndex: 0 },
-  { question: '¿Qué parte te gustó más?', options: ['El inicio', 'El desarrollo', 'La conclusión'], correctIndex: 1 },
+  { question: '¿Cuál es el conflicto principal que enfrentó el protagonista?', options: ['Un dilema interno profundo', 'Un obstáculo externo insuperable', 'No hubo un conflicto claro'], correctIndex: 0 },
+  { question: '¿Cómo describirías la evolución del personaje principal?', options: ['Mantuvo su postura inicial siempre', 'Sufrió una transformación significativa', 'Fue un personaje meramente observador'], correctIndex: 1 },
+  { question: '¿Qué atmósfera predomina en la narrativa de esta obra?', options: ['Tensión y misterio constante', 'Melancolía y reflexión profunda', 'Optimismo y ligereza'], correctIndex: 1 },
+  { question: '¿Cuál consideras que es el mensaje subyacente de la historia?', options: ['La superación de la adversidad', 'La complejidad de las relaciones humanas', 'La búsqueda de la verdad'], correctIndex: 1 },
+  { question: '¿Cómo calificarías la resolución de la trama final?', options: ['Predecible y sencilla', 'Inesperada y satisfactoria', 'Abierta a interpretaciones'], correctIndex: 2 },
 ]
 
 export function BookCompletionQuiz({ isOpen, onClose, onComplete, bookTitle, bookId }: BookCompletionQuizProps) {
