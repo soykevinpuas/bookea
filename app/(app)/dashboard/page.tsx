@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
 import { useCoins, useStreak } from "@/hooks/useCoins";
@@ -18,7 +18,8 @@ import { track } from "@/lib/analytics";
 import { DashboardSkeleton } from "@/components/ui/LoadingStates";
 
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
-export default function DashboardPage() {
+// Componente interno con toda la lógica del Dashboard
+function DashboardContent() {
   const { userId } = useUserId();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,7 +52,6 @@ export default function DashboardPage() {
               icon: <Sparkles className="w-5 h-5 text-amber-500" />,
               duration: 8000,
             });
-            // Esperar un poco antes de limpiar la URL para evitar parpadeos
             setTimeout(() => {
               const newPath = window.location.pathname;
               window.history.replaceState({}, '', newPath);
@@ -81,17 +81,12 @@ export default function DashboardPage() {
 
   const { data: allBooks, isLoading } = useUserBooks(userId);
   
-  // 3.4.2 - Los libros ya vienen con el plan B (offline) desde el hook useUserBooks
-  // No necesitamos un estado local ruidoso separado aquí.
   const displayBooks = useMemo(() => {
     return allBooks || [];
   }, [allBooks]);
 
-  // 3.4.2 - Lógica de 'Recientemente leídos' (Checkpoint)
   const recentBook = useMemo(() => {
     if (!displayBooks || displayBooks.length === 0) return null;
-    
-    // 3.4.2.1 - Ordenar copias locales por fecha de lectura para encontrar el verdadero "reciente"
     const sorted = [...displayBooks].sort((a, b) => {
       const timeA = new Date(a.last_read_at || 0).getTime();
       const timeB = new Date(b.last_read_at || 0).getTime();
@@ -99,22 +94,15 @@ export default function DashboardPage() {
     });
 
     if (!isOnline) {
-      // Buscar el primero que esté descargado y tenga algo de progreso
       return sorted.find(b => (b as any).isOfflineReady === true) || sorted[0];
     }
-    
     return sorted[0];
   }, [displayBooks, isOnline]);
 
   const books = useMemo(() => {
     if (!displayBooks) return [];
     let filtered = [...displayBooks];
-
-    // 3.4.1.2 - Filtro Offline: Solo mostrar libros descargados si no hay internet
-    if (!isOnline) {
-      filtered = filtered.filter(b => (b as any).isOfflineReady === true);
-    }
-
+    if (!isOnline) filtered = filtered.filter(b => (b as any).isOfflineReady === true);
     if (search) {
       const s = search.toLowerCase();
       filtered = filtered.filter(b => b.title?.toLowerCase().includes(s));
@@ -131,7 +119,6 @@ export default function DashboardPage() {
 
   const categories = ["Ficción", "Novela", "Clásicos", "Misterio", "Fantasía", "Historia", "Otros"];
 
-  // 3.4.6 - Loading con soporte offline: no quedarnos en loading si el hook ya devolvió algo (aunque sea del caché)
   if (isLoading && isOnline && displayBooks.length === 0) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] p-6">
@@ -146,7 +133,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30">
-      {/* 3.4.3 - Banner Offline */}
       {!isOnline && (
         <div className="bg-orange-600/20 border-b border-orange-500/20 py-2 px-6 flex items-center justify-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-widest backdrop-blur-md">
           <WifiOff className="w-3 h-3" /> Modo Offline Activado - Solo libros descargados disponibles
@@ -154,7 +140,6 @@ export default function DashboardPage() {
       )}
 
       <main className="max-w-7xl mx-auto px-6 py-12">
-        {/* 3.4.4 - Sección Reciente */}
         {recentBook && (
           <section className="mb-12">
             <div className="flex items-center gap-2 mb-4 text-blue-400">
@@ -184,7 +169,6 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* Mini stats: racha + libros leídos + monedas - Estilo Unificado */}
         <div className="grid grid-cols-3 gap-3 mb-12">
           <div className="text-center p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
             <Flame className="w-5 h-5 mx-auto text-orange-400 mb-1" />
@@ -328,5 +312,14 @@ export default function DashboardPage() {
         )}
       </main>
     </div>
+  );
+}
+
+// 3.4 - DashboardPage: Panel principal envuelto en Suspense para manejar useSearchParams en producción
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a] p-6"><DashboardSkeleton /></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
