@@ -8,6 +8,7 @@ import { PwaListener } from "@/components/PwaListener";
 import { SplashScreen } from "@/components/SplashScreen";
 import { BottomNav } from "@/components/BottomNav";
 import { PageTransitionWrapper } from "@/components/PageTransitionWrapper";
+import { Suspense } from "react";
 
 
 // 1.5 - Configuración de fuentes y Metadata global
@@ -116,7 +117,9 @@ export default async function RootLayout({
             <Header initialUser={user ? { id: user.id, email: user.email } : null} />
             <PageTransitionWrapper>
               <main className="flex-1 pb-safe px-safe flex flex-col">
-                {children}
+                <Suspense fallback={null}>
+                  {children}
+                </Suspense>
               </main>
             </PageTransitionWrapper>
             <BottomNav />

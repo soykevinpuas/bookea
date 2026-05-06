@@ -122,7 +122,7 @@ export function Header({ initialUser = null }: HeaderProps) {
                    >
                      <Circle className="w-3 h-3 fill-current" />
                      {coinsBalance && (
-                       <span>{coinsBalance.bronze + coinsBalance.silver + coinsBalance.gold + coinsBalance.diamond}</span>
+                       <span>{(coinsBalance.bronze || 0) + (coinsBalance.silver || 0) + (coinsBalance.gold || 0) + (coinsBalance.diamond || 0)}</span>
                      )}
                    </button>
 
