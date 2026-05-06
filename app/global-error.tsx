@@ -40,9 +40,12 @@ export default function GlobalError({
           <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.75rem' }}>
             <span style={{ color: '#3b82f6' }}>B</span>ookea
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', marginBottom: '2rem' }}>
-            Recuperando vista...
-          </p>
+          <button 
+            onClick={() => reset()}
+            className="px-4 py-2 bg-blue-600 rounded-lg text-sm"
+          >
+            Intentar de nuevo
+          </button>
         </div>
       </body>
     </html>

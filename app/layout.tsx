@@ -7,7 +7,6 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { PwaListener } from "@/components/PwaListener";
 import { SplashScreen } from "@/components/SplashScreen";
 import { BottomNav } from "@/components/BottomNav";
-import { PageTransitionWrapper } from "@/components/PageTransitionWrapper";
 import { Suspense } from "react";
 
 
@@ -172,13 +171,11 @@ export default async function RootLayout({
           <SplashScreen />
           <QueryProvider>
             <Header initialUser={user ? { id: user.id, email: user.email } : null} />
-            <PageTransitionWrapper>
-              <main className="flex-1 pb-safe px-safe flex flex-col">
-                <Suspense fallback={null}>
-                  {children}
-                </Suspense>
-              </main>
-            </PageTransitionWrapper>
+            <main className="flex-1 pb-safe px-safe flex flex-col">
+              <Suspense fallback={null}>
+                {children}
+              </Suspense>
+            </main>
             <BottomNav />
           </QueryProvider>
           <Toaster 
