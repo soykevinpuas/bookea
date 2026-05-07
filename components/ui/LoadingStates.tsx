@@ -221,6 +221,7 @@ interface PrefetchLinkProps {
   href: string;
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   prefetch?: boolean;
   onClick?: () => void;
   // Opcional: datos específicos para precargar en React Query
@@ -232,6 +233,7 @@ export function PrefetchLink({
   href, 
   children, 
   className = "", 
+  style,
   prefetch = true,
   onClick,
   bookId
@@ -269,6 +271,7 @@ export function PrefetchLink({
     <Link 
       href={href} 
       className={className}
+      style={style}
       onMouseEnter={handleMouseEnter}
       onClick={onClick}
     >
