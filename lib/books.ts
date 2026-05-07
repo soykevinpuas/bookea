@@ -215,7 +215,7 @@ const { data: userData, error: userError } = await supabase
   .single();
 
 if (userError || !userData) {
-  // Si estamos offline, usar caché de acceso por libro
+  console.error('[hasBookAccess] Error al consultar usuario:', userError?.message);
   const cached = getCachedAccess(bookId);
   if (cached !== null) return cached;
   return false;
