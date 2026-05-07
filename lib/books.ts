@@ -149,7 +149,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
           isOfflineReady
         };
       })
-      .filter((b): b is Book => !!b);
+      .filter((b): b is NonNullable<typeof b> => !!b);
 
     // 3.4.2 - AUTO-CACHING
     if (books.length > 0) {
@@ -172,7 +172,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
       result = result.filter(b => b.category === options.category);
     }
 
-    return result;
+    return result as Book[];
   } catch (error) {
     return getAllCachedBooks();
   }
