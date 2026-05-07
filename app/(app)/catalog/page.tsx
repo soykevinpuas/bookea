@@ -21,7 +21,15 @@ export default async function CatalogPage({ searchParams }: PageProps) {
   
   // 3.1.1 - Inicialización del cliente Supabase en servidor y obtención de la colección filtrada
   const supabase = await createClient();
-  const books = await getBooks(supabase, { search, author, category });
+  const booksData = await getBooks(supabase, { search, author, category });
+  
+  // Barajar los libros aleatoriamente (solo en catálogo) para dar rotación
+  // Se hace solo si no hay una búsqueda activa para no confundir al usuario
+  const shouldShuffle = !search && !author && (category === 'all' || !category);
+  const books = shouldShuffle 
+    ? [...booksData].sort(() => Math.random() - 0.5) 
+    : booksData;
+    
   const booksWithProgress = books; // El progreso se maneja en el cliente vía hooks
 
   return (

@@ -184,14 +184,20 @@ export function SearchFilters({
       {/* 6.3.4.3 - Modal de filtros para dispositivos móviles */}
       <AnimatePresence>
         {showMobileFilters && (
-          <div className="fixed inset-0 z-[100] md:hidden">
+          <motion.div 
+            key="mobile-filters-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] md:hidden flex flex-col justify-end"
+          >
             {/* Backdrop */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowMobileFilters(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
             />
             
             {/* Modal Content */}
@@ -199,26 +205,28 @@ export function SearchFilters({
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 rounded-t-3xl p-6 pb-10 shadow-2xl"
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="relative z-10 w-full bg-white dark:bg-zinc-900 rounded-t-[2.5rem] p-8 pb-12 shadow-[0_-20px_50px_rgba(0,0,0,0.3)] border-t border-white/10"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Filtros</h2>
+              <div className="w-12 h-1.5 bg-gray-300 dark:bg-white/20 rounded-full mx-auto mb-8" />
+              
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-black text-gray-900 dark:text-white">Filtros</h2>
                 <button 
                   onClick={() => setShowMobileFilters(false)}
-                  className="p-2 bg-gray-100 dark:bg-white/10 rounded-full"
+                  className="p-2 bg-gray-100 dark:bg-white/10 rounded-full hover:scale-110 active:scale-95 transition-transform"
                 >
-                  <X className="w-5 h-5 text-gray-500" />
+                  <X className="w-6 h-6 text-gray-500 dark:text-white/60" />
                 </button>
               </div>
               
               <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                <div className="space-y-6">
+                <div className="space-y-8">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    <label className="block text-sm font-bold text-gray-500 dark:text-white/40 uppercase tracking-widest mb-4">
                       Categoría
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                       {[
                         "all", "Ficción", "No Ficción", "Novela", "Clásicos", 
                         "Misterio y Suspenso", "Fantasía", "Ciencia Ficción", 
@@ -232,10 +240,10 @@ export function SearchFilters({
                             updateFilters({ category: cat });
                             setShowMobileFilters(false);
                           }}
-                          className={`px-4 py-2 rounded-xl text-sm transition-all border ${
+                          className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all border ${
                             category === cat 
-                              ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/20" 
-                              : "bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 border-gray-100 dark:border-white/10"
+                              ? "bg-blue-600 text-white border-blue-600 shadow-xl shadow-blue-500/30 scale-[1.02]" 
+                              : "bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 border-gray-100 dark:border-white/10 hover:border-blue-500/30"
                           }`}
                         >
                           {cat === "all" ? "Todas" : cat}
@@ -246,7 +254,7 @@ export function SearchFilters({
                 </div>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

@@ -4,6 +4,23 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-05-06-B] - Refinamiento de UX en Catálogo y Menú Contextual
+
+### Objetivo
+Mejorar la fluidez visual del catálogo, corregir el acceso a filtros en móviles y optimizar el feedback de carga en las acciones de libros.
+
+### Cambios Realizados
+- **Rotación de Libros (Random Order):** Se implementó una lógica de barajado aleatorio en el servidor para el Catálogo. Ahora los libros rotan su posición en cada carga (siempre que no haya filtros activos), mejorando el descubrimiento de contenido.
+- **Fix de Filtros Móviles:** Se reconstruyó el modal de filtros en `SearchFilters.tsx` utilizando un `motion.div` como contenedor raíz para `AnimatePresence`. Se corrigió el problema donde el modal era invisible (solo se veía el blur) mediante ajustes de `z-index` y estructura de capas.
+- **Independencia de Animaciones (Long Press):** Se separaron los estados de carga en `BookLongPressMenu.tsx`. Antes, al quitar un libro, todos los botones mostraban un spinner; ahora cada acción (Descarga vs Biblioteca) tiene su propio estado `isProcessing` independiente.
+
+### Archivos Modificados
+- `app/(app)/catalog/page.tsx` (Random sorting)
+- `components/SearchFilters.tsx` (Mobile modal fix)
+- `components/BookLongPressMenu.tsx` (Granular loading states)
+
+---
+
 ## [2026-05-06] - Fix Crítico de UI: Eliminación de Pantallas de Carga Intermedias
 
 ### Objetivo

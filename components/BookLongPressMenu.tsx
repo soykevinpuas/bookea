@@ -27,7 +27,8 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   const { id: bookId, title: bookTitle, epub_url: epubUrl } = book;
   const [showMenu, setShowMenu] = useState(false);
   const [isDownloaded, setIsDownloaded] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isLibraryProcessing, setIsLibraryProcessing] = useState(false);
+  const [isDownloadProcessing, setIsDownloadProcessing] = useState(false);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const { userId } = useUserId();
@@ -97,7 +98,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       toast.error("Este libro no tiene archivo digital");
       return;
     }
-    setIsProcessing(true);
+    setIsDownloadProcessing(true);
     const success = await downloadBook(book);
     if (success) {
       setIsDownloaded(true);
@@ -105,13 +106,13 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     } else {
       toast.error("Error al descargar el libro");
     }
-    setIsProcessing(false);
+    setIsDownloadProcessing(false);
     setShowMenu(false);
   };
 
   const handleRemoveDownload = async () => {
     if (!epubUrl) return;
-    setIsProcessing(true);
+    setIsDownloadProcessing(true);
     const success = await removeBookDownload(bookId, epubUrl);
     if (success) {
       setIsDownloaded(false);
@@ -119,7 +120,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     } else {
       toast.error("Error al eliminar la descarga");
     }
-    setIsProcessing(false);
+    setIsDownloadProcessing(false);
     setShowMenu(false);
   };
 
@@ -128,7 +129,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       toast.error("Debes iniciar sesión");
       return;
     }
-    setIsProcessing(true);
+    setIsLibraryProcessing(true);
     try {
       const accessType = subscription?.isActive ? 'subscription' : 'permanent';
       const result = await addToLibraryAction(bookId, accessType as any);
@@ -142,7 +143,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     } catch (err) {
       toast.error("Error al conectar con el servidor");
     } finally {
-      setIsProcessing(false);
+      setIsLibraryProcessing(false);
       setShowMenu(false);
     }
   };
@@ -152,7 +153,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       toast.error("Debes iniciar sesión");
       return;
     }
-    setIsProcessing(true);
+    setIsLibraryProcessing(true);
     try {
       const result = await removeFromLibraryAction(bookId);
       if (result.success) {
@@ -164,7 +165,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     } catch (err) {
       toast.error("Error del servidor");
     } finally {
-      setIsProcessing(false);
+      setIsLibraryProcessing(false);
       setShowMenu(false);
     }
   };
@@ -238,31 +239,31 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
               {!isDownloaded ? (
                 <button
                   onClick={handleDownload}
-                  disabled={isProcessing || !epubUrl}
+                  disabled={isDownloadProcessing || !epubUrl}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-white/80 disabled:opacity-40"
                 >
-                  {isProcessing ? (
+                  {isDownloadProcessing ? (
                     <Loader2 className="w-4 h-4 text-green-400 animate-spin" />
                   ) : (
                     <Download className="w-4 h-4 text-green-400" />
                   )}
                   <span className="text-sm font-medium">
-                    {isProcessing ? "Descargando..." : "Descargar Offline"}
+                    {isDownloadProcessing ? "Descargando..." : "Descargar Offline"}
                   </span>
                 </button>
               ) : (
                 <button
                   onClick={handleRemoveDownload}
-                  disabled={isProcessing}
+                  disabled={isDownloadProcessing}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 transition-colors text-red-400"
                 >
-                  {isProcessing ? (
+                  {isDownloadProcessing ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Trash2 className="w-4 h-4" />
                   )}
                   <span className="text-sm font-medium">
-                    {isProcessing ? "Eliminando..." : "Eliminar Descarga"}
+                    {isDownloadProcessing ? "Eliminando..." : "Eliminar Descarga"}
                   </span>
                 </button>
               )}
@@ -273,10 +274,10 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
                 !isInLibrary ? (
                   <button
                     onClick={handleAddToLibrary}
-                    disabled={isProcessing}
+                    disabled={isLibraryProcessing}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-500/10 transition-colors text-amber-500/80"
                   >
-                    {isProcessing ? (
+                    {isLibraryProcessing ? (
                       <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
                     ) : (
                       <BookmarkPlus className="w-4 h-4 text-amber-500" />
@@ -286,10 +287,10 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
                 ) : (
                   <button
                     onClick={handleRemoveFromLibrary}
-                    disabled={isProcessing}
+                    disabled={isLibraryProcessing}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 transition-colors text-red-500/80"
                   >
-                    {isProcessing ? (
+                    {isLibraryProcessing ? (
                       <Loader2 className="w-4 h-4 animate-spin text-red-500" />
                     ) : (
                       <Trash2 className="w-4 h-4 text-red-500" />
