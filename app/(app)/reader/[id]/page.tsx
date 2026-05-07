@@ -156,6 +156,7 @@ export default function ReaderPage() {
   // 4.2.2.6 - Estado para Diccionario Inteligente
   const [dictionaryData, setDictionaryData] = useState<{ word: string; definition: string; context: string } | null>(null);
   const [isDictionaryLoading, setIsDictionaryLoading] = useState(false);
+  const [dictionaryError, setDictionaryError] = useState<string | null>(null);
   const [dictionaryPos, setDictionaryPos] = useState<{ x: number; y: number } | null>(null);
 
   // 4.2.1.2 - Detectar cuando el libro se completa (100%) y mostrar quiz
@@ -189,19 +190,34 @@ export default function ReaderPage() {
   const handleFetchDefinition = async (word: string, context: string) => {
     setIsDictionaryLoading(true);
     setDictionaryData(null);
+    setDictionaryError(null);
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 8000)
+
     try {
       const response = await fetch('/api/dictionary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word, context })
+        body: JSON.stringify({ word, context }),
+        signal: controller.signal,
       });
       const data = await response.json();
       if (data.definition) {
         setDictionaryData({ word, definition: data.definition, context });
+        setDictionaryError(null);
+      } else {
+        setDictionaryError('No se pudo obtener la definición');
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        setDictionaryError('La definición tardó demasiado');
+      } else {
+        setDictionaryError('Error de conexión');
+      }
       console.error("Error fetching definition:", err);
     } finally {
+      clearTimeout(timeoutId);
       setIsDictionaryLoading(false);
     }
   };
@@ -524,6 +540,8 @@ export default function ReaderPage() {
               toggleControls();
               setActiveSelection(null);
               setDictionaryData(null);
+              setDictionaryError(null);
+              setDictionaryPos(null);
             });
           });
         }
@@ -1378,7 +1396,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       </div>
 
       {/* 4.2.18 - Tooltip de Diccionario Inteligente */}
-      {dictionaryPos && (isDictionaryLoading || dictionaryData) && (
+      {dictionaryPos && (isDictionaryLoading || dictionaryData || dictionaryError) && (
         <div 
           className="fixed z-[80] pointer-events-none"
           style={{ 
@@ -1392,6 +1410,20 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
               <div className="flex items-center gap-2 py-2 px-4">
                 <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
                 <span className="text-xs font-medium opacity-70">Definiendo...</span>
+              </div>
+            ) : dictionaryError ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-xs font-black uppercase tracking-widest text-red-400">
+                    Sin conexión
+                  </span>
+                  <button onClick={() => setDictionaryPos(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+                <p className="text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
+                  {dictionaryError}
+                </p>
               </div>
             ) : dictionaryData && (
               <div className="space-y-2">
