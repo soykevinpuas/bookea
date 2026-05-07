@@ -210,7 +210,8 @@ export default function ReaderPage() {
         setDictionaryData({ word, definition: data.definition, context });
         setDictionaryError(null);
       } else {
-        setDictionaryError(data.error || 'No se pudo obtener la definición');
+        const msg = data.details ? `${data.error}: ${data.details}` : (data.error || 'No se pudo obtener la definición');
+        setDictionaryError(msg);
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -1450,11 +1451,13 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-xs font-black uppercase tracking-widest text-red-400">
-                    {dictionaryError === 'La definición tardó demasiado'
+                    {dictionaryError?.startsWith('La definición tardó')
                       ? 'Tiempo de espera'
-                      : dictionaryError === 'El servicio de definiciones no está configurado'
+                      : dictionaryError?.includes('missing_env_var') || dictionaryError?.includes('no está configurada')
                         ? 'No configurado'
-                        : 'Sin conexión'}
+                        : dictionaryError?.includes('API key') || dictionaryError?.includes('PERMISSION_DENIED') || dictionaryError?.includes('billing') || dictionaryError?.includes('not available in your country')
+                          ? 'Error de Google API'
+                          : 'Sin conexión'}
                   </span>
                   <button onClick={() => setDictionaryPos(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md transition-colors">
                     <X className="w-3 h-3" />

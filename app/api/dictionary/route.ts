@@ -1,25 +1,18 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { NextResponse } from 'next/server'
 
-let genAI: GoogleGenerativeAI | null = null
-
-function getModel() {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
-  if (!apiKey) {
-    return null
-  }
-  if (!genAI) {
-    genAI = new GoogleGenerativeAI(apiKey)
-  }
-  return genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-}
-
 export async function POST(req: Request) {
   try {
-    const model = getModel()
-    if (!model) {
-      return NextResponse.json({ error: 'El servicio de definiciones no está configurado', details: 'missing_api_key' }, { status: 500 })
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    if (!apiKey) {
+      return NextResponse.json({
+        error: 'La clave de Gemini no está configurada en el servidor',
+        details: 'missing_env_var'
+      }, { status: 500 })
     }
+
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const { word, context } = await req.json()
 
@@ -45,7 +38,11 @@ export async function POST(req: Request) {
     const definition = result.response.text().trim()
 
     return NextResponse.json({ definition })
-  } catch (error) {
-    return NextResponse.json({ error: 'Error al obtener la definición' }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido'
+    return NextResponse.json({
+      error: 'Error al obtener la definición',
+      details: message
+    }, { status: 500 })
   }
 }
