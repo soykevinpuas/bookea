@@ -7,6 +7,7 @@ import { SearchFilters } from "@/components/SearchFilters";
 import { useSearchParams } from "next/navigation";
 import { CatalogSkeleton, PrefetchLink } from "@/components/ui/LoadingStates";
 import { useMemo, Suspense } from "react";
+import { Book } from "@/types/book";
 
 // 3.1 - CatalogContent: Lógica interna del catálogo con React Query para velocidad SPA
 function CatalogContent() {
@@ -21,7 +22,7 @@ function CatalogContent() {
   const { data: booksData, isLoading } = useBooks({ search, author, category });
 
   // 3.1.2 - Aplicar barajado (shuffle) solo si no hay filtros activos para rotación de contenido
-  const books = useMemo(() => {
+  const books = useMemo<Book[]>(() => {
     if (!booksData) return [];
     const shouldShuffle = !search && !author && (category === 'all' || !category);
     if (shouldShuffle) {
@@ -75,7 +76,7 @@ function CatalogContent() {
               ? "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
               : "flex flex-col gap-4"
           }>
-            {books.map((book) => (
+            {books.map((book: Book) => (
               view === "compact" ? (
                 <CatalogBookCard key={book.id} book={book}>
                   <PrefetchLink href={`/book/${book.id}`} bookId={book.id} className="group block">
