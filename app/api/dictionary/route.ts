@@ -1,12 +1,26 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { NextResponse } from 'next/server'
 
-// 4.x - API para diccionario contextual usando Gemini 1.5 Flash
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '')
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+let genAI: GoogleGenerativeAI | null = null
+
+function getModel() {
+  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
+  if (!apiKey) {
+    return null
+  }
+  if (!genAI) {
+    genAI = new GoogleGenerativeAI(apiKey)
+  }
+  return genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+}
 
 export async function POST(req: Request) {
   try {
+    const model = getModel()
+    if (!model) {
+      return NextResponse.json({ error: 'El servicio de definiciones no está configurado', details: 'missing_api_key' }, { status: 500 })
+    }
+
     const { word, context } = await req.json()
 
     if (!word) {
@@ -31,8 +45,7 @@ export async function POST(req: Request) {
     const definition = result.response.text().trim()
 
     return NextResponse.json({ definition })
-  } catch (error: any) {
-    console.error('[Dictionary API] Error:', error)
+  } catch (error) {
     return NextResponse.json({ error: 'Error al obtener la definición' }, { status: 500 })
   }
 }

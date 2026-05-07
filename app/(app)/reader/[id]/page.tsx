@@ -120,6 +120,9 @@ export default function ReaderPage() {
   // 4.2.2.5 - Estado para gamificación (quiz de finalización y racha)
   const [showQuiz, setShowQuiz] = useState(false);
   
+  // 4.2.2.6 - Estado para el color del subrayado
+  const [highlightColor, setHighlightColor] = useState('#FFEB3B');
+  
   // 4.2.4.1 - Efecto inmersivo: Ocultar barra de estado (hora/batería) al ocultar HUD
   useEffect(() => {
     if (!mounted) return;
@@ -207,15 +210,14 @@ export default function ReaderPage() {
         setDictionaryData({ word, definition: data.definition, context });
         setDictionaryError(null);
       } else {
-        setDictionaryError('No se pudo obtener la definición');
+        setDictionaryError(data.error || 'No se pudo obtener la definición');
       }
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
         setDictionaryError('La definición tardó demasiado');
       } else {
         setDictionaryError('Error de conexión');
       }
-      console.error("Error fetching definition:", err);
     } finally {
       clearTimeout(timeoutId);
       setIsDictionaryLoading(false);
@@ -1264,37 +1266,70 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
       {/* 4.2.16.1 - Popup fijo interactivo para Subrayados cuando hay Selección */}
       {activeSelection && (
-        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] w-[90vw] sm:w-auto max-w-lg bg-white dark:bg-[#1a1a1a] shadow-2xl border border-gray-200 dark:border-white/10 rounded-2xl flex flex-col sm:flex-row items-center gap-2 p-3 px-4 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 pointer-events-auto">
-          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px] sm:max-w-[200px]">
-             "{activeSelection.text}"
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] w-[92vw] sm:w-auto max-w-xl bg-white dark:bg-[#1a1a1a] shadow-2xl border border-gray-200 dark:border-white/10 rounded-2xl flex flex-col gap-2 p-3 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 pointer-events-auto">
+          {/* Texto seleccionado */}
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 truncate max-w-full px-1">
+            &ldquo;{activeSelection.text}&rdquo;
           </span>
-          <div className="w-px h-6 bg-gray-200 dark:bg-white/10 hidden sm:block mx-2"></div>
-           <div className="flex items-center gap-3">
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDictionaryPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                  handleFetchDefinition(activeSelection.text, "");
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Botón IA */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDictionaryPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                handleFetchDefinition(activeSelection.text, "");
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-blue-600 dark:text-blue-400 hover:from-blue-500/20 hover:to-purple-500/20 transition-all border border-blue-500/20 group/ai text-sm font-semibold"
+            >
+              <Sparkles className="w-4 h-4 group-hover/ai:animate-pulse shrink-0" />
+              <span>Def. IA</span>
+            </button>
+
+            <div className="w-px h-5 bg-gray-200 dark:bg-white/10 shrink-0"></div>
+
+            {/* Preajustes de color */}
+            {['#FFEB3B', '#3fb950', '#60a5fa', '#f472b6', '#ff6b6b', '#a78bfa'].map((c) => (
+              <button
+                key={c}
+                disabled={isSavingHighlight}
+                onClick={() => {
+                  setHighlightColor(c);
+                  handleCreateHighlight(c);
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors border border-blue-500/20 group/ai"
-              >
-                <Sparkles className="w-4 h-4 group-hover/ai:animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-wider">Definición IA</span>
-              </button>
+                className={`w-7 h-7 rounded-full transition-all border-2 shrink-0 ${
+                  highlightColor === c
+                    ? 'border-white dark:border-gray-300 scale-110 shadow-md'
+                    : 'border-transparent hover:scale-110'
+                }`}
+                style={{ backgroundColor: c }}
+              />
+            ))}
 
-              <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-1"></div>
+            {/* Selector de color personalizado */}
+            <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shrink-0 overflow-hidden">
+              <input
+                type="color"
+                value={highlightColor}
+                onChange={(e) => {
+                  setHighlightColor(e.target.value);
+                  handleCreateHighlight(e.target.value);
+                }}
+                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              />
+              <span className="text-[10px] font-bold text-gray-400 pointer-events-none">+</span>
+            </label>
 
-              <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#FFEB3B')} className="w-6 h-6 rounded-full bg-[#FFEB3B] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
-              <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#3fb950')} className="w-6 h-6 rounded-full bg-[#3fb950] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
-              <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#60a5fa')} className="w-6 h-6 rounded-full bg-[#60a5fa] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
-              <button disabled={isSavingHighlight} onClick={() => handleCreateHighlight('#f472b6')} className="w-6 h-6 rounded-full bg-[#f472b6] hover:scale-110 active:scale-95 transition-transform border border-black/10 shadow-sm"></button>
-              
-              <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-1"></div>
-              
-              <button onClick={handleCancelSelection} className="p-1 px-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300 font-medium text-sm transition-colors cursor-pointer">
-                Cancelar
-              </button>
-           </div>
+            <div className="w-px h-5 bg-gray-200 dark:bg-white/10 shrink-0"></div>
+
+            {/* Cancelar */}
+            <button
+              onClick={handleCancelSelection}
+              className="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 font-semibold text-sm transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
         </div>
       )}
 
@@ -1415,7 +1450,11 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-xs font-black uppercase tracking-widest text-red-400">
-                    Sin conexión
+                    {dictionaryError === 'La definición tardó demasiado'
+                      ? 'Tiempo de espera'
+                      : dictionaryError === 'El servicio de definiciones no está configurado'
+                        ? 'No configurado'
+                        : 'Sin conexión'}
                   </span>
                   <button onClick={() => setDictionaryPos(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md transition-colors">
                     <X className="w-3 h-3" />
