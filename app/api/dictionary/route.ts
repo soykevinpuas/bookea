@@ -2,14 +2,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const keyExists = !!process.env.GOOGLE_GENERATIVE_AI_API_KEY
-  const keyLength = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.length ?? 0
-  return NextResponse.json({
-    configured: keyExists,
-    keyLength,
-    prefix: keyExists ? process.env.GOOGLE_GENERATIVE_AI_API_KEY!.substring(0, 6) + '...' : null,
-    nodeEnv: process.env.NODE_ENV
-  })
+  const configured = !!process.env.GOOGLE_GENERATIVE_AI_API_KEY
+  return NextResponse.json({ configured })
 }
 
 export async function POST(req: Request) {
