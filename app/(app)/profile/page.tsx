@@ -204,11 +204,11 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-[2rem] p-4 divide-y divide-white/5 overflow-hidden">
-              <Link href="/dashboard" className={`flex items-center gap-4 px-4 py-4 text-sm font-bold text-white/60 hover:text-white hover:bg-white/5 transition-all`}>
+            <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-[2rem] p-4 divide-y divide-gray-200 dark:divide-white/5 overflow-hidden">
+              <Link href="/dashboard" className={`flex items-center gap-4 px-4 py-4 text-sm font-bold text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 transition-all`}>
                 <Sparkles className={`w-4 h-4 ${primaryClass}`} /> Mi Biblioteca
               </Link>
-              <Link href="/dashboard?tab=reading" className="flex items-center gap-4 px-4 py-4 text-sm font-bold text-white/60 hover:text-white hover:bg-white/5 transition-all">
+              <Link href="/dashboard?tab=reading" className="flex items-center gap-4 px-4 py-4 text-sm font-bold text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 transition-all">
                 <BookOpen className="w-4 h-4" /> Progreso
               </Link>
             </div>
