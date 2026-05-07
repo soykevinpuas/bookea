@@ -10,7 +10,6 @@ export function PwaListener() {
       // Register the service worker after hydration
       navigator.serviceWorker
         .register("/sw.js")
-        .then((reg) => console.log("SW Registrado:", reg.scope))
         .catch((err) => console.error("SW Fallo:", err));
     }
 

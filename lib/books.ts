@@ -105,7 +105,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
     });
 
     const books = userBooksData
-      .map((item: any) => {
+      .map((item: { access_type: string; book_id: string; books: Book | Book[] }) => {
         const bookData = item.books;
         const book = Array.isArray(bookData) ? bookData[0] : bookData;
         
@@ -303,7 +303,6 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
 
   try {
     // 1. Verificar si ya existe para evitar errores de duplicidad/constraint
-    console.log(`[addToLibrary] Checking existing for user=${userId}, book=${bookId}`);
     const { data: existing, error: checkError } = await supabase
       .from("user_books")
       .select("id")
@@ -319,7 +318,6 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
     let record;
     if (existing) {
       // Si existe, actualizar el access_type por si acaso
-      console.log(`[addToLibrary] Existing record found (${existing.id}), updating access_type...`);
       const { data, error: updateError } = await supabase
         .from("user_books")
         .update({ access_type: accessType })
@@ -334,7 +332,6 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
       record = data;
     } else {
       // Si no existe, insertar
-      console.log(`[addToLibrary] DEBUG: Realizando inserción para user=${userId}, book=${bookId}`);
       const { data, error: insertError } = await supabase
         .from("user_books")
         .insert({ 
@@ -350,7 +347,6 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
       throw new Error(`Error de base de datos: ${insertError.message}`);
     }
     record = data;
-    console.log("[addToLibrary] ÉXITO: Registro creado:", record.id);
   }
 
   // 2. Asegurar que exista el registro de progreso (necesario para el join)
@@ -373,9 +369,10 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
   }
 
   return record;
-} catch (error: any) {
-  console.error("Critical error in addToLibrary:", error.message);
-  return { error: error.message || "Error desconocido" };
+} catch (error: unknown) {
+  const msg = error instanceof Error ? error.message : 'Error desconocido';
+  console.error("Critical error in addToLibrary:", msg);
+  return { error: "Error desconocido" };
 }
 }
 

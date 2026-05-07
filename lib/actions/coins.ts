@@ -4,7 +4,10 @@ import { createClient } from '@/lib/server'
 import { revalidatePath } from 'next/cache'
 import { CoinType, CoinSource, ANTI_ABUSE_LIMITS } from '@/types/coins'
 
-// 8.x - Server Actions para el sistema de monedas de gamificación
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  return 'Error desconocido'
+}
 
 export async function getUserCoinsAction() {
   const supabase = await createClient()
@@ -20,13 +23,13 @@ export async function getUserCoinsAction() {
 
     if (error) {
       console.error('[getUserCoinsAction] RPC error:', error.message)
-      return { success: false, error: error.message, coins: { bronze: 0, silver: 0, gold: 0, diamond: 0 } }
+      return { success: false, error: 'Error al obtener monedas', coins: { bronze: 0, silver: 0, gold: 0, diamond: 0 } }
     }
 
     return { success: true, coins: data as Record<string, number> }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[getUserCoinsAction] Exception:', err)
-    return { success: false, error: err.message, coins: { bronze: 0, silver: 0, gold: 0, diamond: 0 } }
+    return { success: false, error: 'Error al obtener monedas', coins: { bronze: 0, silver: 0, gold: 0, diamond: 0 } }
   }
 }
 
@@ -50,16 +53,16 @@ export async function addCoinsAction(coinType: CoinType, source: CoinSource, boo
 
     if (error) {
       console.error('[addCoinsAction] RPC error:', error.message)
-      return { success: false, error: error.message }
+      return { success: false, error: 'Error al añadir monedas' }
     }
 
     revalidatePath('/dashboard')
     revalidatePath('/profile')
 
     return { success: true, result: data }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[addCoinsAction] Exception:', err)
-    return { success: false, error: err.message }
+    return { success: false, error: 'Error al añadir monedas' }
   }
 }
 
@@ -81,7 +84,7 @@ export async function redeemCoinAction(bookId: string, coinType: CoinType) {
 
     if (error) {
       console.error('[redeemCoinAction] RPC error:', error.message)
-      return { success: false, error: error.message }
+      return { success: false, error: 'Error al canjear monedas' }
     }
 
     if (!data.success) {
@@ -92,9 +95,9 @@ export async function redeemCoinAction(bookId: string, coinType: CoinType) {
     revalidatePath(`/book/${bookId}`)
 
     return { success: true, result: data }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[redeemCoinAction] Exception:', err)
-    return { success: false, error: err.message }
+    return { success: false, error: 'Error al canjear monedas' }
   }
 }
 
@@ -116,13 +119,13 @@ export async function getUserCoinTransactionsAction(limit = 50) {
 
     if (error) {
       console.error('[getUserCoinTransactionsAction] DB error:', error.message)
-      return { success: false, error: error.message, transactions: [] }
+      return { success: false, error: 'Error al obtener transacciones', transactions: [] }
     }
 
     return { success: true, transactions: data }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[getUserCoinTransactionsAction] Exception:', err)
-    return { success: false, error: err.message, transactions: [] }
+    return { success: false, error: 'Error al obtener transacciones', transactions: [] }
   }
 }
 
@@ -143,13 +146,13 @@ export async function getUserCoinRedemptionsAction() {
 
     if (error) {
       console.error('[getUserCoinRedemptionsAction] DB error:', error.message)
-      return { success: false, error: error.message, redemptions: [] }
+      return { success: false, error: 'Error al obtener canjes', redemptions: [] }
     }
 
     return { success: true, redemptions: data }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[getUserCoinRedemptionsAction] Exception:', err)
-    return { success: false, error: err.message, redemptions: [] }
+    return { success: false, error: 'Error al obtener canjes', redemptions: [] }
   }
 }
 
@@ -170,13 +173,13 @@ export async function getUserStreakAction() {
 
     if (error) {
       console.error('[getUserStreakAction] DB error:', error.message)
-      return { success: false, error: error.message, streak: 0 }
+      return { success: false, error: 'Error al obtener racha', streak: 0 }
     }
 
     return { success: true, streak: profile?.reading_streak || 0 }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[getUserStreakAction] Exception:', err)
-    return { success: false, error: err.message, streak: 0 }
+    return { success: false, error: 'Error al obtener racha', streak: 0 }
   }
 }
 
@@ -194,16 +197,16 @@ export async function updateStreakAction() {
 
     if (error) {
       console.error('[updateStreakAction] RPC error:', error.message)
-      return { success: false, error: error.message, streak: 0, coins_awarded: [] }
+      return { success: false, error: 'Error al actualizar racha', streak: 0, coins_awarded: [] }
     }
 
     revalidatePath('/dashboard')
     revalidatePath('/profile')
 
     return { success: true, streak: data.streak, coins_awarded: data.coins_awarded || [] }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[updateStreakAction] Exception:', err)
-    return { success: false, error: err.message, streak: 0, coins_awarded: [] }
+    return { success: false, error: 'Error al actualizar racha', streak: 0, coins_awarded: [] }
   }
 }
 
@@ -264,16 +267,16 @@ export async function completeBookAndAwardCoinAction(bookId: string) {
 
     if (error) {
       console.error('[completeBookAndAwardCoinAction] RPC error:', error.message)
-      return { success: false, error: error.message }
+      return { success: false, error: 'Error al otorgar moneda' }
     }
 
     revalidatePath('/dashboard')
     revalidatePath('/profile')
 
     return { success: true, result }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[completeBookAndAwardCoinAction] Exception:', err)
-    return { success: false, error: err.message }
+    return { success: false, error: 'Error al completar libro' }
   }
 }
 
@@ -305,7 +308,7 @@ export async function processReviewAndAwardCoinAction(bookId: string, content: s
 
     if (error) {
       console.error('[processReviewAndAwardCoinAction] RPC error:', error.message)
-      return { success: false, error: error.message }
+      return { success: false, error: 'Error al procesar reseña' }
     }
 
     if (!result.success) {
@@ -315,9 +318,9 @@ export async function processReviewAndAwardCoinAction(bookId: string, content: s
     revalidatePath(`/book/${bookId}`)
 
     return { success: true, result }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[processReviewAndAwardCoinAction] Exception:', err)
-    return { success: false, error: err.message }
+    return { success: false, error: 'Error al procesar reseña' }
   }
 }
 
@@ -351,12 +354,12 @@ export async function getReferralCountAction() {
 
     if (error) {
       console.error('[getReferralCountAction] DB error:', error.message)
-      return { success: false, error: error.message, count: 0 }
+      return { success: false, error: 'Error al obtener referidos', count: 0 }
     }
 
     return { success: true, count: data?.length || 0 }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[getReferralCountAction] Exception:', err)
-    return { success: false, error: err.message, count: 0 }
+    return { success: false, error: 'Error al obtener referidos', count: 0 }
   }
 }

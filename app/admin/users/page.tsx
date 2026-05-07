@@ -55,16 +55,15 @@ export default function AdminUsersPage() {
 
         if (error) throw error;
         
-        // El RPC ahora devuelve JSON con {success, error, affected_rows}
-        console.log('[Admin] RPC subscription response:', data);
         if (data && typeof data === 'object' && !data.success) {
           throw new Error(data.error || 'El RPC devolvió error');
         }
         
         toast.success(`Suscripción actualizada para ${email}`, { id: toastId });
         return { success: true };
-      } catch (err: any) {
-        toast.error(`Error al guardar: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Error desconocido';
+        toast.error(`Error al guardar: ${msg}`, { id: toastId });
         throw err;
       }
     },
@@ -88,19 +87,17 @@ export default function AdminUsersPage() {
           throw new Error(result.error || 'Error desconocido del servidor');
         }
 
-        console.log('[Admin] Server response:', result);
-
         // Verificar que el cambio realmente se reflejó
         if (result.updatedUser) {
-          console.log('[Admin] ✅ Verificado: usuario ahora tiene rol:', result.updatedUser.role);
           if (result.updatedUser.role !== role) {
             throw new Error(`Servidor confirmó pero rol sigue siendo '${result.updatedUser.role}' en vez de '${role}'`);
           }
         }
 
         toast.success(`✅ ${email} ahora es ${ROLE_LABELS[role]}`, { id: toastId });
-      } catch (err: any) {
-        toast.error(`Error al cambiar rol: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Error desconocido';
+        toast.error(`Error al cambiar rol: ${msg}`, { id: toastId });
         throw err;
       }
     },

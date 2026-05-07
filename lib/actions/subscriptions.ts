@@ -21,8 +21,6 @@ export async function verifySubscriptionAction(sessionId: string) {
     
     const session = await stripe.checkout.sessions.retrieve(sessionId)
 
-    const stripeId = (await stripe.accounts.retrieve()).id;
-
     if (session.payment_status === 'paid') {
       // Calcular fecha de vencimiento (30 días a partir de hoy)
       const endsAt = new Date();
@@ -83,21 +81,13 @@ export async function verifySubscriptionAction(sessionId: string) {
       revalidatePath('/')
       revalidatePath('/dashboard')
       
-      return { 
-        success: true, 
-        accountId: stripeId,
-        keyPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 15) 
-      }
+      return { success: true }
     }
 
-    return { 
-      success: false, 
-      error: 'El pago aún no se ha procesado.', 
-      accountId: stripeId,
-      keyPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 15)
-    }
-  } catch (error: any) {
+    return { success: false, error: 'El pago aún no se ha procesado.' }
+  } catch (error: unknown) {
     console.error('Error verificando suscripción:', error)
-    return { success: false, error: error.message }
+    const msg = error instanceof Error ? error.message : 'Error desconocido'
+    return { success: false, error: 'Error al verificar el pago' }
   }
 }
