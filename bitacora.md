@@ -4,6 +4,25 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-05-07] - Optimización de Rendimiento: "Bookea Vuela"
+
+### Objetivo
+Lograr una experiencia de usuario instantánea eliminando tiempos de carga perceptibles en la navegación y asegurando persistencia de datos local.
+
+### Cambios Realizados
+- **Persistencia de React Query:** Se implementó una capa de persistencia en `localStorage` dentro de los hooks `useBooks` y `useUserBooks`. Ahora los datos se muestran instantáneamente desde el caché mientras se validan en segundo plano (SWR).
+- **Catálogo SPA:** Migración de `CatalogPage` a Client Component. Esto permite que el cambio entre Dashboard y Catálogo sea instantáneo al compartir el mismo `QueryClient`.
+- **Prefetching Proactivo:** Mejora de `PrefetchLink` para disparar precargas de datos de React Query al hacer hover sobre links de libros o secciones.
+- **Cache Agresivo:** Incremento de `staleTime` a 10 minutos y `gcTime` a 1 hora para minimizar peticiones de red.
+
+### Archivos Modificados
+- `lib/providers.tsx`
+- `hooks/useBooks.ts`
+- `app/(app)/catalog/page.tsx`
+- `components/ui/LoadingStates.tsx`
+
+---
+
 ## [2026-05-06-B] - Refinamiento de UX en Catálogo y Menú Contextual
 
 ### Objetivo

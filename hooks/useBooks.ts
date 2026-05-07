@@ -11,12 +11,30 @@ const BOOK_QUERY_OPTIONS = {
   retry: 1,
 };
 
-// 3.2 - useBooks: Hooks de React Query para la gestión del estado global del Catálogo y Libros de Usuario
-export function useBooks() {
+// 3.2 - useBooks: Hook para el catálogo general con persistencia y filtros
+export function useBooks(options?: { search?: string; category?: string; author?: string }) {
   const supabase = createClientClient();
+  
   return useQuery({
-    queryKey: ["books"],
-    queryFn: () => getBooks(supabase),
+    queryKey: ["books", options?.search, options?.category, options?.author],
+    queryFn: async () => {
+      const data = await getBooks(supabase, options);
+      // Persistir el catálogo base para carga instantánea futura
+      if (data && !options?.search && !options?.category && !options?.author && typeof window !== 'undefined') {
+        localStorage.setItem('bookea-catalog-cache', JSON.stringify(data));
+      }
+      return data;
+    },
+    initialData: () => {
+      // Carga instantánea desde el caché si no hay filtros activos
+      if (typeof window !== 'undefined' && !options?.search && !options?.category && !options?.author) {
+        const cached = localStorage.getItem('bookea-catalog-cache');
+        if (cached) {
+          try { return JSON.parse(cached); } catch (e) { return undefined; }
+        }
+      }
+      return undefined;
+    },
     ...BOOK_QUERY_OPTIONS,
   });
 }

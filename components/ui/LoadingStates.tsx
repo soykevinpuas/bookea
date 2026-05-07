@@ -209,10 +209,13 @@ export function LoadingButton({
   );
 }
 
-// 6.3 - PrefetchLink: Link con prefetching automático
+// 6.3 - PrefetchLink: Link con prefetching automático (Rutas + Datos)
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { getBook, getUserBooks, getBooks } from "@/lib/books";
+import { createClientClient } from "@/lib/supabase";
 
 interface PrefetchLinkProps {
   href: string;
@@ -220,6 +223,9 @@ interface PrefetchLinkProps {
   className?: string;
   prefetch?: boolean;
   onClick?: () => void;
+  // Opcional: datos específicos para precargar en React Query
+  queryKey?: any[];
+  bookId?: string;
 }
 
 export function PrefetchLink({ 
@@ -227,15 +233,37 @@ export function PrefetchLink({
   children, 
   className = "", 
   prefetch = true,
-  onClick 
+  onClick,
+  bookId
 }: PrefetchLinkProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const supabase = createClientClient();
   
   const handleMouseEnter = useCallback(() => {
-    if (prefetch) {
-      router.prefetch(href);
+    if (!prefetch) return;
+
+    // 1. Prefetch de la ruta de Next.js
+    router.prefetch(href);
+
+    // 2. Prefetch inteligente de datos en React Query
+    if (bookId) {
+      queryClient.prefetchQuery({
+        queryKey: ["book", bookId],
+        queryFn: () => getBook(supabase, bookId),
+        staleTime: 5 * 60 * 1000,
+      });
     }
-  }, [href, prefetch, router]);
+
+    // Si es el catálogo o dashboard, precargar sus listas base
+    if (href === "/catalog") {
+      queryClient.prefetchQuery({
+        queryKey: ["books", "", "all", ""],
+        queryFn: () => getBooks(supabase),
+        staleTime: 5 * 60 * 1000,
+      });
+    }
+  }, [href, prefetch, router, bookId, queryClient, supabase]);
 
   return (
     <Link 
