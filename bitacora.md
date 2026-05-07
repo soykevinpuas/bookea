@@ -4,6 +4,19 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-05-07-C] - Fix: Restaurar visibilidad de nombres en reseñas (profiles RLS)
+
+### Problema
+La migración 011 cambió la política SELECT de `profiles` de "todos pueden ver" a "solo tu propio perfil", rompiendo el JOIN en `lib/reviews.ts:58-66` que muestra el nombre/avatar de quien reseñó. Supabase aplica RLS en todas las tablas de un JOIN, devolviendo `profiles: null` para reseñas de otros usuarios.
+
+### Solución
+Migración 015: política SELECT en `profiles` abierta a todos los usuarios autenticados. Solo expone datos públicos (`name`, `avatar_url`, `bio`) que el usuario eligió compartir. INSERT/UPDATE/DELETE siguen restringidos.
+
+### Archivos Modificados
+- `supabase/migrations/015_fix_profiles_select_rls.sql` — Nueva migración
+
+---
+
 ## [2026-05-07-B] - Auditoría de Seguridad RLS: Corrección de 8 Hallazgos
 
 ### Objetivo
