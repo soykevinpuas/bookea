@@ -1,34 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 
-// 3.2.1 - useUserId: Hook personalizado para obtener el ID del usuario autenticado
 export function useUserId() {
-  const [userId, setUserId] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("bookea-auth-id") || "";
-    }
-    return "";
-  });
-  
-  const [isLoading, setIsLoading] = useState(true);
+  const query = useQuery({
+    queryKey: ["auth-user"],
+    queryFn: async () => {
+      const supabase = createClientClient();
+      const { data } = await supabase.auth.getUser();
+      const id = data.user?.id || "";
 
-  useEffect(() => {
-    const supabase = createClientClient();
-    
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
-        setUserId(data.user.id);
-        localStorage.setItem("bookea-auth-id", data.user.id);
-      } else if (navigator.onLine) {
-        // Solo limpiamos si estamos online y realmente no hay sesión
-        setUserId("");
+      if (id && typeof window !== "undefined") {
+        localStorage.setItem("bookea-auth-id", id);
+      } else if (typeof window !== "undefined" && navigator.onLine) {
         localStorage.removeItem("bookea-auth-id");
       }
-      setIsLoading(false);
-    });
-  }, []);
 
-  return { userId, isLoading };
+      return id;
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+    initialData: () => {
+      if (typeof window !== "undefined") {
+        return localStorage.getItem("bookea-auth-id") || undefined;
+      }
+      return undefined;
+    },
+  });
+
+  return {
+    userId: query.data || "",
+    isLoading: query.isLoading,
+  };
 }

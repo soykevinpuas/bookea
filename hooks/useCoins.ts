@@ -1,7 +1,4 @@
-// 8.x - Hook React Query para el sistema de monedas de gamificación
-import { useEffect, useMemo, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { createClientClient } from '@/lib/supabase'
 import {
   getUserCoinsAction,
   redeemCoinAction,
@@ -16,8 +13,6 @@ import { CoinType, CoinBalance } from '@/types/coins'
 
 export function useCoins(userId: string | undefined) {
   const queryClient = useQueryClient()
-  const supabase = useMemo(() => createClientClient(), [])
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const query = useQuery({
     queryKey: ['user-coins', userId],
@@ -28,8 +23,8 @@ export function useCoins(userId: string | undefined) {
       return (result.coins || { bronze: 0, silver: 0, gold: 0, diamond: 0 }) as CoinBalance
     },
     enabled: !!userId,
-    staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 
   const redeemMutation = useMutation({
@@ -42,35 +37,6 @@ export function useCoins(userId: string | undefined) {
       }
     },
   })
-
-  // Realtime listener para cambios en monedas
-  useEffect(() => {
-    if (!userId) return
-    if (channelRef.current) return
-
-    const channel = supabase
-      .channel(`coins-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'coins',
-          filter: `user_id=eq.${userId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['user-coins', userId] })
-        }
-      )
-      .subscribe()
-
-    channelRef.current = channel
-
-    return () => {
-      supabase.removeChannel(channel)
-      channelRef.current = null
-    }
-  }, [userId, supabase, queryClient])
 
   return {
     ...query,
@@ -89,7 +55,7 @@ export function useStreak(userId: string | undefined) {
       return result.streak || 0
     },
     enabled: !!userId,
-    staleTime: 60_000,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -102,7 +68,7 @@ export function useReferral(userId: string | undefined) {
       return result.link || ''
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
   })
 
   const referralCountQuery = useQuery({
@@ -113,7 +79,7 @@ export function useReferral(userId: string | undefined) {
       return result.count || 0
     },
     enabled: !!userId,
-    staleTime: 60_000,
+    staleTime: 5 * 60 * 1000,
   })
 
   return {

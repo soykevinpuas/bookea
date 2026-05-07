@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 
 export interface SubscriptionData {
@@ -11,16 +10,12 @@ export interface SubscriptionData {
 }
 
 export function useSubscription(userId: string | undefined) {
-  const supabase = useMemo(() => createClientClient(), []);
-  const queryClient = useQueryClient();
-  // Ref estable para evitar reconexiones del canal Realtime
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-
   const query = useQuery({
     queryKey: ["user-subscription", userId],
     queryFn: async (): Promise<SubscriptionData | null> => {
       if (!userId) return null;
 
+      const supabase = createClientClient();
       const { data, error } = await supabase
         .from("users")
         .select("role, subscription_ends_at")
@@ -80,50 +75,9 @@ export function useSubscription(userId: string | undefined) {
       return undefined;
     },
     enabled: !!userId,
-    staleTime: 5000, // Permitimos 5s de cache para evitar spam al navegar
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
-
-  // 2.2 - Suscripción Realtime: Escuchar cambios en el rol del usuario
-  useEffect(() => {
-    if (!userId) return;
-
-    // No reconectar si ya existe un canal para este userId
-    if (channelRef.current) return;
-
-    console.log(`[useSubscription] Connecting Realtime for user: ${userId}`);
-
-    const channel = supabase
-      .channel(`user-role-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'users',
-          filter: `id=eq.${userId}`
-        },
-        (payload: any) => {
-          console.log("[useSubscription] 🔔 REALTIME CHANGE:", payload.new);
-          // Forzar refetch inmediato ignorando staleTime
-          queryClient.invalidateQueries({ 
-            queryKey: ["user-subscription", userId],
-            refetchType: 'all'
-          });
-        }
-      )
-      .subscribe((status: string) => {
-        console.log(`[useSubscription] Realtime status: ${status}`);
-      });
-
-    channelRef.current = channel;
-
-    return () => {
-      console.log(`[useSubscription] Cleaning up channel for user: ${userId}`);
-      supabase.removeChannel(channel);
-      channelRef.current = null;
-    };
-  }, [userId]); // Solo depende de userId — supabase y queryClient son estables
 
   return query;
 }

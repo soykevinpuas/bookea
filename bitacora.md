@@ -4,6 +4,36 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-05-07-D] - Optimización de Performance: Perfil y Caché de Datos
+
+### Problema
+La página de perfil ejecutaba 7 fetch requests + 2 WebSocket Realtime + avatar SVG pesado, resultando en carga lenta post-navegación.
+
+### Cambios
+1. **useUserId en React Query** — Reemplazado `useState`+`useEffect` que llamaba `supabase.auth.getUser()` en cada navegación por React Query con `staleTime: 5min` y `initialData` desde localStorage.
+
+2. **Subscription staleTime 5s → 5min** — Evita re-fetch al navegar entre páginas. Eliminado Realtime channel (WebSocket innecesario — mutations ya invalidan queries).
+
+3. **Consolidación de 4 server actions en 1** — Nueva `getProfileDataAction()` en `lib/actions/profile.ts` que retorna monedas, racha, link de referido y conteo en UNA sola llamada. Perfil usa `useProfileData` hook en lugar de `useCoins`+`useStreak`+`useReferral`.
+
+4. **Eliminados WebSocket Realtime** — `useCoins` y `useSubscription` ya no abren canales `postgres_changes`. Elimina 2 conexiones persistentes.
+
+5. **Memoizado parseAvatarConfig** — Perfil ya no parsea 3 veces el avatar en cada render.
+
+6. **StaleTimes incrementados globalmente** — Coins 30s→5min, Streak 60s→5min, Referral 5min→30min.
+
+### Archivos Creados
+- `lib/actions/profile.ts` — Server action consolidada de datos de perfil
+- `hooks/useProfileData.ts` — Hook React Query para la acción consolidada
+
+### Archivos Modificados
+- `hooks/useUser.ts` — Migrado a React Query
+- `hooks/useSubscription.ts` — staleTime 5min, sin Realtime
+- `hooks/useCoins.ts` — staleTime 5min, sin Realtime, staleTimes incrementados
+- `app/(app)/profile/page.tsx` — usa useProfileData, parseAvatarConfig memoizado
+
+---
+
 ## [2026-05-07-C] - Fix: Restaurar visibilidad de nombres en reseñas (profiles RLS)
 
 ### Problema

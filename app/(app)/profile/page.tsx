@@ -1,14 +1,14 @@
 "use client";
 
 import { createClientClient } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles, BookOpen, Coins, Flame, Gift, Circle, BookOpenCheck, CalendarDays, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useUserId } from "@/hooks/useUser";
 import { useProfile } from "@/hooks/useAvatars";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useCoins, useStreak, useReferral } from "@/hooks/useCoins";
+import { useProfileData } from "@/hooks/useProfileData";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 import AvatarSelector from "@/components/profile/AvatarSelector";
@@ -32,13 +32,21 @@ export default function ProfilePage() {
     isUpdatingAvatar
   } = useProfile(userId);
   const { data: subscription, isLoading: subLoading } = useSubscription(userId);
-  const { data: coinsBalance } = useCoins(userId);
-  const { data: streak } = useStreak(userId);
-  const { link: referralLink, count: referralCount } = useReferral(userId);
+  const { data: profileData, isLoading: profileDataLoading } = useProfileData(userId);
+
+  const coinsBalance = profileData?.coins;
+  const streak = profileData?.streak ?? 0;
+  const referralLink = profileData?.referralLink || '';
+  const referralCount = profileData?.referralCount || 0;
   
   const [portalLoading, setPortalLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
+  
+  const parsedAvatar = useMemo(() => 
+    profile?.avatar_url ? parseAvatarConfig(profile.avatar_url) : null,
+    [profile?.avatar_url]
+  );
   
   // Usar el email del subscription (ya viene de users)
   const dbUser = subscription ? { 
@@ -128,13 +136,13 @@ export default function ProfilePage() {
               
               <div className="relative w-32 h-32 mx-auto mb-8">
                <div className="w-full h-full rounded-full border-4 border-gray-200 dark:border-white/5 overflow-hidden bg-white dark:bg-[#111] shadow-2xl relative flex items-center justify-center">
-                   {profile?.avatar_url ? (
-                     <AnimalEngine 
-                       type={parseAvatarConfig(profile.avatar_url).type} 
-                       color={parseAvatarConfig(profile.avatar_url).color}
-                       seed={parseAvatarConfig(profile.avatar_url).seed}
-                       size="100%" 
-                     />
+                    {profile?.avatar_url && parsedAvatar ? (
+                      <AnimalEngine 
+                        type={parsedAvatar.type}
+                        color={parsedAvatar.color}
+                        seed={parsedAvatar.seed}
+                        size="100%" 
+                      />
                    ) : (
                     <div className={`w-full h-full flex items-center justify-center ${primaryBgClass} text-4xl font-black`}>
                       {dbUser?.email?.charAt(0) || "U"}
