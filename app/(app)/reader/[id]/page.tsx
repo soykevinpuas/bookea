@@ -103,7 +103,7 @@ export default function ReaderPage() {
   const [fontSize, setFontSize] = useState(18);
   const [fontFamily, setFontFamily] = useState<string>("sans");
   const [textAlign, setTextAlign] = useState<"left" | "center" | "right" | "justify">("justify");
-  const [textColor, setTextColor] = useState<string>("#ffffff");
+  const [textColor, setTextColor] = useState<string>("#e8eaf6");
   const { theme, setTheme } = useTheme();
   const [progress, setProgress] = useState(0);
   const [showControls, setShowControls] = useState(true);
@@ -1432,34 +1432,20 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
             isNavy ? 'bg-[#0a0f1e]/90 backdrop-blur-xl border-t border-[#7986cb]/20' :
             'bg-white/70 backdrop-blur-xl border-t border-black/5'} shadow-[0_-8px_30px_rgba(0,0,0,0.15)]`}
       >
-        <div className="flex items-center justify-between max-w-4xl mx-auto w-full gap-2 sm:gap-4">
-          <button
-            onClick={(e) => { e.stopPropagation(); handlePrev(); }}
-            className={`p-2 sm:p-3 rounded-full transition-colors ${iconBgClass}`}
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-
-          <div className="flex-1 flex flex-col items-center gap-1 sm:gap-2">
-            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest opacity-60">
-              {progress > 0 ? `${progress.toFixed(1)}% Leído` : "Iniciando"}
+        <div className="flex items-center justify-center max-w-4xl mx-auto w-full">
+          <div className="flex-1 flex flex-col items-center gap-1 sm:gap-2 px-12">
+            <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-[0.3em] ${isDark ? 'text-white/40' : 'text-black/40'}`}>
+              {progress > 0 ? `${progress.toFixed(1)}% Leído` : "Iniciando Lectura"}
             </span>
-            <div className={`w-full rounded-full h-1 sm:h-1.5 overflow-hidden ${isDark ? 'bg-white/20' : isRetro ? 'bg-[#3fb950]/20' : isNavy ? 'bg-[#7986cb]/20' : 'bg-black/10'}`}>
+            <div className={`w-full rounded-full h-1 sm:h-1.5 overflow-hidden ${isDark ? 'bg-white/10' : isRetro ? 'bg-[#3fb950]/10' : isNavy ? 'bg-[#7986cb]/10' : 'bg-black/5'}`}>
               <div
-                className={`h-full rounded-full transition-all duration-300 ease-out ${
-                  isRetro ? 'bg-[#3fb950]' : isNavy ? 'bg-[#7986cb]' : 'bg-blue-500'
+                className={`h-full rounded-full transition-all duration-500 ease-out ${
+                  isRetro ? 'bg-[#3fb950]' : isNavy ? 'bg-[#7986cb]' : 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]'
                 }`}
                 style={{ width: `${progress}%` }}
               />
             </div>
           </div>
-
-          <button
-            onClick={(e) => { e.stopPropagation(); handleNext(); }}
-            className={`p-2 sm:p-3 rounded-full transition-colors ${iconBgClass}`}
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
         </div>
       </div>
 

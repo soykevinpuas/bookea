@@ -151,7 +151,7 @@ function DashboardContent() {
             </div>
             <Link 
               href={`/reader/${recentBook.id}`}
-              className="group relative flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all shadow-xl"
+              className="group relative flex items-center gap-4 p-4 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all shadow-lg"
             >
                 <div className="w-16 h-24 flex-shrink-0 shadow-lg group-hover:scale-105 transition-transform">
                  <Book3D src={recentBook.cover_url || ""} title={recentBook.title} percentComplete={recentBook.percent_complete} />
@@ -163,7 +163,7 @@ function DashboardContent() {
                     <ProgressCircle progress={recentBook.percent_complete} size={24} />
                   )}
                 </div>
-                <p className="text-white/40 text-xs mb-3 truncate">{recentBook.author}</p>
+                <p className="text-gray-400 dark:text-white/40 text-xs mb-3 truncate">{recentBook.author}</p>
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-600 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider">
                   Continuar
                 </div>
@@ -173,26 +173,26 @@ function DashboardContent() {
         )}
 
         <div className="grid grid-cols-3 gap-3 mb-12">
-          <div className={`text-center p-3 rounded-2xl bg-white/5 border backdrop-blur-md transition-all duration-500 ${
-            (streak || 0) > 0 ? 'border-orange-500/30 shadow-[0_0_20px_rgba(244,114,44,0.1)]' : 'border-white/10'
+          <div className={`text-center p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border backdrop-blur-md transition-all duration-500 ${
+            (streak || 0) > 0 ? 'border-orange-500/30 shadow-[0_0_20px_rgba(244,114,44,0.1)]' : 'border-gray-100 dark:border-white/10'
           }`}>
-            <Flame className={`w-5 h-5 mx-auto mb-1 transition-colors ${(streak || 0) > 0 ? 'text-orange-500 animate-pulse' : 'text-white/20'}`} />
-            <p className="text-lg font-black text-white">{streak ?? 0}</p>
-            <p className="text-[10px] text-white/40 uppercase font-bold tracking-tight">Racha</p>
+            <Flame className={`w-5 h-5 mx-auto mb-1 transition-colors ${(streak || 0) > 0 ? 'text-orange-500 animate-pulse' : 'text-gray-300 dark:text-white/20'}`} />
+            <p className="text-lg font-black text-gray-900 dark:text-white">{streak ?? 0}</p>
+            <p className="text-[10px] text-gray-400 dark:text-white/40 uppercase font-bold tracking-tight">Racha</p>
           </div>
-          <div className={`text-center p-3 rounded-2xl bg-white/5 border backdrop-blur-md transition-all duration-500 ${
-            totalCompleted > 0 ? 'border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]' : 'border-white/10'
+          <div className={`text-center p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border backdrop-blur-md transition-all duration-500 ${
+            totalCompleted > 0 ? 'border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]' : 'border-gray-100 dark:border-white/10'
           }`}>
-            <Trophy className={`w-5 h-5 mx-auto mb-1 ${(totalCompleted || 0) > 0 ? 'text-blue-400' : 'text-white/20'}`} />
-            <p className="text-lg font-black text-white">{totalCompleted}</p>
-            <p className="text-[10px] text-white/40 uppercase font-bold tracking-tight">Leídos</p>
+            <Trophy className={`w-5 h-5 mx-auto mb-1 ${(totalCompleted || 0) > 0 ? 'text-blue-400' : 'text-gray-300 dark:text-white/20'}`} />
+            <p className="text-lg font-black text-gray-900 dark:text-white">{totalCompleted}</p>
+            <p className="text-[10px] text-gray-400 dark:text-white/40 uppercase font-bold tracking-tight">Leídos</p>
           </div>
-          <div className="text-center p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+          <div className="text-center p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 backdrop-blur-md">
             <Circle className="w-5 h-5 mx-auto text-amber-400 fill-current mb-1" />
-            <p className="text-lg font-black text-white">
+            <p className="text-lg font-black text-gray-900 dark:text-white">
               {coinsBalance ? (coinsBalance.bronze || 0) + (coinsBalance.silver || 0) + (coinsBalance.gold || 0) + (coinsBalance.diamond || 0) : 0}
             </p>
-            <p className="text-[10px] text-white/40 uppercase font-bold tracking-tight">Monedas</p>
+            <p className="text-[10px] text-gray-400 dark:text-white/40 uppercase font-bold tracking-tight">Monedas</p>
           </div>
         </div>
 
@@ -217,37 +217,37 @@ function DashboardContent() {
 
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-[2]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/40" />
             <input
               type="text"
               placeholder="Buscar por título..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm focus:border-blue-500/50 transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl text-sm focus:border-blue-500/50 transition-colors"
             />
           </div>
           <div className="relative flex-1">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/40" />
             <input
               type="text"
               placeholder="Autor..."
               value={authorSearch}
               onChange={(e) => setAuthorSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm focus:border-blue-500/50 transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl text-sm focus:border-blue-500/50 transition-colors"
             />
           </div>
           <div className="flex gap-2">
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="px-3 bg-white/5 border border-white/10 rounded-xl text-xs"
+              className="px-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl text-xs"
             >
               <option value="all">Todo</option>
               {categories.map((c: any) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
-               <button onClick={() => setView("grid")} className={`p-2 rounded-lg ${view === "grid" ? "bg-white/10" : "text-white/40"}`} title="Cuadrícula"><LayoutGrid className="w-4 h-4" /></button>
-               <button onClick={() => setView("compact")} className={`p-2 rounded-lg ${view === "compact" ? "bg-white/10" : "text-white/40"}`} title="Compacto"><Grid3X3 className="w-4 h-4" /></button>
+            <div className="flex bg-gray-50 dark:bg-white/5 p-1 rounded-xl border border-gray-100 dark:border-white/10">
+               <button onClick={() => setView("grid")} className={`p-2 rounded-lg ${view === "grid" ? "bg-gray-200 dark:bg-white/10" : "text-gray-400 dark:text-white/40"}`} title="Cuadrícula"><LayoutGrid className="w-4 h-4" /></button>
+               <button onClick={() => setView("compact")} className={`p-2 rounded-lg ${view === "compact" ? "bg-gray-200 dark:bg-white/10" : "text-gray-400 dark:text-white/40"}`} title="Compacto"><Grid3X3 className="w-4 h-4" /></button>
                <button onClick={() => setView("list")} className={`p-2 rounded-lg ${view === "list" ? "bg-white/10" : "text-white/40"}`} title="Lista"><List className="w-4 h-4" /></button>
             </div>
           </div>

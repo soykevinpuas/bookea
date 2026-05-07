@@ -104,13 +104,13 @@ export default function ProfilePage() {
   const primaryBorderClass = isSubscriber ? "border-amber-500/20" : "border-blue-500/20";
 
   return (
-    <div className="min-h-screen bg-[#070708] text-white py-12 px-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#070708] text-gray-900 dark:text-white py-12 px-6 transition-colors duration-300">
       <div className="max-w-5xl mx-auto">
         {/* Header de perfil */}
         <div className="mb-12 text-center sm:text-left flex flex-col sm:flex-row justify-between items-end gap-4">
           <div>
             <h1 className="text-4xl font-black mb-2 tracking-tight">Mi Perfil</h1>
-            <p className="text-white/40">Gestiona tu identidad y suscripción Premium.</p>
+            <p className="text-gray-400 dark:text-white/40">Gestiona tu identidad y suscripción Premium.</p>
           </div>
           {isSubscriber && (
             <div className={`px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-2`}>
@@ -123,11 +123,11 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Columna Izquierda: Info Usuario */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 text-center relative overflow-hidden group">
+            <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-[2.5rem] p-8 text-center relative overflow-hidden group">
               <div className="absolute top-0 left-0 w-full h-full bg-amber-600/5 blur-3xl -z-10 group-hover:bg-amber-600/10 transition-colors" />
               
               <div className="relative w-32 h-32 mx-auto mb-8">
-               <div className="w-full h-full rounded-full border-4 border-white/5 overflow-hidden bg-[#111] shadow-2xl relative flex items-center justify-center">
+               <div className="w-full h-full rounded-full border-4 border-gray-200 dark:border-white/5 overflow-hidden bg-white dark:bg-[#111] shadow-2xl relative flex items-center justify-center">
                    {profile?.avatar_url ? (
                      <AnimalEngine 
                        type={parseAvatarConfig(profile.avatar_url).type} 
@@ -153,15 +153,15 @@ export default function ProfilePage() {
                   <input 
                     value={tempName}
                     onChange={(e) => setTempName(e.target.value)}
-                    className={`bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-center outline-none focus:border-${primaryColor}-500 transition-colors`}
+                    className={`bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-center outline-none focus:border-${primaryColor}-500 transition-colors text-gray-900 dark:text-white`}
                     placeholder="Tu nombre público..."
                     autoFocus
                   />
                   <div className="flex gap-2">
-                    <button onClick={handleSaveName} disabled={isUpdatingName} className="flex-1 bg-white text-black font-bold text-xs py-2.5 rounded-xl transition-all hover:opacity-80 disabled:opacity-50">
+                    <button onClick={handleSaveName} disabled={isUpdatingName} className="flex-1 bg-gray-900 dark:bg-white text-white dark:text-black font-bold text-xs py-2.5 rounded-xl transition-all hover:opacity-80 disabled:opacity-50">
                       {isUpdatingName ? "..." : "Guardar"}
                     </button>
-                    <button onClick={() => setIsEditingName(false)} className="flex-1 bg-white/5 hover:bg-white/10 text-xs py-2.5 rounded-xl transition-all">
+                    <button onClick={() => setIsEditingName(false)} className="flex-1 bg-gray-200 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 text-xs py-2.5 rounded-xl transition-all">
                       Cancelar
                     </button>
                   </div>
@@ -173,26 +173,26 @@ export default function ProfilePage() {
                 </h2>
               )}
               
-               <p className="text-xs text-white/30 truncate mb-4 px-4">{dbUser?.email}</p>
+               <p className="text-xs text-gray-400 dark:text-white/30 truncate mb-4 px-4">{dbUser?.email}</p>
 
               {/* Mini stats: racha + libros leídos + monedas */}
               <div className="grid grid-cols-3 gap-2 px-4 mb-6">
-                <div className="text-center p-2 rounded-xl bg-white/5 border border-white/5">
+                <div className="text-center p-2 rounded-xl bg-gray-200/50 dark:bg-white/5 border border-gray-200 dark:border-white/5">
                   <Flame className="w-4 h-4 mx-auto text-orange-400 mb-1" />
-                  <p className="text-sm font-bold text-white">{streak ?? 0}</p>
-                  <p className="text-[9px] text-white/30">Racha</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{streak ?? 0}</p>
+                  <p className="text-[9px] text-gray-400 dark:text-white/30">Racha</p>
                 </div>
-                <div className="text-center p-2 rounded-xl bg-white/5 border border-white/5">
+                <div className="text-center p-2 rounded-xl bg-gray-200/50 dark:bg-white/5 border border-gray-200 dark:border-white/5">
                   <BookOpenCheck className="w-4 h-4 mx-auto text-blue-400 mb-1" />
-                  <p className="text-sm font-bold text-white">{profile?.total_books_read ?? 0}</p>
-                  <p className="text-[9px] text-white/30">Leídos</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{profile?.total_books_read ?? 0}</p>
+                  <p className="text-[9px] text-gray-400 dark:text-white/30">Leídos</p>
                 </div>
-                <div className="text-center p-2 rounded-xl bg-white/5 border border-white/5">
+                <div className="text-center p-2 rounded-xl bg-gray-200/50 dark:bg-white/5 border border-gray-200 dark:border-white/5">
                   <Circle className="w-4 h-4 mx-auto text-amber-400 fill-current mb-1" />
-                  <p className="text-sm font-bold text-white">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">
                     {coinsBalance ? (coinsBalance.bronze || 0) + (coinsBalance.silver || 0) + (coinsBalance.gold || 0) + (coinsBalance.diamond || 0) : 0}
                   </p>
-                  <p className="text-[9px] text-white/30">Monedas</p>
+                  <p className="text-[9px] text-gray-400 dark:text-white/30">Monedas</p>
                 </div>
               </div>
 
@@ -217,7 +217,7 @@ export default function ProfilePage() {
           {/* Columna Derecha: Configuración */}
           <div className="lg:col-span-8 space-y-8">
             {/* Animal Builder Section */}
-            <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 sm:p-10">
+            <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-[2.5rem] p-8 sm:p-10">
               <h3 className="text-2xl font-black flex items-center gap-3 mb-10">
                 <Sparkles className={`w-6 h-6 ${primaryClass}`} />
                 Personalizar Avatar
@@ -252,24 +252,24 @@ export default function ProfilePage() {
               ) : (
                 <div className="space-y-8">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-5 bg-white/5 rounded-2xl border border-white/10 text-center">
-                      <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Estado</p>
+                    <div className="p-5 bg-gray-200 dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 text-center">
+                      <p className="text-[10px] text-gray-400 dark:text-white/30 uppercase tracking-widest mb-1">Estado</p>
                       <p className={`text-xl font-black ${subscription?.role === 'admin' ? 'text-purple-400' : 'text-green-400'}`}>
                         {subscription?.role === 'admin' ? 'Acceso VIP' : 'Premium Activo'}
                       </p>
                     </div>
-                    <div className="p-5 bg-white/5 rounded-2xl border border-white/10 text-center">
-                      <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Expiración</p>
+                    <div className="p-5 bg-gray-200 dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 text-center">
+                      <p className="text-[10px] text-gray-400 dark:text-white/30 uppercase tracking-widest mb-1">Expiración</p>
                       <p className="text-xl font-black">
                         {subscription?.role === 'admin' ? 'Vitalicio' : `${subscription?.daysRemaining ?? 0} días`}
                       </p>
                     </div>
                   </div>
 
-                  <div className="p-6 bg-white/5 border border-white/10 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="p-6 bg-gray-200 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
                     <div className="text-center md:text-left">
                       <p className="font-bold mb-1">Gestionar en Stripe</p>
-                      <p className="text-xs text-white/40">Actualiza tu método de pago o descarga facturas.</p>
+                      <p className="text-xs text-gray-500 dark:text-white/40">Actualiza tu método de pago o descarga facturas.</p>
                     </div>
                     <button onClick={handlePortal} disabled={portalLoading} className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-3">
                       {portalLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : <CreditCard className="w-4 h-4" />}
@@ -282,7 +282,7 @@ export default function ProfilePage() {
 
             {/* Gamificación: Monedas + Racha */}
             {coinsBalance && (
-              <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-6 sm:p-8">
+              <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-[2.5rem] p-6 sm:p-8">
                 <h3 className="text-lg font-black flex items-center gap-2 mb-4">
                   <Trophy className="w-5 h-5 text-amber-400" />
                   Progreso
@@ -290,7 +290,7 @@ export default function ProfilePage() {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Monedas */}
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                  <div className="bg-gray-200 dark:bg-white/5 rounded-xl p-4 border border-gray-300 dark:border-white/5">
                     <div className="flex items-center gap-2 mb-3">
                       <Coins className="w-4 h-4 text-amber-400" />
                       <span className="text-sm font-bold">Monedas</span>
@@ -299,7 +299,7 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Racha */}
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                  <div className="bg-gray-200 dark:bg-white/5 rounded-xl p-4 border border-gray-300 dark:border-white/5">
                     <div className="flex items-center gap-2 mb-3">
                       <Flame className="w-4 h-4 text-orange-400" />
                       <span className="text-sm font-bold">Racha: {streak ?? 0} días</span>
@@ -318,7 +318,7 @@ export default function ProfilePage() {
                         <p className="text-[10px] font-bold text-cyan-400">30d</p>
                       </div>
                     </div>
-                    <p className="text-[10px] text-white/30 mt-2">Lee 2+ min para contar</p>
+                    <p className="text-[10px] text-gray-400 dark:text-white/30 mt-2">Lee 2+ min para contar</p>
                   </div>
                 </div>
               </div>
@@ -326,7 +326,7 @@ export default function ProfilePage() {
 
             {/* Referidos Section */}
             {referralLink && (
-              <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-6 sm:p-8">
+              <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-[2.5rem] p-6 sm:p-8">
                 <h3 className="text-lg font-black flex items-center gap-2 mb-4">
                   <Gift className="w-5 h-5 text-green-400" />
                   Invita a un Amigo
@@ -336,12 +336,12 @@ export default function ProfilePage() {
             )}
 
             {/* Seguridad Section */}
-            <div className="bg-white/5 border border-white/10 rounded-[2.2rem] p-8">
+            <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-[2.2rem] p-8">
               <h3 className="text-xl font-black mb-4">Seguridad</h3>
-              <p className="text-sm text-white/40 font-light mb-2">
+              <p className="text-sm text-gray-400 dark:text-white/40 font-light mb-2">
                 Para cambios de contraseña y seguridad avanzada, gestionamos todo a través de Supabase Auth.
               </p>
-              <span className="text-[10px] text-white/20 italic">No hay acciones adicionales requeridas.</span>
+              <span className="text-[10px] text-gray-400 dark:text-white/20 italic">No hay acciones adicionales requeridas.</span>
             </div>
           </div>
         </div>
