@@ -240,10 +240,16 @@ export async function completeBookAndAwardCoinAction(bookId: string) {
       return { success: false, error: 'insufficient_progress' }
     }
 
-    // Actualizar total_books_read
+    // Actualizar total_books_read (incrementar en 1)
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('total_books_read')
+      .eq('user_id', user.id)
+      .single()
+
     await supabase
       .from('profiles')
-      .update({ total_books_read: supabase.rpc('increment_counter' as any) })
+      .update({ total_books_read: (currentProfile?.total_books_read || 0) + 1 })
       .eq('user_id', user.id)
 
     // Otorgar moneda de bronce

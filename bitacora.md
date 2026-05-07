@@ -4,6 +4,56 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-05-07-B] - Auditoría de Seguridad RLS: Corrección de 8 Hallazgos
+
+### Objetivo
+Tercera auditoría de seguridad del proyecto enfocada en RLS y políticas de acceso. Se identificaron y corrigieron vulnerabilidades críticas en las tablas de gamificación, exposición de datos de usuarios y bypass client-side de acceso.
+
+### Hallazgos Corregidos
+
+**🔴 Crítico: Políticas "System can..." en gamificación (5 tablas)**
+- **Problema:** Las tablas `coins`, `coin_transactions`, `coin_redemptions`, `streak_milestones`, `referrals` y `monthly_limits_tracker` tenían políticas `FOR ALL USING (true)` o `FOR INSERT WITH CHECK (true)`, permitiendo manipulación directa desde el cliente.
+- **Solución:** Eliminadas todas las políticas "System can...". Las RPCs `SECURITY DEFINER` (`add_coins`, `redeem_coin`, `track_referral`, etc.) ya bypassan RLS y manejan la autorización correctamente.
+
+**🟠 Alto: `users` SELECT exponía todos los emails**
+- **Problema:** Política `users_select_all` con `USING (true)` permitía a cualquier usuario autenticado ver todos los emails.
+- **Solución:** Reemplazada por `users_select_self` (ver propio registro) y `users_select_admin` (admins ven todo).
+
+**🟠 Alto: `analytics_events` INSERT público**
+- **Problema:** Política `"Service can insert analytics"` con `FOR INSERT WITH CHECK (true)` permitía spamear analytics.
+- **Solución:** Eliminada. La RPC `track_event` (SECURITY DEFINER) maneja las inserciones.
+
+**🟠 Alto: `coin_redemptions` INSERT directo desde cliente**
+- **Problema:** Usuarios podían insertar canjes directamente, evadiendo verificación de saldo y anti-abuse.
+- **Solución:** Eliminada política de INSERT. Solo `redeem_coin` RPC puede crear canjes.
+
+**🟠 Medio: `subscription_credits` UPDATE sin WITH CHECK**
+- **Problema:** Usuarios podían poner `credits_remaining = 9999` sin restricción.
+- **Solución:** Agregado `WITH CHECK (auth.uid() = user_id)` a la política de UPDATE.
+
+**🟠 Medio: localStorage caching de rol en `hasBookAccess`**
+- **Problema:** `lib/books.ts` guardaba `bookea-user-role` en localStorage y lo usaba para bypass client-side. Un usuario podía ponerse `admin` manualmente.
+- **Solución:** Reemplazado por caché de acceso por libro (`bookea-access-cache`). Cuando el servidor confirma acceso, se guarda el resultado (`true/false`) por `bookId`. En offline, se consulta esta caché en lugar del rol. Es seguro porque solo cachea el resultado booleano por libro, no el rol del usuario.
+
+**🟠 Medio: `increment_counter` RPC inexistente**
+- **Problema:** `lib/actions/coins.ts` usaba `supabase.rpc('increment_counter' as any)` que no existía.
+- **Solución:** Reemplazado por lectura/escritura directa de `total_books_read` desde la tabla `profiles`.
+
+**🟢 Bajo: Middleware incompleto**
+- **Problema:** `/profile` y `/catalog` no estaban en `protectedPaths`.
+- **Solución:** Agregadas ambas rutas.
+
+### Archivos Creados
+- `supabase/migrations/014_fix_rls_security_audit.sql` — Migración con todas las correcciones RLS
+
+### Archivos Modificados
+- `docs/AUDIT_LOG.md` — Registro de la 3ra auditoría con reporte detallado
+- `lib/books.ts` — Eliminado localStorage caching de rol
+- `lib/actions/coins.ts` — Corregido incremento de `total_books_read`
+- `middleware.ts` — Agregadas `/profile` y `/catalog` a rutas protegidas
+
+---
+
 ## [2026-05-07] - Optimización de Rendimiento: "Bookea Vuela"
 
 ### Objetivo

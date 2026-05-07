@@ -178,6 +178,31 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
   }
 }
 
+const ACCESS_CACHE_KEY = 'bookea-access-cache';
+
+function getCachedAccess(bookId: string): boolean | null {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(ACCESS_CACHE_KEY) : null;
+    if (!raw) return null;
+    const cache = JSON.parse(raw);
+    return cache[bookId]?.hasAccess ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedAccess(bookId: string, hasAccess: boolean): void {
+  try {
+    if (typeof window === 'undefined') return;
+    const raw = localStorage.getItem(ACCESS_CACHE_KEY);
+    const cache = raw ? JSON.parse(raw) : {};
+    cache[bookId] = { hasAccess, cachedAt: Date.now() };
+    localStorage.setItem(ACCESS_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // localStorage may be full or unavailable
+  }
+}
+
 export async function hasBookAccess(supabase: SupabaseClient, userId: string, bookId: string): Promise<boolean> {
   if (!userId || !bookId) return false;
   
@@ -190,20 +215,10 @@ const { data: userData, error: userError } = await supabase
   .single();
 
 if (userError || !userData) {
-  // 3.3.1 - Fallback offline: verificar rol cacheado
-  if (typeof window !== 'undefined') {
-    const cachedRole = localStorage.getItem('bookea-user-role');
-    if (cachedRole === 'admin') {
-      console.log('[hasBookAccess] Acceso admin concedido vía caché offline');
-      return true;
-    }
-  }
+  // Si estamos offline, usar caché de acceso por libro
+  const cached = getCachedAccess(bookId);
+  if (cached !== null) return cached;
   return false;
-}
-
-// 3.3.2 - Cachear rol para acceso offline
-if (typeof window !== 'undefined') {
-  localStorage.setItem('bookea-user-role', userData.role);
 }
 
     // Administradores tienen acceso total
@@ -222,6 +237,8 @@ if (typeof window !== 'undefined') {
       .single();
 
     if (!book || bookError) {
+      const cached = getCachedAccess(bookId);
+      if (cached !== null) return cached;
       console.warn(`[hasBookAccess] Error obteniendo libro ${bookId}:`, bookError);
       return false;
     }
@@ -229,14 +246,14 @@ if (typeof window !== 'undefined') {
     // --- REGLA DE ORO DE LIBROS GRATIS ---
     // Si el libro NO es premium, cualquier usuario (incluso gratis) puede leerlo.
     if (!book.is_premium) {
-      console.log(`[hasBookAccess] Acceso CONCEDIDO (Libro Gratis): ${book.title}`);
+      setCachedAccess(bookId, true);
       return true;
     }
 
     // --- REGLA DE LIBROS PREMIUM ---
     // Si el usuario es Premium activo y el libro es Premium, permitir acceso
     if (isPremiumActive && book.is_premium) {
-      console.log(`[hasBookAccess] Acceso CONCEDIDO (Premium Activo): ${book.title}`);
+      setCachedAccess(bookId, true);
       return true;
     }
     
@@ -250,25 +267,28 @@ if (typeof window !== 'undefined') {
 
     if (userBook) {
       if (userBook.access_type === 'permanent' || userBook.access_type === 'gift') {
-        console.log(`[hasBookAccess] Acceso CONCEDIDO (Compra Permanente): ${book.title}`);
+        setCachedAccess(bookId, true);
         return true;
       }
       if (userBook.access_type === 'subscription' && isPremiumActive) {
-        console.log(`[hasBookAccess] Acceso CONCEDIDO (Suscripción): ${book.title}`);
+        setCachedAccess(bookId, true);
         return true;
       }
       if (userBook.access_type === 'coin_redemption') {
         const expiresAt = userBook.expires_at ? new Date(userBook.expires_at) : null;
         if (expiresAt && expiresAt > now) {
-          console.log(`[hasBookAccess] Acceso CONCEDIDO (Canje de Moneda): ${book.title}`);
+          setCachedAccess(bookId, true);
           return true;
         }
       }
     }
 
+    setCachedAccess(bookId, false);
     console.warn(`[hasBookAccess] Acceso DENEGADO: ${book.title}. UserRole=${userData.role}, isPremiumActive=${isPremiumActive}`);
     return false;
   } catch (error) {
+    const cached = getCachedAccess(bookId);
+    if (cached !== null) return cached;
     console.error("Error checking book access:", error);
     return false;
   }

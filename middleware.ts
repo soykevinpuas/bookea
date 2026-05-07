@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
 
   // Protección de rutas (basado en proxy.ts anterior)
   const { pathname } = request.nextUrl
-  const protectedPaths = ['/dashboard', '/reader', '/admin']
+  const protectedPaths = ['/dashboard', '/reader', '/admin', '/catalog', '/profile']
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
   const isAuthPath = pathname === '/login' || pathname === '/register'
 
