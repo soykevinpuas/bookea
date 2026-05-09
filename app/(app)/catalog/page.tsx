@@ -4,19 +4,26 @@ import { useBooks } from "@/hooks/useBooks";
 import Book3D from "@/components/Book3D";
 import CatalogBookCard from "@/components/CatalogBookCard";
 import { SearchFilters } from "@/components/SearchFilters";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { CatalogSkeleton, PrefetchLink } from "@/components/ui/LoadingStates";
-import { useMemo, Suspense } from "react";
+import { useMemo, useState, Suspense, useCallback } from "react";
 import { Book } from "@/types/book";
+import { useCartStore } from "@/stores/cart";
+import { ShoppingCart, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 // 3.1 - CatalogContent: Lógica interna del catálogo con React Query para velocidad SPA
 function CatalogContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { addItem } = useCartStore();
+  const [adding, setAdding] = useState<string | null>(null);
   
   const search = searchParams.get("search") || "";
   const author = searchParams.get("author") || "";
   const category = searchParams.get("category") || "all";
   const view = (searchParams.get("view") as "grid" | "list" | "compact") || "list";
+  const tab = searchParams.get("tab") || "todos";
 
   // 3.1.1 - Obtención de libros vía React Query (Instantáneo si está cacheado)
   const { data: booksData, isLoading } = useBooks({ search, author, category });
@@ -24,13 +31,42 @@ function CatalogContent() {
   // 3.1.2 - Aplicar barajado (shuffle) solo si no hay filtros activos para rotación de contenido
   const books = useMemo<Book[]>(() => {
     if (!booksData) return [];
+    let filtered = [...booksData];
+
+    // Filtro por pestaña
+    if (tab === 'digitales') {
+      filtered = filtered.filter((b) => b.price_digital > 0 || b.price_digital === null);
+    } else if (tab === 'fisicos') {
+      filtered = filtered.filter((b) => b.price_physical > 0 && b.stock_physical > 0);
+    }
+
     const shouldShuffle = !search && !author && (category === 'all' || !category);
     if (shouldShuffle) {
-      // Usar un seed basado en la fecha para que cambie pero sea consistente durante la sesión
-      return [...booksData].sort(() => Math.random() - 0.5);
+      return filtered.sort(() => Math.random() - 0.5);
     }
-    return booksData;
-  }, [booksData, search, author, category]);
+    return filtered;
+  }, [booksData, search, author, category, tab]);
+
+  const setTab = useCallback((t: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', t)
+    router.push(`/catalog?${params.toString()}`)
+  }, [searchParams, router])
+
+  const handleAddToCart = async (book: Book, type: 'digital' | 'physical') => {
+    const key = `${book.id}-${type}`
+    setAdding(key)
+    try {
+      await addItem(book.id, type)
+      toast.success(`${book.title} agregado (${type === 'digital' ? 'Digital' : 'Físico'})`, {
+        action: { label: 'Ver carrito', onClick: () => useCartStore.getState().setOpen(true) },
+      })
+    } catch {
+      toast.error('Error al agregar al carrito')
+    } finally {
+      setAdding(null)
+    }
+  }
 
   if (isLoading && books.length === 0) {
     return (
@@ -43,14 +79,37 @@ function CatalogContent() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Catálogo de Libros
-            </h1>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              Explora nuestra colección premium. {books.length} títulos encontrados.
-            </p>
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                Catálogo de Libros
+              </h1>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Explora nuestra colección premium. {books.length} títulos encontrados.
+              </p>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-1 p-1 bg-gray-100 dark:bg-white/5 rounded-xl w-fit">
+            {[
+              { key: 'todos', label: 'Todos' },
+              { key: 'digitales', label: 'Digitales' },
+              { key: 'fisicos', label: 'Físicos' },
+            ].map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                  tab === t.key
+                    ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -138,18 +197,32 @@ function CatalogContent() {
                   </p>
 
                   <div className={`flex items-center justify-between ${view === "list" ? "mt-1 sm:mt-4" : "mt-auto pt-4 border-t border-gray-100 dark:border-white/5"}`}>
-                    <span className="text-sm sm:text-lg font-black">
-                      {book.is_premium === false || book.price_digital === 0 ? (
-                        <span className="text-green-600 dark:text-green-400">Gratis</span>
-                      ) : (
-                        <span className="text-blue-600 dark:text-blue-400">Premium</span>
+                    <div className="flex flex-wrap gap-1">
+                      {book.price_digital > 0 && (
+                        <button
+                          onClick={() => handleAddToCart(book, 'digital')}
+                          disabled={adding === `${book.id}-digital`}
+                          className="text-[10px] sm:text-xs font-bold bg-blue-600 dark:bg-blue-600/30 hover:bg-blue-700 dark:hover:bg-blue-600/50 text-white px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all flex items-center gap-1"
+                        >
+                          {adding === `${book.id}-digital` ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShoppingCart className="w-3 h-3" />}
+                          Digital ${book.price_digital}
+                        </button>
                       )}
-                    </span>
+                      {book.price_physical > 0 && book.stock_physical > 0 && (
+                        <button
+                          onClick={() => handleAddToCart(book, 'physical')}
+                          disabled={adding === `${book.id}-physical`}
+                          className="text-[10px] sm:text-xs font-bold bg-amber-600 dark:bg-amber-600/30 hover:bg-amber-700 dark:hover:bg-amber-600/50 text-white px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all flex items-center gap-1"
+                        >
+                          {adding === `${book.id}-physical` ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShoppingCart className="w-3 h-3" />}
+                          Físico ${book.price_physical}
+                        </button>
+                      )}
+                    </div>
                     <PrefetchLink
                       href={`/book/${book.id}`}
                       bookId={book.id}
                       className="text-[10px] sm:text-sm font-medium bg-blue-600 dark:bg-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-600/30 text-white dark:text-blue-400 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl transition-all shadow-sm no-retro-override"
-                      style={{ '--dot-bg': '#2563eb' } as any}
                     >
                       {view === "list" ? "Ver detalles" : "Detalles"}
                     </PrefetchLink>

@@ -48,6 +48,7 @@ import { Toaster } from "sonner";
 
 import { createClient } from "@/lib/server";
 import { ReaderColorSync } from "@/components/ReaderColorSync";
+import CartPanel from "@/components/CartPanel";
 
 export default function RootLayout({
   children,
@@ -104,6 +105,9 @@ export default function RootLayout({
               </Suspense>
             </main>
             <BottomNav />
+            <Suspense fallback={null}>
+              <CartPanel />
+            </Suspense>
           </QueryProvider>
           <Toaster 
             position="bottom-right" 

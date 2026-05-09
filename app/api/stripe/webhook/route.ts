@@ -81,8 +81,62 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // 7.2.2.2 - Procesar compra de libro individual
-        if (session.mode === 'payment' && bookId) {
+        // 7.2.2.2 - Procesar compra de carrito (múltiples items)
+        const cartItemsStr = session.metadata?.items;
+        if (session.mode === 'payment' && cartItemsStr) {
+          let items: { book_id: string; type: string; cart_item_id: string }[];
+          try {
+            items = JSON.parse(cartItemsStr);
+          } catch {
+            console.error('Error parseando items del carrito');
+            return NextResponse.json({ error: 'Invalid cart items' }, { status: 400 });
+          }
+
+          let shippingInfo: Record<string, string> | null = null;
+          const shippingStr = session.metadata?.shipping;
+          if (shippingStr) {
+            try { shippingInfo = JSON.parse(shippingStr); } catch {}
+          }
+
+          for (const item of items) {
+            if (item.type === 'digital') {
+              const { data: existing } = await supabase
+                .from('user_books')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('book_id', item.book_id)
+                .maybeSingle();
+              if (!existing) {
+                await supabase.from('user_books').insert({
+                  user_id: userId,
+                  book_id: item.book_id,
+                  access_type: 'permanent',
+                });
+              }
+            } else if (item.type === 'physical') {
+              await supabase.from('orders_physical').insert({
+                user_id: userId,
+                book_id: item.book_id,
+                status: 'pending',
+                name: shippingInfo?.name || '',
+                address: shippingInfo?.address || '',
+                city: shippingInfo?.city || '',
+                state: shippingInfo?.state || '',
+                zip: shippingInfo?.zip || '',
+                phone: shippingInfo?.phone || '',
+                shipping_cost: 50,
+                total: 0,
+                stripe_payment_id: session.id,
+              });
+              await supabase.rpc('decrement_stock', { p_book_id: item.book_id });
+            }
+          }
+
+          await supabase.from('cart_items').delete().eq('user_id', userId);
+        }
+
+        // 7.2.2.2b - Procesar compra de libro individual (legacy)
+        if (session.mode === 'payment' && bookId && !cartItemsStr) {
           const { data: existingAccess } = await supabase
             .from('user_books')
             .select('*')
