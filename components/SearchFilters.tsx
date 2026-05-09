@@ -161,7 +161,7 @@ export function SearchFilters({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex flex-col justify-center sm:justify-end"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           >
             {/* Backdrop */}
             <motion.div 
@@ -174,11 +174,11 @@ export function SearchFilters({
             
             {/* Panel Content */}
             <motion.div 
-              initial={{ y: "100%", opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: "100%", opacity: 0 }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="relative z-10 w-full max-w-md mx-auto sm:max-w-lg bg-white dark:bg-zinc-900 rounded-3xl sm:rounded-[2.5rem] p-6 pb-8 shadow-2xl border border-white/10"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative z-10 w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-white/10 my-auto"
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-black text-gray-900 dark:text-white">Géneros</h2>
