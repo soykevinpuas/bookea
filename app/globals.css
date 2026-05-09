@@ -555,6 +555,14 @@
   padding-right: env(safe-area-inset-right);
 }
 
+/* 1.7.9 - Prevenir swipe-back/forward nativo del navegador en los bordes */
+html {
+  overscroll-behavior-x: none;
+}
+body {
+  overscroll-behavior-x: none;
+}
+
 /* 1.7.4 - PWA Interactivity & Touch Overrides */
 .no-touch-callout {
   -webkit-touch-callout: none !important;

@@ -11,6 +11,18 @@ interface UseEdgeSwipeOptions {
   enabled?: boolean
 }
 
+function lockBody() {
+  document.body.style.overflow = 'hidden'
+  document.body.style.overscrollBehaviorX = 'none'
+  document.documentElement.style.overscrollBehaviorX = 'none'
+}
+
+function unlockBody() {
+  document.body.style.overflow = ''
+  document.body.style.overscrollBehaviorX = 'none'
+  document.documentElement.style.overscrollBehaviorX = 'none'
+}
+
 export function useEdgeSwipe({
   onSwipeFromRight,
   onSwipeFromLeft,
@@ -23,11 +35,13 @@ export function useEdgeSwipe({
   const edgeSwipe = useRef(false)
 
   useEffect(() => {
-    document.body.style.overscrollBehaviorX = 'contain'
     document.body.style.touchAction = 'pan-y'
+    document.body.style.overscrollBehaviorX = 'none'
+    document.documentElement.style.overscrollBehaviorX = 'none'
     return () => {
-      document.body.style.overscrollBehaviorX = ''
       document.body.style.touchAction = ''
+      document.body.style.overscrollBehaviorX = ''
+      document.documentElement.style.overscrollBehaviorX = ''
     }
   }, [])
 
@@ -44,22 +58,19 @@ export function useEdgeSwipe({
 
       if (edgeSwipe.current) {
         e.preventDefault()
+        lockBody()
       }
     }
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!edgeSwipe.current) return
-      const touch = e.touches[0]
-      const dx = Math.abs(touch.clientX - startX.current)
-      const dy = Math.abs(touch.clientY - startY.current)
-      if (dx > dy) {
-        e.preventDefault()
-      }
+      e.preventDefault()
     }
 
     const handleTouchEnd = (e: TouchEvent) => {
       if (!edgeSwipe.current) return
       edgeSwipe.current = false
+      unlockBody()
 
       const touch = e.changedTouches[0]
       const dx = touch.clientX - startX.current
@@ -90,14 +101,24 @@ export function useEdgeSwipe({
       }
     }
 
+    const handleTouchCancel = () => {
+      if (edgeSwipe.current) {
+        edgeSwipe.current = false
+        unlockBody()
+      }
+    }
+
     document.addEventListener('touchstart', handleTouchStart, { passive: false })
     document.addEventListener('touchmove', handleTouchMove, { passive: false })
     document.addEventListener('touchend', handleTouchEnd, { passive: true })
+    document.addEventListener('touchcancel', handleTouchCancel, { passive: true })
 
     return () => {
       document.removeEventListener('touchstart', handleTouchStart)
       document.removeEventListener('touchmove', handleTouchMove)
       document.removeEventListener('touchend', handleTouchEnd)
+      document.removeEventListener('touchcancel', handleTouchCancel)
+      unlockBody()
     }
   }, [enabled, onSwipeFromLeft, onSwipeFromRight, onSwipeLeft, onSwipeRight])
 }
