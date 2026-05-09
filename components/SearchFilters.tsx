@@ -161,7 +161,7 @@ export function SearchFilters({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] grid place-items-center p-4"
           >
             {/* Backdrop */}
             <motion.div 
@@ -178,7 +178,7 @@ export function SearchFilters({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative z-10 w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-white/10 my-auto"
+              className="relative z-10 w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-white/10"
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-black text-gray-900 dark:text-white">Géneros</h2>
