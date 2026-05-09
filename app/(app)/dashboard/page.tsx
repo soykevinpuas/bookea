@@ -124,7 +124,7 @@ function DashboardContent() {
     return filtered;
   }, [displayBooks, search, authorSearch, category, isOnline]);
 
-  const categories = ["Ficción", "Novela", "Clásicos", "Misterio", "Fantasía", "Historia", "Otros"];
+  const categories = ["Ficción", "No Ficción", "Novela", "Clásicos", "Misterio y Suspenso", "Fantasía", "Ciencia Ficción", "Romance", "Terror", "Autoayuda", "Negocios y Finanzas", "Historia", "Biografías", "Cuentos", "Poesía", "Otros"];
 
   if (isLoading && isOnline && displayBooks.length === 0) {
     return (

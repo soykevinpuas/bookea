@@ -176,7 +176,7 @@ export function SearchFilters({
             className="md:hidden flex-1 flex items-center justify-center gap-2 py-2.5 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white"
           >
             <SlidersHorizontal className="w-5 h-5" />
-            Filtros
+            Géneros
           </button>
         </div>
       </div>
