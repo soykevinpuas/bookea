@@ -83,15 +83,8 @@
     -webkit-text-fill-color: #3fb950 !important;
   }
 
-  /* Aggressive catch-all for remaining blue/green elements in retro mode */
-  .retro [class*='blue-'],
-  .retro [class*='indigo-'],
-  .retro [class*='from-'],
-  .retro [class*='to-'] {
-    --tw-gradient-from: transparent !important;
-    --tw-gradient-to: transparent !important;
-    background-image: none !important;
-  }
+  /* Remove old gradient killer — it was destroying edge indicators and decorative elements.
+     Blue/indigo colors in text and backgrounds are handled by specific overrides below. */
 
   /* Specific buttons and badges */
   .retro .bg-blue-600,
@@ -112,12 +105,25 @@
     background-image: none !important;
   }
 
-  /* Fix for green elements - keep them visible but muted */
+  /* Fix for green elements - decorative greens muted, buttons stay solid */
   .retro .bg-green-50,
   .retro .bg-green-100,
-  .retro [class*='bg-green-'] {
+  .retro .bg-green-200,
+  .retro .bg-green-300 {
     background-color: rgba(63, 185, 80, 0.15) !important;
     border-color: rgba(63, 185, 80, 0.3) !important;
+  }
+
+  .retro .bg-green-500,
+  .retro .bg-green-600 {
+    background-color: #238636 !important;
+    border-color: rgba(63, 185, 80, 0.5) !important;
+    color: #ffffff !important;
+  }
+
+  .retro .bg-green-600:hover,
+  .retro .bg-green-500:hover {
+    background-color: #2ea043 !important;
   }
 
   .retro .text-green-600,
@@ -228,6 +234,42 @@
   .retro [class*="bg-white"],
   .retro [class*="bg-gray-"] {
     background-color: #161b22 !important;
+  }
+
+  /* Retro hover states — make hover visible on dark backgrounds */
+  .retro .hover\:bg-gray-100:hover,
+  .retro .hover\:bg-gray-200:hover {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .retro .hover\:bg-white\/5:hover,
+  .retro .hover\:bg-white\/10:hover {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .retro .hover\:bg-red-100:hover {
+    background-color: rgba(255, 80, 80, 0.15) !important;
+  }
+
+  /* Retro active tab/toggle — bg-white se pierde contra cards, darle highlight */
+  .retro button.bg-white,
+  .retro [role="tab"].bg-white {
+    background-color: rgba(63, 185, 80, 0.2) !important;
+  }
+
+  /* Retro bg-gray-900 (botones como "Registrarse" y "Guardar") — deben diferir del card bg */
+  .retro .bg-gray-900 {
+    background-color: #21262d !important;
+  }
+
+  /* Retro bg-gray-300 (drag handle en filtros móviles) — visible contra fondo oscuro */
+  .retro .bg-gray-300 {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  /* Retro text-gray-700 — no estaba en overrides, contraste muy bajo (~2.9:1) */
+  .retro .text-gray-700 {
+    color: #c9d1d9 !important;
   }
 
   /* Catch-all for any gradient backgrounds - exclude color picker dots */
@@ -361,6 +403,42 @@
   .navy .border-white\/10,
   .navy .border-white\/5 {
     border-color: rgba(121, 134, 203, 0.15) !important;
+  }
+
+  /* Navy hover states */
+  .navy .hover\:bg-gray-100:hover,
+  .navy .hover\:bg-gray-200:hover {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .navy .hover\:bg-white\/5:hover,
+  .navy .hover\:bg-white\/10:hover {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .navy .hover\:bg-red-100:hover {
+    background-color: rgba(255, 80, 80, 0.15) !important;
+  }
+
+  /* Navy active tab/toggle */
+  .navy button.bg-white,
+  .navy [role="tab"].bg-white {
+    background-color: rgba(121, 134, 203, 0.2) !important;
+  }
+
+  /* Navy bg-gray-900 (botones) */
+  .navy .bg-gray-900 {
+    background-color: #1e2a4a !important;
+  }
+
+  /* Navy bg-gray-300 (drag handle) */
+  .navy .bg-gray-300 {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  /* Navy text-gray-700 */
+  .navy .text-gray-700 {
+    color: #b0bec5 !important;
   }
 
   /* Inputs en navy */

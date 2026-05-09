@@ -882,5 +882,49 @@ Crear un sistema de monedas de 4 denominaciones (Bronce, Plata, Oro, Diamante) p
 - `components/CartPanel.tsx` — Drag tipo cortina, glass effect, ancho 1/3, safe area 48px
 - `components/LibraryPanel.tsx` — Drag tipo cortina, glass effect, ancho 1/3, safe area 48px
 
+---
+
+## [2026-05-09-C] - Corrección de Contraste y Visibilidad en Temas Retro y Navy
+
+### Problema
+Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la UI:
+1. **Gradient killer** (`[class*='from-']` / `[class*='to-']`) eliminaba edge indicators y decoraciones
+2. **Botones verdes** (`bg-green-600`) se opacaban al 15% — "Abrir Lector" casi invisible
+3. **Hover states** (`hover:bg-gray-100`) se fundían con el fondo del card — sin feedback visual
+4. **Active tab/toggle** (`bg-white`) se perdía — pestañas activas y toggles indistinguibles
+5. **`bg-gray-900`** (botones "Registrarse", "Guardar") se fundía con el fondo
+6. **`bg-gray-300`** (drag handle en filtros móviles) desaparecía
+7. **`text-gray-700`** (~2.9:1 contraste) ilegible en retro
+
+### Cambios en `app/globals.css`
+
+**Retro — Eliminado gradient killer:**
+- El bloque `[class*='from-']`, `[class*='to-']` que ponía `background-image: none` fue removido. Ahora los edge indicators (PanelManager) y decoraciones con gradiente funcionan en retro.
+
+**Retro — Botones verdes protegidos:**
+- `bg-green-600` y `bg-green-500` ahora tienen `background-color: #238636` sólido con `color: #ffffff`. Solo `bg-green-50/100/200/300` se mantienen tenues (decorativos).
+
+**Retro/Navy — Hover states visibles:**
+- `hover:bg-gray-100` y `hover:bg-gray-200` → `rgba(255,255,255,0.06)` en ambos temas
+- `hover:bg-white/5` y `hover:bg-white/10` → mismo valor
+- `hover:bg-red-100` → `rgba(255,80,80,0.15)`
+
+**Retro/Navy — Active tab/toggle:**
+- `button.bg-white` → Retro: `rgba(63,185,80,0.2)`. Navy: `rgba(121,134,203,0.2)`.
+
+**Retro/Navy — bg-gray-900 y bg-gray-300:**
+- `bg-gray-900` → Retro: `#21262d`. Navy: `#1e2a4a`. (Diferente del card bg `#161b22`/`#111827`)
+- `bg-gray-300` → `rgba(255,255,255,0.15)` en ambos temas.
+
+**Retro/Navy — text-gray-700:**
+- Retro: `#c9d1d9`. Navy: `#b0bec5`. (Antes `#374151`, ratio 2.9:1).
+
+**PanelManager.tsx:**
+- Edge indicators ahora llevan clase `preserve-gradient` para protegerse de cualquier catch-all.
+
+### Archivos Modificados
+- `app/globals.css` — +90 líneas de overrides quirúrgicos para retro y navy
+- `components/PanelManager.tsx` — preserve-gradient en edge indicators
+
 ### Pendiente (no-code)
 - Ejecutar `supabase/migrations/017_cart_items.sql` en Supabase SQL Editor para que el carrito persista en DB
