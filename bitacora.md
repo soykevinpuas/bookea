@@ -836,3 +836,51 @@ Crear un sistema de monedas de 4 denominaciones (Bronce, Plata, Oro, Diamante) p
 - Nunca hardcodear IDs de APIs externas
 - El rol de Supabase Auth metadata puede no reflejar el estado real de la base de datos
 - Siempre verificar que usuarios antiguos tengan registros en todas las tablas依赖
+
+---
+
+## [2026-05-09-B] - UX de Paneles: Glass Effect, Ancho Reducido, Drag tipo Cortina y Safe Area
+
+### Problemas Reportados
+1. Paneles ocupaban todo el ancho en móvil — no se veía el fondo
+2. Fondo del overlay era opaco, no estilo "glass"
+3. Gesto de cerrar no se sentía natural — no seguía el dedo
+4. Header (título + X) se empalmaba con la barra de estado del teléfono
+5. No se podía acceder al botón X por la superposición
+
+### Cambios
+
+**Ancho de paneles reducido a 1/3 de la pantalla:**
+- Ambos paneles ahora usan `w-1/3 min-w-[280px] max-w-sm`
+- En móvil ocupan ~33% del ancho, dejando visible el contenido detrás
+- Se ve el efecto glass del backdrop a través del panel semi-transparente
+
+**Fondo glass (frosted glass):**
+- Overlay: `bg-white/5 dark:bg-black/30 backdrop-blur-2xl backdrop-saturate-150`
+- Panel: `bg-white/95 dark:bg-[#111]/95 backdrop-blur-xl`
+- Efecto de vidrio esmerilado que deja ver el contenido detrás borroso
+
+**Drag tipo cortina (gesto inverso con seguimiento en tiempo real):**
+- CartPanel (izquierdo): arrastrar hacia la IZQUIERDA para cerrar (como cerrar una cortina)
+- LibraryPanel (derecho): arrastrar hacia la DERECHA para cerrar
+- El panel sigue el dedo en tiempo real durante el arrastre (`touchmove`)
+- Al soltar: si pasó el 30% del ancho, anima suavemente a posición cerrada (`translateX(-100%)` / `translateX(100%)`) con `transition: transform 300ms` y cierra después del timeout
+- Si no pasó el umbral, rebota a posición abierta
+- Protección: si el movimiento vertical es 1.5x el horizontal, se cancela el drag (permite scroll)
+
+**Safe Area fijo:**
+- Header ahora usa `paddingTop: 'max(env(safe-area-inset-top, 0px), 48px)'`
+- Garantiza mínimo 48px de padding superior en todos los dispositivos
+- El botón X y el título siempre son accesibles
+
+**Limpieza de estilos inline al abrir:**
+- Al abrir el panel, se resetea `transform` y `transition` para que className `translate-x-0` tome control
+
+### Archivos Modificados
+- `hooks/useEdgeSwipe.ts` — touch-action pan-y, prevención de navegación del browser
+- `components/PanelManager.tsx` — Edge swipe siempre activo, close desde borde, indicadores visuales
+- `components/CartPanel.tsx` — Drag tipo cortina, glass effect, ancho 1/3, safe area 48px
+- `components/LibraryPanel.tsx` — Drag tipo cortina, glass effect, ancho 1/3, safe area 48px
+
+### Pendiente (no-code)
+- Ejecutar `supabase/migrations/017_cart_items.sql` en Supabase SQL Editor para que el carrito persista en DB

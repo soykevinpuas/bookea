@@ -13,17 +13,37 @@ export default function PanelManager() {
   const closeLibrary = useCallback(() => setLibraryOpen(false), [])
 
   useEdgeSwipe({
-    onSwipeFromRight: () => setCartOpen(true),
-    onSwipeFromLeft: () => setLibraryOpen(true),
+    onSwipeFromRight: () => {
+      if (cartOpen) closeCart()
+      else setCartOpen(true)
+    },
+    onSwipeFromLeft: () => {
+      if (libraryOpen) closeLibrary()
+      else setLibraryOpen(true)
+    },
     onSwipeRight: cartOpen ? closeCart : undefined,
     onSwipeLeft: libraryOpen ? closeLibrary : undefined,
-    enabled: !cartOpen && !libraryOpen,
+    enabled: true,
   })
 
   return (
     <>
       <CartPanel open={cartOpen} onClose={closeCart} />
       <LibraryPanel open={libraryOpen} onClose={closeLibrary} />
+
+      {/* Left edge indicator — hint to open cart */}
+      {!cartOpen && (
+        <div className="fixed top-1/2 left-0 z-40 -translate-y-1/2 pointer-events-none">
+          <div className="w-[3px] h-14 rounded-r-full bg-gradient-to-b from-blue-400/40 via-blue-400/70 to-blue-400/40 shadow-[0_0_6px_rgba(96,165,250,0.3)] animate-pulse" />
+        </div>
+      )}
+
+      {/* Right edge indicator — hint to open library */}
+      {!libraryOpen && (
+        <div className="fixed top-1/2 right-0 z-40 -translate-y-1/2 pointer-events-none">
+          <div className="w-[3px] h-14 rounded-l-full bg-gradient-to-b from-blue-400/40 via-blue-400/70 to-blue-400/40 shadow-[0_0_6px_rgba(96,165,250,0.3)] animate-pulse" />
+        </div>
+      )}
     </>
   )
 }

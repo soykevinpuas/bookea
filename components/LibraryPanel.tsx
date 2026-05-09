@@ -16,43 +16,82 @@ export default function LibraryPanel({ open, onClose }: LibraryPanelProps) {
   const { userId } = useUserId()
   const { data: books, isLoading } = useUserBooks(userId || '')
   const panelRef = useRef<HTMLDivElement>(null)
-  const startX = useRef(0)
+  const dragState = useRef({ startX: 0, startY: 0, offset: 0, isDragging: false, panelWidth: 0 })
 
+  // Drag-to-close like a curtain (drag RIGHT to close right panel)
   useEffect(() => {
     if (!open || !panelRef.current) return
     const el = panelRef.current
+    const state = dragState.current
+
     const handleTouchStart = (e: TouchEvent) => {
-      startX.current = e.touches[0].clientX
+      state.startX = e.touches[0].clientX
+      state.startY = e.touches[0].clientY
+      state.panelWidth = el.offsetWidth
+      state.isDragging = true
     }
-    const handleTouchEnd = (e: TouchEvent) => {
-      const dx = e.changedTouches[0].clientX - startX.current
-      if (dx < -60) onClose()
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!state.isDragging) return
+      const dx = e.touches[0].clientX - state.startX
+      const dy = Math.abs(e.touches[0].clientY - state.startY)
+      if (dy > Math.abs(dx) * 1.5) {
+        state.isDragging = false
+        return
+      }
+      state.offset = Math.max(0, Math.min(state.panelWidth, dx))
+      el.style.transition = 'none'
+      el.style.transform = `translateX(${state.offset}px)`
     }
+
+    const handleTouchEnd = () => {
+      if (!state.isDragging) return
+      state.isDragging = false
+      el.style.transition = ''
+      if (state.offset > state.panelWidth * 0.3) {
+        el.style.transform = 'translateX(100%)'
+        setTimeout(onClose, 300)
+      } else {
+        el.style.transform = ''
+      }
+    }
+
     el.addEventListener('touchstart', handleTouchStart, { passive: true })
+    el.addEventListener('touchmove', handleTouchMove, { passive: true })
     el.addEventListener('touchend', handleTouchEnd, { passive: true })
+
     return () => {
       el.removeEventListener('touchstart', handleTouchStart)
+      el.removeEventListener('touchmove', handleTouchMove)
       el.removeEventListener('touchend', handleTouchEnd)
     }
   }, [open, onClose])
 
+  // Reset inline transform when panel opens to let className take over
+  useEffect(() => {
+    if (open && panelRef.current) {
+      panelRef.current.style.transform = ''
+      panelRef.current.style.transition = ''
+    }
+  }, [open])
+
   return (
     <div className={`fixed inset-0 z-50 flex justify-end pointer-events-none ${open ? '' : ''}`}>
       {open && (
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto" onClick={onClose} />
+        <div className="absolute inset-0 bg-white/5 dark:bg-black/30 backdrop-blur-2xl backdrop-saturate-150 pointer-events-auto" onClick={onClose} />
       )}
       <div
         ref={panelRef}
-        className={`relative w-full max-w-sm bg-white dark:bg-[#111111] shadow-2xl h-full overflow-y-auto pointer-events-auto transition-transform duration-300 ${
+        className={`relative w-1/3 min-w-[280px] max-w-sm bg-white/95 dark:bg-[#111]/95 backdrop-blur-xl shadow-2xl h-full overflow-y-auto pointer-events-auto transition-transform duration-300 ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        <div className="sticky top-0 z-10 bg-white dark:bg-[#111111] border-b border-gray-200 dark:border-white/10 px-4 py-3 flex items-center justify-between">
+        <div className="sticky top-0 z-10 bg-white/95 dark:bg-[#111]/95 backdrop-blur-xl border-b border-gray-200 dark:border-white/10 px-4 pb-3 flex items-center justify-between" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 48px)' }}>
           <h2 className="text-lg font-bold flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-blue-500" />
             Mis Libros
           </h2>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -72,7 +111,7 @@ export default function LibraryPanel({ open, onClose }: LibraryPanelProps) {
                 key={book.id}
                 href={`/reader/${book.id}`}
                 onClick={onClose}
-                className="flex gap-3 bg-gray-50 dark:bg-white/5 rounded-xl p-3 hover:bg-gray-100 dark:hover:bg-white/[0.07] transition-colors group"
+                className="flex gap-3 bg-gray-50/80 dark:bg-white/5 rounded-xl p-3 hover:bg-gray-100 dark:hover:bg-white/[0.07] transition-colors group"
               >
                 {book.cover_url ? (
                   <div className="w-14 h-20 rounded-lg overflow-hidden shrink-0 bg-gray-200 dark:bg-white/10">

@@ -18,7 +18,7 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
   const [showShipping, setShowShipping] = useState(false)
   const [error, setError] = useState('')
   const panelRef = useRef<HTMLDivElement>(null)
-  const startX = useRef(0)
+  const dragState = useRef({ startX: 0, startY: 0, offset: 0, isDragging: false, panelWidth: 0 })
 
   useEffect(() => {
     if (userId && open) fetchCart()
@@ -30,24 +30,62 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
     }
   }, [items])
 
-  // Swipe right to close
+  // Drag-to-close like a curtain (drag LEFT to close left panel)
   useEffect(() => {
     if (!open || !panelRef.current) return
     const el = panelRef.current
+    const state = dragState.current
+
     const handleTouchStart = (e: TouchEvent) => {
-      startX.current = e.touches[0].clientX
+      state.startX = e.touches[0].clientX
+      state.startY = e.touches[0].clientY
+      state.panelWidth = el.offsetWidth
+      state.isDragging = true
     }
-    const handleTouchEnd = (e: TouchEvent) => {
-      const dx = e.changedTouches[0].clientX - startX.current
-      if (dx > 60) onClose()
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!state.isDragging) return
+      const dx = e.touches[0].clientX - state.startX
+      const dy = Math.abs(e.touches[0].clientY - state.startY)
+      if (dy > Math.abs(dx) * 1.5) {
+        state.isDragging = false
+        return
+      }
+      state.offset = Math.min(0, Math.max(-state.panelWidth, dx))
+      el.style.transition = 'none'
+      el.style.transform = `translateX(${state.offset}px)`
     }
+
+    const handleTouchEnd = () => {
+      if (!state.isDragging) return
+      state.isDragging = false
+      el.style.transition = ''
+      if (state.offset < -state.panelWidth * 0.3) {
+        el.style.transform = 'translateX(-100%)'
+        setTimeout(onClose, 300)
+      } else {
+        el.style.transform = ''
+      }
+    }
+
     el.addEventListener('touchstart', handleTouchStart, { passive: true })
+    el.addEventListener('touchmove', handleTouchMove, { passive: true })
     el.addEventListener('touchend', handleTouchEnd, { passive: true })
+
     return () => {
       el.removeEventListener('touchstart', handleTouchStart)
+      el.removeEventListener('touchmove', handleTouchMove)
       el.removeEventListener('touchend', handleTouchEnd)
     }
   }, [open, onClose])
+
+  // Reset inline transform when panel opens to let className take over
+  useEffect(() => {
+    if (open && panelRef.current) {
+      panelRef.current.style.transform = ''
+      panelRef.current.style.transition = ''
+    }
+  }, [open])
 
   const totalDigital = items.filter((i) => i.type === 'digital').reduce((a, i) => a + i.price, 0)
   const totalPhysical = items.filter((i) => i.type === 'physical').reduce((a, i) => a + i.price, 0)
@@ -87,20 +125,20 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
   return (
     <div className={`fixed inset-0 z-50 flex pointer-events-none ${open ? '' : ''}`}>
       {open && (
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto" onClick={onClose} />
+        <div className="absolute inset-0 bg-white/5 dark:bg-black/30 backdrop-blur-2xl backdrop-saturate-150 pointer-events-auto" onClick={onClose} />
       )}
       <div
         ref={panelRef}
-        className={`relative w-full max-w-sm bg-white dark:bg-[#111111] shadow-2xl h-full overflow-y-auto pointer-events-auto transition-transform duration-300 ${
+        className={`relative w-1/3 min-w-[280px] max-w-sm bg-white/95 dark:bg-[#111]/95 backdrop-blur-xl shadow-2xl h-full overflow-y-auto pointer-events-auto transition-transform duration-300 ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="sticky top-0 z-10 bg-white dark:bg-[#111111] border-b border-gray-200 dark:border-white/10 px-4 py-3 flex items-center justify-between">
+        <div className="sticky top-0 z-10 bg-white/95 dark:bg-[#111]/95 backdrop-blur-xl border-b border-gray-200 dark:border-white/10 px-4 pb-3 flex items-center justify-between" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 48px)' }}>
           <h2 className="text-lg font-bold flex items-center gap-2">
             <ShoppingCart className="w-4 h-4 text-blue-500" />
             Carrito {items.length > 0 && <span className="text-sm font-normal text-gray-500">({items.length})</span>}
           </h2>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -116,7 +154,7 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
             </div>
           ) : (
             items.map((item) => (
-              <div key={item.id} className="flex gap-3 bg-gray-50 dark:bg-white/5 rounded-xl p-3 items-start">
+              <div key={item.id} className="flex gap-3 bg-gray-50/80 dark:bg-white/5 rounded-xl p-3 items-start">
                 {item.cover_url ? (
                   <div className="w-14 h-20 rounded-lg overflow-hidden shrink-0 bg-gray-200 dark:bg-white/10">
                     <Image src={item.cover_url} alt={item.title} width={56} height={80} className="w-full h-full object-cover" />
@@ -152,20 +190,20 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
               <MapPin className="w-4 h-4" /> Datos de envío
             </div>
             <div className="space-y-2">
-              <input placeholder="Nombre completo" value={shipping.name} onChange={(e) => setShipping({ ...shipping, name: e.target.value })} className="w-full p-2 text-sm bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
-              <input placeholder="Dirección" value={shipping.address} onChange={(e) => setShipping({ ...shipping, address: e.target.value })} className="w-full p-2 text-sm bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
+              <input placeholder="Nombre completo" value={shipping.name} onChange={(e) => setShipping({ ...shipping, name: e.target.value })} className="w-full p-2 text-sm bg-gray-50/80 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
+              <input placeholder="Dirección" value={shipping.address} onChange={(e) => setShipping({ ...shipping, address: e.target.value })} className="w-full p-2 text-sm bg-gray-50/80 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
               <div className="grid grid-cols-2 gap-2">
-                <input placeholder="Ciudad" value={shipping.city} onChange={(e) => setShipping({ ...shipping, city: e.target.value })} className="w-full p-2 text-sm bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
-                <input placeholder="Estado" value={shipping.state} onChange={(e) => setShipping({ ...shipping, state: e.target.value })} className="w-full p-2 text-sm bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
-                <input placeholder="CP" value={shipping.zip} onChange={(e) => setShipping({ ...shipping, zip: e.target.value })} className="w-full p-2 text-sm bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
-                <input placeholder="Teléfono" value={shipping.phone} onChange={(e) => setShipping({ ...shipping, phone: e.target.value })} className="w-full p-2 text-sm bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
+                <input placeholder="Ciudad" value={shipping.city} onChange={(e) => setShipping({ ...shipping, city: e.target.value })} className="w-full p-2 text-sm bg-gray-50/80 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
+                <input placeholder="Estado" value={shipping.state} onChange={(e) => setShipping({ ...shipping, state: e.target.value })} className="w-full p-2 text-sm bg-gray-50/80 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
+                <input placeholder="CP" value={shipping.zip} onChange={(e) => setShipping({ ...shipping, zip: e.target.value })} className="w-full p-2 text-sm bg-gray-50/80 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
+                <input placeholder="Teléfono" value={shipping.phone} onChange={(e) => setShipping({ ...shipping, phone: e.target.value })} className="w-full p-2 text-sm bg-gray-50/80 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
               </div>
             </div>
           </div>
         )}
 
         {items.length > 0 && (
-          <div className="sticky bottom-0 bg-white dark:bg-[#111111] border-t border-gray-200 dark:border-white/10 px-4 py-4 space-y-3">
+          <div className="sticky bottom-0 bg-white/95 dark:bg-[#111]/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/10 px-4 py-4 space-y-3">
             <div className="space-y-1 text-sm">
               {totalDigital > 0 && <div className="flex justify-between text-gray-500"><span>Digitales</span><span>${totalDigital} MXN</span></div>}
               {totalPhysical > 0 && <div className="flex justify-between text-gray-500"><span>Físicos</span><span>${totalPhysical} MXN</span></div>}
