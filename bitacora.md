@@ -1003,3 +1003,24 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 - `app/(app)/dashboard/page.tsx` — bg-[#0a0a0a] → bg-[#f5f0eb] dark:bg-[#0a0a0a] (3 lugares)
 - `app/(app)/catalog/page.tsx` — items-start en list view, no-retro-override eliminado
 - `app/(app)/subscribe/page.tsx` — preserve-gradient en CTA button
+
+---
+
+## [2026-05-09-F] - Fix Navy: Paneles Blancos, Mini-Stats y Tamaño de "Ver Detalles"
+
+### Problemas
+1. **CartPanel y LibraryPanel** — fondos `bg-white/95` y cards `bg-gray-50/80` se veían blancos en navy (las variantes `dark:` no aplican)
+2. **Profile mini-stats** (racha, leídos, monedas) — `bg-gray-200/50` se veía blanco en navy
+3. **"Ver detalles" en catálogo** — botón más grande que los botones de acción cuando hay ambos stocks (digital+físico), texto desproporcionado
+
+### Cambios en `app/globals.css` (nuevos overrides navy)
+- `.navy .bg-white\/95` → `rgba(10, 15, 30, 0.95)` — panel backgrounds
+- `.navy .bg-gray-50\/80` → `rgba(17, 24, 39, 0.8)` — item cards en paneles
+- `.navy .bg-gray-200\/50` → `rgba(30, 42, 74, 0.5)` — mini-stats en perfil
+- `.navy .border-gray-200` → `rgba(121, 134, 203, 0.15)` — bordes de paneles
+- `.navy .divide-gray-200 > *` → `rgba(121, 134, 203, 0.12)` — divisores
+
+### Cambios en `app/(app)/catalog/page.tsx`
+- **Antes:** `text-[10px] sm:text-sm font-medium ... px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl`
+- **Después:** `text-[10px] sm:text-xs font-bold ... px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg whitespace-nowrap`
+- El botón "Ver detalles" ahora tiene el mismo padding, tamaño de fuente y border-radius que los botones de acción, eliminando el desbalance visual cuando ambos stocks están presentes. Se mantiene el color azul para distinguirlo funcionalmente.

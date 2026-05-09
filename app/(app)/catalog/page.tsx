@@ -222,7 +222,7 @@ function CatalogContent() {
                     <PrefetchLink
                       href={`/book/${book.id}`}
                       bookId={book.id}
-                      className="text-[10px] sm:text-sm font-medium bg-blue-600 dark:bg-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-600/30 text-white dark:text-blue-400 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl transition-all shadow-sm"
+                      className="text-[10px] sm:text-xs font-bold bg-blue-600 dark:bg-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-600/30 text-white dark:text-blue-400 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all shadow-sm whitespace-nowrap"
                     >
                       {view === "list" ? "Ver detalles" : "Detalles"}
                     </PrefetchLink>

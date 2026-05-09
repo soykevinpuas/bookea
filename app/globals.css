@@ -519,6 +519,27 @@
     background-color: rgba(121, 134, 203, 0.4) !important;
     color: #ffffff !important;
   }
+
+  /* Navy panel backgrounds (CartPanel, LibraryPanel) */
+  .navy .bg-white\/95 {
+    background-color: rgba(10, 15, 30, 0.95) !important;
+  }
+  /* Navy panel item cards */
+  .navy .bg-gray-50\/80 {
+    background-color: rgba(17, 24, 39, 0.8) !important;
+  }
+  /* Navy profile mini-stats (racha, leídos, monedas) */
+  .navy .bg-gray-200\/50 {
+    background-color: rgba(30, 42, 74, 0.5) !important;
+  }
+  /* Navy border-gray-200 (subtlest borders in panels) */
+  .navy .border-gray-200 {
+    border-color: rgba(121, 134, 203, 0.15) !important;
+  }
+  /* Navy dividers (cart total breakdown) */
+  .navy .divide-gray-200 > * {
+    border-color: rgba(121, 134, 203, 0.12) !important;
+  }
 }
 
 .pb-safe {
