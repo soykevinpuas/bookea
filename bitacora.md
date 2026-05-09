@@ -926,5 +926,23 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 - `app/globals.css` — +90 líneas de overrides quirúrgicos para retro y navy
 - `components/PanelManager.tsx` — preserve-gradient en edge indicators
 
+---
+
+## [2026-05-09-D] - Splash Screen: Barra de Progreso → Bolitas Saltarinas
+
+### Cambio
+Reemplazada la barra de progreso lineal del splash screen por 5 bolitas que brincan en secuencia (efecto ola), con squash-and-stretch para dar sensación de vida.
+
+### Detalle Técnico
+- 5 dots de 8px con `border-radius: 50%` y glow azul
+- Animación `dotBounce` con `cubic-bezier(0.22, 1.2, 0.36, 1)` — rebote suave con overshoot
+- Cada dot tiene `animation-delay` escalonado (0s, 0.12s, 0.24s, 0.36s, 0.48s)
+- Squash-and-stretch: `scale(0.85, 1.15)` al despegar, `scale(1.1, 0.9)` al aterrizar
+- Amortiguación natural: primer rebote -20px, segundo -10px, tercero -4px
+
+### Archivos Modificados
+- `app/globals.css` — .splash-bar → .splash-dots, splashProgress → dotBounce
+- `app/layout.tsx` — HTML del splash actualizado con dots
+
 ### Pendiente (no-code)
 - Ejecutar `supabase/migrations/017_cart_items.sql` en Supabase SQL Editor para que el carrito persista en DB

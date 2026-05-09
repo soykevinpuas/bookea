@@ -84,7 +84,7 @@ export default function RootLayout({
             <div className="splash-glow" />
             <div className="splash-logo"><span>B</span>ookea</div>
             <div className="splash-sub">Tu biblioteca premium</div>
-            <div className="splash-bar"><div className="splash-bar-fill" /></div>
+            <div className="splash-dots"><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /></div>
           </div>
         </div>
 

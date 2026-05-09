@@ -646,22 +646,28 @@ main {
   animation: splashFadeIn 0.8s ease 0.5s backwards;
 }
 
-#bookea-splash .splash-bar {
+#bookea-splash .splash-dots {
+  display: flex;
+  gap: 10px;
   margin-top: 2rem;
-  width: 12rem;
-  height: 2px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 9999px;
-  overflow: hidden;
+  align-items: center;
+  height: 28px;
 }
 
-#bookea-splash .splash-bar-fill {
-  height: 100%;
+#bookea-splash .splash-dot {
+  width: 8px;
+  height: 8px;
   background: #3b82f6;
-  box-shadow: 0 0 15px rgba(59,130,246,0.5);
-  transform: translateX(0);
-  animation: splashProgress 1.8s ease-in-out 0.3s backwards;
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+  animation: dotBounce 1.2s cubic-bezier(0.22, 1.2, 0.36, 1) infinite;
 }
+
+#bookea-splash .splash-dot:nth-child(1) { animation-delay: 0s; }
+#bookea-splash .splash-dot:nth-child(2) { animation-delay: 0.12s; }
+#bookea-splash .splash-dot:nth-child(3) { animation-delay: 0.24s; }
+#bookea-splash .splash-dot:nth-child(4) { animation-delay: 0.36s; }
+#bookea-splash .splash-dot:nth-child(5) { animation-delay: 0.48s; }
 
 #bookea-splash .splash-glow {
   position: absolute;
@@ -677,8 +683,14 @@ main {
   from { opacity: 0; transform: translateY(20px) scale(0.95); }
 }
 
-@keyframes splashProgress {
-  from { transform: translateX(-100%); }
+@keyframes dotBounce {
+  0%, 100% { transform: translateY(0) scale(1,1); }
+  20% { transform: translateY(-20px) scale(0.85,1.15); }
+  40% { transform: translateY(0) scale(1.1,0.9); }
+  55% { transform: translateY(-10px) scale(0.9,1.1); }
+  70% { transform: translateY(0) scale(1.05,0.95); }
+  82% { transform: translateY(-4px) scale(0.95,1.05); }
+  92% { transform: translateY(0) scale(1.02,0.98); }
 }
 
 @keyframes splashPulse {
