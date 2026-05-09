@@ -10,7 +10,8 @@ import { useProfile } from "@/hooks/useAvatars";
 import Book3D from "@/components/Book3D";
 import BookLongPressMenu from "@/components/BookLongPressMenu";
 import ProgressCircle from "@/components/ProgressCircle";
-import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History, User, Grid3X3, Sparkles, Circle } from "lucide-react";
+import { BookOpen, Trophy, Flame, Loader2, Compass, Search, LayoutGrid, List, X, WifiOff, History, User, Grid3X3, Sparkles, Circle, SlidersHorizontal } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { verifySubscriptionAction } from "@/lib/actions/subscriptions";
@@ -28,6 +29,7 @@ function DashboardContent() {
   const [authorSearch, setAuthorSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [view, setView] = useState<"grid" | "list" | "compact">("grid");
+  const [showGenres, setShowGenres] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
   // 3.4.1 - Tracking de analytics: visita a dashboard
@@ -237,14 +239,13 @@ function DashboardContent() {
             />
           </div>
           <div className="flex gap-2">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="px-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl text-xs"
+            <button
+              onClick={() => setShowGenres(true)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl text-xs font-medium text-gray-900 dark:text-white hover:border-blue-500/30 transition-colors"
             >
-              <option value="all">Todo</option>
-              {categories.map((c: any) => <option key={c} value={c}>{c}</option>)}
-            </select>
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              {category === "all" ? "Géneros" : category}
+            </button>
             <div className="flex bg-gray-50 dark:bg-white/5 p-1 rounded-xl border border-gray-100 dark:border-white/10">
                <button onClick={() => setView("grid")} className={`p-2 rounded-lg ${view === "grid" ? "bg-gray-200 dark:bg-white/10" : "text-gray-400 dark:text-white/40"}`} title="Cuadrícula"><LayoutGrid className="w-4 h-4" /></button>
                <button onClick={() => setView("compact")} className={`p-2 rounded-lg ${view === "compact" ? "bg-gray-200 dark:bg-white/10" : "text-gray-400 dark:text-white/40"}`} title="Compacto"><Grid3X3 className="w-4 h-4" /></button>
@@ -252,6 +253,70 @@ function DashboardContent() {
             </div>
           </div>
         </div>
+
+        {/* Panel de géneros */}
+        <AnimatePresence>
+          {showGenres && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex flex-col justify-center sm:justify-end"
+            >
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowGenres(false)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ y: "100%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: "100%", opacity: 0 }}
+                transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                className="relative z-10 w-full max-w-md mx-auto sm:max-w-lg bg-white dark:bg-zinc-900 rounded-3xl sm:rounded-[2.5rem] p-6 pb-8 shadow-2xl border border-white/10"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-black text-gray-900 dark:text-white">Géneros</h2>
+                  <button
+                    onClick={() => setShowGenres(false)}
+                    className="p-2 bg-gray-100 dark:bg-white/10 rounded-full hover:scale-110 active:scale-95 transition-transform"
+                  >
+                    <X className="w-5 h-5 text-gray-500 dark:text-white/60" />
+                  </button>
+                </div>
+                <div className="max-h-[70vh] overflow-y-auto pr-1 -mr-1">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      onClick={() => { setCategory("all"); setShowGenres(false); }}
+                      className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all border ${
+                        category === "all"
+                          ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/30 scale-[1.02]"
+                          : "bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 border-gray-100 dark:border-white/10 hover:border-blue-500/30 hover:bg-gray-100 dark:hover:bg-white/10"
+                      }`}
+                    >
+                      Todas
+                    </button>
+                    {categories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => { setCategory(cat); setShowGenres(false); }}
+                        className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all border ${
+                          category === cat
+                            ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/30 scale-[1.02]"
+                            : "bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400 border-gray-100 dark:border-white/10 hover:border-blue-500/30 hover:bg-gray-100 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {displayBooks.length === 0 ? (
           <div className="py-20 text-center bg-white/5 rounded-3xl border border-dashed border-white/10">

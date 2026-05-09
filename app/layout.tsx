@@ -25,6 +25,10 @@ export const metadata: Metadata = {
   title: "Bookea",
   description: "Tu biblioteca premium de E-books",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon-192x192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

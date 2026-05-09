@@ -6,6 +6,7 @@ import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles, BookOpen, C
 import { toast } from "sonner";
 import Link from "next/link";
 import { useUserId } from "@/hooks/useUser";
+import { useUserBooks } from "@/hooks/useBooks";
 import { useProfile } from "@/hooks/useAvatars";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useProfileData } from "@/hooks/useProfileData";
@@ -38,6 +39,12 @@ export default function ProfilePage() {
   const streak = profileData?.streak ?? 0;
   const referralLink = profileData?.referralLink || '';
   const referralCount = profileData?.referralCount || 0;
+
+  const { data: allUserBooks } = useUserBooks(userId);
+  const completedBooks = useMemo(
+    () => (allUserBooks || []).filter((b: any) => (b.percent_complete || 0) >= 100).length,
+    [allUserBooks]
+  );
   
   const [portalLoading, setPortalLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -192,7 +199,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="text-center p-2 rounded-xl bg-gray-200/50 dark:bg-white/5 border border-gray-200 dark:border-white/5">
                   <BookOpenCheck className="w-4 h-4 mx-auto text-blue-400 mb-1" />
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">{profile?.total_books_read ?? 0}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{completedBooks}</p>
                   <p className="text-[9px] text-gray-400 dark:text-white/30">Leídos</p>
                 </div>
                 <div className="text-center p-2 rounded-xl bg-gray-200/50 dark:bg-white/5 border border-gray-200 dark:border-white/5">
