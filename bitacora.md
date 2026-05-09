@@ -950,3 +950,56 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 
 ### Pendiente (no-code)
 - Ejecutar `supabase/migrations/017_cart_items.sql` en Supabase SQL Editor para que el carrito persista en DB
+
+---
+
+## [2026-05-09-E] - Fix de 9 Issues Visuales: Contraste, Visibilidad y Consistencia en Todos los Temas
+
+### Problemas y Cambios
+
+#### 1. Dashboard — Fondo negro en light mode
+**Archivo:** `app/(app)/dashboard/page.tsx:131,138,328`
+- **Antes:** `bg-[#0a0a0a]` — fondo siempre negro, incluso en tema día
+- **Después:** `bg-[#f5f0eb] dark:bg-[#0a0a0a]` — tono hueso/cálido en light, negro en dark
+- Texto principal: `text-[#1a1a1a] dark:text-white`
+
+#### 2. Botón "Físico" marrón en retro/navy
+**Archivo:** `app/globals.css` (nuevos overrides)
+- **Problema:** `bg-amber-600` sin override en retro/navy, se veía café
+- **Solución:** Overrides amber añadidos para ambos temas (retro: `#b45309`, navy: `#92400e`)
+
+#### 3. "Ver detalles" invisible en retro
+**Archivo:** `app/(app)/catalog/page.tsx:225`
+- **Antes:** clase `no-retro-override` impedía que el botón se viera (fondo heredado del card)
+- **Después:** sin `no-retro-override`, el retro override `bg-blue-600 → #238636` lo hace visible
+
+#### 4. "Ver detalles" se agrandaba con ambos stocks
+**Archivo:** `app/(app)/catalog/page.tsx:199`
+- **Antes:** `items-center` fijo — cuando los botones de stock hacían wrap, "Ver detalles" quedaba centrado verticalmente, viéndose desproporcionado
+- **Después:** `items-start` en list view, `items-center` en grid/compact — alineación natural
+
+#### 5. Tabs y texto gris invisible en navy
+**Archivo:** `app/globals.css`
+- **Problema:** `text-gray-500` (tabs inactivos) y `text-gray-200` (iconos) sin override navy
+- **Solución:** `.navy .text-gray-500` y `.navy .text-gray-200 → #c5cae9` (lavanda visible)
+
+#### 6. Active tab en navy muy sutil
+**Archivo:** `app/globals.css`
+- **Antes:** `background-color: rgba(121, 134, 203, 0.2)` — casi invisible
+- **Después:** `0.35` — más notorio
+
+#### 7. Subscribe CTA — Gradiente destruido en retro
+**Archivo:** `app/(app)/subscribe/page.tsx:117`, `app/globals.css`
+- **Problema:** Catch-all gradient killer `[class*="gradient"]` eliminaba el gradiente del CTA
+- **Solución:** Clase `preserve-gradient` en el botón + overrides para mantener `text-black`
+
+#### 8-9. Cards de facturación, progreso y racha blancas en navy
+**Archivo:** `app/globals.css`
+- **Problema:** `bg-gray-200` y `border-gray-300` sin override navy — se veían blancos
+- **Solución:** `.navy .bg-gray-200 → #1e2a4a`, `.navy .border-gray-300 → rgba(121,134,203,0.2)`
+
+### Archivos Modificados
+- `app/globals.css` — +60 líneas: amber retro/navy, text-gray-500/200 navy, bg-gray-200 navy, border-gray-300 navy, active tab fortalecido, preserve-gradient.text-black
+- `app/(app)/dashboard/page.tsx` — bg-[#0a0a0a] → bg-[#f5f0eb] dark:bg-[#0a0a0a] (3 lugares)
+- `app/(app)/catalog/page.tsx` — items-start en list view, no-retro-override eliminado
+- `app/(app)/subscribe/page.tsx` — preserve-gradient en CTA button

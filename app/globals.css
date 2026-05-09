@@ -441,6 +441,58 @@
     color: #b0bec5 !important;
   }
 
+  /* Navy missing overrides - text colors */
+  .navy .text-gray-500 {
+    color: #c5cae9 !important;
+  }
+  .navy .text-gray-200 {
+    color: #c5cae9 !important;
+  }
+
+  /* Navy missing overrides - background & border */
+  .navy .bg-gray-200 {
+    background-color: #1e2a4a !important;
+  }
+  .navy .border-gray-300 {
+    border-color: rgba(121, 134, 203, 0.2) !important;
+  }
+
+  /* Fortalecer active tab en navy (de 0.2 a 0.35) */
+  .navy button.bg-white,
+  .navy [role="tab"].bg-white {
+    background-color: rgba(121, 134, 203, 0.35) !important;
+  }
+
+  /* Retro amber override - botón físico */
+  .retro .bg-amber-600,
+  .retro .bg-amber-600\/30 {
+    background-color: #b45309 !important;
+    color: #ffffff !important;
+  }
+  .retro .bg-amber-600:hover,
+  .retro .bg-amber-600\/30:hover {
+    background-color: #92400e !important;
+  }
+
+  /* Navy amber override - botón físico */
+  .navy .bg-amber-600,
+  .navy .bg-amber-600\/30 {
+    background-color: #92400e !important;
+    color: #ffffff !important;
+  }
+  .navy .bg-amber-600:hover,
+  .navy .bg-amber-600\/30:hover {
+    background-color: #78350f !important;
+  }
+
+  /* Retro/Navy preserve-gradient con text negro (subscribe CTA) */
+  .retro .preserve-gradient.text-black {
+    color: #000 !important;
+  }
+  .navy .preserve-gradient.text-black {
+    color: #000 !important;
+  }
+
   /* Inputs en navy */
   .navy input,
   .navy textarea,

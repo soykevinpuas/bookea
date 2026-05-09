@@ -196,7 +196,7 @@ function CatalogContent() {
                     por {book.author}
                   </p>
 
-                  <div className={`flex items-center justify-between ${view === "list" ? "mt-1 sm:mt-4" : "mt-auto pt-4 border-t border-gray-100 dark:border-white/5"}`}>
+                  <div className={`flex ${view === "list" ? "items-start" : "items-center"} justify-between ${view === "list" ? "mt-1 sm:mt-4" : "mt-auto pt-4 border-t border-gray-100 dark:border-white/5"}`}>
                     <div className="flex flex-wrap gap-1">
                       {book.price_digital > 0 && (
                         <button
@@ -222,7 +222,7 @@ function CatalogContent() {
                     <PrefetchLink
                       href={`/book/${book.id}`}
                       bookId={book.id}
-                      className="text-[10px] sm:text-sm font-medium bg-blue-600 dark:bg-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-600/30 text-white dark:text-blue-400 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl transition-all shadow-sm no-retro-override"
+                      className="text-[10px] sm:text-sm font-medium bg-blue-600 dark:bg-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-600/30 text-white dark:text-blue-400 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl transition-all shadow-sm"
                     >
                       {view === "list" ? "Ver detalles" : "Detalles"}
                     </PrefetchLink>

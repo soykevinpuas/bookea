@@ -128,14 +128,14 @@ function DashboardContent() {
 
   if (isLoading && isOnline && displayBooks.length === 0) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] p-6">
+      <div className="min-h-screen bg-[#f5f0eb] dark:bg-[#0a0a0a] p-6">
         <DashboardSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[#f5f0eb] dark:bg-[#0a0a0a] text-[#1a1a1a] dark:text-white selection:bg-blue-500/30">
       {!isOnline && (
         <div className="bg-orange-600/20 border-b border-orange-500/20 py-2 px-6 flex items-center justify-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-widest backdrop-blur-md">
           <WifiOff className="w-3 h-3" /> Modo Offline Activado - Solo libros descargados disponibles
@@ -325,7 +325,7 @@ function DashboardContent() {
 // 3.4 - DashboardPage: Panel principal envuelto en Suspense para manejar useSearchParams en producción
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a] p-6"><DashboardSkeleton /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#f5f0eb] dark:bg-[#0a0a0a] p-6"><DashboardSkeleton /></div>}>
       <DashboardContent />
     </Suspense>
   );
