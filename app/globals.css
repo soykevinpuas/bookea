@@ -647,36 +647,55 @@ main {
 }
 
 #bookea-splash .splash-dots {
+  margin-top: 2rem;
+}
+
+/* Generic bouncing dots (splash + reader) */
+.splash-dots {
   display: flex;
   gap: 10px;
-  margin-top: 2rem;
   align-items: center;
   height: 28px;
 }
 
-#bookea-splash .splash-dot {
+.splash-dot {
   width: 8px;
   height: 8px;
   background: #3b82f6;
   border-radius: 50%;
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
-  animation: dotBounce 1.2s cubic-bezier(0.22, 1.2, 0.36, 1) infinite;
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.5);
+  animation: dotBounce 1.5s cubic-bezier(0.25, 1.2, 0.5, 1) infinite;
 }
 
-#bookea-splash .splash-dot:nth-child(1) { animation-delay: 0s; }
-#bookea-splash .splash-dot:nth-child(2) { animation-delay: 0.12s; }
-#bookea-splash .splash-dot:nth-child(3) { animation-delay: 0.24s; }
-#bookea-splash .splash-dot:nth-child(4) { animation-delay: 0.36s; }
-#bookea-splash .splash-dot:nth-child(5) { animation-delay: 0.48s; }
+.splash-dot:nth-child(1) { animation-delay: 0s; }
+.splash-dot:nth-child(2) { animation-delay: 0.15s; }
+.splash-dot:nth-child(3) { animation-delay: 0.3s; }
+.splash-dot:nth-child(4) { animation-delay: 0.45s; }
+.splash-dot:nth-child(5) { animation-delay: 0.6s; }
 
+/* Theme-aware dot colors for reader */
+.retro .splash-dot {
+  background: #3fb950;
+  box-shadow: 0 0 14px rgba(63, 185, 80, 0.5);
+}
+
+.navy .splash-dot {
+  background: #7986cb;
+  box-shadow: 0 0 14px rgba(121, 134, 203, 0.5);
+}
+
+/* Light illumination at splash start */
 #bookea-splash .splash-glow {
   position: absolute;
-  width: 200px;
-  height: 200px;
-  background: rgba(37, 99, 235, 0.15);
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.05) 40%, transparent 70%);
   border-radius: 50%;
   filter: blur(80px);
-  animation: splashPulse 2s ease-in-out infinite alternate;
+  opacity: 0;
+  transform: scale(0.6);
+  animation: splashLightOn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards,
+             splashPulse 3s ease-in-out 1s infinite alternate;
 }
 
 @keyframes splashFadeIn {
@@ -685,17 +704,22 @@ main {
 
 @keyframes dotBounce {
   0%, 100% { transform: translateY(0) scale(1,1); }
-  20% { transform: translateY(-20px) scale(0.85,1.15); }
-  40% { transform: translateY(0) scale(1.1,0.9); }
-  55% { transform: translateY(-10px) scale(0.9,1.1); }
-  70% { transform: translateY(0) scale(1.05,0.95); }
-  82% { transform: translateY(-4px) scale(0.95,1.05); }
-  92% { transform: translateY(0) scale(1.02,0.98); }
+  22% { transform: translateY(-18px) scale(0.92,1.08); }
+  44% { transform: translateY(0) scale(1.06,0.94); }
+  60% { transform: translateY(-8px) scale(0.96,1.04); }
+  75% { transform: translateY(0) scale(1.03,0.97); }
+  87% { transform: translateY(-3px) scale(0.98,1.02); }
+  95% { transform: translateY(0) scale(1.01,0.99); }
+}
+
+@keyframes splashLightOn {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 @keyframes splashPulse {
-  from { transform: scale(0.8); opacity: 0.1; }
-  to { transform: scale(1.4); opacity: 0.2; }
+  from { transform: scale(0.9); opacity: 0.6; }
+  to   { transform: scale(1.1); opacity: 1; }
 }
 
 /* 1.7.1 - Ocultar splash inmediatamente si ya se mostró en la sesión (Head Script support) */

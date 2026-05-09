@@ -1240,7 +1240,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       >
         {isLoading && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 ${bgColors}`}>
-            <Loader2 className={`w-10 h-10 animate-spin mb-4 ${isRetro ? 'text-[#3fb950]' : 'text-blue-500'}`} />
+            <div className="splash-dots mb-4"><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /></div>
             <span className="text-sm opacity-60 font-medium tracking-wide">Preparando libro...</span>
           </div>
         )}

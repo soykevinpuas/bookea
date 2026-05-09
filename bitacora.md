@@ -928,21 +928,25 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 
 ---
 
-## [2026-05-09-D] - Splash Screen: Barra de Progreso → Bolitas Saltarinas
+## [2026-05-09-D] - Splash y Reader: Bolitas Saltarinas + Luz Inicial + Lector
 
-### Cambio
-Reemplazada la barra de progreso lineal del splash screen por 5 bolitas que brincan en secuencia (efecto ola), con squash-and-stretch para dar sensación de vida.
+### Splash: Animación más smooth + luz inicial
+- Animación `dotBounce` suavizada: `cubic-bezier(0.25, 1.2, 0.5, 1)`, duración 1.5s
+- Stagger aumentado a 0.15s entre dots (más pausado)
+- Squash-and-stretch más sutil: `scale(0.92,1.08)` → `scale(1.06,0.94)` → `scale(0.96,1.04)` → ...
+- Nuevo `splashLightOn`: el glow central comienza invisible (opacity 0, scale 0.4) y se enciende suavemente en 1s con `cubic-bezier(0.16, 1, 0.3, 1)` — simula una luz que ilumina la escena
+- Glow expandido a 300px con `radial-gradient` para un efecto más suave y ambiental
 
-### Detalle Técnico
-- 5 dots de 8px con `border-radius: 50%` y glow azul
-- Animación `dotBounce` con `cubic-bezier(0.22, 1.2, 0.36, 1)` — rebote suave con overshoot
-- Cada dot tiene `animation-delay` escalonado (0s, 0.12s, 0.24s, 0.36s, 0.48s)
-- Squash-and-stretch: `scale(0.85, 1.15)` al despegar, `scale(1.1, 0.9)` al aterrizar
-- Amortiguación natural: primer rebote -20px, segundo -10px, tercero -4px
+### Reader: Mismas bolitas en "Preparando libro..."
+- `loading.tsx` y `page.tsx` del lector ahora muestran las mismas bolitas saltarinas en lugar del spinner
+- Las bolitas se adaptan al tema: retro → verde (#3fb950), navy → índigo (#7986cb)
+- Clases `.splash-dots` y `.splash-dot` movidas a scope global (no solo dentro de `#bookea-splash`) para reutilización
 
 ### Archivos Modificados
-- `app/globals.css` — .splash-bar → .splash-dots, splashProgress → dotBounce
+- `app/globals.css` — dotBounce más smooth, splashLightOn, dots globales, colores por tema
 - `app/layout.tsx` — HTML del splash actualizado con dots
+- `app/(app)/reader/[id]/loading.tsx` — spinner → bouncing dots
+- `app/(app)/reader/[id]/page.tsx` — inline loader → bouncing dots
 
 ### Pendiente (no-code)
 - Ejecutar `supabase/migrations/017_cart_items.sql` en Supabase SQL Editor para que el carrito persista en DB
