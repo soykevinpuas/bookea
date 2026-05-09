@@ -130,6 +130,11 @@ function RegisterContent() {
             Inicia sesión aquí
           </Link>
         </p>
+        <div className="mt-6 flex items-center justify-center gap-3 text-xs text-gray-400">
+          <Link href="/aviso-de-privacidad" className="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">Aviso de Privacidad</Link>
+          <span>|</span>
+          <Link href="/terminos" className="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">Términos</Link>
+        </div>
       </div>
     </div>
   )

@@ -72,14 +72,25 @@ export default function LoginPage() {
               "Iniciar sesión"
             )}
           </button>
+          
+          <div className="text-center mt-3">
+            <Link href="/reset-password" className="text-xs text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
         </form>
 
-        <p className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
           ¿No tienes una cuenta?{' '}
           <Link href="/register" className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
             Regístrate aquí
           </Link>
         </p>
+        <div className="mt-6 flex items-center justify-center gap-3 text-xs text-gray-400">
+          <Link href="/aviso-de-privacidad" className="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">Aviso de Privacidad</Link>
+          <span>|</span>
+          <Link href="/terminos" className="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">Términos</Link>
+        </div>
       </div>
     </div>
   )

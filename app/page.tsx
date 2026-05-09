@@ -95,8 +95,17 @@ export default async function Home() {
 
       {/* Footer minimalista */}
       <footer className="border-t border-white/10 py-8 text-center bg-black">
+        <div className="flex items-center justify-center gap-4 mb-3 text-sm">
+          <Link href="/aviso-de-privacidad" className="text-gray-500 hover:text-gray-300 transition-colors">
+            Aviso de Privacidad
+          </Link>
+          <span className="text-gray-700">|</span>
+          <Link href="/terminos" className="text-gray-500 hover:text-gray-300 transition-colors">
+            Términos del Servicio
+          </Link>
+        </div>
         <p className="text-gray-500 text-sm">
-          © {new Date().getFullYear()} Bookea. Hecho para México.
+          © {new Date().getFullYear()} Bookea. Hecho en México.
         </p>
       </footer>
     </div>
