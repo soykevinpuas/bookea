@@ -20,8 +20,13 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    console.error('Error al iniciar sesión:', error.message)
-    redirect('/error')
+    if (error.message?.includes('Email not confirmed')) {
+      redirect('/login?error=Correo no confirmado. Revisa tu bandeja de entrada.')
+    }
+    if (error.message?.includes('Invalid login credentials')) {
+      redirect('/login?error=Correo o contraseña incorrectos')
+    }
+    redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
   revalidatePath('/', 'layout')

@@ -2,12 +2,19 @@
 
 import { login } from '@/app/auth/actions'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 
 // 2.1 - LoginPage: Componente de formulario para inicio de sesión de usuarios existentes
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const error = params.get('error')
+    if (error) setErrorMessage(decodeURIComponent(error))
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     setIsLoading(true)
@@ -58,6 +65,12 @@ export default function LoginPage() {
             />
           </div>
           
+          {errorMessage && (
+            <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400 font-medium text-center">
+              {errorMessage}
+            </div>
+          )}
+
           <button 
             type="submit"
             disabled={isLoading}

@@ -1,11 +1,17 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY || '')
-
 const FROM = 'Bookea <noreply@bookea.mx>'
+
+function getResend() {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return null
+  return new Resend(apiKey)
+}
 
 export async function sendWelcomeEmail(email: string, name: string) {
   try {
+    const resend = getResend()
+    if (!resend) return
     await resend.emails.send({
       from: FROM,
       to: email,
@@ -22,7 +28,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
             Has creado tu cuenta en Bookea. Ya puedes explorar el catálogo, leer libros digitales y usar todas las herramientas de lectura.
           </p>
           <div style="text-align: center; margin: 32px 0;">
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/catalog" style="display: inline-block; padding: 12px 32px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 600;">
+            <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://bookea.mx'}/catalog" style="display: inline-block; padding: 12px 32px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 600;">
               Explorar catálogo
             </a>
           </div>
