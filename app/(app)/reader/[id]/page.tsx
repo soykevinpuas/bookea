@@ -513,6 +513,7 @@ export default function ReaderPage() {
                 min-height: 100%;
               }
               body {
+                overscroll-behavior: none !important;
                 line-height: 1.8 !important;
                 padding: 10px 3% 20px !important;
                 padding-left: max(3%, env(safe-area-inset-left)) !important;
@@ -838,6 +839,19 @@ export default function ReaderPage() {
     };
   }, [book?.epub_url, bookId, userId]);
 
+  // Prevenir gestos de navegación del navegador (swipe-back/forward)
+  useEffect(() => {
+    const html = document.documentElement;
+    const prevOverscroll = html.style.overscrollBehavior;
+    const prevTouchAction = html.style.touchAction;
+    html.style.overscrollBehavior = 'none';
+    html.style.touchAction = 'pan-y';
+    return () => {
+      html.style.overscrollBehavior = prevOverscroll;
+      html.style.touchAction = prevTouchAction;
+    };
+  }, []);
+
   // 4.2.8.1 - Efecto para manejar cambio de tamaño de ventana y orientación
   useEffect(() => {
     const handleResize = () => {
@@ -1097,8 +1111,8 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
   if (loadingBook) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117]">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] navy:bg-[#0a0f1e]">
+        <div className="splash-dots mb-4"><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /></div>
       </div>
     );
   }
@@ -1162,7 +1176,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
   const bgColors = isDark ? 'bg-[#0a0a0a] text-white' : isRetro ? 'bg-[#0d1117] text-[#3fb950]' : isNavy ? 'bg-[#0a0f1e] text-[#e8eaf6]' : 'bg-[#ffffff] text-black';
 
   return (
-    <div className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 ${bgColors}`}>
+    <div className={`h-[100dvh] w-full flex flex-col overflow-hidden overscroll-none transition-colors duration-500 ${bgColors}`}>
       
       {/* 4.2.11 - Barra de Navegación Superior (Top HUD) - Glassmorphism dinámico */}
       <div 
@@ -1311,8 +1325,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300 dark:bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
         
         <div className="flex items-center justify-between px-5 pb-5 pt-[calc(env(safe-area-inset-top)+1.25rem)] border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0a0a0a]">
-          <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-            <Bookmark className="w-5 h-5 text-blue-500" />
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             Notas y Subrayados
           </h2>
           <button 
@@ -1326,7 +1339,6 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {highlights.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center opacity-50 px-4">
-              <FileText className="w-12 h-12 mb-4" />
               <p>Aún no has hecho subrayados en este libro.</p>
               <p className="text-xs mt-2">Selecciona cualquier texto para resaltar o añadir una nota.</p>
             </div>

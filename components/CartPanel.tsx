@@ -30,20 +30,25 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
     }
   }, [items])
 
-  // Drag-to-close like a curtain (drag LEFT to close left panel)
+  // Drag-to-close from anywhere (skip buttons, inputs, selects)
   useEffect(() => {
     if (!open || !panelRef.current) return
     const el = panelRef.current
     const state = dragState.current
 
+    const isInteractive = (target: EventTarget | null): boolean => {
+      if (!target || !(target instanceof Element)) return false
+      const tag = target.tagName.toLowerCase()
+      if (tag === 'button' || tag === 'input' || tag === 'select' || tag === 'textarea' || tag === 'a') return true
+      return target.closest('button, input, select, textarea, a') !== null
+    }
+
     const handleTouchStart = (e: TouchEvent) => {
+      if (isInteractive(e.target)) return
       state.startX = e.touches[0].clientX
       state.startY = e.touches[0].clientY
       state.panelWidth = el.offsetWidth
-      // Only activate drag-to-close if touch starts near the left edge of the panel
-      const rect = el.getBoundingClientRect()
-      const touchFromEdge = e.touches[0].clientX - rect.left
-      state.isDragging = touchFromEdge < 30
+      state.isDragging = true
     }
 
     const handleTouchMove = (e: TouchEvent) => {
