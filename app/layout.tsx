@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   description: "Tu biblioteca premium de E-books",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon.svg",
+    icon: "/icon.png",
     apple: "/icon-192x192.png",
   },
   appleWebApp: {
