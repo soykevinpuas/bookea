@@ -48,7 +48,7 @@ export default function GlobalError({
         <div style={{ textAlign: 'center', maxWidth: '400px', padding: '1.5rem' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>📚</div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.75rem' }}>
-            <span style={{ color: '#3b82f6' }}>B</span>ookea
+            <span style={{ color: '#a855f7' }}>B</span>ookea
           </h2>
           <button 
             onClick={() => reset()}

@@ -17,13 +17,13 @@ export default async function Home() {
       
       {/* Decorative premium background elements */}
       <div className="absolute top-0 inset-x-0 h-[500px] bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none -z-10"></div>
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/10 blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none"></div>
 
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-6 pt-24 pb-20 sm:pt-32 sm:pb-24 lg:pb-32 relative z-10">
         <div className="text-center max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-950/50 border border-blue-800/50 text-blue-300 text-sm font-medium mb-8 backdrop-blur-sm shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-950/50 border border-blue-800/50 text-blue-300 text-sm font-medium mb-8 backdrop-blur-sm shadow-[0_0_15px_rgba(168,85,247,0.15)]">
             <Sparkles className="w-4 h-4" />
             <span>Lector EPUB & Tienda SaaS</span>
           </div>
@@ -42,7 +42,7 @@ export default async function Home() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
             <Link 
               href="/catalog" 
-              className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-lg transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] transform hover:-translate-y-1 flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-lg transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)] hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transform hover:-translate-y-1 flex items-center justify-center gap-2"
             >
               <BookOpen className="w-5 h-5" />
               Explorar Catálogo

@@ -148,7 +148,7 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
 
         <div className="p-4 space-y-3">
           {loading ? (
-            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /></div>
+            <div className="flex justify-center py-12"><div className="splash-dots"><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /></div></div>
           ) : items.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />

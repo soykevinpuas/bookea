@@ -183,7 +183,7 @@ function DashboardContent() {
             <p className="text-[10px] text-gray-400 dark:text-white/40 uppercase font-bold tracking-tight">Racha</p>
           </div>
           <div className={`text-center p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border backdrop-blur-md transition-all duration-500 ${
-            totalCompleted > 0 ? 'border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]' : 'border-gray-100 dark:border-white/10'
+            totalCompleted > 0 ? 'border-blue-500/30 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'border-gray-100 dark:border-white/10'
           }`}>
             <Trophy className={`w-5 h-5 mx-auto mb-1 ${(totalCompleted || 0) > 0 ? 'text-blue-400' : 'text-gray-300 dark:text-white/20'}`} />
             <p className="text-lg font-black text-gray-900 dark:text-white">{totalCompleted}</p>
@@ -210,7 +210,7 @@ function DashboardContent() {
           {isOnline && (
             <Link 
               href="/catalog" 
-              className="text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-full transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] transform hover:-translate-y-1 flex items-center gap-2 uppercase tracking-widest"
+              className="text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-full transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)] hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transform hover:-translate-y-1 flex items-center gap-2 uppercase tracking-widest"
             >
               Catálogo <Compass className="w-4 h-4" />
             </Link>

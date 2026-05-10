@@ -14,18 +14,28 @@ export async function POST(request: NextRequest) {
     // Obtener el ID de cliente de Stripe desde la base de datos
     const { data: userData } = await supabase
       .from('users')
-      .select('stripe_customer_id')
+      .select('stripe_customer_id, email')
       .eq('id', user.id)
       .single();
 
-    if (!userData?.stripe_customer_id) {
-      return NextResponse.json({ error: 'No se encontró un ID de cliente de Stripe' }, { status: 404 });
+    let stripeCustomerId = userData?.stripe_customer_id;
+
+    // Si no hay customer de Stripe, crearlo automáticamente
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: userData?.email || user.email,
+      });
+      stripeCustomerId = customer.id;
+      await supabase
+        .from('users')
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq('id', user.id);
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookea-nine.vercel.app';
 
     const session = await stripe.billingPortal.sessions.create({
-      customer: userData.stripe_customer_id,
+      customer: stripeCustomerId,
       return_url: `${baseUrl}/profile`,
     });
 

@@ -11,7 +11,7 @@ import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
 import { Highlight } from "@/types/reading";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2, Bookmark, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins, GripHorizontal } from "lucide-react";
+import { Loader2, ArrowLeft, Bookmark, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins, GripHorizontal } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -188,7 +188,7 @@ export default function ReaderPage() {
     { name: "Negro", value: "#000000" },
     { name: "Sepia", value: "#f4ecd8" },
     { name: "Verde", value: "#3fb950" },
-    { name: "Azul", value: "#60a5fa" },
+    { name: "Morado", value: "#a855f7" },
     { name: "Rosa", value: "#f472b6" },
   ];
 
@@ -838,22 +838,6 @@ export default function ReaderPage() {
     };
   }, [book?.epub_url, bookId, userId]);
 
-  // 4.2.8 - Efecto secundario (Side-effect) para capturar navegación con flechas del teclado
-  useEffect(() => {
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        renditionRef.current?.prev().catch((err: any) => console.warn("EPUB key prev error:", err));
-        resetControlsTimeout();
-      }
-      if (e.key === 'ArrowRight') {
-        renditionRef.current?.next().catch((err: any) => console.warn("EPUB key next error:", err));
-        resetControlsTimeout();
-      }
-    };
-    document.addEventListener('keyup', handleKeyUp);
-    return () => document.removeEventListener('keyup', handleKeyUp);
-  }, []);
-
   // 4.2.8.1 - Efecto para manejar cambio de tamaño de ventana y orientación
   useEffect(() => {
     const handleResize = () => {
@@ -1206,117 +1190,6 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
             <span className="text-xs opacity-60">por {book.author}</span>
           </div>
         </div>
-
-        <div className="flex items-center gap-2 sm:gap-4 relative">
-          <button
-            onClick={() => setShowNotesPanel(true)}
-            className={`p-2.5 rounded-full transition-colors ${iconBgClass}`}
-            title="Ver Notas y Subrayados"
-          >
-            <Bookmark className="w-5 h-5" />
-          </button>
-          
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className={`p-2.5 rounded-full transition-colors ${showSettings ? (isRetro ? 'bg-[#3fb950]/20 text-[#3fb950]' : 'bg-black/10 text-blue-500') : iconBgClass}`}
-          >
-            <Settings2 className="w-5 h-5" />
-          </button>
-
-          {showSettings && (
-            <div 
-              onClick={(e) => e.stopPropagation()}
-              className={`absolute top-14 right-0 w-72 p-4 rounded-2xl shadow-2xl border animate-in fade-in slide-in-from-top-4 duration-200 ${
-              isDark ? 'bg-[#1a1a1a] border-white/10 text-white' : 
-              isRetro ? 'bg-[#0d1117] border-[#3fb950]/30 text-[#3fb950]' :
-              isNavy ? 'bg-[#0a1422] border-[#7986cb]/30 text-[#c5cae9]' :
-              'bg-white border-black/5 text-gray-900'
-            }`}>
-              <div className="mb-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Tipografía</h3>
-                <div className={`grid grid-cols-3 gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
-                  <button onClick={() => setFontFamily("sans")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "sans" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Sans</button>
-                  <button onClick={() => setFontFamily("serif")} className={`py-1.5 text-xs rounded-md transition-colors font-serif ${fontFamily === "serif" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Serif</button>
-                  <button onClick={() => setFontFamily("mono")} className={`py-1.5 text-xs rounded-md transition-colors font-mono ${fontFamily === "mono" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Mono</button>
-                  <button onClick={() => setFontFamily("baskerville")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "baskerville" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "'Libre Baskerville', serif" }}>Baskerville</button>
-                  <button onClick={() => setFontFamily("lora")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "lora" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "'Lora', serif" }}>Lora</button>
-                  <button onClick={() => setFontFamily("nunito")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "nunito" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "Nunito, sans-serif" }}>Nunito</button>
-                  <button onClick={() => setFontFamily("dyslexic")} className={`py-1.5 text-xs rounded-md transition-colors col-span-3 ${fontFamily === "dyslexic" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "OpenDyslexic, sans-serif" }}>OpenDyslexic (Accesible)</button>
-                </div>
-              </div>
-
-              {/* 4.2.13 - Submenú Renderizado: Controles A- / A+ incrementales */}
-              <div className="mb-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Tamaño de texto</h3>
-                <div className={`flex items-center justify-between gap-2 p-1 rounded-lg ${panelBgClass}`}>
-                  <button onClick={() => setFontSize((s) => Math.max(12, s - 2))} className={`flex-1 py-1.5 flex justify-center rounded-md transition-colors ${iconBgClass}`}>A-</button>
-                  <span className="text-sm font-medium opacity-80">{fontSize}px</span>
-                  <button onClick={() => setFontSize((s) => Math.min(32, s + 2))} className={`flex-1 py-1.5 flex justify-center rounded-md transition-colors ${iconBgClass}`}>A+</button>
-                </div>
-              </div>
-
-              {/* 4.2.14 - Submenú Renderizado: Selectores de paletas de inyección CSS profunda */}
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Tema</h3>
-                <div className={`flex gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
-                  <button onClick={() => handleSetTheme("light")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "light" ? "bg-white shadow-sm font-medium text-black" : "opacity-60 hover:opacity-100"}`}>Día</button>
-                  <button onClick={() => handleSetTheme("dark")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "dark" ? "bg-white/10 shadow-sm font-medium text-white" : "opacity-60 hover:opacity-100"}`}>Noche</button>
-                  <button onClick={() => handleSetTheme("retro")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors font-mono ${theme === "retro" ? "bg-[#3fb950]/20 shadow-sm font-medium text-[#3fb950]" : "opacity-60 hover:opacity-100"}`}>Retro</button>
-                  <button onClick={() => handleSetTheme("navy")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "navy" ? "bg-[#7986cb]/20 shadow-sm font-medium text-[#7986cb]" : "opacity-60 hover:opacity-100"}`}>Navy</button>
-                </div>
-              </div>
-
-              {/* 4.2.15 - Submenú Renderizado: Selector de justificación del texto */}
-              <div className="mb-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Alineación</h3>
-                <div className={`flex gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
-                  <button onClick={() => setTextAlign("left")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${textAlign === "left" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Izq</button>
-                  <button onClick={() => setTextAlign("center")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${textAlign === "center" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Centro</button>
-                  <button onClick={() => setTextAlign("right")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${textAlign === "right" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Der</button>
-                  <button onClick={() => setTextAlign("justify")} className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${textAlign === "justify" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Just</button>
-                </div>
-              </div>
-
-              {/* 4.2.16 - Submenú Renderizado: Selector de color de texto */}
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Color de texto</h3>
-                <div className="flex gap-2 justify-between">
-                  {textColors.map((color) => (
-                    <button
-                      key={color.value}
-                      onClick={() => handleSetTextColor(color.value)}
-                      className={`w-8 h-8 rounded-full transition-all border-2 no-retro-override flex items-center justify-center ${
-                        textColor === color.value 
-                          ? isRetro 
-                            ? 'border-[#3fb950] scale-110 shadow-[0_0_10px_rgba(63,185,80,0.5)]' 
-                            : isDark
-                              ? 'border-white scale-110'
-                              : 'border-black scale-110'
-                          : 'border-transparent hover:border-gray-400'
-                      }`}
-                      style={{ 
-                        '--dot-bg': color.value,
-                        backgroundColor: color.value,
-                        boxShadow: textColor === color.value 
-                          ? isRetro 
-                            ? `0 0 0 2px #0d1117, 0 0 8px ${color.value}` 
-                            : isDark
-                              ? `0 0 0 2px #121212, 0 0 0 4px ${color.value}`
-                              : `0 0 0 2px #ffffff, 0 0 0 4px ${color.value}`
-                          : 'none'
-                      } as any}
-                    >
-                      <div 
-                        className="w-full h-full rounded-full no-retro-override" 
-                        style={{ backgroundColor: color.value } as any} 
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Bloqueador superior de Safe Area: Evita que el texto se vea "detrás" de la hora/batería */}
@@ -1374,7 +1247,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
                 setDictionaryPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
                 handleFetchDefinition(activeSelection.text, "");
               }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-blue-600 dark:text-blue-400 hover:from-blue-500/20 hover:to-purple-500/20 transition-all border border-blue-500/20 group/ai text-sm font-semibold"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-500/10 to-fuchsia-500/10 text-purple-600 dark:text-purple-400 hover:from-purple-500/20 hover:to-fuchsia-500/20 transition-all border border-purple-500/20 group/ai text-sm font-semibold"
             >
               <Sparkles className="w-4 h-4 group-hover/ai:animate-pulse shrink-0" />
               <span>Def. IA</span>
@@ -1383,7 +1256,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
             <div className="w-px h-5 bg-gray-200 dark:bg-white/10 shrink-0"></div>
 
             {/* Preajustes de color */}
-            {['#FFEB3B', '#3fb950', '#60a5fa', '#f472b6', '#ff6b6b', '#a78bfa'].map((c) => (
+            {['#FFEB3B', '#3fb950', '#a855f7', '#f472b6', '#ff6b6b', '#a78bfa'].map((c) => (
               <button
                 key={c}
                 disabled={isSavingHighlight}
@@ -1425,14 +1298,6 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
             </button>
           </div>
         </div>
-      )}
-
-      {/* 4.2.16.2.1 - Backdrop de Glassmorphism para los Ajustes */}
-      {showSettings && showControls && (
-        <div 
-          className="fixed inset-0 z-[45] bg-transparent backdrop-blur-md transition-all duration-300 pointer-events-auto animate-in fade-in"
-          onClick={() => setShowSettings(false)}
-        />
       )}
 
       {/* 4.2.16.3 - Panel Lateral por gesto para Notas y Subrayados (50% ancho) */}
@@ -1600,13 +1465,13 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       >
         <div className="flex items-center justify-center max-w-4xl mx-auto w-full">
           <div className="flex-1 flex flex-col items-center gap-1 sm:gap-2 px-12">
-            <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-[0.3em] ${isDark ? 'text-white/40' : 'text-black/40'}`}>
+            <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-[0.3em] ${isRetro ? 'text-[#3fb950]/80' : isNavy ? 'text-[#7986cb]/80' : isDark ? 'text-white/40' : 'text-black/40'}`}>
               {progress > 0 ? `${progress.toFixed(1)}% Leído` : "Iniciando Lectura"}
             </span>
             <div className={`w-full rounded-full h-1 sm:h-1.5 overflow-hidden ${isDark ? 'bg-white/10' : isRetro ? 'bg-[#3fb950]/10' : isNavy ? 'bg-[#7986cb]/10' : 'bg-black/5'}`}>
               <div
                 className={`h-full rounded-full transition-all duration-500 ease-out ${
-                  isRetro ? 'bg-[#3fb950]' : isNavy ? 'bg-[#7986cb]' : 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]'
+                  isRetro ? 'bg-[#3fb950]' : isNavy ? 'bg-[#7986cb]' : 'bg-blue-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]'
                 }`}
                 style={{ width: `${progress}%` }}
               />

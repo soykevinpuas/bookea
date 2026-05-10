@@ -27,7 +27,7 @@ export type AnimalAvatarId = typeof ANIMAL_AVATARS[number]["id"];
  */
 export function getAvatarStyle(avatarUrl: string | null) {
   if (!avatarUrl?.startsWith("avatar:")) {
-    return { backgroundColor: "#2563eb" };
+    return { backgroundColor: "#9333ea" };
   }
 
   const avatarId = avatarUrl.split(":")[1];

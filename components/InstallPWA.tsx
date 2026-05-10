@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Smartphone, Share2 } from "lucide-react";
+import { Smartphone, SquareArrowOutUpRight, SquarePlus } from "lucide-react";
 import { toast } from "sonner";
 
 interface InstallPWAProps {
@@ -72,7 +72,7 @@ export function InstallPWA({ variant = "button" }: InstallPWAProps) {
   return (
     <>
       <button onClick={handleInstallClick} className={sharedStyles}>
-        {isIOS ? <Share2 className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
+        {isIOS ? <SquareArrowOutUpRight className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
         {variant === "menuitem" ? "Instalar App" : "Descargar App"}
       </button>
 
@@ -82,9 +82,9 @@ export function InstallPWA({ variant = "button" }: InstallPWAProps) {
           <div className="relative z-10 bg-white dark:bg-zinc-900 rounded-3xl p-6 max-w-sm shadow-2xl border border-white/10">
             <h3 className="text-lg font-bold mb-3">Instalar en iOS</h3>
             <ol className="text-sm space-y-2 text-gray-600 dark:text-gray-300">
-              <li>1. Toca el botón <strong>Compartir</strong> <Share2 className="w-4 h-4 inline" /> en Safari</li>
+              <li>1. Toca el botón <strong>Compartir</strong> <SquareArrowOutUpRight className="w-4 h-4 inline" /> en Safari</li>
               <li>2. Desliza hacia abajo</li>
-              <li>3. Toca <strong>Agregar a Inicio</strong></li>
+              <li>3. Toca <strong>Agregar a Inicio</strong> <SquarePlus className="w-4 h-4 inline" /></li>
               <li>4. Toca <strong>Agregar</strong> en la esquina</li>
             </ol>
             <button onClick={() => setShowIOSHint(false)} className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold">

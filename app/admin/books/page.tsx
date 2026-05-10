@@ -217,7 +217,7 @@ export default function AdminBooksPage() {
           </button>
         </div>
       ) : (
-        <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
+        <div className="bg-white/5 border border-white/8 rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/8">
