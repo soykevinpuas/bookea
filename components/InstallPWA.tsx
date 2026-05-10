@@ -83,10 +83,10 @@ export function InstallPWA({ variant = "button" }: InstallPWAProps) {
   return (
     <button
       onClick={handleInstallClick}
-      className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-600/10 hover:bg-blue-100 dark:hover:bg-blue-600/20 rounded-xl transition-all border border-blue-100 dark:border-blue-500/20"
+      className="w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl font-semibold text-lg transition-all backdrop-blur-sm shadow-sm flex items-center justify-center gap-2"
     >
-      <Smartphone className="w-4 h-4" />
-      <span>Descargar App móvil</span>
+      <Smartphone className="w-5 h-5" />
+      Descargar App
     </button>
   );
 }

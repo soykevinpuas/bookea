@@ -2,7 +2,7 @@
 
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState, useMemo } from "react";
-import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles, BookOpen, Coins, Flame, Gift, Circle, BookOpenCheck, CalendarDays, Trophy } from "lucide-react";
+import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles, BookOpen, Coins, Flame, Gift, Circle, BookOpenCheck, CalendarDays, Trophy, Key, Trash2, AlertTriangle, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useUserId } from "@/hooks/useUser";
@@ -49,6 +49,10 @@ export default function ProfilePage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(0);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
   
   const parsedAvatar = useMemo(() => 
     profile?.avatar_url ? parseAvatarConfig(profile.avatar_url) : null,
@@ -99,6 +103,63 @@ export default function ProfilePage() {
       toast.success("Nombre actualizado");
     } catch {
       toast.error("Error al actualizar nombre");
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    setPasswordLoading(true);
+    try {
+      const supabase = createClientClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
+        toast.error("No se encontró tu correo");
+        setPasswordLoading(false);
+        return;
+      }
+      const response = await fetch("/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Correo de restablecimiento enviado");
+      } else {
+        toast.error(data.error || "Error al enviar correo");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteStep === 0) { setDeleteStep(1); return; }
+    if (deleteStep === 1) {
+      if (deleteConfirm !== "ELIMINAR") {
+        toast.error('Escribe "ELIMINAR" para confirmar');
+        return;
+      }
+      setDeleteLoading(true);
+      try {
+        const response = await fetch("/api/account/delete", { method: "POST" });
+        const data = await response.json();
+        if (data.success) {
+          toast.success("Cuenta eliminada. Redirigiendo...");
+          const supabase = createClientClient();
+          await supabase.auth.signOut();
+          window.location.href = "/";
+        } else {
+          toast.error(data.error || "Error al eliminar cuenta");
+          setDeleteStep(0);
+        }
+      } catch {
+        toast.error("Error de conexión");
+        setDeleteStep(0);
+      } finally {
+        setDeleteLoading(false);
+      }
     }
   };
 
@@ -351,12 +412,78 @@ export default function ProfilePage() {
             )}
 
             {/* Seguridad Section */}
-            <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-[2.2rem] p-8">
-              <h3 className="text-xl font-black mb-4">Seguridad</h3>
-              <p className="text-sm text-gray-400 dark:text-white/40 font-light mb-2">
-                Para cambios de contraseña y seguridad avanzada, gestionamos todo a través de Supabase Auth.
-              </p>
-              <span className="text-[10px] text-gray-400 dark:text-white/20 italic">No hay acciones adicionales requeridas.</span>
+            <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-[2.2rem] p-8 space-y-4">
+              <h3 className="text-xl font-black flex items-center gap-3">
+                <Shield className="w-5 h-5 text-blue-400" />
+                Seguridad
+              </h3>
+              
+              {/* Change Password */}
+              <button
+                onClick={handlePasswordReset}
+                disabled={passwordLoading}
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-200 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl hover:bg-gray-300 dark:hover:bg-white/10 transition-all disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <Key className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm font-semibold">Cambiar Contraseña</span>
+                </div>
+                {passwordLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                ) : (
+                  <span className="text-xs text-blue-500 font-medium">Enviar correo</span>
+                )}
+              </button>
+
+              {/* Delete Account */}
+              {deleteStep === 0 ? (
+                <button
+                  onClick={() => setDeleteStep(1)}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-500/10 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                    <span className="text-sm font-semibold text-red-600 dark:text-red-400">Eliminar Cuenta</span>
+                  </div>
+                  <span className="text-xs text-red-500 font-medium">Eliminar</span>
+                </button>
+              ) : deleteStep === 1 ? (
+                <div className="p-4 bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 rounded-xl space-y-3">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-red-600 dark:text-red-400">Esto eliminará tu cuenta permanentemente</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Todos tus datos, libros, progreso y suscripciones se perderán. Esta acción es irreversible.
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    value={deleteConfirm}
+                    onChange={(e) => setDeleteConfirm(e.target.value)}
+                    placeholder='Escribe "ELIMINAR" para confirmar'
+                    className="w-full p-2 text-sm bg-white dark:bg-black/50 border border-red-300 dark:border-red-500/30 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-red-500/50"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setDeleteStep(0); setDeleteConfirm(""); }}
+                      disabled={deleteLoading}
+                      className="flex-1 px-3 py-2 bg-gray-200 dark:bg-white/5 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-semibold hover:bg-gray-300 dark:hover:bg-white/10 transition-all disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleDeleteAccount}
+                      disabled={deleteLoading || deleteConfirm !== "ELIMINAR"}
+                      className="flex-1 px-3 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

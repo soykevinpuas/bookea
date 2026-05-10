@@ -11,7 +11,7 @@ import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
 import { Highlight } from "@/types/reading";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2, Bookmark, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, Settings2, Bookmark, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins, GripHorizontal } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -67,6 +67,8 @@ export default function ReaderPage() {
 
   const { data: book, isLoading: loadingBook } = useBook(bookId);
   const [isExiting, setIsExiting] = useState(false);
+  const notesPanelRef = useRef<HTMLDivElement>(null);
+  const notesDragState = useRef({ startX: 0, startY: 0, offset: 0, isDragging: false, panelWidth: 0 });
 
   const { userId } = useUserId();
   const { data: subscription } = useSubscription(userId);
@@ -307,9 +309,6 @@ export default function ReaderPage() {
   };
 
   const handleHighlightClick = (h: Highlight) => {
-    // Si queremos abrir el panel de notas enfocando esta nota
-    setShowNotesPanel(true);
-    // Activar la selección para permitir cambiar su color on-the-fly
     setActiveSelection({
       cfiRange: h.cfi_start,
       text: h.text,
@@ -326,6 +325,100 @@ export default function ReaderPage() {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
+
+  // Edge swipe to open notes panel from right edge
+  useEffect(() => {
+    if (!mounted) return;
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+    let edgeSwipeActive = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const fromRightEdge = window.innerWidth - e.touches[0].clientX < 40;
+      if (fromRightEdge && !showNotesPanel) {
+        swipeStartX = e.touches[0].clientX;
+        swipeStartY = e.touches[0].clientY;
+        edgeSwipeActive = true;
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!edgeSwipeActive) return;
+      edgeSwipeActive = false;
+      const dx = e.changedTouches[0].clientX - swipeStartX;
+      const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY);
+      if (dx < -50 && Math.abs(dx) > dy) {
+        setShowNotesPanel(true);
+      }
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [mounted, showNotesPanel]);
+
+  // Drag-to-close for the notes panel
+  useEffect(() => {
+    if (!showNotesPanel || !notesPanelRef.current) return;
+    const el = notesPanelRef.current;
+    const state = notesDragState.current;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      state.startX = e.touches[0].clientX;
+      state.startY = e.touches[0].clientY;
+      state.panelWidth = el.offsetWidth;
+      const rect = el.getBoundingClientRect();
+      const touchFromEdge = rect.right - e.touches[0].clientX;
+      state.isDragging = touchFromEdge < 30;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!state.isDragging) return;
+      const dx = e.touches[0].clientX - state.startX;
+      const dy = Math.abs(e.touches[0].clientY - state.startY);
+      if (dy > Math.abs(dx) * 1.5) {
+        state.isDragging = false;
+        return;
+      }
+      state.offset = Math.max(0, Math.min(state.panelWidth, dx));
+      el.style.transition = 'none';
+      el.style.transform = `translateX(${state.offset}px)`;
+    };
+
+    const handleTouchEnd = () => {
+      if (!state.isDragging) return;
+      state.isDragging = false;
+      el.style.transition = '';
+      if (state.offset > state.panelWidth * 0.3) {
+        el.style.transform = 'translateX(100%)';
+        setTimeout(() => setShowNotesPanel(false), 300);
+      } else {
+        el.style.transform = '';
+      }
+    };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchmove', handleTouchMove, { passive: true });
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [showNotesPanel]);
+
+  // Reset inline transform when panel opens
+  useEffect(() => {
+    if (showNotesPanel && notesPanelRef.current) {
+      notesPanelRef.current.style.transform = '';
+      notesPanelRef.current.style.transition = '';
+    }
+  }, [showNotesPanel]);
 
   // 4.2.5 - Inicialización Central del Motor epub.js y configuración DOM
   useEffect(() => {
@@ -1334,14 +1427,6 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         </div>
       )}
 
-      {/* 4.2.16.2 - Backdrop para cerrar el panel al tocar fuera */}
-      {showNotesPanel && (
-        <div 
-          className="fixed inset-0 z-[65] bg-black/5 dark:bg-black/20 backdrop-blur-sm transition-opacity pointer-events-auto"
-          onClick={() => setShowNotesPanel(false)}
-        />
-      )}
-
       {/* 4.2.16.2.1 - Backdrop de Glassmorphism para los Ajustes */}
       {showSettings && showControls && (
         <div 
@@ -1350,16 +1435,20 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         />
       )}
 
-      {/* 4.2.16.3 - Panel Lateral (Drawer) para Notas y Subrayados */}
+      {/* 4.2.16.3 - Panel Lateral por gesto para Notas y Subrayados (50% ancho) */}
       <div 
-        className={`fixed inset-y-0 right-0 z-[70] w-full max-w-sm bg-white dark:bg-[#111111] shadow-2xl border-l border-gray-200 dark:border-white/10 transform transition-transform duration-300 ease-in-out ${
+        ref={notesPanelRef}
+        className={`fixed inset-y-0 right-0 z-[70] w-1/2 min-w-[280px] max-w-xl bg-white dark:bg-[#111111] shadow-2xl border-l border-gray-200 dark:border-white/10 transform transition-transform duration-300 ease-in-out ${
           showNotesPanel ? 'translate-x-0' : 'translate-x-full'
         } flex flex-col pointer-events-auto`}
       >
+        {/* Drag handle */}
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300 dark:bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+        
         <div className="flex items-center justify-between px-5 pb-5 pt-[calc(env(safe-area-inset-top)+1.25rem)] border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0a0a0a]">
           <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
             <Bookmark className="w-5 h-5 text-blue-500" />
-            Notas del Libro
+            Notas y Subrayados
           </h2>
           <button 
             onClick={() => setShowNotesPanel(false)}
@@ -1383,7 +1472,6 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
                 
                 <p className="text-sm text-gray-800 dark:text-gray-200 retro:text-gray-200 navy:text-gray-200 italic mb-2 line-clamp-4 leading-relaxed pr-6 cursor-pointer" onClick={() => {
                   renditionRef.current?.display(h.cfi_start);
-                  if (window.innerWidth < 640) setShowNotesPanel(false);
                 }}>
                   "{h.text}"
                 </p>

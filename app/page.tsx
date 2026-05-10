@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { BookOpen, Zap, Shield, Sparkles } from "lucide-react";
+import { BookOpen, Zap, Shield, Sparkles, Smartphone } from "lucide-react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/server";
+import { InstallPWA } from "@/components/InstallPWA";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -52,6 +53,7 @@ export default async function Home() {
             >
               Iniciar
             </Link>
+            <InstallPWA variant="button" />
           </div>
         </div>
       </main>

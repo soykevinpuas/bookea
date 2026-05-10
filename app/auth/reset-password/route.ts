@@ -8,7 +8,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Correo requerido' }, { status: 400 })
     }
 
-    const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || req.headers.get('origin') || 'http://localhost:3000'
     const supabase = await createClient()
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/update-password`,

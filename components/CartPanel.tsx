@@ -40,7 +40,10 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
       state.startX = e.touches[0].clientX
       state.startY = e.touches[0].clientY
       state.panelWidth = el.offsetWidth
-      state.isDragging = true
+      // Only activate drag-to-close if touch starts near the left edge of the panel
+      const rect = el.getBoundingClientRect()
+      const touchFromEdge = e.touches[0].clientX - rect.left
+      state.isDragging = touchFromEdge < 30
     }
 
     const handleTouchMove = (e: TouchEvent) => {

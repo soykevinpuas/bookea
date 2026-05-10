@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
 import CartPanel from './CartPanel'
 import LibraryPanel from './LibraryPanel'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
@@ -8,6 +9,8 @@ import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 export default function PanelManager() {
   const [cartOpen, setCartOpen] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const pathname = usePathname()
+  const isReader = pathname?.startsWith('/reader/')
 
   const closeCart = useCallback(() => setCartOpen(false), [])
   const closeLibrary = useCallback(() => setLibraryOpen(false), [])
@@ -23,7 +26,7 @@ export default function PanelManager() {
     },
     onSwipeRight: cartOpen ? closeCart : undefined,
     onSwipeLeft: libraryOpen ? closeLibrary : undefined,
-    enabled: true,
+    enabled: !isReader,
   })
 
   return (

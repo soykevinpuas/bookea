@@ -4,6 +4,7 @@ import { createClient } from '@/lib/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { sendWelcomeEmail } from '@/lib/email'
+import { getStripeClient } from '@/lib/stripe'
 
 // 2.3 - Auth Actions: Endpoints del servidor (Server Actions) para Login y Registro
 export async function login(formData: FormData) {
@@ -64,12 +65,29 @@ export async function register(formData: FormData) {
     console.warn('[Analytics] Error al trackear registro:', trackError)
   }
 
-  // 2.3.2 - Enviar correo de bienvenida
+  // 2.3.2 - Crear customer en Stripe para portal de facturación
+  if (signupData?.user) {
+    try {
+      const stripe = getStripeClient()
+      const customer = await stripe.customers.create({
+        email: data.email,
+        name: data.email.split('@')[0],
+      })
+      await supabase
+        .from('users')
+        .update({ stripe_customer_id: customer.id })
+        .eq('id', signupData.user.id)
+    } catch (stripeError) {
+      console.warn('[Stripe] Error creando customer:', stripeError)
+    }
+  }
+
+  // 2.3.3 - Enviar correo de bienvenida
   if (signupData?.user) {
     await sendWelcomeEmail(data.email, data.email.split('@')[0])
   }
 
-  // 2.3.3 - Procesar referido si existe
+  // 2.3.4 - Procesar referido si existe
   if (referrerId && signupData?.user) {
     try {
       await supabase.rpc('track_referral', {
