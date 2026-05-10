@@ -31,7 +31,7 @@ export default function Book3D({
   // ============================================
   return (
     <div 
-      className={`relative ${className} group`}
+      className={`relative w-full h-full ${className} group`}
       data-book-cover
     >
       {/* 6.4.2.1 - Contenedor con efecto hover: zoom suave y degradado inferior */}
