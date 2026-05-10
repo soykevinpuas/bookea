@@ -183,9 +183,9 @@ function DashboardContent() {
             <p className="text-[10px] text-gray-400 dark:text-white/40 uppercase font-bold tracking-tight">Racha</p>
           </div>
           <div className={`text-center p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border backdrop-blur-md transition-all duration-500 ${
-            totalCompleted > 0 ? 'border-blue-500/30 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'border-gray-100 dark:border-white/10'
+            totalCompleted > 0 ? 'border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.15)]' : 'border-gray-100 dark:border-white/10'
           }`}>
-            <Trophy className={`w-5 h-5 mx-auto mb-1 ${(totalCompleted || 0) > 0 ? 'text-blue-400' : 'text-gray-300 dark:text-white/20'}`} />
+            <Trophy className={`w-5 h-5 mx-auto mb-1 ${(totalCompleted || 0) > 0 ? 'text-amber-500' : 'text-gray-300 dark:text-white/20'}`} />
             <p className="text-lg font-black text-gray-900 dark:text-white">{totalCompleted}</p>
             <p className="text-[10px] text-gray-400 dark:text-white/40 uppercase font-bold tracking-tight">Leídos</p>
           </div>

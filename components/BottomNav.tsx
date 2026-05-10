@@ -48,19 +48,19 @@ export function BottomNav() {
   const navItems = [
     {
       label: "Catálogo",
-      icon: <Compass className="w-5 h-5" />,
+      icon: <Compass className="w-6 h-6" />,
       href: "/catalog",
       active: pathname === "/catalog"
     },
     {
       label: "Biblioteca",
-      icon: <Library className="w-5 h-5" />,
+      icon: <Library className="w-6 h-6" />,
       href: "/dashboard",
       active: pathname === "/dashboard"
     },
     {
       label: "Perfil",
-      icon: <User className="w-5 h-5" />,
+      icon: <User className="w-6 h-6" />,
       href: "/profile",
       active: pathname === "/profile"
     }
@@ -97,7 +97,7 @@ export function BottomNav() {
                     />
                   )}
 
-                  <div className="relative">
+                  <div className={`relative ${item.active ? 'drop-shadow-[0_0_6px_currentColor]' : ''}`}>
                     {item.icon}
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-tighter">

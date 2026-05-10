@@ -569,9 +569,11 @@
 /* 1.7.9 - Prevenir swipe-back/forward nativo del navegador en los bordes */
 html {
   overscroll-behavior-x: none;
+  touch-action: pan-y;
 }
 body {
   overscroll-behavior-x: none;
+  touch-action: pan-y;
 }
 
 /* 1.7.4 - PWA Interactivity & Touch Overrides */

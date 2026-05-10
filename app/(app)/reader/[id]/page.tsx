@@ -11,7 +11,7 @@ import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
 import { Highlight } from "@/types/reading";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, Bookmark, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins, GripHorizontal } from "lucide-react";
+import { Loader2, ArrowLeft, Bookmark, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins, GripHorizontal, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -1203,6 +1203,113 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
             </h1>
             <span className="text-xs opacity-60">por {book.author}</span>
           </div>
+        </div>
+
+          <div className="flex items-center gap-2 sm:gap-4 relative">
+          <button
+            onClick={() => setShowNotesPanel(true)}
+            className={`p-2.5 rounded-full transition-colors ${iconBgClass}`}
+            title="Ver Notas y Subrayados"
+          >
+            <Bookmark className="w-5 h-5" />
+          </button>
+          
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className={`p-2.5 rounded-full transition-colors ${showSettings ? (isRetro ? 'bg-[#3fb950]/20 text-[#3fb950]' : 'bg-black/10 text-blue-500') : iconBgClass}`}
+          >
+            <Settings2 className="w-5 h-5" />
+          </button>
+
+          {showSettings && (
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className={`absolute top-14 right-0 w-72 p-4 rounded-2xl shadow-2xl border animate-in fade-in slide-in-from-top-4 duration-200 ${
+              isDark ? 'bg-[#1a1a1a] border-white/10 text-white' : 
+              isRetro ? 'bg-[#0d1117] border-[#3fb950]/30 text-[#3fb950]' :
+              isNavy ? 'bg-[#0a1422] border-[#7986cb]/30 text-[#c5cae9]' :
+              'bg-white border-black/5 text-gray-900'
+            }`}>
+              <div className="mb-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Tipografía</h3>
+                <div className={`grid grid-cols-3 gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
+                  <button onClick={() => setFontFamily("sans")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "sans" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Sans</button>
+                  <button onClick={() => setFontFamily("serif")} className={`py-1.5 text-xs rounded-md transition-colors font-serif ${fontFamily === "serif" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Serif</button>
+                  <button onClick={() => setFontFamily("mono")} className={`py-1.5 text-xs rounded-md transition-colors font-mono ${fontFamily === "mono" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Mono</button>
+                  <button onClick={() => setFontFamily("baskerville")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "baskerville" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "'Libre Baskerville', serif" }}>Baskerville</button>
+                  <button onClick={() => setFontFamily("lora")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "lora" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "'Lora', serif" }}>Lora</button>
+                  <button onClick={() => setFontFamily("nunito")} className={`py-1.5 text-xs rounded-md transition-colors ${fontFamily === "nunito" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "Nunito, sans-serif" }}>Nunito</button>
+                  <button onClick={() => setFontFamily("dyslexic")} className={`py-1.5 text-xs rounded-md transition-colors col-span-3 ${fontFamily === "dyslexic" ? activeBtnClass : "opacity-60 hover:opacity-100"}`} style={{ fontFamily: "OpenDyslexic, sans-serif" }}>OpenDyslexic (Accesible)</button>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Tamaño de texto</h3>
+                <div className={`flex items-center justify-between gap-2 p-1 rounded-lg ${panelBgClass}`}>
+                  <button onClick={() => setFontSize((s) => Math.max(12, s - 2))} className={`flex-1 py-1.5 flex justify-center rounded-md transition-colors ${iconBgClass}`}>A-</button>
+                  <span className="text-sm font-medium opacity-80">{fontSize}px</span>
+                  <button onClick={() => setFontSize((s) => Math.min(32, s + 2))} className={`flex-1 py-1.5 flex justify-center rounded-md transition-colors ${iconBgClass}`}>A+</button>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Tema</h3>
+                <div className={`flex gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
+                  <button onClick={() => handleSetTheme("light")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "light" ? "bg-white shadow-sm font-medium text-black" : "opacity-60 hover:opacity-100"}`}>Día</button>
+                  <button onClick={() => handleSetTheme("dark")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "dark" ? "bg-white/10 shadow-sm font-medium text-white" : "opacity-60 hover:opacity-100"}`}>Noche</button>
+                  <button onClick={() => handleSetTheme("retro")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors font-mono ${theme === "retro" ? "bg-[#3fb950]/20 shadow-sm font-medium text-[#3fb950]" : "opacity-60 hover:opacity-100"}`}>Retro</button>
+                  <button onClick={() => handleSetTheme("navy")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${theme === "navy" ? "bg-[#7986cb]/20 shadow-sm font-medium text-[#7986cb]" : "opacity-60 hover:opacity-100"}`}>Navy</button>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Alineación</h3>
+                <div className={`flex gap-1.5 p-1 rounded-lg ${panelBgClass}`}>
+                  <button onClick={() => setTextAlign("left")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${textAlign === "left" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Izq</button>
+                  <button onClick={() => setTextAlign("center")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${textAlign === "center" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Centro</button>
+                  <button onClick={() => setTextAlign("right")} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${textAlign === "right" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Der</button>
+                  <button onClick={() => setTextAlign("justify")} className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${textAlign === "justify" ? activeBtnClass : "opacity-60 hover:opacity-100"}`}>Just</button>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-2">Color de texto</h3>
+                <div className="flex gap-2 justify-between">
+                  {textColors.map((color) => (
+                    <button
+                      key={color.value}
+                      onClick={() => handleSetTextColor(color.value)}
+                      className={`w-8 h-8 rounded-full transition-all border-2 no-retro-override flex items-center justify-center ${
+                        textColor === color.value 
+                          ? isRetro 
+                            ? 'border-[#3fb950] scale-110 shadow-[0_0_10px_rgba(63,185,80,0.5)]' 
+                            : isDark
+                              ? 'border-white scale-110'
+                              : 'border-black scale-110'
+                          : 'border-transparent hover:border-gray-400'
+                      }`}
+                      style={{ 
+                        '--dot-bg': color.value,
+                        backgroundColor: color.value,
+                        boxShadow: textColor === color.value 
+                          ? isRetro 
+                            ? `0 0 0 2px #0d1117, 0 0 8px ${color.value}` 
+                            : isDark
+                              ? `0 0 0 2px #121212, 0 0 0 4px ${color.value}`
+                              : `0 0 0 2px #ffffff, 0 0 0 4px ${color.value}`
+                          : 'none'
+                      } as any}
+                    >
+                      <div 
+                        className="w-full h-full rounded-full no-retro-override" 
+                        style={{ backgroundColor: color.value } as any} 
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
