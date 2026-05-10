@@ -7,19 +7,21 @@
   </defs>
   <rect width="512" height="512" rx="110" fill="url(#bg)"/>
   <g transform="translate(256, 256)">
-    <!-- B stem -->
-    <rect x="-80" y="-140" width="50" height="280" rx="14" fill="#ffffff"/>
-    <!-- B top bump -->
-    <path d="M-30,-140 L90,-140 C160,-140 160,-40 90,-40 L-30,-40 Z" fill="#ffffff"/>
-    <!-- B bottom bump -->
-    <path d="M-30,-40 L100,-40 C170,-40 170,140 100,140 L-30,140 Z" fill="#ffffff"/>
-    <!-- Page line accents on the B -->
-    <line x1="-15" y1="-100" x2="70" y2="-100" stroke="#c7d2fe" stroke-width="6" stroke-linecap="round"/>
-    <line x1="-15" y1="-70" x2="50" y2="-70" stroke="#c7d2fe" stroke-width="6" stroke-linecap="round"/>
-    <line x1="-15" y1="20" x2="80" y2="20" stroke="#c7d2fe" stroke-width="6" stroke-linecap="round"/>
-    <line x1="-15" y1="50" x2="60" y2="50" stroke="#c7d2fe" stroke-width="6" stroke-linecap="round"/>
-    <line x1="-15" y1="80" x2="70" y2="80" stroke="#c7d2fe" stroke-width="6" stroke-linecap="round"/>
-    <!-- Amber accent -->
+    <!-- Stem -->
+    <rect x="-100" y="-130" width="45" height="260" rx="14" fill="#ffffff"/>
+    <!-- Top lobe (circle) -->
+    <circle cx="-25" cy="-55" r="58" fill="#ffffff"/>
+    <!-- Bottom lobe (circle, slightly larger) -->
+    <circle cx="-20" cy="55" r="63" fill="#ffffff"/>
+    <!-- Page line accents on top lobe -->
+    <line x1="-55" y1="-75" x2="10" y2="-75" stroke="#c7d2fe" stroke-width="5" stroke-linecap="round"/>
+    <line x1="-55" y1="-55" x2="-10" y2="-55" stroke="#c7d2fe" stroke-width="5" stroke-linecap="round"/>
+    <line x1="-55" y1="-35" x2="5" y2="-35" stroke="#c7d2fe" stroke-width="5" stroke-linecap="round"/>
+    <!-- Page line accents on bottom lobe -->
+    <line x1="-55" y1="35" x2="15" y2="35" stroke="#c7d2fe" stroke-width="5" stroke-linecap="round"/>
+    <line x1="-55" y1="55" x2="-5" y2="55" stroke="#c7d2fe" stroke-width="5" stroke-linecap="round"/>
+    <line x1="-55" y1="75" x2="10" y2="75" stroke="#c7d2fe" stroke-width="5" stroke-linecap="round"/>
+    <!-- Amber accent dot -->
     <circle cx="0" cy="190" r="14" fill="#f59e0b"/>
   </g>
 </svg>
