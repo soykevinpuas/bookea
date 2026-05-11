@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2, BookmarkPlus, BookmarkCheck, Coins } from "lucide-react";
+import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2, BookmarkPlus, BookmarkCheck, Coins, ChevronDown, ChevronUp } from "lucide-react";
 import ReviewForm from "@/components/community/ReviewForm";
 import ReviewList from "@/components/community/ReviewList";
 import { addToLibrary } from "@/lib/books";
@@ -55,6 +55,17 @@ function BookDetailContent() {
   const isPremiumBook = book?.is_premium !== false; // Por defecto es premium si no se especifica
   const hasPremiumAccess = subscription?.isActive || subscription?.role === 'admin';
   const canRead = !isPremiumBook || hasPremiumAccess;
+
+  // Author data
+  const [authorData, setAuthorData] = useState<{ name: string; bio: string | null; photo_url: string | null } | null>(null);
+  const [authorOpen, setAuthorOpen] = useState(false);
+  useEffect(() => {
+    if (!book?.author_id) return;
+    const supabase = createClientClient();
+    supabase.from('authors').select('name, bio, photo_url').eq('id', book.author_id).single().then(({ data }) => {
+      if (data) setAuthorData(data);
+    });
+  }, [book?.author_id]);
 
   // 3.5.6.1 - Estado para descarga offline y biblioteca
   const [isDownloaded, setIsDownloaded] = useState(false);
@@ -378,6 +389,36 @@ function BookDetailContent() {
             </div>
           </div>
         </div>
+
+        {/* Author card */}
+        {authorData && (
+          <div className="mt-10 p-5 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl">
+            <button
+              onClick={() => setAuthorOpen(!authorOpen)}
+              className="w-full flex items-center gap-4 text-left"
+            >
+              <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-lg font-bold text-blue-600 dark:text-blue-400 flex-shrink-0 overflow-hidden">
+                {authorData.photo_url ? (
+                  <img src={authorData.photo_url} alt={authorData.name} className="w-full h-full object-cover" />
+                ) : (
+                  authorData.name.charAt(0).toUpperCase()
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{authorData.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Sobre el autor</p>
+              </div>
+              {authorOpen ? <ChevronUp className="w-5 h-5 text-gray-400 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />}
+            </button>
+            {authorOpen && authorData.bio && (
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-[15]">
+                  {authorData.bio}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 3.5.11 - Sección de Comunidad y Reseñas */}
         <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">

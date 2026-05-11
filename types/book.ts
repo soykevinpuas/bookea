@@ -2,6 +2,7 @@ export interface Book {
   id: string;
   title: string;
   author: string;
+  author_id?: string;
   description: string | null;
   category: string | null;
   cover_url: string | null;
@@ -15,4 +16,12 @@ export interface Book {
   created_at: string;
   percent_complete?: number;
   last_read_at?: string | null;
+}
+
+export interface Author {
+  id: string;
+  name: string;
+  slug: string;
+  bio: string | null;
+  photo_url: string | null;
 }

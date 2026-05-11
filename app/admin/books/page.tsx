@@ -20,6 +20,7 @@ interface Book {
   id: string;
   title: string;
   author: string;
+  author_id?: string;
   description: string | null;
   category: string | null;
   cover_url: string | null;
@@ -34,12 +35,13 @@ interface Book {
   created_at: string;
 }
 
-type FormData = Omit<Book, "id" | "created_at"> & { id?: string };
+type FormData = Omit<Book, "id" | "created_at"> & { id?: string; newAuthor?: string };
 
 const EMPTY_FORM: FormData = {
   title: "",
   slug: "",
   author: "",
+  author_id: undefined,
   description: "",
   category: "",
   cover_url: "",
@@ -77,6 +79,15 @@ export default function AdminBooksPage() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Book[];
+    },
+  });
+
+  const { data: authors = [] } = useQuery({
+    queryKey: ["admin-authors"],
+    queryFn: async () => {
+      const supabase = createClientClient();
+      const { data } = await supabase.from("authors").select("id, name, slug").order("name");
+      return data || [];
     },
   });
 
@@ -147,11 +158,35 @@ export default function AdminBooksPage() {
     setSaving(true);
     try {
       const supabase = createClientClient();
+
+      // Crear nuevo autor si es necesario
+      let authorId = editingBook.author_id;
+      if (!authorId && editingBook.newAuthor) {
+        const slug = editingBook.newAuthor.toLowerCase().replace(/ /g, "-").replace(/[^\wáéíóúñ-]/g, "");
+        const { data: newAuthor, error: createAuthorError } = await supabase
+          .from("authors")
+          .insert({ name: editingBook.newAuthor, slug })
+          .select("id")
+          .single();
+        if (createAuthorError) throw createAuthorError;
+        authorId = newAuthor.id;
+        queryClient.invalidateQueries({ queryKey: ["admin-authors"] });
+      } else if (!authorId && editingBook.author) {
+        // Si tiene nombre pero no es nuevo (select directo), buscar el ID
+        const { data: existing } = await supabase
+          .from("authors")
+          .select("id")
+          .eq("name", editingBook.author)
+          .single();
+        if (existing) authorId = existing.id;
+      }
+
       const slug = editingBook.slug || editingBook.title.toLowerCase().replace(/ /g, "-").replace(/[^\w-]/g, "");
       
-      const payload = {
+      const payload: Record<string, any> = {
         title: editingBook.title,
         author: editingBook.author,
+        author_id: authorId,
         description: editingBook.description,
         category: editingBook.category,
         cover_url: editingBook.cover_url,
@@ -312,12 +347,32 @@ export default function AdminBooksPage() {
                 </div>
                 <div>
                   <label className="text-xs text-white/40 font-medium mb-1.5 block">Autor *</label>
-                  <input
-                    value={editingBook.author}
-                    onChange={(e) => setEditingBook((p) => ({ ...p, author: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500/50 transition-colors"
-                    placeholder="Antoine de Saint-Exupéry"
-                  />
+                  <select
+                    value={editingBook.author_id || ""}
+                    onChange={(e) => {
+                      const selected = authors.find(a => a.id === e.target.value);
+                      if (selected) {
+                        setEditingBook((p) => ({ ...p, author_id: selected.id, author: selected.name, newAuthor: undefined }));
+                      } else {
+                        setEditingBook((p) => ({ ...p, author_id: undefined, author: "", newAuthor: "" }));
+                      }
+                    }}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+                  >
+                    <option value="">Seleccionar autor...</option>
+                    {authors.map((a) => (
+                      <option key={a.id} value={a.id || ''}>{a.name}</option>
+                    ))}
+                    <option value="__new__">+ Agregar nuevo autor...</option>
+                  </select>
+                  {editingBook.author_id === undefined && editingBook.newAuthor !== undefined && (
+                    <input
+                      value={editingBook.newAuthor || ""}
+                      onChange={(e) => setEditingBook((p) => ({ ...p, author: e.target.value, newAuthor: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500/50 transition-colors mt-2"
+                      placeholder="Nombre del nuevo autor"
+                    />
+                  )}
                 </div>
               </div>
 
