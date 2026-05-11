@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   BookOpen,
   LayoutDashboard,
@@ -15,6 +16,7 @@ import {
   ExternalLink,
   Menu,
   X,
+  RefreshCw,
 } from "lucide-react";
 
 const navItems = [
@@ -141,6 +143,18 @@ export default function AdminLayout({
         </nav>
 
         <div className="p-4 border-t border-white/5 space-y-2 bg-[#0d0d0d]/50 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+          <button
+            onClick={async () => {
+              const res = await fetch('/api/authors/seed', { method: 'POST' });
+              const data = await res.json();
+              if (data.error) toast.error(data.error);
+              else toast.success(`Actualizados: ${data.updated}, Fallaron: ${data.failed}`);
+            }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/40 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Auto-llenar autores
+          </button>
           <Link
             href="/"
             className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/40 hover:text-white hover:bg-white/5 transition-all"
