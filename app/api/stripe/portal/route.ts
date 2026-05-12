@@ -41,6 +41,31 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error: any) {
+    // Si el customer no existe en Stripe (ej. test vs live mismatch),
+    // crear uno nuevo y actualizar la DB
+    if (error?.type === 'StripeInvalidRequestError' && error?.code === 'resource_missing') {
+      try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        const customer = await stripe.customers.create({
+          email: user?.email,
+        });
+        await supabase.from('users').update({ stripe_customer_id: customer.id }).eq('id', user?.id);
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookea-nine.vercel.app';
+        const session = await stripe.billingPortal.sessions.create({
+          customer: customer.id,
+          return_url: `${baseUrl}/profile`,
+        });
+        return NextResponse.json({ url: session.url });
+      } catch (retryError: any) {
+        console.error('Error creating portal session after retry:', retryError);
+        return NextResponse.json(
+          { error: 'Error al crear la sesión del portal de cliente' },
+          { status: 500 }
+        );
+      }
+    }
+
     console.error('Error creating portal session:', error);
     return NextResponse.json(
       { error: 'Error al crear la sesión del portal de cliente' },

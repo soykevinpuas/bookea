@@ -44,7 +44,7 @@ function DashboardContent() {
 
     if (paymentStatus === 'success' && sessionId) {
       let attempts = 0;
-      const maxAttempts = 15; // 30 segundos máximo
+      const maxAttempts = 15;
       let toastId: string | number = "";
 
       const poll = async () => {
@@ -53,24 +53,32 @@ function DashboardContent() {
         }
 
         try {
-          const result = await verifySubscriptionAction(sessionId);
+          const result: any = await verifySubscriptionAction(sessionId);
 
           if (result.success) {
-            toast.success("¡Bienvenido a Bookea Premium!", {
-              id: toastId,
-              description: "Tu suscripción se ha activado correctamente. Ya puedes disfrutar de todo el catálogo.",
-              icon: <Sparkles className="w-5 h-5 text-amber-500" />,
-              duration: 8000,
-            });
+            if (result.type === 'subscription') {
+              toast.success("¡Bienvenido a Bookea Premium!", {
+                id: toastId,
+                description: "Tu suscripción se ha activado correctamente. Ya puedes disfrutar de todo el catálogo.",
+                icon: <Sparkles className="w-5 h-5 text-amber-500" />,
+                duration: 8000,
+              });
+            } else if (result.type === 'payment' && result.items) {
+              toast.success("¡Compra completada!", {
+                id: toastId,
+                description: result.items.join(", "),
+                duration: 6000,
+              });
+            }
             setTimeout(() => {
               window.history.replaceState({}, '', window.location.pathname);
             }, 2000);
             return;
           }
 
-          if ((result as any).pending && attempts < maxAttempts) {
+          if (result.pending && attempts < maxAttempts) {
             attempts++;
-            toast.loading("Sincronizando suscripción...", { id: toastId });
+            toast.loading("Sincronizando pago...", { id: toastId });
             setTimeout(poll, 2000);
             return;
           }
