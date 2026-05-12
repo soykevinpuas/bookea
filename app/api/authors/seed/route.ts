@@ -15,18 +15,25 @@ export async function POST() {
       .single();
     if (userData?.role !== 'admin') return NextResponse.json({ error: 'Se requiere admin' }, { status: 403 });
 
+    // Obtener TODOS los autores, no solo sin bio
     const { data: authors, error } = await supabase
       .from('authors')
-      .select('id, name, photo_url')
-      .or('bio.is.null,bio.eq.""');
+      .select('id, name, bio, photo_url');
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    if (!authors?.length) return NextResponse.json({ updated: 0, failed: 0, message: 'Todos los autores ya tienen bio' });
+    if (!authors?.length) return NextResponse.json({ updated: 0, failed: 0, message: 'No hay autores en la base de datos' });
 
     let updated = 0;
     let failed = 0;
+    let skipped = 0;
 
     for (const author of authors) {
+      // Saltar si ya tiene bio y foto
+      if (author.bio && author.photo_url) {
+        skipped++;
+        continue;
+      }
+
       const result = await fetchAuthorFromWikipedia(author.name);
       if (result?.bio) {
         let photo_url: string | null = null;
@@ -50,7 +57,7 @@ export async function POST() {
       }
     }
 
-    return NextResponse.json({ updated, failed, total: authors.length });
+    return NextResponse.json({ updated, failed, skipped, total: authors.length });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
