@@ -18,10 +18,4 @@ export interface Book {
   last_read_at?: string | null;
 }
 
-export interface Author {
-  id: string;
-  name: string;
-  slug: string;
-  bio: string | null;
-  photo_url: string | null;
-}
+

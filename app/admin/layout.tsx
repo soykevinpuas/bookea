@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import {
   BookOpen,
   LayoutDashboard,
-  Package,
   ShoppingCart,
   Users,
   ChevronRight,
@@ -24,7 +23,6 @@ const navItems = [
   { href: "/admin/books", label: "Libros", icon: BookOpen },
   { href: "/admin/orders", label: "Órdenes", icon: ShoppingCart },
   { href: "/admin/users", label: "Usuarios", icon: Users },
-  { href: "/admin/inventory", label: "Inventario", icon: Package },
 ];
 
 export default function AdminLayout({

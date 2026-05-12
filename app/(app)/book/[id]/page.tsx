@@ -12,12 +12,12 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Zap, BookOpen, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2, BookmarkPlus, BookmarkCheck, Coins, ChevronDown, ChevronUp } from "lucide-react";
+import { Zap, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2, BookmarkPlus, BookmarkCheck, Coins, ChevronDown, ChevronUp } from "lucide-react";
 import ReviewForm from "@/components/community/ReviewForm";
 import ReviewList from "@/components/community/ReviewList";
-import { addToLibrary } from "@/lib/books";
 import { addToLibraryAction, removeFromLibraryAction } from "@/lib/actions/library";
 import { createClientClient } from "@/lib/supabase";
+import Book3D from "@/components/Book3D";
 import { CoinRedemptionModal } from "@/components/book/CoinRedemptionModal";
 import BookLoading from "./loading";
 
@@ -59,6 +59,7 @@ function BookDetailContent() {
   // Author data
   const [authorData, setAuthorData] = useState<{ name: string; bio: string | null; photo_url: string | null } | null>(null);
   const [authorOpen, setAuthorOpen] = useState(false);
+  const [otherBooks, setOtherBooks] = useState<{ id: string; title: string; cover_url: string | null }[]>([]);
   useEffect(() => {
     if (!book?.author_id) return;
     const supabase = createClientClient();
@@ -66,6 +67,16 @@ function BookDetailContent() {
       if (data) setAuthorData(data);
     });
   }, [book?.author_id]);
+  useEffect(() => {
+    if (!authorOpen || !book?.author_id) {
+      setOtherBooks([]);
+      return;
+    }
+    const supabase = createClientClient();
+    supabase.from('books').select('id, title, cover_url').eq('author_id', book.author_id).neq('id', book.id).eq('is_active', true).then(({ data }) => {
+      if (data) setOtherBooks(data);
+    });
+  }, [authorOpen, book?.author_id, book?.id]);
 
   // 3.5.6.1 - Estado para descarga offline y biblioteca
   const [isDownloaded, setIsDownloaded] = useState(false);
@@ -415,6 +426,25 @@ function BookDetailContent() {
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-[15]">
                   {authorData.bio}
                 </p>
+              </div>
+            )}
+            {authorOpen && otherBooks.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                  Otros libros del autor
+                </p>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                  {otherBooks.map((ob) => (
+                    <Link key={ob.id} href={`/book/${ob.id}`} className="flex-shrink-0 w-20 group">
+                      <div className="w-20 h-28">
+                        <Book3D src={ob.cover_url || ""} title={ob.title} />
+                      </div>
+                      <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-1.5 line-clamp-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {ob.title}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
           </div>

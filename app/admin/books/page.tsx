@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
   X,
@@ -68,6 +68,10 @@ export default function AdminBooksPage() {
   const [saving, setSaving] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const epubInputRef = useRef<HTMLInputElement>(null);
+  const [authorBio, setAuthorBio] = useState("");
+  const [authorPhotoUrl, setAuthorPhotoUrl] = useState("");
+  const [authorPhotoUploading, setAuthorPhotoUploading] = useState(false);
+  const authorPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const { data: books = [], isLoading } = useQuery({
     queryKey: ["admin-books"],
@@ -86,10 +90,23 @@ export default function AdminBooksPage() {
     queryKey: ["admin-authors"],
     queryFn: async () => {
       const supabase = createClientClient();
-      const { data } = await supabase.from("authors").select("id, name, slug").order("name");
+      const { data } = await supabase.from("authors").select("id, name, slug, bio, photo_url").order("name");
       return data || [];
     },
   });
+
+  useEffect(() => {
+    if (editingBook.author_id) {
+      const author = authors.find(a => a.id === editingBook.author_id);
+      if (author) {
+        setAuthorBio(author.bio || "");
+        setAuthorPhotoUrl(author.photo_url || "");
+      }
+    } else {
+      setAuthorBio("");
+      setAuthorPhotoUrl("");
+    }
+  }, [editingBook.author_id, authors]);
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
@@ -149,6 +166,24 @@ export default function AdminBooksPage() {
     }
   };
 
+  const handleAuthorPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAuthorPhotoUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const uniqueName = `authors/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const publicUrl = await uploadFile(file, "covers", uniqueName);
+      setAuthorPhotoUrl(publicUrl);
+      toast.success("Foto del autor subida");
+    } catch (err: any) {
+      toast.error(`Error al subir foto: ${err.message}`);
+    } finally {
+      setAuthorPhotoUploading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!editingBook.title || !editingBook.author) {
       toast.error("El título y autor son obligatorios.");
@@ -165,7 +200,7 @@ export default function AdminBooksPage() {
         const slug = editingBook.newAuthor.toLowerCase().replace(/ /g, "-").replace(/[^\wáéíóúñ-]/g, "");
         const { data: newAuthor, error: createAuthorError } = await supabase
           .from("authors")
-          .insert({ name: editingBook.newAuthor, slug })
+          .insert({ name: editingBook.newAuthor, slug, bio: authorBio || null, photo_url: authorPhotoUrl || null })
           .select("id")
           .single();
         if (createAuthorError) throw createAuthorError;
@@ -179,6 +214,15 @@ export default function AdminBooksPage() {
           .eq("name", editingBook.author)
           .single();
         if (existing) authorId = existing.id;
+      }
+
+      // Update author bio/photo
+      if (authorId) {
+        const { error: updateAuthorError } = await supabase
+          .from("authors")
+          .update({ bio: authorBio || null, photo_url: authorPhotoUrl || null })
+          .eq("id", authorId);
+        if (updateAuthorError) throw updateAuthorError;
       }
 
       const slug = editingBook.slug || editingBook.title.toLowerCase().replace(/ /g, "-").replace(/[^\w-]/g, "");
@@ -375,6 +419,51 @@ export default function AdminBooksPage() {
                   )}
                 </div>
               </div>
+
+              {/* Author Photo & Bio (only for existing authors) */}
+              {editingBook.author_id && (
+                <div className="col-span-2 space-y-3 p-4 bg-white/5 border border-white/8 rounded-xl">
+                  <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Autor: {editingBook.author}</p>
+
+                  <div>
+                    <label className="text-xs text-white/40 font-medium mb-1.5 block">Foto del autor</label>
+                    <button
+                      type="button"
+                      onClick={() => authorPhotoInputRef.current?.click()}
+                      className="w-full h-24 bg-white/5 border border-dashed border-white/15 rounded-xl flex flex-col items-center justify-center gap-1.5 hover:bg-white/8 hover:border-white/25 transition-all text-white/40 hover:text-white/70"
+                    >
+                      {authorPhotoUploading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : authorPhotoUrl ? (
+                        <img src={authorPhotoUrl} alt={editingBook.author} className="h-full w-full object-cover rounded-xl" />
+                      ) : (
+                        <>
+                          <ImageIcon className="w-5 h-5" />
+                          <span className="text-xs">Subir foto</span>
+                        </>
+                      )}
+                    </button>
+                    <input
+                      ref={authorPhotoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAuthorPhotoUpload}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-white/40 font-medium mb-1.5 block">Biografía del autor</label>
+                    <textarea
+                      value={authorBio}
+                      onChange={(e) => setAuthorBio(e.target.value)}
+                      rows={4}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+                      placeholder="Biografía del autor..."
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Description */}
               <div>
