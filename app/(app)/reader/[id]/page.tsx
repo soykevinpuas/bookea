@@ -488,7 +488,6 @@ export default function ReaderPage() {
           width: "100%",
           height: "100%",
           spread: "none",
-          manager: "continuous",
           flow: "scrolled",
           allowScriptedContent: true,
         });
