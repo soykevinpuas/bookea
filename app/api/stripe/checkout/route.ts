@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
 
     // 7.1.3 - Manejo de suscripción mensual
     if (type === 'subscription') {
+      if (!PRICE_IDS.premium) {
+        return NextResponse.json({ error: 'Precio de suscripción no configurado (STRIPE_SUBSCRIPTION_PRICE_ID)' }, { status: 500 });
+      }
       const session = await createCheckoutSession({
         priceId: PRICE_IDS.premium,
         userId: user.id,

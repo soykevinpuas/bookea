@@ -6,8 +6,7 @@ import { revalidatePath } from 'next/cache'
 
 /**
  * Verifica el ESTADO de un pago después de redirect desde Stripe Checkout.
- * Detecta si fue suscripción o compra de libro(s) y retorna los items.
- * NO muta la base de datos — el webhook de Stripe es el único que escribe.
+ * Si el webhook de Stripe no ha procesado el pago aún, lo procesa como fallback.
  */
 export async function verifySubscriptionAction(sessionId: string) {
   if (!sessionId) return { success: false, error: 'No session ID provided' }
@@ -23,12 +22,14 @@ export async function verifySubscriptionAction(sessionId: string) {
       expand: ['line_items', 'line_items.data.price.product'],
     })
 
+    const userId = user.id
+
     // === SUSCRIPCIÓN ===
     if (session.mode === 'subscription') {
       const { data: userData } = await supabase
         .from('users')
         .select('role')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single()
 
       if (userData?.role === 'subscriber' || userData?.role === 'admin') {
@@ -37,70 +38,108 @@ export async function verifySubscriptionAction(sessionId: string) {
         return { success: true, type: 'subscription' }
       }
 
-      return { success: false, pending: true, error: 'El pago aún se está procesando.' }
+      // Fallback si webhook no ha procesado
+      if (session.payment_status === 'paid') {
+        const endsAt = new Date()
+        endsAt.setDate(endsAt.getDate() + 30)
+        await supabase.from('users').update({
+          role: userData?.role === 'admin' ? 'admin' : 'subscriber',
+          subscription_ends_at: endsAt.toISOString(),
+        }).eq('id', userId)
+
+        revalidatePath('/')
+        revalidatePath('/dashboard')
+        return { success: true, type: 'subscription' }
+      }
+
+      return { success: false, pending: true }
     }
 
-    // === COMPRA DE LIBRO(S) (individual o carrito) ===
-    if (session.mode === 'payment') {
-      const cartItemsStr = session.metadata?.items
+    // === COMPRA DE LIBRO(S) ===
+    if (session.mode === 'payment' && session.payment_status === 'paid') {
+      const itemsStr = session.metadata?.items
 
       // Compra de carrito (múltiples items)
-      if (cartItemsStr) {
-        const items = JSON.parse(cartItemsStr) as { book_id: string; type: string; cart_item_id: string }[]
+      if (itemsStr) {
+        const items: { book_id: string; type: string; cart_item_id: string }[] = JSON.parse(itemsStr)
 
-        // Verificar que el carrito ya fue limpiado (webhook lo procesó)
-        const { data: remaining } = await supabase
-          .from('cart_items')
-          .select('id')
-          .eq('user_id', user.id)
-
-        if (!remaining || remaining.length === 0) {
-          // Obtener nombres de los libros
-          const bookIds = [...new Set(items.map(i => i.book_id))]
-          const { data: books } = await supabase
-            .from('books')
-            .select('id, title')
-            .in('id', bookIds)
-
-          const itemNames = items.map(item => {
-            const book = books?.find(b => b.id === item.book_id)
-            const label = item.type === 'physical' ? 'Físico' : 'Digital'
-            return book ? `${book.title} (${label})` : `Libro (${label})`
-          })
-
-          revalidatePath('/')
-          revalidatePath('/dashboard')
-          return { success: true, type: 'payment', items: itemNames }
+        // Procesar cada item (idempotente — verifica existencia primero)
+        for (const item of items) {
+          if (item.type === 'digital') {
+            const { data: existing } = await supabase
+              .from('user_books')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('book_id', item.book_id)
+              .maybeSingle()
+            if (!existing) {
+              await supabase.from('user_books').insert({
+                user_id: userId, book_id: item.book_id, access_type: 'permanent',
+              })
+            }
+          } else if (item.type === 'physical') {
+            const shippingStr = session.metadata?.shipping
+            let shippingInfo: Record<string, string> | null = null
+            if (shippingStr) try { shippingInfo = JSON.parse(shippingStr) } catch {}
+            const { data: existing } = await supabase
+              .from('orders_physical')
+              .select('id')
+              .eq('stripe_payment_id', session.id)
+              .maybeSingle()
+            if (!existing) {
+              await supabase.from('orders_physical').insert({
+                user_id: userId, book_id: item.book_id, status: 'pending',
+                name: shippingInfo?.name || '', address: shippingInfo?.address || '',
+                city: shippingInfo?.city || '', state: shippingInfo?.state || '',
+                zip: shippingInfo?.zip || '', phone: shippingInfo?.phone || '',
+                shipping_cost: 50, total: 0, stripe_payment_id: session.id,
+              })
+              try { await supabase.rpc('decrement_stock', { p_book_id: item.book_id }) } catch {}
+            }
+          }
         }
+
+        // Limpiar carrito
+        await supabase.from('cart_items').delete().eq('user_id', userId)
+
+        // Obtener nombres de items
+        const bookIds = [...new Set(items.map(i => i.book_id))]
+        const { data: books } = await supabase
+          .from('books').select('id, title').in('id', bookIds)
+        const itemNames = items.map(item => {
+          const book = books?.find(b => b.id === item.book_id)
+          const label = item.type === 'physical' ? 'Físico' : 'Digital'
+          return book ? `${book.title} (${label})` : `Libro (${label})`
+        })
+
+        revalidatePath('/')
+        revalidatePath('/dashboard')
+        return { success: true, type: 'payment', items: itemNames }
       }
 
       // Compra individual (legacy)
       const bookId = session.metadata?.bookId
       if (bookId) {
-        const { data: access } = await supabase
-          .from('user_books')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('book_id', bookId)
+        const { data: existing } = await supabase
+          .from('user_books').select('id')
+          .eq('user_id', userId).eq('book_id', bookId)
           .maybeSingle()
-
-        if (access) {
-          const { data: book } = await supabase
-            .from('books')
-            .select('title')
-            .eq('id', bookId)
-            .single()
-
-          revalidatePath('/')
-          revalidatePath('/dashboard')
-          return { success: true, type: 'payment', items: [book?.title || 'Libro'] }
+        if (!existing) {
+          await supabase.from('user_books').insert({
+            user_id: userId, book_id: bookId, access_type: 'permanent',
+          })
         }
-      }
 
-      return { success: false, pending: true, error: 'El pago aún se está procesando.' }
+        const { data: book } = await supabase
+          .from('books').select('title').eq('id', bookId).single()
+
+        revalidatePath('/')
+        revalidatePath('/dashboard')
+        return { success: true, type: 'payment', items: [book?.title || 'Libro'] }
+      }
     }
 
-    return { success: false, error: 'Tipo de sesión no soportado.' }
+    return { success: false, pending: true }
   } catch (error: unknown) {
     console.error('Error verificando pago:', error)
     const msg = error instanceof Error ? error.message : 'Error desconocido'

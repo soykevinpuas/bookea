@@ -53,6 +53,9 @@ export default function ProfilePage() {
   const [deleteStep, setDeleteStep] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [purchasedBooks, setPurchasedBooks] = useState<any[]>([]);
+  const [purchasedLoading, setPurchasedLoading] = useState(false);
+  const [purchasedOpen, setPurchasedOpen] = useState(false);
   
   const parsedAvatar = useMemo(() => 
     profile?.avatar_url ? parseAvatarConfig(profile.avatar_url) : null,
@@ -171,6 +174,21 @@ export default function ProfilePage() {
       toast.error("Error al guardar avatar");
     }
   };
+
+  // Cargar libros comprados permanentemente
+  useEffect(() => {
+    if (!userId) return;
+    const supabase = createClientClient();
+    setPurchasedLoading(true);
+    supabase.from('user_books')
+      .select('book_id, books(title, cover_url, author)')
+      .eq('user_id', userId)
+      .eq('access_type', 'permanent')
+      .then(({ data }) => {
+        if (data) setPurchasedBooks(data.map((item: any) => item.books));
+        setPurchasedLoading(false);
+      });
+  }, [userId]);
 
   // 3.3.2 - Determinar si el usuario tiene suscripción activa
   const isSubscriber = subscription?.isActive;
@@ -352,6 +370,67 @@ export default function ProfilePage() {
                       Abrir Portal
                     </button>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Libros Comprados */}
+            <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-[2.5rem] p-6 sm:p-8">
+              <button
+                onClick={() => { if (!purchasedLoading) setPurchasedOpen(!purchasedOpen); }}
+                className="w-full flex items-center justify-between gap-3"
+              >
+                <h3 className="text-lg font-black flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-blue-400" />
+                  Libros Comprados
+                  {purchasedBooks.length > 0 && (
+                    <span className="text-xs font-bold text-white/40 bg-white/10 px-2 py-0.5 rounded-full">
+                      {purchasedBooks.length}
+                    </span>
+                  )}
+                </h3>
+                <div className={`transition-transform duration-300 ${purchasedOpen ? 'rotate-180' : ''}`}>
+                  <svg className="w-5 h-5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
+
+              {purchasedOpen && (
+                <div className="mt-4 space-y-2">
+                  {purchasedLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+                    </div>
+                  ) : purchasedBooks.length === 0 ? (
+                    <p className="text-sm text-white/40 text-center py-6">
+                      Aún no has comprado ningún libro.
+                    </p>
+                  ) : (
+                    purchasedBooks.map((book: any) => (
+                      <Link
+                        key={book.id}
+                        href={`/book/${book.id}`}
+                        className="flex items-center gap-3 px-4 py-3 bg-gray-200 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 rounded-xl transition-all group"
+                      >
+                        {book.cover_url ? (
+                          <img src={book.cover_url} alt={book.title} className="w-10 h-14 rounded-lg object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="w-10 h-14 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-xs text-white/30 flex-shrink-0">
+                            {book.title?.charAt(0)}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-500 transition-colors">
+                            {book.title}
+                          </p>
+                          {book.author && (
+                            <p className="text-xs text-gray-500 dark:text-white/40 truncate">{book.author}</p>
+                          )}
+                        </div>
+                      </Link>
+                    ))
+                  )}
                 </div>
               )}
             </div>
