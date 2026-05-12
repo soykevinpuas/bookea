@@ -1,12 +1,12 @@
 'use server'
 
 import { createClient } from '@/lib/server'
-import { getStripeClient } from '@/lib/stripe'
 import { revalidatePath } from 'next/cache'
 
 /**
- * Verifica una sesión de Stripe y actualiza el rol del usuario si el pago fue exitoso.
- * Esto sirve como alternativa automática a los Webhooks.
+ * Verifica el ESTADO de una suscripción después del pago.
+ * NO muta la base de datos — el webhook de Stripe es el único que escribe.
+ * Solo consulta si el webhook ya procesó el pago exitosamente.
  */
 export async function verifySubscriptionAction(sessionId: string) {
   if (!sessionId) return { success: false, error: 'No session ID provided' }
@@ -17,74 +17,19 @@ export async function verifySubscriptionAction(sessionId: string) {
   if (!user) return { success: false, error: 'No autorizado' }
 
   try {
-    const stripe = getStripeClient()
-    
-    const session = await stripe.checkout.sessions.retrieve(sessionId)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
 
-    if (session.payment_status === 'paid') {
-      // Calcular fecha de vencimiento (30 días a partir de hoy)
-      const endsAt = new Date();
-      endsAt.setDate(endsAt.getDate() + 30);
-
-      // Obtener el rol ACTUAL de la tabla users (no de Supabase Auth metadata)
-      const { data: userData } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-      
-      const currentRole = userData?.role || 'free';
-      const newRole = currentRole === 'admin' ? 'admin' : 'subscriber';
-
-      // Actualizar la base de datos
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ 
-          role: newRole,
-          subscription_ends_at: endsAt.toISOString()
-        })
-        .eq('id', user.id)
-
-      if (updateError) throw updateError
-
-      // ASIGNAR CRÉDITOS
-      const { data: existingCredits } = await supabase
-        .from('subscription_credits')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!existingCredits) {
-        await supabase.from('subscription_credits').insert({
-          user_id: user.id,
-          cycle_start: new Date().toISOString().split('T')[0],
-          credits_remaining: 5,
-        });
-      }
-
-      // 7.1.1 - Tracking de analytics: pago completado
-      try {
-        await supabase.rpc('track_event', {
-          event_name: 'payment_completed',
-          event_data: JSON.stringify({ 
-            amount: session.amount_total ? session.amount_total / 100 : 99,
-            currency: session.currency,
-            product: session.mode === 'subscription' ? 'subscription' : 'digital',
-            session_id: sessionId,
-          }),
-          user_email: user.email,
-        })
-      } catch (trackError) {
-        console.warn('[Analytics] Error al trackear pago:', trackError)
-      }
-
+    if (userData?.role === 'subscriber' || userData?.role === 'admin') {
       revalidatePath('/')
       revalidatePath('/dashboard')
-      
       return { success: true }
     }
 
-    return { success: false, error: 'El pago aún no se ha procesado.' }
+    return { success: false, pending: true, error: 'El pago aún se está procesando.' }
   } catch (error: unknown) {
     console.error('Error verificando suscripción:', error)
     const msg = error instanceof Error ? error.message : 'Error desconocido'

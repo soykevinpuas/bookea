@@ -11,7 +11,7 @@ Bookea utiliza **Supabase (PostgreSQL)** como motor de base de datos, aprovechan
 ### 📚 Contenido y Acceso
 - **`public.books`:** El corazón del catálogo. Almacena metadatos, URLs de portadas/EPUBs y precios (digital/físico).
 - **`public.user_books`:** Tabla de unión que gestiona quién tiene acceso a qué libro y bajo qué modalidad (`subscription`, `permanent`, `gift`).
-- **`public.subscription_credits`:** Control de créditos mensuales para suscriptores (ej. 5 libros al mes).
+- ~~**`public.subscription_credits`:**~~ Eliminada en migración 019. El modelo migró a acceso ilimitado por suscripción.
 
 ### 📖 Progreso e Interacción
 - **`public.reading_progress`:** Guarda la posición exacta (CFI) y el porcentaje de lectura por libro/usuario.

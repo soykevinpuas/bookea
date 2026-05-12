@@ -59,15 +59,15 @@ export async function POST(request: NextRequest) {
 
     switch (type) {
       case 'digital_permanent':
-        exactPrice = book.price_digital || 49;
+        exactPrice = book.price_digital || 29;
         descriptionType = 'Digital';
         break;
       case 'physical':
-        exactPrice = book.price_physical || 199;
+        exactPrice = book.price_physical || 299;
         descriptionType = 'Físico';
         break;
       case 'bundle':
-        exactPrice = book.price_bundle || 229;
+        exactPrice = book.price_bundle || 319;
         descriptionType = 'Bundle (Físico + Digital)';
         break;
       default:

@@ -49,8 +49,9 @@ Este documento registra todas las auditorías de código realizadas en el proyec
 #### 🟠 Alto: coin_redemptions INSERT directo desde el cliente
 `013_coins_gamification.sql`: `"Users can insert own redemptions"` permite a usuarios crear canjes directos sin pasar por `redeem_coin` RPC, evadiendo verificación de saldo y anti-abuse.
 
-#### 🟠 Medio: subscription_credits UPDATE sin WITH CHECK
-`001_initial_schema.sql`: Usuarios pueden poner `credits_remaining = 9999` en su propio registro.
+#### ~~🟠 Medio: subscription_credits UPDATE sin WITH CHECK~~ (RESUELTO)
+~~`001_initial_schema.sql`: Usuarios pueden poner `credits_remaining = 9999` en su propio registro.~~
+**Resuelto en migración 019:** La tabla `subscription_credits` fue eliminada (migración a acceso ilimitado).
 
 #### 🟠 Medio: localStorage caching de rol en hasBookAccess
 `lib/books.ts:194-207`: Guarda `bookea-user-role` en localStorage y lo usa para bypass client-side de acceso. Un usuario puede poner `admin` manualmente.

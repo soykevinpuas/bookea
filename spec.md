@@ -19,9 +19,9 @@ El operador (tú) administra el catálogo, inventario físico, órdenes y precio
 |------|-------------|
 | **Visitante** | Sin cuenta. Puede ver catálogo y leer descripción de libros |
 | **Usuario Free** | Con cuenta gratuita. Acceso limitado |
-| **Usuario Suscrito** | Paga $99 MXN por 5 créditos. Elige 5 libros por ciclo |
+| **Usuario Suscrito** | Paga $99 MXN/mes. Acceso ilimitado a todo el catálogo digital |
 | **Usuario con compra permanente** | Pagó por un título. Acceso de por vida a ese título |
-| **Admin** | Tú. Acceso total al panel de gestión y asignación manual de créditos |
+| **Admin** | Tú. Acceso total al panel de gestión |
 
 ---
 
@@ -32,15 +32,14 @@ El operador (tú) administra el catálogo, inventario físico, órdenes y precio
 | Plan | Precio | Beneficio |
 |------|--------|-----------|
 | **Free** | $0 | Vista previa de X% de cada libro |
-| **Pack 5 Créditos** | $99 MXN | Canjea por 5 libros (1 cada uno). Acceso por 30 días por libro |
+| **Premium Mensual** | $99 MXN/mes | Acceso ilimitado a todo el catálogo digital |
 | **Compra permanente** | $49 MXN (aprox) | Acceso de por vida al título. Sin descarga |
 | **Libro físico** | $199–$249 MXN | Orden de envío a domicilio. Envío aparte |
 
-### 3.2 Lógica de Créditos
-- El sistema utiliza **Créditos** como moneda interna para suscripciones.
-- **1 Crédito = 1 Libro por 30 días.**
-- Al canjear un crédito, el libro se añade a `user_books` con una fecha de expiración de 30 días.
-- El usuario puede comprar paquetes de créditos vía Stripe.
+### 3.2 Lógica de Suscripción
+- La suscripción premium da **acceso ilimitado** a todo el catálogo digital.
+- Stripe maneja la recurrencia mensual ($99 MXN/mes).
+- Al suscribirse, Stripe activa el rol `subscriber` mediante webhook.
 
 ### 3.3 Pagos con Stripe
 - **Pasarela:** Stripe Checkout (suscripciones + pagos únicos)
@@ -163,8 +162,7 @@ user_books (acceso)
   user_id, book_id, access_type (subscription/permanent/gift),
   expires_at (null si es permanente)
 
-subscription_credits
-  user_id, cycle_start, books_selected[], credits_remaining
+-- subscription_credits (eliminada en migración 019)
 
 reading_progress
   user_id, book_id, cfi_position, percent_complete, last_read_at

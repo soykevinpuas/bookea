@@ -44,40 +44,17 @@ export async function POST(request: NextRequest) {
 
         // 7.2.2.1 - Procesar suscripción mensual
         if (session.mode === 'subscription') {
-          // Actualizar rol a suscriptor
+          const endsAt = new Date();
+          endsAt.setDate(endsAt.getDate() + 30);
+
           const { error: roleError } = await supabase
             .from('users')
-            .update({ role: 'subscriber' })
+            .update({ role: 'subscriber', subscription_ends_at: endsAt.toISOString() })
             .eq('id', userId);
 
           if (roleError) {
             console.error('Error actualizando rol a suscriptor:', roleError);
             return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
-          }
-
-          // Crear créditos de suscripción (5 libros/mes)
-          const { data: existingSub, error: selectError } = await supabase
-            .from('subscription_credits')
-            .select('*')
-            .eq('user_id', userId)
-            .single();
-
-          if (selectError && selectError.code !== 'PGRST116') {
-            console.error('Error verificando créditos existentes:', selectError);
-            return NextResponse.json({ error: 'Database query failed' }, { status: 500 });
-          }
-
-          if (!existingSub) {
-            const { error: insertCreditsError } = await supabase.from('subscription_credits').insert({
-              user_id: userId,
-              cycle_start: new Date().toISOString().split('T')[0],
-              credits_remaining: 5,
-            });
-
-            if (insertCreditsError) {
-              console.error('Error insertando créditos:', insertCreditsError);
-              return NextResponse.json({ error: 'Database insert failed' }, { status: 500 });
-            }
           }
         }
 

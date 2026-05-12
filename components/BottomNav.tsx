@@ -75,7 +75,7 @@ export function BottomNav() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="fixed bottom-0 left-0 right-0 z-[60] flex justify-center pb-safe px-4"
+          className="fixed bottom-0 left-0 right-0 z-[60] flex justify-center pb-safe px-4 md:hidden"
         >
           <div className="mb-4 mx-auto max-w-sm bg-white/70 dark:bg-black/80 retro:bg-[#0d1117]/90 navy:bg-[#0a0f1e]/90 backdrop-blur-xl border border-black/5 dark:border-white/10 retro:border-[#3fb950]/30 navy:border-[#7986cb]/30 rounded-2xl shadow-2xl flex items-center justify-around py-3 px-2">
             {navItems.map((item) => {

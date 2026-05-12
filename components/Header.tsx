@@ -10,10 +10,11 @@ import { UserMenu } from "./UserMenu";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useProfile } from "@/hooks/useAvatars";
 import { useCoins } from "@/hooks/useCoins";
-import { Zap, Loader2, Coins, Circle } from "lucide-react";
+import { Zap, Loader2, Coins, Circle, ShoppingCart } from "lucide-react";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { AnimalEngine } from "./avatars/AnimalEngine";
 import { CoinBalanceDisplay } from "@/components/ui/CoinBalance";
+import { useCartStore } from "@/stores/cart";
 
 // ============================================
 // 6.1 - Header: Barra de navegación global de la aplicación
@@ -40,6 +41,8 @@ export function Header({ initialUser = null }: HeaderProps) {
   const { data: subscription } = useSubscription(user?.id);
   const { profile } = useProfile(user?.id);
   const { data: coinsBalance } = useCoins(user?.id);
+  const cartItems = useCartStore((s) => s.items);
+  const toggleCart = useCartStore((s) => s.toggleCart);
 
   // 6.1.2a - Cuando el RSC del layout se re-ejecuta (por router.refresh()),
   // el prop `initialUser` cambia — este efecto lo sincroniza al state local.
@@ -92,29 +95,51 @@ export function Header({ initialUser = null }: HeaderProps) {
         </Link>
         
         {/* 6.1.4.2 - Navegación principal */}
-         <nav className="flex items-center gap-2 sm:gap-6">
-           {isOnline && (
-             <PrefetchLink 
-               href="/catalog"
-               className={`text-[10px] sm:text-xs font-black px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all shadow-sm transform hover:-translate-y-0.5 hidden sm:block uppercase tracking-wider border ${
-                 subscription?.isActive 
-                 ? "bg-white dark:bg-[#151515] border-gray-200 dark:border-white/5 text-gray-900 dark:text-white"
-                 : "bg-blue-600 hover:bg-blue-500 border-transparent text-white"
-               }`}
-             >
-               Catálogo
-             </PrefetchLink>
-           )}
-          
-          {/* Toggle de tema claro/oscuro */}
-          <ThemeToggle />
+          <nav className="flex items-center gap-2 sm:gap-6">
+            {isOnline && (
+              <PrefetchLink 
+                href="/catalog"
+                className={`text-[10px] sm:text-xs font-black px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all shadow-sm transform hover:-translate-y-0.5 hidden sm:block uppercase tracking-wider border ${
+                  subscription?.isActive 
+                  ? "bg-white dark:bg-[#151515] border-gray-200 dark:border-white/5 text-gray-900 dark:text-white"
+                  : "bg-blue-600 hover:bg-blue-500 border-transparent text-white"
+                }`}
+              >
+                Catálogo
+              </PrefetchLink>
+            )}
+
+            {user && (
+              <Link
+                href="/dashboard"
+                className="text-[10px] sm:text-xs font-black px-3 py-1.5 rounded-full transition-all uppercase tracking-wider hidden sm:block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                Mi Biblioteca
+              </Link>
+            )}
+           
+           {/* Toggle de tema claro/oscuro */}
+           <ThemeToggle />
 
           {/* 6.1.4.3 - Menú de autenticación condicional */}
            {!isLoading && (
              user ? (
-               // Usuario autenticado: mostrar monedas, premium, avatar y menú de usuario
-               <div className="flex items-center gap-3">
-                 {/* Botón de monedas con dropdown */}
+                // Usuario autenticado: mostrar carrito, monedas, premium, avatar y menú de usuario
+                <div className="flex items-center gap-3">
+                  {/* Botón de carrito */}
+                  <button
+                    onClick={toggleCart}
+                    className="relative p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    aria-label="Carrito"
+                  >
+                    <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+                    {cartItems.length > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-blue-600 text-white text-[8px] sm:text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                        {cartItems.length}
+                      </span>
+                    )}
+                  </button>
+                  {/* Botón de monedas con dropdown */}
                  <div className="relative">
                    <button
                      onClick={() => setShowCoins(!showCoins)}

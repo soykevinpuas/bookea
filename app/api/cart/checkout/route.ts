@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
     for (const item of cartItems) {
       const book = item.books as any
-      const price = item.type === 'digital' ? (book.price_digital || 29) : (book.price_physical || 349)
+      const price = item.type === 'digital' ? (book.price_digital || 29) : (book.price_physical || 299)
 
       if (item.type === 'physical') {
         hasPhysical = true

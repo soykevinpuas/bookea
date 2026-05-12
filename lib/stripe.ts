@@ -11,7 +11,7 @@ let stripeInstance: Stripe | null = null;
  * Garantiza que las variables de entorno estén cargadas antes de la inicialización.
  */
 export function getStripeClient() {
-  const secretKey = process.env.STRIPE_SECRET_KEY_V2 || process.env.STRIPE_SECRET_KEY;
+  const secretKey = process.env.STRIPE_SECRET_KEY;
   
   if (!secretKey) {
     throw new Error("STRIPE_SECRET_KEY no está configurada");
@@ -38,12 +38,9 @@ export const stripe = new Proxy({} as Stripe, {
   }
 });
 
-// 6.7.2 - Mapeo de IDs de precios de Stripe (desde variables de entorno)
+// 6.7.2 - ID del precio de suscripción mensual en Stripe (desde variable de entorno)
 export const PRICE_IDS = {
   premium: process.env.STRIPE_SUBSCRIPTION_PRICE_ID,
-  digital_permanent: process.env.STRIPE_DIGITAL_PERMANENT_PRICE_ID,
-  physical_basic: process.env.STRIPE_PHYSICAL_PRICE_ID,
-  bundle: process.env.STRIPE_BUNDLE_PRICE_ID,
 };
 
 // 6.7.3 - Función para crear sesión de checkout de Stripe

@@ -41,7 +41,7 @@ export default function BuyPhysicalPage() {
       zip: formData.get("zip"),
       phone: formData.get("phone"),
       shipping_cost: 50,
-      total: (book?.price_physical || 199) + 50,
+      total: (book?.price_physical || 299) + 50,
     };
 
     const baseUrl = window.location.origin;

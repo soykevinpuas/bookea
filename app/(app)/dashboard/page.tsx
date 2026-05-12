@@ -37,35 +37,54 @@ function DashboardContent() {
     track('page_view', { page: 'dashboard' }).catch(console.warn);
   }, []);
 
-  // Detectar éxito de pago y verificar automáticamente
+  // Detectar éxito de pago y verificar (polling hasta que el webhook procese)
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
     const paymentStatus = searchParams.get('payment');
 
     if (paymentStatus === 'success' && sessionId) {
-      const verify = async () => {
-        const id = toast.loading("Sincronizando suscripción...");
+      let attempts = 0;
+      const maxAttempts = 15; // 30 segundos máximo
+      let toastId: string | number = "";
+
+      const poll = async () => {
+        if (attempts === 0) {
+          toastId = toast.loading("Procesando tu pago...");
+        }
+
         try {
           const result = await verifySubscriptionAction(sessionId);
+
           if (result.success) {
             toast.success("¡Bienvenido a Bookea Premium!", {
-              id,
+              id: toastId,
               description: "Tu suscripción se ha activado correctamente. Ya puedes disfrutar de todo el catálogo.",
               icon: <Sparkles className="w-5 h-5 text-amber-500" />,
               duration: 8000,
             });
             setTimeout(() => {
-              const newPath = window.location.pathname;
-              window.history.replaceState({}, '', newPath);
+              window.history.replaceState({}, '', window.location.pathname);
             }, 2000);
-          } else {
-            toast.error("Hubo un problema al sincronizar", { id, description: result.error });
+            return;
           }
-        } catch (e) {
-          toast.error("Error de conexión", { id });
+
+          if ((result as any).pending && attempts < maxAttempts) {
+            attempts++;
+            toast.loading("Sincronizando suscripción...", { id: toastId });
+            setTimeout(poll, 2000);
+            return;
+          }
+
+          toast.error("Hubo un problema al sincronizar", {
+            id: toastId,
+            description: "Intenta recargar la página o contacta a soporte.",
+          });
+        } catch {
+          toast.error("Error de conexión", { id: toastId });
         }
       };
-      verify();
+
+      poll();
     }
   }, [searchParams]);
 
