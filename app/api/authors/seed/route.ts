@@ -8,16 +8,20 @@ export async function POST() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-    const { data: roleData } = await supabase.rpc('get_my_role');
-    if (roleData !== 'admin') return NextResponse.json({ error: 'Se requiere admin' }, { status: 403 });
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    if (userData?.role !== 'admin') return NextResponse.json({ error: 'Se requiere admin' }, { status: 403 });
 
     const { data: authors, error } = await supabase
       .from('authors')
-      .select('id, name')
-      .is('bio', null);
+      .select('id, name, photo_url')
+      .or('bio.is.null,bio.eq.""');
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    if (!authors?.length) return NextResponse.json({ message: 'Todos los autores ya tienen bio' });
+    if (!authors?.length) return NextResponse.json({ updated: 0, failed: 0, message: 'Todos los autores ya tienen bio' });
 
     let updated = 0;
     let failed = 0;
