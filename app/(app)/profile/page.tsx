@@ -56,16 +56,20 @@ export default function ProfilePage() {
   const [purchasedBooks, setPurchasedBooks] = useState<any[]>([]);
   const [purchasedLoading, setPurchasedLoading] = useState(false);
   const [purchasedOpen, setPurchasedOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  
+  useEffect(() => {
+    if (!userId) return;
+    const supabase = createClientClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.email) setUserEmail(data.user.email);
+    });
+  }, [userId]);
   
   const parsedAvatar = useMemo(() => 
     profile?.avatar_url ? parseAvatarConfig(profile.avatar_url) : null,
     [profile?.avatar_url]
   );
-  
-  // Usar el email del subscription (ya viene de users)
-  const dbUser = subscription ? { 
-    email: profile?.name ? undefined : userId // El email viene por otro lado
-  } : null;
 
   useEffect(() => {
     if (profile?.name) {
@@ -260,8 +264,8 @@ export default function ProfilePage() {
                         size="100%" 
                       />
                    ) : (
-                    <div className={`w-full h-full flex items-center justify-center ${primaryBgClass} text-4xl font-black`}>
-                      {dbUser?.email?.charAt(0) || "U"}
+                     <div className={`w-full h-full flex items-center justify-center ${primaryBgClass} text-4xl font-black`}>
+                      {(profile?.name || userEmail || "U").charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
@@ -291,13 +295,20 @@ export default function ProfilePage() {
                   </div>
                 </div>
               ) : (
-                <h2 onClick={() => setIsEditingName(true)} className={`font-black text-2xl mb-1 truncate cursor-pointer hover:text-${primaryColor}-500 transition-colors flex items-center justify-center gap-2 group-hover:translate-y-[-2px]`}>
-                  {profile?.name || dbUser?.email?.split('@')[0]}
+                <>
+                <h2 onClick={() => { setTempName(profile?.name || ''); setIsEditingName(true); }} className={`font-black text-2xl mb-1 truncate cursor-pointer hover:text-${primaryColor}-500 transition-colors flex items-center justify-center gap-2 group-hover:translate-y-[-2px]`}>
+                  {profile?.name || (userEmail ? userEmail.split('@')[0] : 'Agrega tu nombre')}
                   <Settings className="w-4 h-4 opacity-0 group-hover:opacity-40 transition-opacity" />
                 </h2>
+                {!profile?.name && (
+                  <p className="text-[10px] text-gray-400 dark:text-white/30 text-center -mt-1 mb-3 cursor-pointer hover:text-gray-300 dark:hover:text-white/50 transition-colors" onClick={() => { setTempName(''); setIsEditingName(true); }}>
+                    Toca aquí para agregar tu apodo o nombre
+                  </p>
+                )}
+                </>
               )}
               
-               <p className="text-xs text-gray-400 dark:text-white/30 truncate mb-4 px-4">{dbUser?.email}</p>
+               <p className="text-xs text-gray-400 dark:text-white/30 truncate mb-4 px-4">{userEmail || ''}</p>
 
               {/* Mini stats: racha + libros leídos + monedas */}
               <div className="grid grid-cols-3 gap-2 px-4 mb-6">

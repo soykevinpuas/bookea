@@ -63,21 +63,48 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 export async function updateProfileAvatar(userId: string, avatarConfig: string): Promise<boolean> {
   const supabase = createClientClient();
-  
-  const { error } = await supabase
+
+  const { data: existing } = await supabase
     .from("profiles")
-    .update({ avatar_url: avatarConfig, updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  let error;
+  if (existing) {
+    ({ error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: avatarConfig, updated_at: new Date().toISOString() })
+      .eq('user_id', userId));
+  } else {
+    ({ error } = await supabase
+      .from("profiles")
+      .insert({ user_id: userId, avatar_url: avatarConfig, updated_at: new Date().toISOString() }));
+  }
 
   return !error;
 }
 
 export async function updateProfileName(userId: string, name: string): Promise<boolean> {
   const supabase = createClientClient();
-  const { error } = await supabase
+
+  const { data: existing } = await supabase
     .from("profiles")
-    .update({ name, updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  let error;
+  if (existing) {
+    ({ error } = await supabase
+      .from("profiles")
+      .update({ name, updated_at: new Date().toISOString() })
+      .eq('user_id', userId));
+  } else {
+    ({ error } = await supabase
+      .from("profiles")
+      .insert({ user_id: userId, name, updated_at: new Date().toISOString() }));
+  }
 
   return !error;
 }
