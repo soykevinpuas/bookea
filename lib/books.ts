@@ -146,6 +146,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
           ...book, 
           last_read_at: finalLastRead,
           percent_complete: finalPercent,
+          access_type: item.access_type,
           isOfflineReady
         };
       })

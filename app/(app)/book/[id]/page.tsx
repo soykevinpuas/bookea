@@ -34,14 +34,6 @@ function BookDetailContent() {
   // 3.5.3 - Estado local para manejar estados de carga en operaciones asíncronas
   const [loading, setLoading] = useState<string | null>(null);
 
-  // 3.5.4 - Efecto para detectar retorno de pago exitoso desde Stripe
-  useEffect(() => {
-    if (searchParams.get('payment') === 'success') {
-      toast.success("¡Pago completado con éxito! El libro se está añadiendo a tu biblioteca.");
-      router.replace(`/book/${id}`);
-    }
-  }, [searchParams, id, router]);
-
   // 3.5.5 - Consulta del libro por ID y verificación de acceso del usuario
   const { data: book, isLoading, error } = useBook(id);
   const { data: userBooks, refetch } = useUserBooks(userId);
@@ -52,9 +44,20 @@ function BookDetailContent() {
   const [showCoinModal, setShowCoinModal] = useState(false);
 
   // 3.5.6 - Determinación del tipo de acceso
-  const isPremiumBook = book?.is_premium !== false; // Por defecto es premium si no se especifica
+  const isPremiumBook = book?.is_premium !== false;
   const hasPremiumAccess = subscription?.isActive || subscription?.role === 'admin';
-  const canRead = !isPremiumBook || hasPremiumAccess;
+  const ownedBook = userBooks?.find((b: any) => b.id.toLowerCase() === id.toLowerCase());
+  const hasPermanentAccess = ownedBook?.access_type === 'permanent' || ownedBook?.access_type === 'gift';
+  const canRead = !isPremiumBook || hasPremiumAccess || hasPermanentAccess;
+
+  // 3.5.4 - Efecto para detectar retorno de pago exitoso desde Stripe
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      toast.success("¡Pago completado con éxito! El libro se está añadiendo a tu biblioteca.");
+      refetch();
+      router.replace(`/book/${id}`);
+    }
+  }, [searchParams, id, router, refetch]);
 
   // Author data
   const [authorData, setAuthorData] = useState<{ name: string; bio: string | null; photo_url: string | null } | null>(null);

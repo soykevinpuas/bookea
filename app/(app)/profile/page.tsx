@@ -175,17 +175,47 @@ export default function ProfilePage() {
     }
   };
 
-  // Cargar libros comprados permanentemente
+  // Cargar libros comprados (digitales + físicos) con sellos
   useEffect(() => {
     if (!userId) return;
     const supabase = createClientClient();
     setPurchasedLoading(true);
+
     supabase.from('user_books')
-      .select('book_id, books(title, cover_url, author)')
+      .select('book_id, books!inner(id, title, cover_url, author)')
       .eq('user_id', userId)
       .eq('access_type', 'permanent')
-      .then(({ data }) => {
-        if (data) setPurchasedBooks(data.map((item: any) => item.books));
+      .then(async ({ data: digitalData }) => {
+        const bookMap = new Map<string, any>();
+
+        (digitalData || []).forEach((item: any) => {
+          const book = item.books;
+          if (book?.id) bookMap.set(book.id, { ...book, types: ['digital'] });
+        });
+
+        // Fetch physical orders separately
+        const { data: physicalOrders } = await supabase
+          .from('orders_physical')
+          .select('book_id')
+          .eq('user_id', userId);
+
+        const physicalBookIds = [...new Set((physicalOrders || []).map((o: any) => o.book_id))];
+        if (physicalBookIds.length > 0) {
+          const { data: physicalBooks } = await supabase
+            .from('books')
+            .select('id, title, cover_url, author')
+            .in('id', physicalBookIds);
+
+          (physicalBooks || []).forEach((book: any) => {
+            if (bookMap.has(book.id)) {
+              bookMap.get(book.id).types.push('physical');
+            } else {
+              bookMap.set(book.id, { ...book, types: ['physical'] });
+            }
+          });
+        }
+
+        setPurchasedBooks(Array.from(bookMap.values()));
         setPurchasedLoading(false);
       });
   }, [userId]);
@@ -427,6 +457,18 @@ export default function ProfilePage() {
                           {book.author && (
                             <p className="text-xs text-gray-500 dark:text-white/40 truncate">{book.author}</p>
                           )}
+                          <div className="flex gap-1 mt-1">
+                            {book.types?.includes('digital') && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">
+                                Digital
+                              </span>
+                            )}
+                            {book.types?.includes('physical') && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+                                Físico
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </Link>
                     ))

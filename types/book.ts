@@ -16,6 +16,7 @@ export interface Book {
   created_at: string;
   percent_complete?: number;
   last_read_at?: string | null;
+  access_type?: string | null;
 }
 
 

@@ -1024,3 +1024,55 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 - **Antes:** `text-[10px] sm:text-sm font-medium ... px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl`
 - **Después:** `text-[10px] sm:text-xs font-bold ... px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg whitespace-nowrap`
 - El botón "Ver detalles" ahora tiene el mismo padding, tamaño de fuente y border-radius que los botones de acción, eliminando el desbalance visual cuando ambos stocks están presentes. Se mantiene el color azul para distinguirlo funcionalmente.
+
+---
+
+## [2026-05-12] — Acceso a Libros Comprados, Catálogo Inteligente y Perfil Unificado
+
+### Problemas
+1. **Book Detail — Acceso denegado a dueños permanentes:** Usuarios que compraron un libro digitalmente pero no tienen Premium veían "Activar Premium" en vez de "Abrir Lector". `canRead` solo verificaba suscripción, ignoraba `user_books.access_type = 'permanent'`.
+2. **Catálogo — Botón Digital visible siempre:** Libros ya adquiridos digitalmente seguían mostrando el botón "Digital $29" para comprar de nuevo.
+3. **Carrito no se limpiaba en cliente:** `verifySubscriptionAction` borraba los items de la DB, pero el store de Zustand en memoria seguía mostrando el badge del Header con items viejos.
+4. **Perfil — Libros Comprados incompleto:** Solo mostraba digitales (de `user_books`), ignoraba físicos (de `orders_physical`). Sin badges de tipo.
+
+### Cambios
+
+**1. `lib/books.ts` + `types/book.ts`:**
+- `getUserBooks` ahora incluye `access_type` en el objeto retornado (antes solo devolvía campos de `books` + progreso)
+- La interfaz `Book` ahora tiene `access_type?: string | null`
+
+**2. `app/(app)/book/[id]/page.tsx`:**
+- `canRead` ahora incluye `hasPermanentAccess` (checa `access_type === 'permanent'` en `userBooks`)
+- Usuarios con compra permanente ven "Listo para leer" + "Abrir Lector" aunque no tengan Premium
+- Movido `useUserBooks` antes del `useEffect` de `payment=success` para evitar temporal dead zone
+- `payment=success` ahora hace `refetch()` para refrescar datos
+
+**3. `app/(app)/catalog/page.tsx`:**
+- Agregados `useUserId` y `useUserBooks` para detectar ownership
+- Derivado `ownedDigitalIds: Set<bookId>` de libros con `access_type === 'permanent'`
+- Libros ya adquiridos digitalmente: botón "Digital $XX" reemplazado por badge verde "Adquirido"
+- Botón "Físico $XX" se mantiene siempre (se pueden comprar múltiples copias físicas)
+- Badge "Adquirido" usa `CheckCircle2` icon y estilo `bg-green-600/15 text-green-500 border-green-500/30`
+
+**4. `app/(app)/dashboard/page.tsx`:**
+- Agregados `useQueryClient` y `useCartStore`
+- Después de `verifySubscriptionAction` exitoso: `clearCart()` (Zustand) + `invalidateQueries(['userBooks'])` (React Query)
+- Header badge del carrito se resetea a 0, biblioteca se refresca al instante
+
+**5. `app/(app)/profile/page.tsx`:**
+- "Libros Comprados" ahora consulta AMBAS tablas: `user_books` (digital permanent) + `orders_physical` (físicos)
+- Merge por `book_id` usando un Map — cada libro aparece una vez
+- Badges por tipo: `[Digital]` (azul) y/o `[Físico]` (ámbar), ambos si el usuario compró ambas versiones
+- Consulta separada a `orders_physical` para evitar problemas de foreign key
+
+**6. `spec.md`:**
+- Pricing actualizado: digital=$29, físico=$299, bundle=$319, envío=$50
+
+### Archivos Modificados
+- `lib/books.ts` — access_type en return de getUserBooks
+- `types/book.ts` — access_type en interfaz Book
+- `app/(app)/book/[id]/page.tsx` — canRead con permanent access
+- `app/(app)/catalog/page.tsx` — ownedDigitalIds, badge Adquirido
+- `app/(app)/dashboard/page.tsx` — clearCart + invalidate on success
+- `app/(app)/profile/page.tsx` — merge físicos+digitales con badges
+- `spec.md` — pricing table

@@ -1,6 +1,7 @@
 "use client";
 
-import { useBooks } from "@/hooks/useBooks";
+import { useBooks, useUserBooks } from "@/hooks/useBooks";
+import { useUserId } from "@/hooks/useUser";
 import Book3D from "@/components/Book3D";
 import CatalogBookCard from "@/components/CatalogBookCard";
 import { SearchFilters } from "@/components/SearchFilters";
@@ -9,7 +10,7 @@ import { CatalogSkeleton, PrefetchLink } from "@/components/ui/LoadingStates";
 import { useMemo, useState, Suspense, useCallback } from "react";
 import { Book } from "@/types/book";
 import { useCartStore } from "@/stores/cart";
-import { ShoppingCart, Loader2 } from "lucide-react";
+import { ShoppingCart, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 // 3.1 - CatalogContent: Lógica interna del catálogo con React Query para velocidad SPA
@@ -18,7 +19,13 @@ function CatalogContent() {
   const router = useRouter();
   const { addItem } = useCartStore();
   const [adding, setAdding] = useState<string | null>(null);
-  
+  const { userId } = useUserId();
+  const { data: userBooks } = useUserBooks(userId || '');
+  const ownedDigitalIds = useMemo(() => {
+    if (!userBooks) return new Set<string>();
+    return new Set(userBooks.filter((b: any) => b.access_type === 'permanent').map((b: any) => b.id));
+  }, [userBooks]);
+
   const search = searchParams.get("search") || "";
   const author = searchParams.get("author") || "";
   const category = searchParams.get("category") || "all";
@@ -198,7 +205,11 @@ function CatalogContent() {
 
                   <div className={`flex ${view === "list" ? "items-start" : "items-center"} justify-between ${view === "list" ? "mt-1 sm:mt-4" : "mt-auto pt-4 border-t border-gray-100 dark:border-white/5"}`}>
                     <div className="flex flex-wrap gap-1">
-                      {book.price_digital > 0 && (
+                      {book.price_digital > 0 && (ownedDigitalIds.has(book.id) ? (
+                        <span className="text-[10px] sm:text-xs font-bold bg-green-600/15 text-green-500 border border-green-500/30 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg flex items-center gap-1 whitespace-nowrap">
+                          <CheckCircle2 className="w-3 h-3" /> Adquirido
+                        </span>
+                      ) : (
                         <button
                           onClick={() => handleAddToCart(book, 'digital')}
                           disabled={adding === `${book.id}-digital`}
@@ -207,7 +218,7 @@ function CatalogContent() {
                           {adding === `${book.id}-digital` ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShoppingCart className="w-3 h-3" />}
                           Digital ${book.price_digital}
                         </button>
-                      )}
+                      ))}
                       {book.price_physical > 0 && book.stock_physical > 0 && (
                         <button
                           onClick={() => handleAddToCart(book, 'physical')}

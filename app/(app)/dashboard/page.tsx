@@ -16,6 +16,8 @@ import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { verifySubscriptionAction } from "@/lib/actions/subscriptions";
 import { track } from "@/lib/analytics";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCartStore } from "@/stores/cart";
 import { DashboardSkeleton } from "@/components/ui/LoadingStates";
 
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
@@ -31,6 +33,8 @@ function DashboardContent() {
   const [view, setView] = useState<"grid" | "list" | "compact">("grid");
   const [showGenres, setShowGenres] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+
+  const queryClient = useQueryClient();
 
   // 3.4.1 - Tracking de analytics: visita a dashboard
   useEffect(() => {
@@ -55,7 +59,7 @@ function DashboardContent() {
         try {
           const result: any = await verifySubscriptionAction(sessionId);
 
-          if (result.success) {
+            if (result.success) {
             if (result.type === 'subscription') {
               toast.success("¡Bienvenido a Bookea Premium!", {
                 id: toastId,
@@ -70,6 +74,8 @@ function DashboardContent() {
                 duration: 6000,
               });
             }
+            useCartStore.getState().clearCart();
+            queryClient.invalidateQueries({ queryKey: ['userBooks', userId] });
             setTimeout(() => {
               window.history.replaceState({}, '', window.location.pathname);
             }, 2000);

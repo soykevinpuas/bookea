@@ -33,8 +33,9 @@ El operador (tú) administra el catálogo, inventario físico, órdenes y precio
 |------|--------|-----------|
 | **Free** | $0 | Vista previa de X% de cada libro |
 | **Premium Mensual** | $99 MXN/mes | Acceso ilimitado a todo el catálogo digital |
-| **Compra permanente** | $49 MXN (aprox) | Acceso de por vida al título. Sin descarga |
-| **Libro físico** | $199–$249 MXN | Orden de envío a domicilio. Envío aparte |
+| **Compra permanente (digital)** | $29 MXN | Acceso de por vida al título. Lectura online + offline |
+| **Libro físico** | $299 MXN | Orden de envío a domicilio. Envío $50 MXN aparte |
+| **Bundle (físico + digital)** | $319 MXN | Ambas versiones, envío incluido |
 
 ### 3.2 Lógica de Suscripción
 - La suscripción premium da **acceso ilimitado** a todo el catálogo digital.
