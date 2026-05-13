@@ -15,26 +15,10 @@ export function useProfile(userId: string | undefined) {
     queryKey: ["profile", userId],
     queryFn: async () => {
       const data = await getProfile(userId!);
-      if (data && typeof window !== 'undefined') {
-        localStorage.setItem(`bookea-profile-${userId}`, JSON.stringify(data));
-      }
       return data;
     },
-    initialData: () => {
-      if (typeof window !== 'undefined' && userId) {
-        const cached = localStorage.getItem(`bookea-profile-${userId}`);
-        if (cached) {
-          try {
-            return JSON.parse(cached);
-          } catch (e) {
-            return undefined;
-          }
-        }
-      }
-      return undefined;
-    },
     enabled: !!userId,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 0,
   });
 
   // 6.3.2 - Mutación para actualizar el avatar

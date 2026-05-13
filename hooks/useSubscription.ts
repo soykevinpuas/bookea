@@ -54,29 +54,10 @@ export function useSubscription(userId: string | undefined) {
         daysRemaining
       };
 
-      // 2.3 - Cache local para reconocimiento instantáneo en el próximo inicio
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`bookea-sub-${userId}`, JSON.stringify(subscription));
-      }
-
       return subscription;
     },
-    initialData: () => {
-      if (typeof window !== 'undefined' && userId) {
-        const cached = localStorage.getItem(`bookea-sub-${userId}`);
-        if (cached) {
-          try {
-            return JSON.parse(cached);
-          } catch (e) {
-            return undefined;
-          }
-        }
-      }
-      return undefined;
-    },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 0,
   });
 
   return query;
