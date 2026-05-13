@@ -1079,6 +1079,32 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 
 ---
 
+## [2026-05-13-B] — Fix webhook RLS + offline mode restore + toast con botón a biblioteca
+
+### Cambios
+
+**1. `app/api/stripe/webhook/route.ts` — Fix crítico: webhook no podía escribir en DB**
+- **Problema:** Stripe envía webhooks sin cookies de usuario (es servidor-a-servidor). `createClient()` creaba un cliente Supabase sin autenticación, y RLS bloqueaba todos los writes (UPDATE users, INSERT user_books, etc.).
+- **Solución:** Cambiado a `createAdminClient()` (service_role key) que bypass RLS. La seguridad está en la verificación de firma criptográfica de Stripe (línea 20-25) — solo Stripe puede firmar eventos válidos.
+
+**2. `hooks/useUser.ts`, `hooks/useSubscription.ts`, `hooks/useAvatars.ts` — Offline mode restore**
+- **Problema:** En el commit anterior se quitó `initialData` de localStorage para arreglar stale data post-login (`staleTime: 5min → 0`), pero esto rompió el modo offline.
+- **Solución:** Se restauró `initialData` desde localStorage PERO con `staleTime: 0` + `onAuthStateChange` listener. Así en online siempre refetchea fresco, y en offline muestra datos cacheados al instante.
+- `useSubscription.ts` adicionalmente ya no hace `throw error` en 406 (usuario sin row en `users` table) — retorna `DEFAULT_FREE` silenciosamente.
+
+**3. `app/(app)/dashboard/page.tsx` — Botón "Ir a mi biblioteca" en toasts de pago**
+- Agregado `action` button en toasts de `toast.success("¡Compra completada!")` y `toast.success("¡Bienvenido a Bookea Premium!")`
+- Al hacer clic navega a `/dashboard` donde están los libros comprados
+
+### Archivos Modificados
+- `app/api/stripe/webhook/route.ts` — createClient → createAdminClient
+- `hooks/useUser.ts` — initialData desde localStorage
+- `hooks/useSubscription.ts` — initialData desde localStorage + no throw en 406 + cache a localStorage
+- `hooks/useAvatars.ts` — initialData desde localStorage
+- `app/(app)/dashboard/page.tsx` — action button en toasts
+
+---
+
 ## [2026-05-13] — Mis Órdenes + tracking admin + fix total:0
 
 ### Cambios
