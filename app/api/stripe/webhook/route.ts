@@ -91,6 +91,12 @@ export async function POST(request: NextRequest) {
                 });
               }
             } else if (item.type === 'physical') {
+              const { data: bookPrice } = await supabase
+                .from('books')
+                .select('price_physical')
+                .eq('id', item.book_id)
+                .single();
+              const price = (bookPrice?.price_physical || 299);
               await supabase.from('orders_physical').insert({
                 user_id: userId,
                 book_id: item.book_id,
@@ -102,7 +108,7 @@ export async function POST(request: NextRequest) {
                 zip: shippingInfo?.zip || '',
                 phone: shippingInfo?.phone || '',
                 shipping_cost: 50,
-                total: 0,
+                total: price + 50,
                 stripe_payment_id: session.id,
               });
               await supabase.rpc('decrement_stock', { p_book_id: item.book_id });

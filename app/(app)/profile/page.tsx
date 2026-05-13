@@ -2,7 +2,7 @@
 
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState, useMemo } from "react";
-import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles, BookOpen, Coins, Flame, Gift, Circle, BookOpenCheck, CalendarDays, Trophy, Key, Trash2, AlertTriangle, LogOut } from "lucide-react";
+import { User, CreditCard, Shield, Zap, Settings, Loader2, Sparkles, BookOpen, Coins, Flame, Gift, Circle, BookOpenCheck, CalendarDays, Trophy, Key, Trash2, AlertTriangle, LogOut, Package } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useUserId } from "@/hooks/useUser";
@@ -345,6 +345,9 @@ export default function ProfilePage() {
               </Link>
               <Link href="/dashboard?tab=reading" className="flex items-center gap-4 px-4 py-4 text-sm font-bold text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 transition-all">
                 <BookOpen className="w-4 h-4" /> Progreso
+              </Link>
+              <Link href="/orders" className="flex items-center gap-4 px-4 py-4 text-sm font-bold text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 transition-all">
+                <Package className="w-4 h-4" /> Mis Órdenes
               </Link>
             </div>
           </div>

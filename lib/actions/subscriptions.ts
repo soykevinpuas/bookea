@@ -87,12 +87,18 @@ export async function verifySubscriptionAction(sessionId: string) {
               .eq('stripe_payment_id', session.id)
               .maybeSingle()
             if (!existing) {
+              const { data: bookPrice } = await supabase
+                .from('books')
+                .select('price_physical')
+                .eq('id', item.book_id)
+                .single()
+              const price = (bookPrice?.price_physical || 299)
               await supabase.from('orders_physical').insert({
                 user_id: userId, book_id: item.book_id, status: 'pending',
                 name: shippingInfo?.name || '', address: shippingInfo?.address || '',
                 city: shippingInfo?.city || '', state: shippingInfo?.state || '',
                 zip: shippingInfo?.zip || '', phone: shippingInfo?.phone || '',
-                shipping_cost: 50, total: 0, stripe_payment_id: session.id,
+                shipping_cost: 50, total: price + 50, stripe_payment_id: session.id,
               })
               try { await supabase.rpc('decrement_stock', { p_book_id: item.book_id }) } catch {}
             }

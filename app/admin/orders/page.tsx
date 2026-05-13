@@ -2,7 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { Package, CheckCircle2, Truck, Clock, Loader2 } from "lucide-react";
+import { Package, CheckCircle2, Truck, Clock, Loader2, ExternalLink } from "lucide-react";
+import { useState } from "react";
 
 interface Order {
   id: string;
@@ -17,6 +18,7 @@ interface Order {
   phone: string;
   shipping_cost: number;
   total: number;
+  tracking_number: string | null;
   created_at: string;
   books?: { title: string; author: string } | null;
 }
@@ -34,6 +36,8 @@ export default function AdminOrdersPage() {
   const queryClient = useQueryClient();
   const supabase = createClientClient();
 
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
+
   const { data: orders = [], isLoading } = useQuery<Order[]>({
     queryKey: ["admin-orders"],
     queryFn: async () => {
@@ -47,15 +51,26 @@ export default function AdminOrdersPage() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: Order["status"] }) => {
+    mutationFn: async ({ id, status, tracking_number }: { id: string; status: Order["status"]; tracking_number?: string }) => {
+      const update: Record<string, any> = { status };
+      if (tracking_number !== undefined) update.tracking_number = tracking_number;
       const { error } = await supabase
         .from("orders_physical")
-        .update({ status })
+        .update(update)
         .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-orders"] }),
   });
+
+  const handleShipWithTracking = (order: Order) => {
+    const tracking = trackingInputs[order.id]?.trim();
+    if (!tracking) {
+      alert("Ingresa el número de guía antes de marcar como enviado.");
+      return;
+    }
+    updateStatus.mutate({ id: order.id, status: "shipped", tracking_number: tracking });
+  };
 
   const pending = orders.filter((o) => o.status === "pending").length;
 
@@ -112,6 +127,12 @@ export default function AdminOrdersPage() {
                       {order.name} — {order.city}, {order.state} {order.zip}
                     </p>
                     <p className="text-xs text-white/30 mt-0.5">{order.address} · {order.phone}</p>
+                    {order.tracking_number && (
+                      <p className="text-xs text-blue-400 mt-1 flex items-center gap-1">
+                        <Package className="w-3 h-3" />
+                        Guía: {order.tracking_number}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-end gap-3">
@@ -120,16 +141,41 @@ export default function AdminOrdersPage() {
                       <p className="text-xs text-white/30">Envío: ${order.shipping_cost}</p>
                     </div>
 
-                    {nextStatus && (
+                    {order.status === "pending" && (
+                      <div className="flex flex-col items-end gap-2">
+                        <input
+                          value={trackingInputs[order.id] || ""}
+                          onChange={(e) => setTrackingInputs(prev => ({ ...prev, [order.id]: e.target.value }))}
+                          placeholder="Número de guía"
+                          className="w-full text-xs px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-blue-500/50 transition-colors"
+                        />
+                        <button
+                          onClick={() => handleShipWithTracking(order)}
+                          disabled={updateStatus.isPending}
+                          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <Truck className="w-3.5 h-3.5" />
+                          Marcar como Enviado
+                        </button>
+                        <button
+                          onClick={() => updateStatus.mutate({ id: order.id, status: "cancelled" })}
+                          disabled={updateStatus.isPending}
+                          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 rounded-lg transition-colors border border-white/10"
+                        >
+                          <Clock className="w-3.5 h-3.5" />
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
+
+                    {order.status === "shipped" && (
                       <button
-                        onClick={() => updateStatus.mutate({ id: order.id, status: nextStatus })}
+                        onClick={() => updateStatus.mutate({ id: order.id, status: "delivered" })}
                         disabled={updateStatus.isPending}
-                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-white/8 rounded-lg hover:bg-white/15 transition-colors border border-white/10 text-white/70"
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50"
                       >
-                        {nextStatus === "shipped" && <Truck className="w-3.5 h-3.5" />}
-                        {nextStatus === "delivered" && <CheckCircle2 className="w-3.5 h-3.5" />}
-                        {nextStatus === "cancelled" && <Clock className="w-3.5 h-3.5" />}
-                        Marcar como {STATUS_LABELS[nextStatus].label}
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Marcar como Entregado
                       </button>
                     )}
                   </div>

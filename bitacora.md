@@ -1076,3 +1076,42 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 - `app/(app)/dashboard/page.tsx` — clearCart + invalidate on success
 - `app/(app)/profile/page.tsx` — merge físicos+digitales con badges
 - `spec.md` — pricing table
+
+---
+
+## [2026-05-13] — Mis Órdenes + tracking admin + fix total:0
+
+### Cambios
+
+**1. `supabase/migrations/020_add_tracking_number.sql` — Nuevo**
+- `ALTER TABLE orders_physical ADD COLUMN tracking_number TEXT`
+- Permite al admin asignar número de guía a cada orden
+
+**2. `app/(app)/orders/page.tsx` — Nuevo**
+- Ruta `/orders` para que el usuario vea sus órdenes físicas
+- Query a `orders_physical` con join a `books` (title, cover_url, author)
+- Status badges: Pendiente (ámbar), Enviado (azul), Entregado (verde), Cancelado (rojo)
+- Muestra portada, título, datos de envío, precio, tracking number si existe
+- Texto contextual según status ("El admin procesará tu envío pronto", etc.)
+- Empty state con link al catálogo físico
+
+**3. `app/admin/orders/page.tsx` — Tracking management**
+- Agregado `tracking_number` a la interfaz Order + select en query
+- Input editable para número de guía al marcar como "Enviado"
+- Botón de "Cancelar" directo desde pendiente
+- Muestra tracking number en la card
+
+**4. `app/(app)/profile/page.tsx` — Sidebar link**
+- Agregado link "Mis Órdenes" con icono Package en el sidebar del perfil
+
+**5. `lib/actions/subscriptions.ts` + `app/api/stripe/webhook/route.ts` — Fix total:0**
+- Ahora consulta `books.price_physical` desde DB
+- Calcula `total = price_physical + 50` (antes guardaba 0)
+
+### Archivos Modificados/Creados
+- `supabase/migrations/020_add_tracking_number.sql` **(nuevo)**
+- `app/(app)/orders/page.tsx` **(nuevo)**
+- `app/admin/orders/page.tsx`
+- `app/(app)/profile/page.tsx`
+- `lib/actions/subscriptions.ts`
+- `app/api/stripe/webhook/route.ts`
