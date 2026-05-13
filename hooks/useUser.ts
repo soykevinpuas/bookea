@@ -31,6 +31,12 @@ export function useUserId() {
     },
     staleTime: 0,
     retry: false,
+    initialData: () => {
+      if (typeof window !== "undefined") {
+        return localStorage.getItem("bookea-auth-id") || "";
+      }
+      return "";
+    },
   });
 
   return {

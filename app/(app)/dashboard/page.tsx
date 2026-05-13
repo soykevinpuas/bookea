@@ -66,12 +66,20 @@ function DashboardContent() {
                 description: "Tu suscripción se ha activado correctamente. Ya puedes disfrutar de todo el catálogo.",
                 icon: <Sparkles className="w-5 h-5 text-amber-500" />,
                 duration: 8000,
+                action: {
+                  label: "Ir a mi biblioteca",
+                  onClick: () => router.push("/dashboard"),
+                },
               });
             } else if (result.type === 'payment' && result.items) {
               toast.success("¡Compra completada!", {
                 id: toastId,
                 description: result.items.join(", "),
                 duration: 6000,
+                action: {
+                  label: "Ir a mi biblioteca",
+                  onClick: () => router.push("/dashboard"),
+                },
               });
             }
             useCartStore.getState().clearCart();

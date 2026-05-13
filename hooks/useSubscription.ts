@@ -9,6 +9,14 @@ export interface SubscriptionData {
   daysRemaining: number | null;
 }
 
+const DEFAULT_FREE: SubscriptionData = {
+  role: 'free',
+  subscription_ends_at: null,
+  isActive: false,
+  isExpired: false,
+  daysRemaining: null,
+};
+
 export function useSubscription(userId: string | undefined) {
   const query = useQuery({
     queryKey: ["user-subscription", userId],
@@ -24,7 +32,7 @@ export function useSubscription(userId: string | undefined) {
 
       if (error) {
         console.error("[useSubscription] Error fetching role:", error.message);
-        throw error;
+        return DEFAULT_FREE;
       }
 
       let endsAt: Date | null = null;
@@ -46,7 +54,7 @@ export function useSubscription(userId: string | undefined) {
         daysRemaining = Math.ceil((endsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       }
 
-      const subscription = {
+      const subscription: SubscriptionData = {
         role: data.role as SubscriptionData['role'],
         subscription_ends_at: data.subscription_ends_at,
         isActive,
@@ -54,10 +62,23 @@ export function useSubscription(userId: string | undefined) {
         daysRemaining
       };
 
+      if (typeof window !== "undefined") {
+        localStorage.setItem("bookea-subscription-cache", JSON.stringify(subscription));
+      }
+
       return subscription;
     },
     enabled: !!userId,
     staleTime: 0,
+    initialData: () => {
+      if (typeof window !== "undefined") {
+        const cached = localStorage.getItem("bookea-subscription-cache");
+        if (cached) {
+          try { return JSON.parse(cached) as SubscriptionData; } catch (e) {}
+        }
+      }
+      return undefined;
+    },
   });
 
   return query;

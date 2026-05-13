@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '@/lib/stripe';
-import { createClient } from '@/lib/server';
+import { createAdminClient } from '@/lib/server';
 
 // ============================================
 // 7.2 - Stripe Webhook: Endpoint para recibir eventos de Stripe
 // Procesa pagos exitosos, suscripciones y cancelaciones
+// Usa createAdminClient (service_role) porque Stripe envía webhooks
+// sin cookies de usuario — la autenticación ya viene en la metadata
+// de la sesión (userId). La firma criptográfica de Stripe protege
+// contra requests maliciosos.
 // ============================================
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -24,7 +28,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Firma inválida' }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     switch (event.type) {
