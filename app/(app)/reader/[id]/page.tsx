@@ -483,14 +483,12 @@ export default function ReaderPage() {
 
         const viewerElement = viewerRef.current as Element;
         
-        // 4.2.5.1 - Configuración base del Rendition con flujo paginado
-        // PaginationViewManager evita los problemas de carga perezosa de ContinuousViewManager
-        // y permite navegación por páginas vía zonas táctiles laterales
+        // 4.2.5.1 - Configuración base del Rendition con flujo scrolled (desplazamiento continuo)
         const rendition = bookInstance.renderTo(viewerElement, {
           width: "100%",
           height: "100%",
           spread: "none",
-          flow: "paginated",
+          flow: "scrolled",
           allowScriptedContent: true,
         });
 
@@ -512,8 +510,8 @@ export default function ReaderPage() {
               }
 
               html, body {
-                height: auto;
-                min-height: 100%;
+                height: auto !important;
+                min-height: 100% !important;
               }
               body {
                 overscroll-behavior: none !important;
@@ -688,8 +686,22 @@ export default function ReaderPage() {
         rendition.themes.fontSize(`${sizeRef.current}px`);
         renditionRef.current = rendition;
 
+        // 4.2.5.4 - Forzar carga de spine items en modo scrolled
+        // ContinuousViewManager.check() aveces no se dispara automáticamente
+        // después del display inicial. check() periódico asegura que los spine
+        // items adyacentes se carguen correctamente.
+        let checkCount = 0;
+        const checkInterval = setInterval(() => {
+          try {
+            const mgr = (rendition as any).manager;
+            if (mgr?.check) mgr.check();
+          } catch (_) {}
+          checkCount++;
+          if (checkCount >= 8) clearInterval(checkInterval);
+        }, 250);
+
         await bookInstance.ready;
-        
+
         // 4.2.7 - Lógica asíncrona de restauración de localizaciones (CFI) y cálculo de porcentajes
         // PRECARGA: Obtenemos el progreso y highlights de forma concurrente antes de forzar el display
         // 4.2.7.0 - GESTIÓN DE TIMEOUT: Si el servidor tarda > 1.5s (Lie-fi), usamos caché local para evitar cuelgues.
