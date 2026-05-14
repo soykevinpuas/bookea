@@ -483,12 +483,14 @@ export default function ReaderPage() {
 
         const viewerElement = viewerRef.current as Element;
         
-        // 4.2.5.1 - Configuración base del Rendition con flujo responsivo nativo
+        // 4.2.5.1 - Configuración base del Rendition con flujo paginado
+        // PaginationViewManager evita los problemas de carga perezosa de ContinuousViewManager
+        // y permite navegación por páginas vía zonas táctiles laterales
         const rendition = bookInstance.renderTo(viewerElement, {
           width: "100%",
           height: "100%",
           spread: "none",
-          flow: "scrolled",
+          flow: "paginated",
           allowScriptedContent: true,
         });
 
@@ -686,20 +688,6 @@ export default function ReaderPage() {
         rendition.themes.fontSize(`${sizeRef.current}px`);
         renditionRef.current = rendition;
 
-        // 4.2.5.4 - Forzar carga de spine items en modo scrolled
-        // ContinuousViewManager.check() a veces no se dispara automáticamente después
-        // del display inicial. Programamos check() periódicamente para asegurar
-        // que los spine items adyacentes se carguen.
-        let checkCount = 0;
-        const checkInterval = setInterval(() => {
-          try {
-            const mgr = (rendition as any).manager;
-            if (mgr?.check) mgr.check();
-          } catch (_) {}
-          checkCount++;
-          if (checkCount >= 8) clearInterval(checkInterval);
-        }, 250);
-
         await bookInstance.ready;
         
         // 4.2.7 - Lógica asíncrona de restauración de localizaciones (CFI) y cálculo de porcentajes
@@ -766,7 +754,10 @@ export default function ReaderPage() {
 
         // ACCIÓN DE RENDERIZADO (RESOLVER POSICIÓN INICIAL)
         try {
-          if (savedProgress?.cfi_position) {
+          // 4.2.7.3 - GUARD: Solo restaurar posición UNA VEZ para evitar "sticking"
+          // Si el useEffect se re-ejecuta, ignoramos el CFI guardado para no sobrescribir la posición actual
+          if (savedProgress?.cfi_position && !hasRestoredPosition.current) {
+            hasRestoredPosition.current = true;
             await rendition.display(savedProgress.cfi_position);
           } else {
             await rendition.display();
@@ -788,11 +779,6 @@ export default function ReaderPage() {
             : Number(location.start.percentage || 0);
           setProgress(percent * 100);
           lastCfiRef.current = location.start.cfi;
-
-          // Al reubicarse, forzar check() para cargar spine items adyacentes
-          try {
-            (rendition as any).manager?.check();
-          } catch (_) {}
 
           // Debounce del guardado: espera 1.5s de quietud antes de guardar en Supabase
           if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
@@ -1019,7 +1005,22 @@ export default function ReaderPage() {
     resetControlsTimeout();
   };
 
-  // 4.2.9.2 - Funciones de CRUD para Highlights desde UI
+  // 4.2.9.2 - Navegación por teclado (flechas izq/der para cambiar página)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handlePrev();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleNext();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // 4.2.9.3 - Funciones de CRUD para Highlights desde UI
   const handleCreateHighlight = async (color: string) => {
     if (!activeSelection || !bookId || !userId) return;
     setIsSavingHighlight(true);
@@ -1341,9 +1342,21 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       />
 
       {/* 4.2.15 - Ventana principal de visualización del objeto renderizado (Viewport) */}
+      {/* La navegación es por zonas táctiles: tercio izquierdo = página anterior, tercio derecho = página siguiente, centro = toggle HUD */}
       <div 
         className="flex-1 relative w-full h-full overflow-hidden"
-        onClick={() => toggleControls()}
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const third = rect.width / 3;
+          if (x < third) {
+            handlePrev();
+          } else if (x > rect.width - third) {
+            handleNext();
+          } else {
+            toggleControls();
+          }
+        }}
       >
         {isLoading && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 ${bgColors}`}>
