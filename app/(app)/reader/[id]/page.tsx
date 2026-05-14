@@ -483,7 +483,7 @@ export default function ReaderPage() {
 
         const viewerElement = viewerRef.current as Element;
         
-        // 4.2.5.1 - Configuración base del Rendition con flujo scrolled (desplazamiento continuo)
+        // 4.2.5.1 - Configuración base del Rendition con flujo responsivo nativo
         const rendition = bookInstance.renderTo(viewerElement, {
           width: "100%",
           height: "100%",
@@ -495,9 +495,7 @@ export default function ReaderPage() {
         // 4.2.5.2 - Inyección de CSS interno (Hooks) para asegurar diseño base constante (saltando estilos del autor/epub original)
         if (rendition.hooks && rendition.hooks.content) {
           rendition.hooks.content.register((contents: EpubContents) => {
-            // 4.2.5.3 - GUARD: Si el spine tiene HTML malformado sin <head> o documentElement,
-            // salir silenciosamente para evitar que el hook crashee y rompa ContinuousViewManager
-            if (!contents?.document?.documentElement || !contents?.document?.head) return;
+            if (!contents || !contents.document) return;
             
             const style = contents.document.createElement("style");
             style.innerHTML = `
@@ -686,22 +684,8 @@ export default function ReaderPage() {
         rendition.themes.fontSize(`${sizeRef.current}px`);
         renditionRef.current = rendition;
 
-        // 4.2.5.4 - Forzar carga de spine items en modo scrolled
-        // ContinuousViewManager.check() aveces no se dispara automáticamente
-        // después del display inicial. check() periódico asegura que los spine
-        // items adyacentes se carguen correctamente.
-        let checkCount = 0;
-        const checkInterval = setInterval(() => {
-          try {
-            const mgr = (rendition as any).manager;
-            if (mgr?.check) mgr.check();
-          } catch (_) {}
-          checkCount++;
-          if (checkCount >= 8) clearInterval(checkInterval);
-        }, 250);
-
         await bookInstance.ready;
-
+        
         // 4.2.7 - Lógica asíncrona de restauración de localizaciones (CFI) y cálculo de porcentajes
         // PRECARGA: Obtenemos el progreso y highlights de forma concurrente antes de forzar el display
         // 4.2.7.0 - GESTIÓN DE TIMEOUT: Si el servidor tarda > 1.5s (Lie-fi), usamos caché local para evitar cuelgues.
@@ -764,20 +748,38 @@ export default function ReaderPage() {
           }
         });
 
+        // DIAGNÓSTICO: Spine length y estructura
+        try {
+          const spineLen = (bookInstance as any).spine?.length;
+          console.log(`[Reader] Spine length: ${spineLen}, first url: ${(bookInstance as any).spine?.first()?.href}`);
+        } catch (_) {}
+
         // ACCIÓN DE RENDERIZADO (RESOLVER POSICIÓN INICIAL)
         try {
-          // 4.2.7.3 - GUARD: Solo restaurar posición UNA VEZ para evitar "sticking"
-          // Si el useEffect se re-ejecuta, ignoramos el CFI guardado para no sobrescribir la posición actual
           if (savedProgress?.cfi_position && !hasRestoredPosition.current) {
             hasRestoredPosition.current = true;
+            console.log("[Reader] Restoring position:", savedProgress.cfi_position);
             await rendition.display(savedProgress.cfi_position);
           } else {
+            console.log("[Reader] Displaying from start");
             await rendition.display();
           }
         } catch (e) {
           console.warn("CFI inválido, cargando inicio", e);
           await rendition.display();
         }
+
+        // DIAGNÓSTICO: Estado del contenedor después del display
+        setTimeout(() => {
+          try {
+            const mgr = (rendition as any).manager;
+            const c = mgr?.container;
+            if (c) {
+              console.log("[Reader] container scrollH:", c.scrollHeight, "clientH:", c.clientHeight, "overflowY:", getComputedStyle(c).overflowY);
+              console.log("[Reader] views.displayed:", mgr.views?.displayed()?.length, "views.all:", mgr.views?.all()?.length);
+            }
+          } catch (_) {}
+        }, 1500);
 
         // FALLBACK A PRUEBA DE FALLOS: Si el evento on('rendered') se disparó demasiado rápido 
         // o si epub.js no lo dispara por estar en modo continuous-scroll, lo quitamos manualmente aquí
@@ -1017,22 +1019,7 @@ export default function ReaderPage() {
     resetControlsTimeout();
   };
 
-  // 4.2.9.2 - Navegación por teclado (flechas izq/der para cambiar página)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        handlePrev();
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        handleNext();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  // 4.2.9.3 - Funciones de CRUD para Highlights desde UI
+  // 4.2.9.2 - Funciones de CRUD para Highlights desde UI
   const handleCreateHighlight = async (color: string) => {
     if (!activeSelection || !bookId || !userId) return;
     setIsSavingHighlight(true);
@@ -1354,21 +1341,9 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       />
 
       {/* 4.2.15 - Ventana principal de visualización del objeto renderizado (Viewport) */}
-      {/* La navegación es por zonas táctiles: tercio izquierdo = página anterior, tercio derecho = página siguiente, centro = toggle HUD */}
       <div 
         className="flex-1 relative w-full h-full overflow-hidden"
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const third = rect.width / 3;
-          if (x < third) {
-            handlePrev();
-          } else if (x > rect.width - third) {
-            handleNext();
-          } else {
-            toggleControls();
-          }
-        }}
+        onClick={() => toggleControls()}
       >
         {isLoading && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 ${bgColors}`}>
