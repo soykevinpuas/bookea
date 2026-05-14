@@ -104,6 +104,7 @@ export default function LibraryPanel({ open, onClose }: LibraryPanelProps) {
               <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p className="text-sm font-medium mb-1">No tienes libros aún</p>
               <p className="text-xs text-gray-500">Explora el catálogo y agrega libros a tu biblioteca</p>
+              <p className="text-[10px] text-gray-500 mt-2">Usa el icono del libro en la barra superior o desliza desde el borde derecho para abrir de nuevo</p>
             </div>
           ) : (
             books.map((book: any) => (

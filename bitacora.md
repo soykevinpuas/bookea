@@ -1079,6 +1079,78 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 
 ---
 
+## [2026-05-14] — Feedback y educación de usuario: monedas, paneles, badges de acceso
+
+### Cambios
+
+**1. `components/gamification/CoinsInfoModal.tsx` — Nuevo: Modal educativo de monedas**
+- Explica qué son las monedas, cómo ganarlas (bronce: reseña/completar libro/rachas, plata: referidos, oro/diamante: rachas)
+- Muestra días de acceso por tipo (3/7/14/30), límites mensuales ant-abuse, cómo canjear
+- Botón `?` dentro del dropdown de CoinBalanceDisplay (no en header como se pidió)
+
+**2. `components/ui/CoinBalance.tsx` — Modificado: Botón ? + CoinsInfoModal**
+- Agregado encabezado "Tus monedas" + botón `HelpCircle` en la esquina del dropdown
+- Al hacer clic abre `CoinsInfoModal`
+
+**3. `components/ui/AccessBadge.tsx` — Nuevo: Badge de tipo de acceso**
+- Muestra "Compra Permanente" (verde), "Suscripción Activa" (ámbar), "Canje (X días)" (púrpura)
+- Integrado en book detail page y dashboard (Mi Biblioteca)
+
+**4. `components/ui/PanelOnboarding.tsx` — Nuevo: Onboarding de 1 vez para paneles**
+- Se muestra 2s después de entrar al dashboard si no se ha visto antes
+- En móvil: explica edge swipe izquierdo (carrito) y derecho (biblioteca)
+- En desktop: explica iconos en el header
+- Guarda en localStorage `bookea-panel-onboarding-seen`
+
+**5. `stores/cart.ts` — Modificado: libraryOpen + toggleLibrary en store**
+- Agregado `libraryOpen`, `setLibraryOpen`, `toggleLibrary` al store de Zustand
+- PanelManager ahora lee `libraryOpen` del store en lugar de useState local
+- Permite al Header abrir/cerrar el panel de biblioteca
+
+**6. `components/Header.tsx` — Modificado: Offline indicator + botón biblioteca**
+- Indicador `WifiOff` naranja junto al logo cuando no hay conexión
+- Nuevo botón `BookOpen` (biblioteca rápida) junto al carrito en desktop/mobile
+- Importado `toggleLibrary` del store
+
+**7. `components/community/ReviewForm.tsx` — Modificado: Toast de moneda al reseñar**
+- Si la reseña tiene >= 50 caracteres y rating >= 3, muestra toast "Has ganado 1 moneda de Bronce"
+
+**8. `components/gamification/BookCompletionQuiz.tsx` — Modificado: Toast al ganar moneda**
+- Al pasar el quiz (3/5 correctas), muestra toast "¡Ganaste 1 moneda de Bronce!" con info de canje
+
+**9. `components/CartPanel.tsx` — Modificado: Hint text corregido**
+- Texto actualizado: "Usa el icono del carrito en la barra superior o desliza desde el borde izquierdo"
+
+**10. `components/LibraryPanel.tsx` — Modificado: Hint text agregado**
+- Empty state ahora muestra cómo reabrir el panel
+
+**11. `app/(app)/dashboard/page.tsx` — Modificado: Onboarding + CTA + retry**
+- `<PanelOnboarding />` renderizado en el dashboard
+- Empty state ahora tiene botón "Explorar catálogo →"
+- Toast de error de pago incluye botón "Reintentar" que recarga la página
+
+**12. `app/(app)/book/[id]/page.tsx` — Modificado: AccessBadge en banner de acceso**
+- Muestra badge de tipo de acceso (Compra Permanente / Suscripción / Canje) en el banner verde
+
+### Archivos Nuevos
+- `components/gamification/CoinsInfoModal.tsx`
+- `components/ui/AccessBadge.tsx`
+- `components/ui/PanelOnboarding.tsx`
+
+### Archivos Modificados
+- `components/ui/CoinBalance.tsx`
+- `stores/cart.ts`
+- `components/PanelManager.tsx`
+- `components/Header.tsx`
+- `components/community/ReviewForm.tsx`
+- `components/gamification/BookCompletionQuiz.tsx`
+- `components/CartPanel.tsx`
+- `components/LibraryPanel.tsx`
+- `app/(app)/dashboard/page.tsx`
+- `app/(app)/book/[id]/page.tsx`
+
+---
+
 ## [2026-05-13-B] — Fix webhook RLS + offline mode restore + toast con botón a biblioteca
 
 ### Cambios

@@ -19,6 +19,8 @@ import { track } from "@/lib/analytics";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCartStore } from "@/stores/cart";
 import { DashboardSkeleton } from "@/components/ui/LoadingStates";
+import PanelOnboarding from "@/components/ui/PanelOnboarding";
+import AccessBadge from "@/components/ui/AccessBadge";
 
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
 // Componente interno con toda la lógica del Dashboard
@@ -72,13 +74,14 @@ function DashboardContent() {
                 },
               });
             } else if (result.type === 'payment' && result.items) {
+              const hasPhysical = result.items.some((i: string) => i.includes('Físico'));
               toast.success("¡Compra completada!", {
                 id: toastId,
                 description: result.items.join(", "),
                 duration: 6000,
                 action: {
-                  label: "Ir a mi biblioteca",
-                  onClick: () => router.push("/dashboard"),
+                  label: hasPhysical ? "Ver mis órdenes" : "Ir a mi biblioteca",
+                  onClick: () => router.push(hasPhysical ? "/orders" : "/dashboard"),
                 },
               });
             }
@@ -100,9 +103,25 @@ function DashboardContent() {
           toast.error("Hubo un problema al sincronizar", {
             id: toastId,
             description: "Intenta recargar la página o contacta a soporte.",
+            duration: 10000,
+            action: {
+              label: "Reintentar",
+              onClick: () => {
+                window.location.reload();
+              },
+            },
           });
         } catch {
-          toast.error("Error de conexión", { id: toastId });
+          toast.error("Error de conexión", {
+            id: toastId,
+            duration: 10000,
+            action: {
+              label: "Reintentar",
+              onClick: () => {
+                window.location.reload();
+              },
+            },
+          });
         }
       };
 
@@ -179,6 +198,7 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen bg-[#f5f0eb] dark:bg-[#0a0a0a] text-[#1a1a1a] dark:text-white selection:bg-blue-500/30">
+      <PanelOnboarding />
       {!isOnline && (
         <div className="bg-orange-600/20 border-b border-orange-500/20 py-2 px-6 flex items-center justify-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-widest backdrop-blur-md">
           <WifiOff className="w-3 h-3" /> Modo Offline Activado - Solo libros descargados disponibles
@@ -362,7 +382,15 @@ function DashboardContent() {
         {displayBooks.length === 0 ? (
           <div className="py-20 text-center bg-white/5 rounded-3xl border border-dashed border-white/10">
             <BookOpen className="w-12 h-12 mx-auto text-white/10 mb-4" />
-            <p className="text-white/40">No hay libros que mostrar</p>
+            <p className="text-white/40 mb-4">No hay libros que mostrar</p>
+            {isOnline && (
+              <Link
+                href="/catalog"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all"
+              >
+                Explorar catálogo <Compass className="w-4 h-4" />
+              </Link>
+            )}
           </div>
         ) : (
           <div className={
@@ -387,6 +415,11 @@ function DashboardContent() {
                   <div className="text-center">
                     <h3 className="text-xs font-bold truncate">{book.title}</h3>
                     <p className="text-[10px] text-white/40 truncate">{book.author}</p>
+                    {book.access_type && (
+                      <div className="flex justify-center mt-1">
+                        <AccessBadge accessType={book.access_type} />
+                      </div>
+                    )}
                   </div>
                 </div>
               </BookLongPressMenu>

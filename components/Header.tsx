@@ -10,7 +10,7 @@ import { UserMenu } from "./UserMenu";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useProfile } from "@/hooks/useAvatars";
 import { useCoins } from "@/hooks/useCoins";
-import { Zap, Loader2, Coins, Circle, ShoppingCart } from "lucide-react";
+import { Zap, Loader2, Coins, Circle, ShoppingCart, BookOpen, WifiOff } from "lucide-react";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { AnimalEngine } from "./avatars/AnimalEngine";
 import { CoinBalanceDisplay } from "@/components/ui/CoinBalance";
@@ -43,6 +43,7 @@ export function Header({ initialUser = null }: HeaderProps) {
   const { data: coinsBalance } = useCoins(user?.id);
   const cartItems = useCartStore((s) => s.items);
   const toggleCart = useCartStore((s) => s.toggleCart);
+  const toggleLibrary = useCartStore((s) => s.toggleLibrary);
 
   // 6.1.2a - Cuando el RSC del layout se re-ejecuta (por router.refresh()),
   // el prop `initialUser` cambia — este efecto lo sincroniza al state local.
@@ -87,12 +88,20 @@ export function Header({ initialUser = null }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-gray-100/90 dark:bg-black/60 retro:bg-[#0d1117]/90 border-b border-gray-200 dark:border-white/10 retro:border-[#3fb950]/20 shadow-sm dark:shadow-[0_4px_30px_rgba(0,0,0,0.1)] transition-all pt-safe">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* 6.1.4.1 - Logo de Bookea con enlace al inicio */}
-        <Link 
-          href="/" 
-          className="text-xl sm:text-2xl font-black tracking-tighter text-gray-900 dark:text-white flex items-center gap-0 hover:opacity-80 transition-opacity flex-shrink-0"
-        >
-          <span className={subscription?.isActive ? "text-amber-500" : "text-blue-600 dark:text-blue-500"}>B</span>ookea
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link 
+            href="/" 
+            className="text-xl sm:text-2xl font-black tracking-tighter text-gray-900 dark:text-white flex items-center gap-0 hover:opacity-80 transition-opacity flex-shrink-0"
+          >
+            <span className={subscription?.isActive ? "text-amber-500" : "text-blue-600 dark:text-blue-500"}>B</span>ookea
+          </Link>
+          {!isOnline && (
+            <span className="flex items-center gap-1 text-[10px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">
+              <WifiOff className="w-3 h-3" />
+              <span className="hidden sm:inline">Offline</span>
+            </span>
+          )}
+        </div>
         
         {/* 6.1.4.2 - Navegación principal */}
           <nav className="flex items-center gap-2 sm:gap-6">
@@ -126,6 +135,16 @@ export function Header({ initialUser = null }: HeaderProps) {
              user ? (
                 // Usuario autenticado: mostrar carrito, monedas, premium, avatar y menú de usuario
                 <div className="flex items-center gap-3">
+                  {/* Botón de biblioteca rápida */}
+                  <button
+                    onClick={toggleLibrary}
+                    className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    aria-label="Biblioteca"
+                    title="Biblioteca rápida"
+                  >
+                    <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+
                   {/* Botón de carrito */}
                   <button
                     onClick={toggleCart}

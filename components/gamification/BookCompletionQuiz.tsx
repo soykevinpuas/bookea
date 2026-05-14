@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { CheckCircle, X, Award, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface BookCompletionQuizProps {
   isOpen: boolean
@@ -54,6 +55,14 @@ export function BookCompletionQuiz({ isOpen, onClose, onComplete, bookTitle, boo
       fetchQuiz()
     }
   }, [isOpen, bookId])
+
+  useEffect(() => {
+    if (allCorrect) {
+      toast.success("¡Ganaste 1 moneda de Bronce! Puedes canjearla por acceso a libros desde la página de cada libro.", {
+        duration: 6000,
+      })
+    }
+  }, [allCorrect])
 
   if (!isOpen) return null
 

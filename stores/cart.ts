@@ -15,6 +15,7 @@ interface CartStore {
   items: CartItem[]
   loading: boolean
   open: boolean
+  libraryOpen: boolean
   shipping: { name: string; address: string; city: string; state: string; zip: string; phone: string }
 }
 
@@ -25,6 +26,8 @@ interface CartActions {
   clearCart: () => Promise<void>
   setOpen: (open: boolean) => void
   toggleCart: () => void
+  setLibraryOpen: (open: boolean) => void
+  toggleLibrary: () => void
   setShipping: (s: CartStore['shipping']) => void
 }
 
@@ -51,6 +54,7 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
   items: [],
   loading: false,
   open: false,
+  libraryOpen: false,
   shipping: loadShipping(),
 
   fetchCart: async () => {
@@ -97,6 +101,8 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
 
   setOpen: (open) => set({ open }),
   toggleCart: () => set((s) => ({ open: !s.open })),
+  setLibraryOpen: (open) => set({ libraryOpen: open }),
+  toggleLibrary: () => set((s) => ({ libraryOpen: !s.libraryOpen })),
 
   setShipping: (shipping) => {
     set({ shipping })

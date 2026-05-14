@@ -158,7 +158,7 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
             <div className="text-center py-12 text-gray-400">
               <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p className="text-sm">Tu carrito está vacío</p>
-              <p className="text-xs text-gray-500 mt-1">Desliza desde el borde izquierdo para abrirlo</p>
+              <p className="text-xs text-gray-500 mt-1">Usa el icono del carrito en la barra superior o desliza desde el borde izquierdo</p>
             </div>
           ) : (
             items.map((item) => (

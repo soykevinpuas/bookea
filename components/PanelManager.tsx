@@ -10,7 +10,8 @@ import { useCartStore } from '@/stores/cart'
 export default function PanelManager() {
   const cartOpen = useCartStore((s) => s.open)
   const setCartOpen = useCartStore((s) => s.setOpen)
-  const [libraryOpen, setLibraryOpen] = React.useState(false)
+  const libraryOpen = useCartStore((s) => s.libraryOpen)
+  const setLibraryOpen = useCartStore((s) => s.setLibraryOpen)
   const pathname = usePathname()
   const isReader = pathname?.startsWith('/reader/')
 

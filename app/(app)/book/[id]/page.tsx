@@ -19,6 +19,7 @@ import { addToLibraryAction, removeFromLibraryAction } from "@/lib/actions/libra
 import { createClientClient } from "@/lib/supabase";
 import Book3D from "@/components/Book3D";
 import { CoinRedemptionModal } from "@/components/book/CoinRedemptionModal";
+import AccessBadge from "@/components/ui/AccessBadge";
 import BookLoading from "./loading";
 
 // 3.5.1 - Componente principal de la página de detalle
@@ -267,9 +268,20 @@ function BookDetailContent() {
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-xl gap-4">
                       <div>
-                        <span className="block text-sm font-medium text-green-800 dark:text-green-400 mb-1">
-                          {isPremiumBook ? '✓ Acceso Premium Activo' : '✓ Libro Gratuito'}
-                        </span>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-sm font-medium text-green-800 dark:text-green-400">
+                            {isPremiumBook ? '✓ Acceso Activo' : '✓ Libro Gratuito'}
+                          </span>
+                          {hasPermanentAccess && (
+                            <AccessBadge accessType="permanent" />
+                          )}
+                          {!hasPermanentAccess && hasPremiumAccess && (
+                            <AccessBadge accessType="subscription" daysRemaining={subscription?.daysRemaining} />
+                          )}
+                          {ownedBook?.access_type === 'gift' && (
+                            <AccessBadge accessType="gift" daysRemaining={subscription?.daysRemaining} />
+                          )}
+                        </div>
                         <span className="text-xl font-bold text-green-900 dark:text-green-300">
                           Listo para leer
                         </span>
