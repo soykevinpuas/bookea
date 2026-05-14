@@ -750,7 +750,10 @@ export default function ReaderPage() {
 
         // ACCIÓN DE RENDERIZADO (RESOLVER POSICIÓN INICIAL)
         try {
-          if (savedProgress?.cfi_position) {
+          // 4.2.7.3 - GUARD: Solo restaurar posición UNA VEZ para evitar "sticking" al scrollear
+          // Si el useEffect se re-ejecuta (React Strict Mode, cambio de userId), ignoramos el CFI guardado
+          if (savedProgress?.cfi_position && !hasRestoredPosition.current) {
+            hasRestoredPosition.current = true;
             await rendition.display(savedProgress.cfi_position);
           } else {
             await rendition.display();
