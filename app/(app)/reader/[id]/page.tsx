@@ -495,7 +495,9 @@ export default function ReaderPage() {
         // 4.2.5.2 - Inyección de CSS interno (Hooks) para asegurar diseño base constante (saltando estilos del autor/epub original)
         if (rendition.hooks && rendition.hooks.content) {
           rendition.hooks.content.register((contents: EpubContents) => {
-            if (!contents || !contents.document) return;
+            // 4.2.5.3 - GUARD: Si el spine tiene HTML malformado sin <head> o documentElement,
+            // salir silenciosamente para evitar que el hook crashee y rompa ContinuousViewManager
+            if (!contents?.document?.documentElement || !contents?.document?.head) return;
             
             const style = contents.document.createElement("style");
             style.innerHTML = `
@@ -683,6 +685,29 @@ export default function ReaderPage() {
         
         rendition.themes.fontSize(`${sizeRef.current}px`);
         renditionRef.current = rendition;
+
+        // 4.2.5.4 - Detectar fallos en carga de spine items y saltarlos automáticamente
+        // Cuando ContinuousViewManager no puede cargar un spine item (HTML malformado, recurso 404),
+        // Promise.all en check() engulle el error y la cadena recursiva se rompe -> lector congelado.
+        // Escuchamos el evento 'added' del manager para capturar loaderror en cada vista.
+        try {
+          const mgr = (rendition as any).manager;
+          if (mgr?.on) {
+            mgr.on('added', (view: any) => {
+              if (view?.on) {
+                view.on('loaderror', (err: any) => {
+                  console.warn("Spine item load error, skipping to next:", err);
+                  const nextSection = view.section?.next();
+                  if (nextSection?.href) {
+                    rendition.display(nextSection.href);
+                  }
+                });
+              }
+            });
+          }
+        } catch (e) {
+          console.warn("No se pudo registrar handler de spine items:", e);
+        }
 
         await bookInstance.ready;
         
