@@ -686,28 +686,19 @@ export default function ReaderPage() {
         rendition.themes.fontSize(`${sizeRef.current}px`);
         renditionRef.current = rendition;
 
-        // 4.2.5.4 - Detectar fallos en carga de spine items y saltarlos automáticamente
-        // Cuando ContinuousViewManager no puede cargar un spine item (HTML malformado, recurso 404),
-        // Promise.all en check() engulle el error y la cadena recursiva se rompe -> lector congelado.
-        // Escuchamos el evento 'added' del manager para capturar loaderror en cada vista.
-        try {
-          const mgr = (rendition as any).manager;
-          if (mgr?.on) {
-            mgr.on('added', (view: any) => {
-              if (view?.on) {
-                view.on('loaderror', (err: any) => {
-                  console.warn("Spine item load error, skipping to next:", err);
-                  const nextSection = view.section?.next();
-                  if (nextSection?.href) {
-                    rendition.display(nextSection.href);
-                  }
-                });
-              }
-            });
-          }
-        } catch (e) {
-          console.warn("No se pudo registrar handler de spine items:", e);
-        }
+        // 4.2.5.4 - Forzar carga de spine items en modo scrolled
+        // ContinuousViewManager.check() a veces no se dispara automáticamente después
+        // del display inicial. Programamos check() periódicamente para asegurar
+        // que los spine items adyacentes se carguen.
+        let checkCount = 0;
+        const checkInterval = setInterval(() => {
+          try {
+            const mgr = (rendition as any).manager;
+            if (mgr?.check) mgr.check();
+          } catch (_) {}
+          checkCount++;
+          if (checkCount >= 8) clearInterval(checkInterval);
+        }, 250);
 
         await bookInstance.ready;
         
@@ -797,6 +788,11 @@ export default function ReaderPage() {
             : Number(location.start.percentage || 0);
           setProgress(percent * 100);
           lastCfiRef.current = location.start.cfi;
+
+          // Al reubicarse, forzar check() para cargar spine items adyacentes
+          try {
+            (rendition as any).manager?.check();
+          } catch (_) {}
 
           // Debounce del guardado: espera 1.5s de quietud antes de guardar en Supabase
           if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);

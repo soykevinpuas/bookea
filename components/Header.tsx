@@ -4,7 +4,7 @@ import Link from "next/link";
 import { PrefetchLink } from "@/components/ui/LoadingStates";
 import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
-import { useEffect, useState, useMemo, useTransition } from "react";
+import { useEffect, useState, useMemo, useTransition, useRef } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserMenu } from "./UserMenu";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -32,6 +32,7 @@ export function Header({ initialUser = null }: HeaderProps) {
   const [isOnline, setIsOnline] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [showCoins, setShowCoins] = useState(false);
+  const coinsRef = useRef<HTMLDivElement>(null);
   
   const supabase = useMemo(() => createClientClient(), []);
   const pathname = usePathname();
@@ -75,6 +76,18 @@ export function Header({ initialUser = null }: HeaderProps) {
       window.removeEventListener('offline', handleStatus);
     };
   }, []);
+
+  // 6.1.2d - Cerrar dropdown de monedas al hacer clic fuera
+  useEffect(() => {
+    if (!showCoins) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (coinsRef.current && !coinsRef.current.contains(e.target as Node)) {
+        setShowCoins(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showCoins]);
 
   // 6.1.3 - Ocultar Header en la vista del lector para máxima inmersión
   if (pathname?.startsWith("/reader")) {
@@ -159,7 +172,7 @@ export function Header({ initialUser = null }: HeaderProps) {
                     )}
                   </button>
                   {/* Botón de monedas con dropdown */}
-                 <div className="relative">
+                 <div className="relative" ref={coinsRef}>
                    <button
                      onClick={() => setShowCoins(!showCoins)}
                      className="flex items-center gap-1 px-2 py-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-all text-xs font-bold hover:bg-amber-500/20"
