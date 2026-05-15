@@ -499,14 +499,6 @@ export default function ReaderPage() {
             
             const style = contents.document.createElement("style");
             style.innerHTML = `
-              @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400..700;1,400..700&family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
-              
-              /* Fallback para OpenDyslexic si no está instalada localmente */
-              @font-face {
-                font-family: 'OpenDyslexic';
-                src: url('https://antijingoist.github.io/opendyslexic/compiled/OpenDyslexic-Regular.otf');
-              }
-
               html, body {
                 height: auto !important;
                 min-height: 100% !important;
@@ -730,10 +722,13 @@ export default function ReaderPage() {
         };
 
         // EVENTOS PRE-RENDER: El event listener DEBE registrarse antes del display para no perder el primer trigger
-        rendition.on("rendered", () => {
+        rendition.on("rendered", (_section: any, view: any) => {
           if (loadingTimeout) clearTimeout(loadingTimeout);
           setIsLoading(false);
           renderHighlights();
+          if (view && typeof view.expand === "function") {
+            view.expand();
+          }
         });
 
         // 4.2.7.2 - Capturar eventos de Selección de texto (Highlights)
