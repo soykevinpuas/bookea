@@ -722,13 +722,41 @@ export default function ReaderPage() {
         };
 
         // EVENTOS PRE-RENDER: El event listener DEBE registrarse antes del display para no perder el primer trigger
+        const fixViewCSS = (view: any) => {
+          try {
+            const doc = view?.iframe?.contentDocument;
+            if (!doc) return;
+            const html = doc.documentElement;
+            const body = doc.body;
+            if (!html || !body) return;
+            html.style.setProperty("height", "auto", "important");
+            html.style.setProperty("min-height", "100%", "important");
+            html.style.setProperty("overflow", "visible", "important");
+            body.style.setProperty("height", "auto", "important");
+            body.style.setProperty("min-height", "100%", "important");
+            body.style.setProperty("overflow", "visible", "important");
+            body.style.setProperty("padding", "10px 3% 20px", "important");
+            body.style.setProperty("max-width", "900px", "important");
+            body.style.setProperty("margin", "0 auto", "important");
+            body.style.setProperty("line-height", "1.8", "important");
+            body.style.setProperty("color", "var(--bookea-text-color, #171717)", "important");
+            body.style.setProperty("font-family", "var(--bookea-font-family, 'Inter', -apple-system, sans-serif)", "important");
+            console.log("[Reader] CSS directo inyectado en iframe", view.index);
+          } catch (e) {
+            console.warn("[Reader] Error inyectando CSS directo:", e);
+          }
+        };
+
         rendition.on("rendered", (_section: any, view: any) => {
           if (loadingTimeout) clearTimeout(loadingTimeout);
           setIsLoading(false);
           renderHighlights();
+          fixViewCSS(view);
           if (view && typeof view.expand === "function") {
+            view._width = 0;
             view._height = 0;
             view.expand();
+            console.log("[Reader] expand() llamado para view", view.index, "iframe height:", view.iframe?.style?.height);
           }
         });
 
@@ -771,11 +799,20 @@ export default function ReaderPage() {
             const mgr = (rendition as any).manager;
             const c = mgr?.container;
             if (c) {
-              console.log("[Reader] container scrollH:", c.scrollHeight, "clientH:", c.clientHeight, "overflowY:", getComputedStyle(c).overflowY);
+              const cs = getComputedStyle(c);
+              console.log("[Reader] === DIAGNÓSTICO ===");
+              console.log("[Reader] container scrollH:", c.scrollHeight, "clientH:", c.clientHeight, "overflowY:", cs.overflowY, "overflowX:", cs.overflowX, "position:", cs.position, "height:", cs.height);
               console.log("[Reader] views.displayed:", mgr.views?.displayed()?.length, "views.all:", mgr.views?.all()?.length);
+              const allViews = mgr.views?.all() || [];
+              allViews.forEach((v: any, i: number) => {
+                const iframe = v.iframe;
+                if (iframe) {
+                  console.log(`[Reader] view[${i}] iframe:`, iframe.style.height, "scrolling:", iframe.scrolling);
+                }
+              });
             }
           } catch (_) {}
-        }, 1500);
+        }, 2000);
 
         // FALLBACK A PRUEBA DE FALLOS: Si el evento on('rendered') se disparó demasiado rápido 
         // o si epub.js no lo dispara por estar en modo continuous-scroll, lo quitamos manualmente aquí
