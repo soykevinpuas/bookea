@@ -532,9 +532,28 @@ Crear un sistema de monedas de 4 denominaciones (Bronce, Plata, Oro, Diamante) p
 - **PWA (Progressive Web App):** Configuración de `manifest.json`, inyección de Service Worker (`sw.js`) con `PwaListener`, e ícono generado de alta resolución para asegurar comportamiento de app nativa en iOS/Android.
 - **Integridad de Código (Auditoría Continua):** Establecimiento del protocolo de revisión por IA desde la concepción del proyecto para garantizar que cada componente sea seguro (RLS) y fiel a los estándares de documentación jerárquica.
 
----
+## [2026-05-15] — Reader Debugging: @import eliminado + re-expand tras hooks
 
-### [2026-04-24-G] Estabilización de Biblioteca y Sincronización de Pagos
+### Problema
+El lector EPUB en modo `flow: "scrolled"` solo muestra contenido del viewport. El resto del contenido existe en el DOM pero es invisible. No hay scroll posible. Ocurre tanto en libros nuevos (solo portada) como en libros con progreso (solo fragmento).
+
+### Hipótesis Original (refutada)
+Se pensó que epub.js llama `expand()` (que mide textHeight y ajusta altura del iframe) ANTES de que nuestro CSS hook inyecte `height: auto !important`. Sin embargo, tras leer el código fuente de epub.js v0.3.93, se confirmó que `textHeight()` usa `range.getBoundingClientRect()` que mide TODOS los nodos hijo del body, sin importar el `height: 100%` del body. Por lo tanto `expand()` ya setea la altura correcta del iframe incluso sin nuestro CSS.
+
+### Cambios Aplicados (Ronda 1)
+1. **Eliminado `@import` de Google Fonts y `@font-face` de OpenDyslexic** del CSS hook.
+2. **Agregado `view.expand()` en `rendition.on("rendered")`** — re-expande cada vista post-CSS.
+
+### Cambios Aplicados (Ronda 2)
+1. **`overflow: visible !important`** agregado al rule `html, body` — combate EPUBs con `overflow: hidden`.
+2. **Eliminado `overflow-x: hidden`** de body — no bloquea scroll vertical pero evitaba interferencias.
+3. **`documentElement` fallback** en `appendChild` — si el XHTML del EPUB no tiene `<head>`, se inyecta en `<html>` en su lugar.
+4. **`view._height = 0` antes de `view.expand()`** — fuerza reframe aunque textHeight() devuelva el mismo valor.
+
+### Resultado
+Pendiente de prueba en teléfono.
+
+---
 
 **Cambios Realizados:**
 - **Sincronización Automática de Suscripciones:** Se implementó `verifySubscriptionAction` para validar pagos directamente con Stripe mediante el `session_id`, eliminando la dependencia crítica de los Webhooks para pruebas.

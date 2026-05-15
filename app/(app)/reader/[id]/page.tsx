@@ -502,6 +502,7 @@ export default function ReaderPage() {
               html, body {
                 height: auto !important;
                 min-height: 100% !important;
+                overflow: visible !important;
               }
               body {
                 overscroll-behavior: none !important;
@@ -518,7 +519,6 @@ export default function ReaderPage() {
                 color: var(--bookea-text-color, #171717) !important;
                 font-family: var(--bookea-font-family, 'Inter', -apple-system, sans-serif) !important;
                 box-sizing: border-box;
-                overflow-x: hidden;
               }
               
               /* Ajuste responsive para pantallas grandes */
@@ -557,7 +557,7 @@ export default function ReaderPage() {
                 contain-intrinsic-size: 300px;
               }
             `;
-            contents.document.head.appendChild(style);
+            (contents.document.head || contents.document.documentElement).appendChild(style);
             
             // 4.2.5.3 - Event Listener del Iframe: Detecta clicks en toda la hoja para accionar la interfaz HUD central, en lugar de pasar de página
             contents.document.documentElement.addEventListener('click', async (e: MouseEvent) => {
@@ -727,6 +727,7 @@ export default function ReaderPage() {
           setIsLoading(false);
           renderHighlights();
           if (view && typeof view.expand === "function") {
+            view._height = 0;
             view.expand();
           }
         });
