@@ -747,6 +747,16 @@ export default function ReaderPage() {
           }
         };
 
+        // Helper para forzar check() del manager continuo
+        const forceManagerCheck = () => {
+          try {
+            const mgr = (rendition as any).manager;
+            if (mgr && typeof mgr.check === "function") {
+              mgr.check();
+            }
+          } catch (_) {}
+        };
+
         rendition.on("rendered", (_section: any, view: any) => {
           if (loadingTimeout) clearTimeout(loadingTimeout);
           setIsLoading(false);
@@ -758,7 +768,21 @@ export default function ReaderPage() {
             view.expand();
             console.log("[Reader] expand() llamado para view", view.index, "iframe height:", view.iframe?.style?.height);
           }
+          // Forzar check() después de cada vista renderizada para que cargue la siguiente
+          setTimeout(forceManagerCheck, 50);
         });
+
+        // Scroll listener directo para forzar check() del manager
+        const mgr = (rendition as any).manager;
+        const container = mgr?.container;
+        if (container) {
+          container.addEventListener("scroll", () => {
+            console.log("[Reader] scrollTop:", container.scrollTop, "scrollH:", container.scrollHeight, "clientH:", container.clientHeight);
+            try {
+              if (typeof mgr.check === "function") mgr.check();
+            } catch (_) {}
+          }, { passive: true });
+        }
 
         // 4.2.7.2 - Capturar eventos de Selección de texto (Highlights)
         rendition.on("selected", (cfiRange: string, contents: EpubContents) => {
@@ -794,16 +818,14 @@ export default function ReaderPage() {
         }
 
         // DIAGNÓSTICO: Estado del contenedor después del display
-        setTimeout(() => {
-          try {
-            const mgr = (rendition as any).manager;
-            const c = mgr?.container;
-            if (c) {
-              const cs = getComputedStyle(c);
+            const diagMgr = (rendition as any).manager;
+            const diagC = diagMgr?.container;
+            if (diagC) {
+              const cs = getComputedStyle(diagC);
               console.log("[Reader] === DIAGNÓSTICO ===");
-              console.log("[Reader] container scrollH:", c.scrollHeight, "clientH:", c.clientHeight, "overflowY:", cs.overflowY, "overflowX:", cs.overflowX, "position:", cs.position, "height:", cs.height);
-              console.log("[Reader] views.displayed:", mgr.views?.displayed()?.length, "views.all:", mgr.views?.all()?.length);
-              const allViews = mgr.views?.all() || [];
+              console.log("[Reader] container scrollH:", diagC.scrollHeight, "clientH:", diagC.clientHeight, "scrollTop:", diagC.scrollTop, "overflowY:", cs.overflowY, "position:", cs.position, "height:", cs.height);
+              console.log("[Reader] views.displayed:", diagMgr.views?.displayed()?.length, "views.all:", diagMgr.views?.all()?.length);
+              const allViews = diagMgr.views?.all() || [];
               allViews.forEach((v: any, i: number) => {
                 const iframe = v.iframe;
                 if (iframe) {
@@ -811,8 +833,8 @@ export default function ReaderPage() {
                 }
               });
             }
-          } catch (_) {}
-        }, 2000);
+            const spineLen = (bookInstance as any).spine?.length;
+            console.log("[Reader] total spine:", spineLen);
 
         // FALLBACK A PRUEBA DE FALLOS: Si el evento on('rendered') se disparó demasiado rápido 
         // o si epub.js no lo dispara por estar en modo continuous-scroll, lo quitamos manualmente aquí
