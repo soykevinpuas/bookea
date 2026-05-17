@@ -760,100 +760,47 @@ export default function ReaderPage() {
           }
         });
 
-        // Scroll listener directo para forzar carga del siguiente spine item
+        // 4.2.5.5 - Scroll listener: carga secuencial de spines
         const mgr = (rendition as any).manager;
         const container = mgr?.container;
         const ViewClass = mgr?.View;
         const viewSettings = mgr?.viewSettings;
         if (container && mgr && ViewClass && viewSettings) {
+          let isLoadingSpine = false;
+
           const loadNextSpineItem = () => {
+            if (isLoadingSpine) return;
+
             try {
-              const st = container.scrollTop, sh = container.scrollHeight, ch = container.clientHeight;
-              const atBottom = st + ch >= sh - 10;
+              const atBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10;
+              if (!atBottom) return;
+
               const views = mgr.views?.all() || [];
               const lastView = views[views.length - 1];
-              if (atBottom && lastView) {
-                const nextSection = lastView.section?.next();
-                if (nextSection) {
-                  console.log("[Reader] Cargando spine:", nextSection.href, "index:", nextSection.index);
-                  console.log("[Reader] ANTES create - views:", views.length, "scrollH:", sh, "scrollTop:", st);
+              if (!lastView) return;
 
-                  const newView = new ViewClass(nextSection, { ...viewSettings });
-                  mgr.views.append(newView);
-                  newView.onDisplayed = mgr.afterDisplayed.bind(mgr);
+              const nextSection = lastView.section?.next();
+              if (!nextSection) return;
 
-                  Promise.resolve(newView.display(mgr.request)).then(() => {
-                    // DIAGNÓSTICO 1: estado inmediatamente después de display()
-                    const elRect = newView.element?.getBoundingClientRect();
-                    const ifr = newView.iframe;
-                    const ifrRect = ifr?.getBoundingClientRect();
-                    console.log("[Reader] PASO 1 - después display():", {
-                      displayed: newView.displayed,
-                      elRect: elRect ? { t: elRect.top, b: elRect.bottom, h: elRect.height, w: elRect.width } : null,
-                      ifrRect: ifrRect ? { t: ifrRect.top, b: ifrRect.bottom, h: ifrRect.height, w: ifrRect.width } : null,
-                      ifrHeight: ifr?.style?.height,
-                      elHeight: newView.element?.style?.height,
-                      bodyChildren: ifr?.contentDocument?.body?.children?.length ?? -1,
-                      scrollH: container.scrollHeight,
-                      views: mgr.views?.all()?.length,
-                    });
+              isLoadingSpine = true;
 
-                    newView._width = 0;
-                    newView._height = 0;
-                    newView.expand();
-                    fixViewCSS(newView);
+              const newView = new ViewClass(nextSection, { ...viewSettings });
+              mgr.views.append(newView);
+              newView.onDisplayed = mgr.afterDisplayed.bind(mgr);
 
-                    // DIAGNÓSTICO 2: después de expand()
-                    const elRect2 = newView.element?.getBoundingClientRect();
-                    const ifrRect2 = ifr?.getBoundingClientRect();
-                    console.log("[Reader] PASO 2 - después expand():", {
-                      elRect: elRect2 ? { t: elRect2.top, b: elRect2.bottom, h: elRect2.height } : null,
-                      ifrRect: ifrRect2 ? { t: ifrRect2.top, b: ifrRect2.bottom, h: ifrRect2.height } : null,
-                      ifrHeight: ifr?.style?.height,
-                      scrollH: container.scrollHeight,
-                      views: mgr.views?.all()?.length,
-                    });
-
-                    // EXPERIMENTO: comentar update() para ver si cambia
-                    // mgr.update();
-
-                    // DIAGNÓSTICO 3: estado actual del container y todas las vistas
-                    setTimeout(() => {
-                      const allViews = mgr.views?.all() || [];
-                      console.log("[Reader] PASO 3 - total views:", allViews.length, "scrollH:", container.scrollHeight);
-                      allViews.forEach((v: any, i: number) => {
-                        const r = v.element?.getBoundingClientRect();
-                        console.log(`[Reader] view[${i}] idx:${v.index} rect:`, r ? { t: r.top, b: r.bottom, h: r.height } : null, "displayed:", v.displayed);
-                      });
-                      // DIAGNÓSTICO 4: comparar con update() llamado
-                      if (mgr.update) {
-                        console.log("[Reader] llamando update() para comparación...");
-                        // mgr.update();
-                        // setTimeout(() => {
-                        //   const afterUpdate = mgr.views?.all() || [];
-                        //   console.log("[Reader] DESPUES update() - views:", afterUpdate.length, "scrollH:", container.scrollHeight);
-                        //   afterUpdate.forEach((v: any, i: number) => {
-                        //     const r2 = v.element?.getBoundingClientRect();
-                        //     console.log(`[Reader] view[${i}] idx:${v.index} rect:`, r2 ? { t: r2.top, b: r2.bottom, h: r2.height } : null);
-                        //   });
-                        // }, 300);
-                      }
-                    }, 200);
-
-                  }).catch((err: any) => {
-                    console.warn("[Reader] Error en display de nueva vista:", err);
-                  });
-                } else {
-                  console.log("[Reader] No hay más spine items para cargar");
-                }
-              }
+              newView.display(mgr.request).then(() => {
+                isLoadingSpine = false;
+              }).catch((err: any) => {
+                console.warn("[Reader] Error en display:", err);
+                isLoadingSpine = false;
+              });
             } catch (e) {
-              console.warn("[Reader] Error cargando siguiente spine:", e);
+              console.warn("[Reader] Error cargando spine:", e);
+              isLoadingSpine = false;
             }
           };
-          container.addEventListener("scroll", () => {
-            loadNextSpineItem();
-          }, { passive: true });
+
+          container.addEventListener("scroll", loadNextSpineItem, { passive: true });
           setTimeout(loadNextSpineItem, 100);
         }
 
