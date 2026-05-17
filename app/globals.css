@@ -814,6 +814,25 @@ main {
   to   { transform: scale(1.1); opacity: 1; }
 }
 
+/* 1.7.10 - Protección del contenedor epub.js contra overrides agresivos de temas */
+/* El epub-container y sus hijos internos (iframes, wrappers de epub.js) NO deben
+   ser afectados por las reglas catch-all de retro/navy que fuerzan backgrounds y borders */
+.epub-container,
+.epub-container * {
+  background-color: inherit;
+  border-color: inherit;
+}
+
+.retro .epub-container *:not(.no-retro-override),
+.navy .epub-container *:not(.no-retro-override) {
+  border-color: transparent !important;
+}
+
+/* Asegurar que el contenedor de epub.js permita scroll nativo del manager */
+.epub-container > div {
+  overflow: visible !important;
+}
+
 /* 1.7.1 - Ocultar splash inmediatamente si ya se mostró en la sesión (Head Script support) */
 html.splash-ready #bookea-splash {
   display: none !important;

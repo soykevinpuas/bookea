@@ -483,12 +483,15 @@ export default function ReaderPage() {
 
         const viewerElement = viewerRef.current as Element;
         
-        // 4.2.5.1 - Configuración base del Rendition con flujo responsivo nativo
+        // 4.2.5.1 - Configuración base del Rendition con flujo continuo nativo (scrolled-doc)
+        // scrolled-doc renderiza todos los spines en un documento continuo, evitando
+        // la necesidad de cargar spines manualmente y eliminando problemas de iframes invisibles.
         const rendition = bookInstance.renderTo(viewerElement, {
           width: "100%",
           height: "100%",
           spread: "none",
-          flow: "scrolled",
+          flow: "scrolled-doc",
+          manager: "continuous",
           allowScriptedContent: true,
         });
 
@@ -752,57 +755,10 @@ export default function ReaderPage() {
           setIsLoading(false);
           renderHighlights();
           fixViewCSS(view);
-          if (view && !view._bookeaExpanded && typeof view.expand === "function") {
-            view._bookeaExpanded = true;
-            view._width = 0;
-            view._height = 0;
-            view.expand();
-          }
         });
 
-        // 4.2.5.5 - Scroll listener: carga secuencial de spines
-        const mgr = (rendition as any).manager;
-        const container = mgr?.container;
-        const ViewClass = mgr?.View;
-        const viewSettings = mgr?.viewSettings;
-        if (container && mgr && ViewClass && viewSettings) {
-          let isLoadingSpine = false;
-
-          const loadNextSpineItem = () => {
-            if (isLoadingSpine) return;
-
-            try {
-              const atBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10;
-              if (!atBottom) return;
-
-              const views = mgr.views?.all() || [];
-              const lastView = views[views.length - 1];
-              if (!lastView) return;
-
-              const nextSection = lastView.section?.next();
-              if (!nextSection) return;
-
-              isLoadingSpine = true;
-
-              const newView = new ViewClass(nextSection, { ...viewSettings });
-              mgr.views.append(newView);
-              newView.onDisplayed = mgr.afterDisplayed.bind(mgr);
-
-              newView.display(mgr.request).then(() => {
-                isLoadingSpine = false;
-              }).catch((err: any) => {
-                console.warn("[Reader] Error en display:", err);
-                isLoadingSpine = false;
-              });
-            } catch (e) {
-              console.warn("[Reader] Error cargando spine:", e);
-              isLoadingSpine = false;
-            }
-          };
-
-          container.addEventListener("scroll", loadNextSpineItem, { passive: true });
-          setTimeout(loadNextSpineItem, 100);
-        }
+        // 4.2.5.5 - La carga de spines es manejada nativamente por epub.js con manager: "continuous"
+        // Ya no se necesita lógica manual de loadNextSpineItem
 
         // 4.2.7.2 - Capturar eventos de Selección de texto (Highlights)
         rendition.on("selected", (cfiRange: string, contents: EpubContents) => {
@@ -1392,7 +1348,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
       {/* 4.2.15 - Ventana principal de visualización del objeto renderizado (Viewport) */}
       <div 
-        className="flex-1 relative w-full h-full overflow-hidden"
+        className="flex-1 relative w-full overflow-y-auto overflow-x-hidden"
         onClick={() => toggleControls()}
       >
         {isLoading && (
@@ -1419,7 +1375,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         )}
 
         {/* 4.2.16 - Div nativo puro donde ePubJS monta su Iframe interno */}
-        <div ref={viewerRef} className="relative w-full h-full cursor-pointer" />
+        <div ref={viewerRef} className="epub-container relative w-full min-h-full cursor-pointer" />
       </div>
 
       {/* 4.2.16.1 - Popup fijo interactivo para Subrayados cuando hay Selección */}
