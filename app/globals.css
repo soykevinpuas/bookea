@@ -828,12 +828,21 @@ main {
   border-color: transparent !important;
 }
 
-/* Asegurar que el contenedor Stage de epub.js ocupe toda la altura y scrollee */
-.epub-container > div {
+/* El Stage de epub.js crea un div con id="epubjs-container-xxx" y class="epub-container".
+   Este es el ÚNICO elemento que debe tener overflow-y:scroll para el scroll continuo.
+   NO usar .epub-container > div porque también afecta los wrappers de cada iframe/vista
+   dentro del Stage, causando doble scrollbar. */
+[id^="epubjs-container"] {
   height: 100% !important;
   overflow-y: scroll !important;
   overflow-x: hidden !important;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Los wrappers de vistas (iframes) dentro del Stage NO deben scrollear.
+   Cada iframe se expande a su altura natural y el Stage scrollea a través de ellos. */
+[id^="epubjs-container"] > div {
+  overflow: visible !important;
 }
 
 /* 1.7.1 - Ocultar splash inmediatamente si ya se mostró en la sesión (Head Script support) */
