@@ -483,16 +483,20 @@ export default function ReaderPage() {
 
         const viewerElement = viewerRef.current as Element;
         
-        // 4.2.5.1 - Configuración base del Rendition con flujo scroll continuo
-        // flow: "scrolled" + manager: "continuous" = cada spine es un iframe separado
-        // pero epub.js carga todos los spines automáticamente al hacer scroll.
-        // Esto es más compatible que "scrolled-doc" que rompe EPUBs con estructuras complejas.
+        // 4.2.5.1 - Configuración base del Rendition con scroll continuo
+        // CLAVES para que funcione:
+        // - flow: "scrolled" = modo scroll vertical (no paginado)
+        // - manager: "continuous" = ContinuousViewManager que carga spines al scrollear
+        // - overflow: "scroll" = CRUCIAL: fuerza overflow-y:scroll en el container
+        //   interno de epub.js. Sin esto, el container queda en overflow:visible,
+        //   nunca genera scroll events, y el continuous manager nunca carga más spines.
         const rendition = bookInstance.renderTo(viewerElement, {
           width: "100%",
           height: "100%",
           spread: "none",
           flow: "scrolled",
           manager: "continuous",
+          overflow: "scroll",
           allowScriptedContent: true,
         });
 
@@ -759,7 +763,17 @@ export default function ReaderPage() {
         });
 
         // 4.2.5.5 - La carga de spines es manejada nativamente por epub.js con manager: "continuous"
-        // Ya no se necesita lógica manual de loadNextSpineItem
+        // Forzar overflow-y: scroll en el container interno de epub.js para garantizar
+        // que el ContinuousViewManager detecte el scroll y cargue los spines siguientes.
+        setTimeout(() => {
+          const mgr = (rendition as any).manager;
+          if (mgr?.container) {
+            mgr.container.style.overflowY = 'scroll';
+            mgr.container.style.overflowX = 'hidden';
+            mgr.container.style.webkitOverflowScrolling = 'touch';
+            console.log('[Reader] Container de epub.js configurado con overflow-y: scroll');
+          }
+        }, 50);
 
         // 4.2.7.2 - Capturar eventos de Selección de texto (Highlights)
         rendition.on("selected", (cfiRange: string, contents: EpubContents) => {
@@ -794,14 +808,20 @@ export default function ReaderPage() {
         setIsLoading(false);
         renderHighlights();
 
-        rendition.on("relocated", (location: { start: { cfi: string; percentage: number | string }; end?: { percentage: number | string } }) => {
+        rendition.on("relocated", (location: { start: { cfi: string; index: number; percentage: number | string }; end?: { percentage: number | string; index: number } }) => {
           let percent = 0;
+          const totalSpines = (bookInstance.spine as any)?.length || (bookInstance.spine as any)?.items?.length || 1;
 
           // Primero intentar con locations (más preciso)
           if (bookInstance.locations && bookInstance.locations.length() > 0) {
             percent = bookInstance.locations.percentageFromCfi(location.start.cfi);
+          } else if (totalSpines > 1) {
+            // Fallback: calcular progreso basado en el índice del spine actual
+            // Esto da una estimación razonable hasta que las ubicaciones se generen
+            const spineIndex = typeof location.start.index === 'number' ? location.start.index : 0;
+            const spinePercent = Number(location.start.percentage || 0);
+            percent = (spineIndex + spinePercent) / totalSpines;
           } else {
-            // Fallback: usar el porcentaje nativo del spine (menos preciso pero funcional)
             percent = Number(location.start.percentage || 0);
           }
 
@@ -825,8 +845,8 @@ export default function ReaderPage() {
             console.log("[Reader] Ubicaciones generadas:", bookInstance.locations.length());
             // Recalcular progreso con las ubicaciones ya disponibles
             if (lastCfiRef.current && bookInstance.locations.length() > 0) {
-              const percent = bookInstance.locations.percentageFromCfi(lastCfiRef.current);
-              setProgress(Math.max(0, Math.min(100, percent * 100)));
+              const p = bookInstance.locations.percentageFromCfi(lastCfiRef.current);
+              setProgress(Math.max(0, Math.min(100, p * 100)));
             }
           } catch (err) {
             console.warn("[Reader] Generación de ubicaciones falló:", err);
@@ -838,25 +858,6 @@ export default function ReaderPage() {
         } else {
           setTimeout(generateLocations, 500);
         }
-
-        // 4.2.7.4 - Progreso por scroll como fallback adicional (para manager continuous)
-        // Cuando el manager continuous usa iframes, el scroll del container
-        // puede dar una estimación rápida del progreso
-        setTimeout(() => {
-          const mgr = (rendition as any).manager;
-          const container = mgr?.container;
-          if (container) {
-            const onScroll = () => {
-              if (bookInstance.locations && bookInstance.locations.length() > 0) return; // locations ya disponibles
-              const scrollPercent = container.scrollTop / (container.scrollHeight - container.clientHeight);
-              if (!isNaN(scrollPercent) && isFinite(scrollPercent) && scrollPercent > 0) {
-                const p = Math.max(0, Math.min(100, scrollPercent * 100));
-                setProgress(p);
-              }
-            };
-            container.addEventListener('scroll', onScroll, { passive: true });
-          }
-        }, 200);
 
         // 4.2.7.1 - Manejo de resize para actualizar el rendition al cambiar orientación o tamaño de ventana
         const handleResize = () => {
@@ -1386,8 +1387,11 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       />
 
       {/* 4.2.15 - Ventana principal de visualización del objeto renderizado (Viewport) */}
+      {/* IMPORTANTE: overflow:hidden aquí para que epub.js maneje el scroll internamente.
+          Si este div tiene overflow-y:auto, roba los scroll events del container de epub.js
+          y el ContinuousViewManager nunca detecta que necesita cargar más spines. */}
       <div 
-        className="flex-1 relative w-full overflow-y-auto overflow-x-hidden"
+        className="flex-1 relative w-full h-full overflow-hidden"
         onClick={() => toggleControls()}
       >
         {isLoading && (
@@ -1414,7 +1418,9 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         )}
 
         {/* 4.2.16 - Div nativo puro donde ePubJS monta su Iframe interno */}
-        <div ref={viewerRef} className="epub-container relative w-full min-h-full cursor-pointer" />
+        {/* h-full fija la altura para que epub.js tenga un reference point.
+            min-h-full causa que el container crezca infinitamente y no scrollee. */}
+        <div ref={viewerRef} className="epub-container relative w-full h-full cursor-pointer" />
       </div>
 
       {/* 4.2.16.1 - Popup fijo interactivo para Subrayados cuando hay Selección */}

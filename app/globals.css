@@ -828,9 +828,12 @@ main {
   border-color: transparent !important;
 }
 
-/* Asegurar que el contenedor de epub.js permita scroll nativo del manager */
+/* Asegurar que el contenedor Stage de epub.js ocupe toda la altura y scrollee */
 .epub-container > div {
-  overflow: visible !important;
+  height: 100% !important;
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 1.7.1 - Ocultar splash inmediatamente si ya se mostró en la sesión (Head Script support) */
