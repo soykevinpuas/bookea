@@ -483,14 +483,15 @@ export default function ReaderPage() {
 
         const viewerElement = viewerRef.current as Element;
         
-        // 4.2.5.1 - Configuración base del Rendition con flujo continuo nativo (scrolled-doc)
-        // scrolled-doc renderiza todos los spines en un documento continuo, evitando
-        // la necesidad de cargar spines manualmente y eliminando problemas de iframes invisibles.
+        // 4.2.5.1 - Configuración base del Rendition con flujo scroll continuo
+        // flow: "scrolled" + manager: "continuous" = cada spine es un iframe separado
+        // pero epub.js carga todos los spines automáticamente al hacer scroll.
+        // Esto es más compatible que "scrolled-doc" que rompe EPUBs con estructuras complejas.
         const rendition = bookInstance.renderTo(viewerElement, {
           width: "100%",
           height: "100%",
           spread: "none",
-          flow: "scrolled-doc",
+          flow: "scrolled",
           manager: "continuous",
           allowScriptedContent: true,
         });
@@ -793,10 +794,19 @@ export default function ReaderPage() {
         setIsLoading(false);
         renderHighlights();
 
-        rendition.on("relocated", (location: { start: { cfi: string; percentage: number | string } }) => {
-          const percent = bookInstance.locations.length() > 0
-            ? bookInstance.locations.percentageFromCfi(location.start.cfi)
-            : Number(location.start.percentage || 0);
+        rendition.on("relocated", (location: { start: { cfi: string; percentage: number | string }; end?: { percentage: number | string } }) => {
+          let percent = 0;
+
+          // Primero intentar con locations (más preciso)
+          if (bookInstance.locations && bookInstance.locations.length() > 0) {
+            percent = bookInstance.locations.percentageFromCfi(location.start.cfi);
+          } else {
+            // Fallback: usar el porcentaje nativo del spine (menos preciso pero funcional)
+            percent = Number(location.start.percentage || 0);
+          }
+
+          // Clamp entre 0 y 1
+          percent = Math.max(0, Math.min(1, percent));
           setProgress(percent * 100);
           lastCfiRef.current = location.start.cfi;
 
@@ -807,17 +817,46 @@ export default function ReaderPage() {
           }, 1500);
         });
 
-        const generateLocations = () => {
-          bookInstance.locations.generate(1600).catch((err: unknown) => {
-            console.warn("EPUB Location generation failed:", err);
-          });
+        // 4.2.7.3 - Generación de ubicaciones para cálculo preciso del porcentaje
+        // Se genera en background y cuando termina se recalcula el progreso actual
+        const generateLocations = async () => {
+          try {
+            await bookInstance.locations.generate(1600);
+            console.log("[Reader] Ubicaciones generadas:", bookInstance.locations.length());
+            // Recalcular progreso con las ubicaciones ya disponibles
+            if (lastCfiRef.current && bookInstance.locations.length() > 0) {
+              const percent = bookInstance.locations.percentageFromCfi(lastCfiRef.current);
+              setProgress(Math.max(0, Math.min(100, percent * 100)));
+            }
+          } catch (err) {
+            console.warn("[Reader] Generación de ubicaciones falló:", err);
+          }
         };
 
         if ('requestIdleCallback' in window) {
           (window as Window & typeof globalThis & { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(generateLocations);
         } else {
-          setTimeout(generateLocations, 1000);
+          setTimeout(generateLocations, 500);
         }
+
+        // 4.2.7.4 - Progreso por scroll como fallback adicional (para manager continuous)
+        // Cuando el manager continuous usa iframes, el scroll del container
+        // puede dar una estimación rápida del progreso
+        setTimeout(() => {
+          const mgr = (rendition as any).manager;
+          const container = mgr?.container;
+          if (container) {
+            const onScroll = () => {
+              if (bookInstance.locations && bookInstance.locations.length() > 0) return; // locations ya disponibles
+              const scrollPercent = container.scrollTop / (container.scrollHeight - container.clientHeight);
+              if (!isNaN(scrollPercent) && isFinite(scrollPercent) && scrollPercent > 0) {
+                const p = Math.max(0, Math.min(100, scrollPercent * 100));
+                setProgress(p);
+              }
+            };
+            container.addEventListener('scroll', onScroll, { passive: true });
+          }
+        }, 200);
 
         // 4.2.7.1 - Manejo de resize para actualizar el rendition al cambiar orientación o tamaño de ventana
         const handleResize = () => {
