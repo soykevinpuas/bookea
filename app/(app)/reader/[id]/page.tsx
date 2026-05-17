@@ -775,17 +775,71 @@ export default function ReaderPage() {
               if (atBottom && lastView) {
                 const nextSection = lastView.section?.next();
                 if (nextSection) {
-                  console.log("[Reader] Cargando siguiente spine:", nextSection.href, "index:", nextSection.index);
+                  console.log("[Reader] Cargando spine:", nextSection.href, "index:", nextSection.index);
+                  console.log("[Reader] ANTES create - views:", views.length, "scrollH:", sh, "scrollTop:", st);
+
                   const newView = new ViewClass(nextSection, { ...viewSettings });
                   mgr.views.append(newView);
                   newView.onDisplayed = mgr.afterDisplayed.bind(mgr);
+
                   Promise.resolve(newView.display(mgr.request)).then(() => {
+                    // DIAGNÓSTICO 1: estado inmediatamente después de display()
+                    const elRect = newView.element?.getBoundingClientRect();
+                    const ifr = newView.iframe;
+                    const ifrRect = ifr?.getBoundingClientRect();
+                    console.log("[Reader] PASO 1 - después display():", {
+                      displayed: newView.displayed,
+                      elRect: elRect ? { t: elRect.top, b: elRect.bottom, h: elRect.height, w: elRect.width } : null,
+                      ifrRect: ifrRect ? { t: ifrRect.top, b: ifrRect.bottom, h: ifrRect.height, w: ifrRect.width } : null,
+                      ifrHeight: ifr?.style?.height,
+                      elHeight: newView.element?.style?.height,
+                      bodyChildren: ifr?.contentDocument?.body?.children?.length ?? -1,
+                      scrollH: container.scrollHeight,
+                      views: mgr.views?.all()?.length,
+                    });
+
                     newView._width = 0;
                     newView._height = 0;
                     newView.expand();
                     fixViewCSS(newView);
-                    console.log("[Reader] Nueva vista cargada, total views:", mgr.views?.all()?.length);
-                    mgr.update();
+
+                    // DIAGNÓSTICO 2: después de expand()
+                    const elRect2 = newView.element?.getBoundingClientRect();
+                    const ifrRect2 = ifr?.getBoundingClientRect();
+                    console.log("[Reader] PASO 2 - después expand():", {
+                      elRect: elRect2 ? { t: elRect2.top, b: elRect2.bottom, h: elRect2.height } : null,
+                      ifrRect: ifrRect2 ? { t: ifrRect2.top, b: ifrRect2.bottom, h: ifrRect2.height } : null,
+                      ifrHeight: ifr?.style?.height,
+                      scrollH: container.scrollHeight,
+                      views: mgr.views?.all()?.length,
+                    });
+
+                    // EXPERIMENTO: comentar update() para ver si cambia
+                    // mgr.update();
+
+                    // DIAGNÓSTICO 3: estado actual del container y todas las vistas
+                    setTimeout(() => {
+                      const allViews = mgr.views?.all() || [];
+                      console.log("[Reader] PASO 3 - total views:", allViews.length, "scrollH:", container.scrollHeight);
+                      allViews.forEach((v: any, i: number) => {
+                        const r = v.element?.getBoundingClientRect();
+                        console.log(`[Reader] view[${i}] idx:${v.index} rect:`, r ? { t: r.top, b: r.bottom, h: r.height } : null, "displayed:", v.displayed);
+                      });
+                      // DIAGNÓSTICO 4: comparar con update() llamado
+                      if (mgr.update) {
+                        console.log("[Reader] llamando update() para comparación...");
+                        // mgr.update();
+                        // setTimeout(() => {
+                        //   const afterUpdate = mgr.views?.all() || [];
+                        //   console.log("[Reader] DESPUES update() - views:", afterUpdate.length, "scrollH:", container.scrollHeight);
+                        //   afterUpdate.forEach((v: any, i: number) => {
+                        //     const r2 = v.element?.getBoundingClientRect();
+                        //     console.log(`[Reader] view[${i}] idx:${v.index} rect:`, r2 ? { t: r2.top, b: r2.bottom, h: r2.height } : null);
+                        //   });
+                        // }, 300);
+                      }
+                    }, 200);
+
                   }).catch((err: any) => {
                     console.warn("[Reader] Error en display de nueva vista:", err);
                   });
@@ -798,7 +852,6 @@ export default function ReaderPage() {
             }
           };
           container.addEventListener("scroll", () => {
-            console.log("[Reader] scrollTop:", container.scrollTop, "scrollH:", container.scrollHeight, "clientH:", container.clientHeight);
             loadNextSpineItem();
           }, { passive: true });
           setTimeout(loadNextSpineItem, 100);
@@ -816,12 +869,6 @@ export default function ReaderPage() {
           }
         });
 
-        // DIAGNÓSTICO: Spine length y estructura
-        try {
-          const spineLen = (bookInstance as any).spine?.length;
-          console.log(`[Reader] Spine length: ${spineLen}, first url: ${(bookInstance as any).spine?.first()?.href}`);
-        } catch (_) {}
-
         // ACCIÓN DE RENDERIZADO (RESOLVER POSICIÓN INICIAL)
         try {
           if (savedProgress?.cfi_position && !hasRestoredPosition.current) {
@@ -836,25 +883,6 @@ export default function ReaderPage() {
           console.warn("CFI inválido, cargando inicio", e);
           await rendition.display();
         }
-
-        // DIAGNÓSTICO: Estado del contenedor después del display
-            const diagMgr = (rendition as any).manager;
-            const diagC = diagMgr?.container;
-            if (diagC) {
-              const cs = getComputedStyle(diagC);
-              console.log("[Reader] === DIAGNÓSTICO ===");
-              console.log("[Reader] container scrollH:", diagC.scrollHeight, "clientH:", diagC.clientHeight, "scrollTop:", diagC.scrollTop, "overflowY:", cs.overflowY, "position:", cs.position, "height:", cs.height);
-              console.log("[Reader] views.displayed:", diagMgr.views?.displayed()?.length, "views.all:", diagMgr.views?.all()?.length);
-              const allViews = diagMgr.views?.all() || [];
-              allViews.forEach((v: any, i: number) => {
-                const iframe = v.iframe;
-                if (iframe) {
-                  console.log(`[Reader] view[${i}] iframe:`, iframe.style.height, "scrolling:", iframe.scrolling);
-                }
-              });
-            }
-            const spineLen = (bookInstance as any).spine?.length;
-            console.log("[Reader] total spine:", spineLen);
 
         // FALLBACK A PRUEBA DE FALLOS: Si el evento on('rendered') se disparó demasiado rápido 
         // o si epub.js no lo dispara por estar en modo continuous-scroll, lo quitamos manualmente aquí

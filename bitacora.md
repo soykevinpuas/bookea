@@ -4,6 +4,25 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-05-17-A] - Diagnóstico: logging en loadNextSpineItem + sin mgr.update()
+
+### Problema
+Las vistas cargadas manualmente (via `loadNextSpineItem()`) no se ven en pantalla (fondo negro/blanco) aunque el progreso aumenta.
+
+### Cambios
+1. **Logging de diagnóstico en 3 pasos** en `loadNextSpineItem()`:
+   - PASO 1: después de `display()` — dimensiones del elemento, iframe, bodyChildren
+   - PASO 2: después de `expand()` — dimensiones actualizadas
+   - PASO 3: 200ms después — estado de todas las vistas
+2. **`mgr.update()` comentado** — experimento para ver si es la causa de la destrucción de vistas
+3. **Eliminado código de diagnóstico basura** (spine length y container state dumps)
+4. **Eliminado log redundante de scroll** en el listener
+
+### Archivos Modificados
+- `app/(app)/reader/[id]/page.tsx` — bloque scroll/listener de spine items
+
+---
+
 ## [2026-05-07-D] - Optimización de Performance: Perfil y Caché de Datos
 
 ### Problema
