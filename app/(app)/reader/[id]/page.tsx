@@ -487,9 +487,9 @@ export default function ReaderPage() {
         // CLAVES para que funcione:
         // - flow: "scrolled" = modo scroll vertical (no paginado)
         // - manager: "continuous" = ContinuousViewManager que carga spines al scrollear
-        // - overflow: "scroll" = CRUCIAL: fuerza overflow-y:scroll en el container
-        //   interno de epub.js. Sin esto, el container queda en overflow:visible,
-        //   nunca genera scroll events, y el continuous manager nunca carga más spines.
+        // - overflow: "scroll" = fuerza overflow-y:scroll en el container interno
+        // - offset: 3000 = precarga 3000px de contenido en cada dirección, reduciendo
+        //   la necesidad de cargar/descargar spines al hacer scroll rápido
         const rendition = bookInstance.renderTo(viewerElement, {
           width: "100%",
           height: "100%",
@@ -762,17 +762,30 @@ export default function ReaderPage() {
           fixViewCSS(view);
         });
 
-        // 4.2.5.5 - La carga de spines es manejada nativamente por epub.js con manager: "continuous"
-        // Forzar overflow-y: scroll en el container interno de epub.js para garantizar
-        // que el ContinuousViewManager detecte el scroll y cargue los spines siguientes.
+        // 4.2.5.5 - Post-init del manager: configurar scroll y desactivar trimming agresivo
+        // El ContinuousViewManager destruye (trim) secciones al salir del viewport,
+        // lo que causa saltos de scroll al navegar hacia arriba porque al destruir
+        // contenido abajo, el scrollHeight cambia y el navegador reajusta el scrollTop.
+        // Solución: desactivar trim() para mantener todas las secciones cargadas en DOM.
+        // Los EPUBs son lo suficientemente pequeños para que esto no cause problemas de memoria.
         setTimeout(() => {
           const mgr = (rendition as any).manager;
           if (mgr?.container) {
             mgr.container.style.overflowY = 'scroll';
             mgr.container.style.overflowX = 'hidden';
             mgr.container.style.webkitOverflowScrolling = 'touch';
-            console.log('[Reader] Container de epub.js configurado con overflow-y: scroll');
           }
+          // Desactivar el trimming que causa los saltos al hacer scroll hacia arriba
+          if (mgr?.trim) {
+            mgr.trim = function() {
+              return Promise.resolve();
+            };
+          }
+          // Aumentar el offset de detección para precargar más contenido
+          if (mgr?.settings) {
+            mgr.settings.offset = 3000;
+          }
+          console.log('[Reader] Manager configurado: trim desactivado, offset=3000');
         }, 50);
 
         // 4.2.7.2 - Capturar eventos de Selección de texto (Highlights)
