@@ -747,16 +747,6 @@ export default function ReaderPage() {
           }
         };
 
-        // Helper para forzar check() del manager continuo
-        const forceManagerCheck = () => {
-          try {
-            const mgr = (rendition as any).manager;
-            if (mgr && typeof mgr.check === "function") {
-              mgr.check();
-            }
-          } catch (_) {}
-        };
-
         rendition.on("rendered", (_section: any, view: any) => {
           if (loadingTimeout) clearTimeout(loadingTimeout);
           setIsLoading(false);
@@ -768,20 +758,45 @@ export default function ReaderPage() {
             view.expand();
             console.log("[Reader] expand() llamado para view", view.index, "iframe height:", view.iframe?.style?.height);
           }
-          // Forzar check() después de cada vista renderizada para que cargue la siguiente
-          setTimeout(forceManagerCheck, 50);
         });
 
-        // Scroll listener directo para forzar check() del manager
+        // Scroll listener directo para forzar carga del siguiente spine item
         const mgr = (rendition as any).manager;
         const container = mgr?.container;
         if (container) {
+          const loadNextSpineItem = () => {
+            try {
+              const st = container.scrollTop, sh = container.scrollHeight, ch = container.clientHeight;
+              const atBottom = st + ch >= sh - 10;
+              const views = mgr.views?.all() || [];
+              const lastView = views[views.length - 1];
+              if (atBottom && lastView) {
+                const nextSection = lastView.section?.next();
+                if (nextSection) {
+                  console.log("[Reader] Cargando siguiente spine:", nextSection.href, "index:", nextSection.index);
+                  const newView = mgr.append(nextSection);
+                  newView.display(mgr.request).then(() => {
+                    newView._width = 0;
+                    newView._height = 0;
+                    newView.expand();
+                    fixViewCSS(newView);
+                    console.log("[Reader] Nueva vista cargada, total views:", mgr.views?.all()?.length);
+                    mgr.update();
+                  });
+                } else {
+                  console.log("[Reader] No hay más spine items para cargar");
+                }
+              }
+            } catch (e) {
+              console.warn("[Reader] Error cargando siguiente spine:", e);
+            }
+          };
           container.addEventListener("scroll", () => {
             console.log("[Reader] scrollTop:", container.scrollTop, "scrollH:", container.scrollHeight, "clientH:", container.clientHeight);
-            try {
-              if (typeof mgr.check === "function") mgr.check();
-            } catch (_) {}
+            loadNextSpineItem();
           }, { passive: true });
+          // También forzar al inicio por si ya estamos al final
+          setTimeout(loadNextSpineItem, 100);
         }
 
         // 4.2.7.2 - Capturar eventos de Selección de texto (Highlights)
