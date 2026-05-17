@@ -752,11 +752,11 @@ export default function ReaderPage() {
           setIsLoading(false);
           renderHighlights();
           fixViewCSS(view);
-          if (view && typeof view.expand === "function") {
+          if (view && !view._bookeaExpanded && typeof view.expand === "function") {
+            view._bookeaExpanded = true;
             view._width = 0;
             view._height = 0;
             view.expand();
-            console.log("[Reader] expand() llamado para view", view.index, "iframe height:", view.iframe?.style?.height);
           }
         });
 
