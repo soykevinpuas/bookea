@@ -763,7 +763,9 @@ export default function ReaderPage() {
         // Scroll listener directo para forzar carga del siguiente spine item
         const mgr = (rendition as any).manager;
         const container = mgr?.container;
-        if (container) {
+        const ViewClass = mgr?.View;
+        const viewSettings = mgr?.viewSettings;
+        if (container && mgr && ViewClass && viewSettings) {
           const loadNextSpineItem = () => {
             try {
               const st = container.scrollTop, sh = container.scrollHeight, ch = container.clientHeight;
@@ -774,14 +776,18 @@ export default function ReaderPage() {
                 const nextSection = lastView.section?.next();
                 if (nextSection) {
                   console.log("[Reader] Cargando siguiente spine:", nextSection.href, "index:", nextSection.index);
-                  const newView = mgr.append(nextSection);
-                  newView.display(mgr.request).then(() => {
+                  const newView = new ViewClass(nextSection, { ...viewSettings });
+                  mgr.views.append(newView);
+                  newView.onDisplayed = mgr.afterDisplayed.bind(mgr);
+                  Promise.resolve(newView.display(mgr.request)).then(() => {
                     newView._width = 0;
                     newView._height = 0;
                     newView.expand();
                     fixViewCSS(newView);
                     console.log("[Reader] Nueva vista cargada, total views:", mgr.views?.all()?.length);
                     mgr.update();
+                  }).catch((err: any) => {
+                    console.warn("[Reader] Error en display de nueva vista:", err);
                   });
                 } else {
                   console.log("[Reader] No hay más spine items para cargar");
@@ -795,7 +801,6 @@ export default function ReaderPage() {
             console.log("[Reader] scrollTop:", container.scrollTop, "scrollH:", container.scrollHeight, "clientH:", container.clientHeight);
             loadNextSpineItem();
           }, { passive: true });
-          // También forzar al inicio por si ya estamos al final
           setTimeout(loadNextSpineItem, 100);
         }
 
