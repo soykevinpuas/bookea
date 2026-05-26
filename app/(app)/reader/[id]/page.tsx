@@ -9,7 +9,9 @@ import { useUserId } from "@/hooks/useUser";
 import { useCoins, useCoinTransactions } from "@/hooks/useCoins";
 import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
 import { Highlight } from "@/types/reading";
+import { Bookmark as BookmarkType } from "@/types/bookmark";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
+import { getBookmarks, saveBookmark, deleteBookmark } from "@/lib/bookmarks";
 import ePub, { Book, Rendition } from "epubjs";
 import { Loader2, ArrowLeft, Bookmark, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins, GripHorizontal, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -64,6 +66,10 @@ export default function ReaderPage() {
   const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
   // Ref para la última posición CFI conocida para restaurar en resize/rotación (Evita saltos de texto)
   const lastCfiRef = useRef<string | null>(null);
+  // Refs para scroll exacto y restauración de posición
+  const scrollTopRef = useRef(0);
+  const pendingScrollRestore = useRef<number | null>(null);
+  const hasRestoredScroll = useRef(false);
 
   const { data: book, isLoading: loadingBook } = useBook(bookId);
   const [isExiting, setIsExiting] = useState(false);
@@ -116,6 +122,7 @@ export default function ReaderPage() {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [activeSelection, setActiveSelection] = useState<{ cfiRange: string; text: string; isExistingId?: string } | null>(null);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
+  const [bookmarks, setBookmarks] = useState<BookmarkType[]>([]);
   const [editingNote, setEditingNote] = useState<{ id: string; note: string } | null>(null);
   const [isSavingHighlight, setIsSavingHighlight] = useState(false);
 
@@ -125,35 +132,34 @@ export default function ReaderPage() {
   // 4.2.2.6 - Estado para el color del subrayado
   const [highlightColor, setHighlightColor] = useState('#FFEB3B');
   
-  // 4.2.4.1 - Efecto inmersivo: Ocultar barra de estado (hora/batería) al ocultar HUD
+  // 4.2.4.1 - Efecto inmersivo: Ocultar barra de estado (hora/batería) al ocultar HUD (sin fullscreen toggle)
   useEffect(() => {
     if (!mounted) return;
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     const metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     
     if (!showControls) {
-      // Modo inmersivo: Fondo del tema
       const bgColor = theme === 'retro' ? '#0d1117' : theme === 'navy' ? '#0a0f1e' : theme === 'dark' ? '#0a0a0a' : '#ffffff';
       if (metaTheme) metaTheme.setAttribute('content', bgColor);
-      
-      // Intentar ocultar la barra en iOS PWA
       if (metaApple) metaApple.setAttribute('content', 'black-translucent');
-      
-      // Intentar Fullscreen
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      }
     } else {
-      // Modo navegación: Restaurar sistema
       if (metaTheme) metaTheme.setAttribute('content', theme === 'light' ? '#ffffff' : '#000000');
       if (metaApple) metaApple.setAttribute('content', 'default');
-      
-      // Salir de Fullscreen
+    }
+  }, [showControls, theme, mounted]);
+
+  // 4.2.4.2 - Fullscreen permanente: entrar al montar, salir solo al desmontar (elimina el parpadeo en Android)
+  useEffect(() => {
+    if (!mounted) return;
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+    return () => {
       if (document.fullscreenElement && document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
       }
-    }
-  }, [showControls, theme, mounted]);
+    };
+  }, [mounted]);
   const [bookCompleted, setBookCompleted] = useState(false);
   const { data: transactions } = useCoinTransactions(userId);
   const alreadyClaimedCoin = transactions?.some((t: any) => t.book_id === bookId && t.source === 'complete_book');
@@ -693,6 +699,7 @@ export default function ReaderPage() {
         
         let savedProgress = null;
         let savedHighlights: Highlight[] = [];
+        let savedBookmarks: BookmarkType[] = [];
 
         try {
           const results = await Promise.race([
@@ -707,7 +714,6 @@ export default function ReaderPage() {
           savedHighlights = results[1];
         } catch (err) {
           console.warn("⚠️ Reader: Timeout o error cargando metadatos. Usando respaldo local.");
-          // Importación dinámica para evitar dependencias circulares si las hubiera
           const { getLocalProgress } = await import("@/lib/reading");
           const { getLocalHighlights } = await import("@/lib/highlights");
           savedProgress = getLocalProgress(bookId);
@@ -716,16 +722,35 @@ export default function ReaderPage() {
         
         setHighlights(savedHighlights);
 
+        // Cargar marcadores (independiente del try/catch anterior)
+        try {
+          savedBookmarks = await getBookmarks(bookId, userId);
+          setBookmarks(savedBookmarks);
+        } catch {}
+
         // Registrar función visual para cada highlight
         const renderHighlights = () => {
           savedHighlights.forEach((h: any) => {
              try {
-               rendition.annotations.highlight(h.cfi_start, { id: h.id }, (e: Event) => {
-                 handleHighlightClick(h);
-               }, undefined, { "fill": h.color, "fill-opacity": "0.3", "mix-blend-mode": "multiply" });
+                rendition.annotations.highlight(h.cfi_start, { id: h.id }, (e: Event) => {
+                  handleHighlightClick(h);
+                }, undefined, { "fill": h.color, "fill-opacity": "0.3", "mix-blend-mode": "multiply" });
              } catch (err) {
                console.warn("No se pudo renderizar el highlight", h.id);
              }
+          });
+        };
+
+        // Registrar marcadores visuales (cintas doradas en el texto)
+        const renderBookmarks = () => {
+            savedBookmarks.forEach((b: BookmarkType) => {
+            try {
+              rendition.annotations.highlight(b.cfi, { id: `bookmark-${b.id}` }, () => {
+                handleGoToBookmark(b);
+              }, undefined, { "fill": "#FFB300", "fill-opacity": "0.15", "mix-blend-mode": "normal" });
+            } catch (err) {
+              console.warn("No se pudo renderizar el marcador", b.id);
+            }
           });
         };
 
@@ -759,7 +784,20 @@ export default function ReaderPage() {
           if (loadingTimeout) clearTimeout(loadingTimeout);
           setIsLoading(false);
           renderHighlights();
+          renderBookmarks();
           fixViewCSS(view);
+
+          // Restaurar scroll exacto después del primer render
+          if (pendingScrollRestore.current !== null && !hasRestoredScroll.current) {
+            hasRestoredScroll.current = true;
+            const mgr = (rendition as any).manager;
+            if (mgr?.container) {
+              const saved = pendingScrollRestore.current;
+              pendingScrollRestore.current = null;
+              const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
+              mgr.container.scrollTop = Math.min(saved, maxScroll);
+            }
+          }
         });
 
         // 4.2.5.5 - Post-init del manager: configurar scroll y desactivar trimming agresivo
@@ -774,6 +812,11 @@ export default function ReaderPage() {
             mgr.container.style.overflowY = 'scroll';
             mgr.container.style.overflowX = 'hidden';
             mgr.container.style.webkitOverflowScrolling = 'touch';
+
+            // 4.2.5.6 - Scroll tracking continuo para guardar posición exacta
+            mgr.container.addEventListener('scroll', () => {
+              scrollTopRef.current = mgr.container.scrollTop;
+            }, { passive: true });
           }
           // Desactivar el trimming que causa los saltos al hacer scroll hacia arriba
           if (mgr?.trim) {
@@ -805,6 +848,12 @@ export default function ReaderPage() {
           if (savedProgress?.cfi_position && !hasRestoredPosition.current) {
             hasRestoredPosition.current = true;
             console.log("[Reader] Restoring position:", savedProgress.cfi_position);
+
+            // Programar restauración de scroll exacto ANTES de display
+            if (savedProgress.scroll_top && savedProgress.scroll_top > 0) {
+              pendingScrollRestore.current = savedProgress.scroll_top;
+            }
+
             await rendition.display(savedProgress.cfi_position);
           } else {
             console.log("[Reader] Displaying from start");
@@ -815,11 +864,24 @@ export default function ReaderPage() {
           await rendition.display();
         }
 
-        // FALLBACK A PRUEBA DE FALLOS: Si el evento on('rendered') se disparó demasiado rápido 
-        // o si epub.js no lo dispara por estar en modo continuous-scroll, lo quitamos manualmente aquí
+        // FALLBACK A PRUEBA DE FALLOS: Si el evento on('rendered') no se disparó, restaurar scroll aquí
         if (loadingTimeout) clearTimeout(loadingTimeout);
         setIsLoading(false);
         renderHighlights();
+
+        // Fallback de restauración de scroll: si rendered no disparó la restauración
+        if (pendingScrollRestore.current !== null && !hasRestoredScroll.current) {
+          hasRestoredScroll.current = true;
+          requestAnimationFrame(() => {
+            const mgr = (rendition as any)?.manager;
+            if (mgr?.container && pendingScrollRestore.current) {
+              const saved = pendingScrollRestore.current;
+              pendingScrollRestore.current = null;
+              const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
+              mgr.container.scrollTop = Math.min(saved, maxScroll);
+            }
+          });
+        }
 
         rendition.on("relocated", (location: { start: { cfi: string; index: number; percentage: number | string }; end?: { percentage: number | string; index: number } }) => {
           let percent = 0;
@@ -830,7 +892,6 @@ export default function ReaderPage() {
             percent = bookInstance.locations.percentageFromCfi(location.start.cfi);
           } else if (totalSpines > 1) {
             // Fallback: calcular progreso basado en el índice del spine actual
-            // Esto da una estimación razonable hasta que las ubicaciones se generen
             const spineIndex = typeof location.start.index === 'number' ? location.start.index : 0;
             const spinePercent = Number(location.start.percentage || 0);
             percent = (spineIndex + spinePercent) / totalSpines;
@@ -843,10 +904,16 @@ export default function ReaderPage() {
           setProgress(percent * 100);
           lastCfiRef.current = location.start.cfi;
 
+          // Capturar scroll exacto del contenedor
+          const mgr = (rendition as any)?.manager;
+          if (mgr?.container) {
+            scrollTopRef.current = mgr.container.scrollTop;
+          }
+
           // Debounce del guardado: espera 1.5s de quietud antes de guardar en Supabase
           if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
           saveDebounceRef.current = setTimeout(() => {
-            saveReadingProgress(bookId, userId, location.start.cfi, percent * 100);
+            saveReadingProgress(bookId, userId, location.start.cfi, percent * 100, scrollTopRef.current);
           }, 1500);
         });
 
@@ -905,9 +972,8 @@ export default function ReaderPage() {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (saveDebounceRef.current) {
         clearTimeout(saveDebounceRef.current);
-        // FORZAR GUARDADO AL SALIR SI HABIA PENDIENTE
         if (lastCfiRef.current && userId) {
-          saveReadingProgress(bookId, userId, lastCfiRef.current, progressRef.current);
+          saveReadingProgress(bookId, userId, lastCfiRef.current, progressRef.current, scrollTopRef.current);
         }
       }
       renditionRef.current?.clear();
@@ -958,6 +1024,31 @@ export default function ReaderPage() {
       window.removeEventListener("orientationchange", handleOrientationChange);
     };
   }, []);
+
+  // 4.2.8.2 - Save confiable: guardar posición al ocultar página o cerrar (visibilitychange + beforeunload)
+  useEffect(() => {
+    if (!userId) return;
+
+    const flushPosition = () => {
+      const cfi = lastCfiRef.current;
+      const pct = progressRef.current;
+      const scroll = scrollTopRef.current;
+      if (cfi) {
+        saveReadingProgress(bookId, userId, cfi, pct, scroll);
+      }
+    };
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushPosition();
+    });
+
+    window.addEventListener('beforeunload', flushPosition);
+
+    return () => {
+      document.removeEventListener('visibilitychange', flushPosition);
+      window.removeEventListener('beforeunload', flushPosition);
+    };
+  }, [bookId, userId]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -1190,6 +1281,79 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     }
   };
 
+  // 4.2.9.3 - Funciones para Marcadores Visuales (Bookmarks)
+  const handleAddBookmark = async () => {
+    if (!bookId || !userId || !renditionRef.current || !lastCfiRef.current) return;
+
+    const mgr = (renditionRef.current as any)?.manager;
+    const scroll = mgr?.container?.scrollTop ?? 0;
+
+    let preview = "";
+    try {
+      const contents = renditionRef.current.getContents() as unknown as EpubContents[];
+      if (contents?.[0]) {
+        const selection = contents[0].window?.getSelection();
+        if (selection && selection.toString().trim().length > 0) {
+          preview = selection.toString().trim().substring(0, 80);
+        } else {
+          const body = contents[0].document?.body;
+          if (body) {
+            const para = body.querySelector('p, li, td, blockquote, h1, h2, h3, h4, h5, h6');
+            if (para) preview = (para.textContent || "").trim().substring(0, 80);
+          }
+        }
+      }
+    } catch {}
+
+    const bookmark = await saveBookmark(
+      bookId, userId,
+      lastCfiRef.current, scroll,
+      preview || "Marcador", progressRef.current
+    );
+
+    if (bookmark) {
+      setBookmarks(prev => [bookmark, ...prev]);
+      try {
+        renditionRef.current.annotations.highlight(bookmark.cfi, { id: `bookmark-${bookmark.id}` }, () => {
+          handleGoToBookmark(bookmark);
+        }, undefined, { "fill": "#FFB300", "fill-opacity": "0.15", "mix-blend-mode": "normal" });
+      } catch {}
+      toast.success("Marcador añadido");
+    }
+  };
+
+  const handleGoToBookmark = async (b: BookmarkType) => {
+    if (!renditionRef.current) return;
+    try {
+      await renditionRef.current.display(b.cfi);
+      requestAnimationFrame(() => {
+        const mgr = (renditionRef.current as any)?.manager;
+        if (mgr?.container && b.scroll_top > 0) {
+          const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
+          mgr.container.scrollTop = Math.min(b.scroll_top, maxScroll);
+        }
+      });
+      setShowNotesPanel(false);
+    } catch (err) {
+      console.warn("Error navegando a marcador:", err);
+    }
+  };
+
+  const handleDeleteBookmark = async (b: BookmarkType) => {
+    const success = await deleteBookmark(b.id, bookId);
+    if (success) {
+      setBookmarks(prev => prev.filter(x => x.id !== b.id));
+      try {
+        renditionRef.current?.annotations.remove(b.cfi, "highlight");
+        const DOMTargets = `g[data-epubcfi="${b.cfi}"], mark[data-epubcfi="${b.cfi}"]`;
+        document.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
+        const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
+        contents?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
+      } catch {}
+      toast.info("Marcador eliminado");
+    }
+  };
+
   if (loadingBook) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] navy:bg-[#0a0f1e]">
@@ -1291,6 +1455,14 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
             onClick={() => setShowNotesPanel(true)}
             className={`p-2.5 rounded-full transition-colors ${iconBgClass}`}
             title="Ver Notas y Subrayados"
+          >
+            <FileText className="w-5 h-5" />
+          </button>
+          
+          <button
+            onClick={handleAddBookmark}
+            className={`p-2.5 rounded-full transition-colors ${iconBgClass}`}
+            title="Añadir marcador en esta posición"
           >
             <Bookmark className="w-5 h-5" />
           </button>
@@ -1586,6 +1758,35 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
               </div>
             ))
           )}
+
+          {/* 4.2.16.4 - Sección de Marcadores Visuales */}
+          {bookmarks.length > 0 && (
+            <div className="border-t border-gray-200 dark:border-white/10 pt-4 mt-6">
+              <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
+                <Bookmark className="w-4 h-4 text-amber-500" />
+                Marcadores ({bookmarks.length})
+              </h3>
+              <div className="space-y-2">
+                {bookmarks.map((b) => (
+                  <div key={b.id} className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 shadow-sm group relative">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed pr-6 cursor-pointer" onClick={() => handleGoToBookmark(b)}>
+                      &ldquo;{b.text_preview}&rdquo;
+                    </p>
+                    <span className="text-[10px] text-amber-600/60 dark:text-amber-400/60 mt-1 block">
+                      {b.progress_at.toFixed(1)}% &middot; {new Date(b.created_at).toLocaleDateString()}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteBookmark(b)}
+                      className="absolute right-2 top-2 p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Eliminar marcador"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1673,13 +1874,25 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
             <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-[0.3em] ${isRetro ? 'text-[#3fb950]/80' : isNavy ? 'text-[#7986cb]/80' : isDark ? 'text-white/40' : 'text-black/40'}`}>
               {progress > 0 ? `${progress.toFixed(1)}% Leído` : "Iniciando Lectura"}
             </span>
-            <div className={`w-full rounded-full h-1 sm:h-1.5 overflow-hidden ${isDark ? 'bg-white/10' : isRetro ? 'bg-[#3fb950]/10' : isNavy ? 'bg-[#7986cb]/10' : 'bg-black/5'}`}>
-              <div
-                className={`h-full rounded-full transition-all duration-500 ease-out ${
-                  isRetro ? 'bg-[#3fb950]' : isNavy ? 'bg-[#7986cb]' : 'bg-blue-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]'
-                }`}
-                style={{ width: `${progress}%` }}
-              />
+            <div className="relative w-full">
+              <div className={`w-full rounded-full h-1 sm:h-1.5 overflow-hidden ${isDark ? 'bg-white/10' : isRetro ? 'bg-[#3fb950]/10' : isNavy ? 'bg-[#7986cb]/10' : 'bg-black/5'}`}>
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ease-out ${
+                    isRetro ? 'bg-[#3fb950]' : isNavy ? 'bg-[#7986cb]' : 'bg-blue-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]'
+                  }`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              {/* Indicadores de marcadores en la barra de progreso */}
+              {bookmarks.map((b) => (
+                <div
+                  key={b.id}
+                  className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-400 shadow-md z-10 cursor-pointer hover:scale-150 transition-transform"
+                  style={{ left: `${Math.min(98, Math.max(0, b.progress_at))}%` }}
+                  title={`Marcador: ${b.text_preview?.substring(0, 30)}`}
+                  onClick={() => handleGoToBookmark(b)}
+                />
+              ))}
             </div>
           </div>
         </div>

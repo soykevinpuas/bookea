@@ -14,8 +14,9 @@ Bookea utiliza **Supabase (PostgreSQL)** como motor de base de datos, aprovechan
 - ~~**`public.subscription_credits`:**~~ Eliminada en migración 019. El modelo migró a acceso ilimitado por suscripción.
 
 ### 📖 Progreso e Interacción
-- **`public.reading_progress`:** Guarda la posición exacta (CFI) y el porcentaje de lectura por libro/usuario.
+- **`public.reading_progress`:** Guarda la posición exacta (CFI + scrollTop) y el porcentaje de lectura por libro/usuario.
 - **`public.highlights`:** Almacena subrayados y notas personales dentro del texto.
+- **`public.bookmarks`:** Marcadores visuales (cintas virtuales) para posiciones específicas dentro del libro.
 - **`public.reviews` y `public.comments`:** Sistema social para calificar libros y comentar con soporte para "Likes".
 
 ### 🛒 E-commerce y Fidelización (Próxima Implementación)

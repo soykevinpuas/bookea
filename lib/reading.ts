@@ -91,7 +91,8 @@ export async function saveReadingProgress(
   bookId: string,
   userId: string,
   cfiPosition: string,
-  percentComplete: number
+  percentComplete: number,
+  scrollTop?: number
 ): Promise<void> {
   if (!isValidUUID(bookId)) return;
 
@@ -102,6 +103,7 @@ export async function saveReadingProgress(
     book_id: bookId,
     user_id: userId,
     cfi_position: cfiPosition,
+    scroll_top: scrollTop ?? null,
     percent_complete: cleanPercent,
     last_read_at: new Date().toISOString()
   } as any);
@@ -116,6 +118,7 @@ export async function saveReadingProgress(
         user_id: userId,
         book_id: bookId,
         cfi_position: cfiPosition,
+        scroll_top: scrollTop ?? null,
         percent_complete: cleanPercent,
         last_read_at: new Date().toISOString(),
       },
