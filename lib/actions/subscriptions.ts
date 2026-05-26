@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/server'
+import { createClient, createAdminClient } from '@/lib/server'
 import { getStripeClient } from '@/lib/stripe'
 import { revalidatePath } from 'next/cache'
 
@@ -23,10 +23,11 @@ export async function verifySubscriptionAction(sessionId: string) {
     })
 
     const userId = user.id
+    const adminDb = createAdminClient()
 
     // === SUSCRIPCIÓN ===
     if (session.mode === 'subscription') {
-      const { data: userData } = await supabase
+      const { data: userData } = await adminDb
         .from('users')
         .select('role')
         .eq('id', userId)
@@ -42,7 +43,7 @@ export async function verifySubscriptionAction(sessionId: string) {
       if (session.payment_status === 'paid') {
         const endsAt = new Date()
         endsAt.setDate(endsAt.getDate() + 30)
-        await supabase.from('users').update({
+        await adminDb.from('users').update({
           role: userData?.role === 'admin' ? 'admin' : 'subscriber',
           subscription_ends_at: endsAt.toISOString(),
         }).eq('id', userId)
@@ -66,14 +67,14 @@ export async function verifySubscriptionAction(sessionId: string) {
         // Procesar cada item (idempotente — verifica existencia primero)
         for (const item of items) {
           if (item.type === 'digital') {
-            const { data: existing } = await supabase
+            const { data: existing } = await adminDb
               .from('user_books')
               .select('id')
               .eq('user_id', userId)
               .eq('book_id', item.book_id)
               .maybeSingle()
             if (!existing) {
-              await supabase.from('user_books').insert({
+              await adminDb.from('user_books').insert({
                 user_id: userId, book_id: item.book_id, access_type: 'permanent',
               })
             }
@@ -81,36 +82,36 @@ export async function verifySubscriptionAction(sessionId: string) {
             const shippingStr = session.metadata?.shipping
             let shippingInfo: Record<string, string> | null = null
             if (shippingStr) try { shippingInfo = JSON.parse(shippingStr) } catch {}
-            const { data: existing } = await supabase
+            const { data: existing } = await adminDb
               .from('orders_physical')
               .select('id')
               .eq('stripe_payment_id', session.id)
               .maybeSingle()
             if (!existing) {
-              const { data: bookPrice } = await supabase
+              const { data: bookPrice } = await adminDb
                 .from('books')
                 .select('price_physical')
                 .eq('id', item.book_id)
                 .single()
               const price = (bookPrice?.price_physical || 299)
-              await supabase.from('orders_physical').insert({
+              await adminDb.from('orders_physical').insert({
                 user_id: userId, book_id: item.book_id, status: 'pending',
                 name: shippingInfo?.name || '', address: shippingInfo?.address || '',
                 city: shippingInfo?.city || '', state: shippingInfo?.state || '',
                 zip: shippingInfo?.zip || '', phone: shippingInfo?.phone || '',
                 shipping_cost: 50, total: price + 50, stripe_payment_id: session.id,
               })
-              try { await supabase.rpc('decrement_stock', { p_book_id: item.book_id }) } catch {}
+              try { await adminDb.rpc('decrement_stock', { p_book_id: item.book_id }) } catch {}
             }
           }
         }
 
         // Limpiar carrito
-        await supabase.from('cart_items').delete().eq('user_id', userId)
+        await adminDb.from('cart_items').delete().eq('user_id', userId)
 
         // Obtener nombres de items
         const bookIds = [...new Set(items.map(i => i.book_id))]
-        const { data: books } = await supabase
+        const { data: books } = await adminDb
           .from('books').select('id, title').in('id', bookIds)
         const itemNames = items.map(item => {
           const book = books?.find(b => b.id === item.book_id)
@@ -123,20 +124,52 @@ export async function verifySubscriptionAction(sessionId: string) {
         return { success: true, type: 'payment', items: itemNames }
       }
 
-      // Compra individual (legacy)
+      // Compra individual (legacy & physical/bundle individual checkout)
       const bookId = session.metadata?.bookId
       if (bookId) {
-        const { data: existing } = await supabase
-          .from('user_books').select('id')
-          .eq('user_id', userId).eq('book_id', bookId)
-          .maybeSingle()
-        if (!existing) {
-          await supabase.from('user_books').insert({
-            user_id: userId, book_id: bookId, access_type: 'permanent',
-          })
+        const purchaseType = session.metadata?.purchaseType || 'digital_permanent'
+
+        if (purchaseType === 'digital_permanent' || purchaseType === 'bundle') {
+          const { data: existing } = await adminDb
+            .from('user_books').select('id')
+            .eq('user_id', userId).eq('book_id', bookId)
+            .maybeSingle()
+          if (!existing) {
+            await adminDb.from('user_books').insert({
+              user_id: userId, book_id: bookId, access_type: 'permanent',
+            })
+          }
         }
 
-        const { data: book } = await supabase
+        if (purchaseType === 'physical' || purchaseType === 'bundle') {
+          const { data: existing } = await adminDb
+            .from('orders_physical')
+            .select('id')
+            .eq('stripe_payment_id', session.id)
+            .maybeSingle()
+
+          if (!existing) {
+            const shippingStr = session.metadata?.shipping
+            let shippingInfo: Record<string, string> | null = null
+            if (shippingStr) try { shippingInfo = JSON.parse(shippingStr) } catch {}
+            const { data: bookPrice } = await adminDb
+              .from('books')
+              .select('price_physical')
+              .eq('id', bookId)
+              .single()
+            const price = (bookPrice?.price_physical || 299)
+            await adminDb.from('orders_physical').insert({
+              user_id: userId, book_id: bookId, status: 'pending',
+              name: shippingInfo?.name || '', address: shippingInfo?.address || '',
+              city: shippingInfo?.city || '', state: shippingInfo?.state || '',
+              zip: shippingInfo?.zip || '', phone: shippingInfo?.phone || '',
+              shipping_cost: 50, total: price + 50, stripe_payment_id: session.id,
+            })
+            try { await adminDb.rpc('decrement_stock', { p_book_id: bookId }) } catch {}
+          }
+        }
+
+        const { data: book } = await adminDb
           .from('books').select('title').eq('id', bookId).single()
 
         revalidatePath('/')
@@ -148,7 +181,6 @@ export async function verifySubscriptionAction(sessionId: string) {
     return { success: false, pending: true }
   } catch (error: unknown) {
     console.error('Error verificando pago:', error)
-    const msg = error instanceof Error ? error.message : 'Error desconocido'
     return { success: false, error: 'Error al verificar el pago' }
   }
 }

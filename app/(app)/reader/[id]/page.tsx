@@ -939,8 +939,7 @@ export default function ReaderPage() {
       }
     };
 
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("orientationchange", () => {
+    const handleOrientationChange = () => {
       // 4.1.9.2 - ANCLAJE POR CFI: Durante la rotación, forzamos al lector a 
       // mantenerse en la coordenada exacta de texto (CFI), ignorando el % relativo.
       setTimeout(() => {
@@ -949,11 +948,14 @@ export default function ReaderPage() {
           renditionRef.current.display(lastCfiRef.current);
         }
       }, 150); // Reducimos el delay para que sea imperceptible
-    });
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleOrientationChange);
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      window.removeEventListener("orientationchange", () => {});
+      window.removeEventListener("orientationchange", handleOrientationChange);
     };
   }, []);
 

@@ -54,6 +54,7 @@ export async function createCheckoutSession({
   successUrl,
   cancelUrl,
   mode = 'payment',
+  metadata = {},
 }: {
   priceId?: string;
   priceData?: Stripe.Checkout.SessionCreateParams.LineItem.PriceData;
@@ -63,6 +64,7 @@ export async function createCheckoutSession({
   successUrl: string;
   cancelUrl: string;
   mode?: 'payment' | 'subscription';
+  metadata?: Record<string, string>;
 }) {
   const stripe = getStripeClient();
   // Crear sesión de checkout con metadata para webhook
@@ -78,6 +80,7 @@ export async function createCheckoutSession({
     metadata: {
       userId,
       bookId: bookId || '',
+      ...metadata,
     },
     success_url: successUrl,
     cancel_url: cancelUrl,
