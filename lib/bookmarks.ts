@@ -3,6 +3,13 @@ import { Bookmark } from "@/types/bookmark";
 
 const BOOKMARKS_KEY = "bookea-offline-bookmarks";
 
+function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+}
+
 export function getLocalBookmarks(bookId: string): Bookmark[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -93,7 +100,7 @@ export async function saveBookmark(
   progressAt: number
 ): Promise<Bookmark | null> {
   const newBookmark: Bookmark = {
-    id: crypto.randomUUID(),
+    id: generateId(),
     user_id: userId,
     book_id: bookId,
     cfi,

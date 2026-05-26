@@ -3,6 +3,13 @@ import { Highlight } from "@/types/reading";
 
 const HIGHLIGHTS_KEY = "bookea-offline-highlights";
 
+function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+}
+
 /**
  * 4.3.1 - Obtener subrayados locales
  */
@@ -101,7 +108,7 @@ export async function saveHighlight(
   note?: string
 ): Promise<Highlight | null> {
   // 1. Crear ID temporal para guardado offline inmediato
-  const tempId = crypto.randomUUID();
+  const tempId = generateId();
   const newHighlight: Highlight = {
     id: tempId,
     book_id: bookId,
