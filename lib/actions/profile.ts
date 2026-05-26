@@ -19,7 +19,7 @@ export async function getProfileDataAction() {
 
   const [coinsResult, streakResult, referralCountResult] = await Promise.all([
     supabase.rpc('get_user_coins', { p_user_id: user.id }),
-    supabase.from('profiles').select('reading_streak').eq('user_id', user.id).single(),
+    supabase.from('profiles').select('reading_streak').eq('user_id', user.id).maybeSingle(),
     supabase.from('referrals').select('id', { count: 'exact', head: true }).eq('referrer_id', user.id),
   ])
 

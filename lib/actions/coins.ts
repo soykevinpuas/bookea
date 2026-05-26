@@ -169,7 +169,7 @@ export async function getUserStreakAction() {
       .from('profiles')
       .select('reading_streak')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('[getUserStreakAction] DB error:', error.message)

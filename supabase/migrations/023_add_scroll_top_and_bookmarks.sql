@@ -12,7 +12,7 @@ ADD COLUMN scroll_top INTEGER;
 -- BOOKMARKS: New table for virtual bookmarks/ribbons
 -- ============================================
 CREATE TABLE public.bookmarks (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     book_id UUID NOT NULL REFERENCES public.books(id) ON DELETE CASCADE,
     cfi TEXT NOT NULL,
