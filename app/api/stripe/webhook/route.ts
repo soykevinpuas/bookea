@@ -15,8 +15,18 @@ import { createAdminClient } from '@/lib/server';
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 export async function POST(request: NextRequest) {
+  if (!webhookSecret) {
+    console.error('CRITICAL: STRIPE_WEBHOOK_SECRET is not configured on the server.');
+    return NextResponse.json({ error: 'Webhook configuration error' }, { status: 500 });
+  }
+
   const body = await request.text();
-  const signature = (await headers()).get('stripe-signature')!;
+  const signature = (await headers()).get('stripe-signature');
+
+  if (!signature) {
+    console.error('Verificación de firma webhook fallida: stripe-signature header missing');
+    return NextResponse.json({ error: 'Firma inválida' }, { status: 400 });
+  }
 
   let event;
 
@@ -124,23 +134,83 @@ export async function POST(request: NextRequest) {
 
         // 7.2.2.2b - Procesar compra de libro individual (legacy)
         if (session.mode === 'payment' && bookId && !cartItemsStr) {
-          const { data: existingAccess } = await supabase
-            .from('user_books')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('book_id', bookId)
-            .single();
+          const purchaseType = session.metadata?.purchaseType || 'digital_permanent';
 
-          if (!existingAccess) {
-            const { error: insertAccessError } = await supabase.from('user_books').insert({
-              user_id: userId,
-              book_id: bookId,
-              access_type: 'permanent',
-            });
+          // Para digital o bundle, concedemos el acceso permanente al libro digital
+          if (purchaseType === 'digital_permanent' || purchaseType === 'bundle') {
+            const { data: existingAccess } = await supabase
+              .from('user_books')
+              .select('*')
+              .eq('user_id', userId)
+              .eq('book_id', bookId)
+              .maybeSingle();
 
-            if (insertAccessError) {
-              console.error('Error insertando acceso:', insertAccessError);
-              return NextResponse.json({ error: 'Database insert failed' }, { status: 500 });
+            if (!existingAccess) {
+              const { error: insertAccessError } = await supabase.from('user_books').insert({
+                user_id: userId,
+                book_id: bookId,
+                access_type: 'permanent',
+              });
+
+              if (insertAccessError) {
+                console.error('Error insertando acceso:', insertAccessError);
+                return NextResponse.json({ error: 'Database insert failed' }, { status: 500 });
+              }
+            }
+          }
+
+          // Para físico o bundle, creamos la orden física de forma segura en el servidor
+          if (purchaseType === 'physical' || purchaseType === 'bundle') {
+            const { data: existingOrder } = await supabase
+              .from('orders_physical')
+              .select('id')
+              .eq('stripe_payment_id', session.id)
+              .maybeSingle();
+
+            if (!existingOrder) {
+              const shippingStr = session.metadata?.shipping;
+              let shippingInfo: Record<string, string> | null = null;
+              if (shippingStr) {
+                try {
+                  shippingInfo = JSON.parse(shippingStr);
+                } catch (e) {
+                  console.error('Error parseando información de envío en webhook:', e);
+                }
+              }
+
+              const { data: bookPrice } = await supabase
+                .from('books')
+                .select('price_physical')
+                .eq('id', bookId)
+                .single();
+              
+              const price = (bookPrice?.price_physical || 299);
+
+              const { error: orderError } = await supabase.from('orders_physical').insert({
+                user_id: userId,
+                book_id: bookId,
+                status: 'pending',
+                name: shippingInfo?.name || '',
+                address: shippingInfo?.address || '',
+                city: shippingInfo?.city || '',
+                state: shippingInfo?.state || '',
+                zip: shippingInfo?.zip || '',
+                phone: shippingInfo?.phone || '',
+                shipping_cost: 50,
+                total: price + 50,
+                stripe_payment_id: session.id,
+              });
+
+              if (orderError) {
+                console.error('Error creando orden física en webhook:', orderError);
+                return NextResponse.json({ error: 'Order creation failed' }, { status: 500 });
+              }
+
+              try {
+                await supabase.rpc('decrement_stock', { p_book_id: bookId });
+              } catch (stockErr) {
+                console.error('Error decrementando stock en webhook:', stockErr);
+              }
             }
           }
         }

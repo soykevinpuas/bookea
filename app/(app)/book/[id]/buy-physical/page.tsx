@@ -30,18 +30,13 @@ export default function BuyPhysicalPage() {
       return;
     }
 
-    const orderData = {
-      user_id: user.id,
-      book_id: id,
-      status: "pending",
+    const shipping = {
       name: formData.get("name"),
       address: formData.get("address"),
       city: formData.get("city"),
       state: formData.get("state"),
       zip: formData.get("zip"),
       phone: formData.get("phone"),
-      shipping_cost: 50,
-      total: (book?.price_physical || 299) + 50,
     };
 
     const baseUrl = window.location.origin;
@@ -55,20 +50,13 @@ export default function BuyPhysicalPage() {
         body: JSON.stringify({
           type: "physical",
           bookId: id,
+          shipping,
         }),
       });
 
       const data = await response.json();
 
       if (data.url) {
-        const { error: orderError } = await supabase
-          .from("orders_physical")
-          .insert(orderData);
-
-        if (orderError) {
-          console.error("Error creating order:", orderError);
-        }
-
         window.location.href = data.url;
       } else if (data.error) {
         setError(data.error);

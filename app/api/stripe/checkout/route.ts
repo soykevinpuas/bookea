@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    // 7.1.2 - Extraer tipo de compra y ID del libro del body
+    // 7.1.2 - Extraer tipo de compra, ID del libro y datos de envío del body
     const body = await request.json();
-    const { type, bookId } = body;
+    const { type, bookId, shipping } = body;
 
     // 7.1.2 - Determinar la URL base dinámicamente
     const { origin: baseUrl } = request.nextUrl;
@@ -36,6 +36,9 @@ export async function POST(request: NextRequest) {
         successUrl: `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${baseUrl}/catalog?payment=cancelled`,
         mode: 'subscription',
+        metadata: {
+          purchaseType: 'subscription',
+        },
       });
       return NextResponse.json({ url: session.url });
     }
@@ -95,6 +98,10 @@ export async function POST(request: NextRequest) {
       successUrl: `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${baseUrl}/book/${bookId}?payment=cancelled`,
       mode: 'payment',
+      metadata: {
+        purchaseType: type,
+        shipping: shipping ? JSON.stringify(shipping) : '',
+      },
     });
 
     return NextResponse.json({ url: session.url });
