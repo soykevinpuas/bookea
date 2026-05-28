@@ -93,10 +93,10 @@ function BookDetailContent() {
 
   useEffect(() => {
     // Verificar si el libro está en el caché al cargar
-    if (book?.epub_url) {
+    if (book?.epub_url && typeof caches !== 'undefined') {
       const url = book.epub_url;
-    caches.open('bookea-books').then((cache: any) => {
-      cache.match(url).then((match: any) => {
+      caches.open('bookea-books').then((cache: any) => {
+        cache.match(url).then((match: any) => {
           if (match) setIsDownloaded(true);
         });
       });
