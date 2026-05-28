@@ -35,6 +35,7 @@ function DashboardContent() {
   const [view, setView] = useState<"grid" | "list" | "compact">("grid");
   const [showGenres, setShowGenres] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -45,6 +46,7 @@ function DashboardContent() {
 
   // Detectar éxito de pago y verificar (polling hasta que el webhook procese)
   useEffect(() => {
+    setMounted(true);
     const sessionId = searchParams.get('session_id');
     const paymentStatus = searchParams.get('payment');
 
@@ -206,7 +208,7 @@ function DashboardContent() {
       )}
 
       <main className="max-w-7xl mx-auto px-6 py-12">
-        {recentBook && (
+        {mounted && recentBook && (
           <section className="mb-12">
             <div className="flex items-center gap-2 mb-4 text-blue-400">
               <History className="w-4 h-4" />
