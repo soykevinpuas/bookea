@@ -1346,32 +1346,24 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
   const handleGoToBookmark = async (b: BookmarkType) => {
     if (!renditionRef.current) return;
     try {
-      // 1. Actualizar estado inmediatamente para UI responsiva
+      // Actualizar UI inmediatamente (toggle bookmark reactivo)
       setCurrentSpineKey(getSpineKey(b.cfi));
-      if (b.progress_at > 0) {
-        setProgress(b.progress_at);
-      }
 
-      // 2. Programar restauración de scroll ANTES de display
-      if (b.scroll_top > 0) {
-        pendingScrollRestore.current = b.scroll_top;
-      }
-      hasRestoredScroll.current = false;
-
-      // 3. Navegar al CFI del marcador
+      // Navegar al CFI — relocated se encarga del setProgress
       await renditionRef.current.display(b.cfi);
 
-      // 4. Esperar a que el layout del continuous manager se estabilice
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          const mgr = (renditionRef.current as any)?.manager;
-          if (mgr?.container && b.scroll_top > 0) {
-            const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
-            mgr.container.scrollTop = Math.min(b.scroll_top, maxScroll);
-          }
-          pendingScrollRestore.current = null;
-        });
-      }, 200);
+      // Restaurar scroll exacto después de que el layout se estabilice
+      if (b.scroll_top > 0) {
+        setTimeout(() => {
+          requestAnimationFrame(() => {
+            const mgr = (renditionRef.current as any)?.manager;
+            if (mgr?.container) {
+              const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
+              mgr.container.scrollTop = Math.min(b.scroll_top, maxScroll);
+            }
+          });
+        }, 200);
+      }
 
       setShowNotesPanel(false);
     } catch (err) {
