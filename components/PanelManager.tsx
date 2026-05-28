@@ -3,8 +3,10 @@
 import React, { useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import CartPanel from './CartPanel'
-import LibraryPanel from './LibraryPanel'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
+import dynamic from 'next/dynamic'
+
+const LibraryPanel = dynamic(() => import('./LibraryPanel'), { ssr: false })
 import { useCartStore } from '@/stores/cart'
 
 export default function PanelManager() {
