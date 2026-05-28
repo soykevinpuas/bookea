@@ -13,7 +13,7 @@ import { Bookmark as BookmarkType } from "@/types/bookmark";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
 import { getBookmarks, saveBookmark, deleteBookmark } from "@/lib/bookmarks";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, Bookmark, BookmarkCheck, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins, GripHorizontal, Settings2 } from "lucide-react";
+import { Loader2, ArrowLeft, Bookmark, BookmarkCheck, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins, GripHorizontal, Settings2, Navigation } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -123,6 +123,7 @@ export default function ReaderPage() {
   const [activeSelection, setActiveSelection] = useState<{ cfiRange: string; text: string; isExistingId?: string } | null>(null);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [bookmarks, setBookmarks] = useState<BookmarkType[]>([]);
+  const [currentSpineKey, setCurrentSpineKey] = useState<string>("");
   const [menuBookmark, setMenuBookmark] = useState<{ b: BookmarkType; x: number; y: number } | null>(null);
   const [editingNote, setEditingNote] = useState<{ id: string; note: string } | null>(null);
   const [isSavingHighlight, setIsSavingHighlight] = useState(false);
@@ -904,6 +905,7 @@ export default function ReaderPage() {
           percent = Math.max(0, Math.min(1, percent));
           setProgress(percent * 100);
           lastCfiRef.current = location.start.cfi;
+          setCurrentSpineKey(getSpineKey(location.start.cfi));
 
           // Capturar scroll exacto del contenedor
           const mgr = (rendition as any)?.manager;
@@ -1290,17 +1292,15 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
   };
 
   const hasBookmarkOnCurrentPage = () => {
-    if (!lastCfiRef.current) return false;
-    const currentKey = getSpineKey(lastCfiRef.current);
-    return bookmarks.some(b => getSpineKey(b.cfi) === currentKey);
+    if (!currentSpineKey) return false;
+    return bookmarks.some(b => getSpineKey(b.cfi) === currentSpineKey);
   };
 
   const handleToggleBookmark = async () => {
     if (!bookId || !userId || !renditionRef.current || !lastCfiRef.current) return;
 
     // Si ya hay un marcador en esta página, eliminarlo
-    const currentKey = getSpineKey(lastCfiRef.current);
-    const existing = bookmarks.find(b => getSpineKey(b.cfi) === currentKey);
+    const existing = bookmarks.find(b => getSpineKey(b.cfi) === currentSpineKey);
     if (existing) {
       handleDeleteBookmark(existing);
       return;
@@ -1346,14 +1346,26 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
   const handleGoToBookmark = async (b: BookmarkType) => {
     if (!renditionRef.current) return;
     try {
+      // Programar restauración de scroll ANTES de display
+      if (b.scroll_top > 0) {
+        pendingScrollRestore.current = b.scroll_top;
+      }
+      hasRestoredScroll.current = false;
+
       await renditionRef.current.display(b.cfi);
-      requestAnimationFrame(() => {
-        const mgr = (renditionRef.current as any)?.manager;
-        if (mgr?.container && b.scroll_top > 0) {
-          const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
-          mgr.container.scrollTop = Math.min(b.scroll_top, maxScroll);
-        }
-      });
+
+      // Fallback por si rendered no se dispara
+      if (b.scroll_top > 0 && pendingScrollRestore.current !== null && !hasRestoredScroll.current) {
+        requestAnimationFrame(() => {
+          const mgr = (renditionRef.current as any)?.manager;
+          if (mgr?.container && pendingScrollRestore.current !== null) {
+            const saved = pendingScrollRestore.current;
+            pendingScrollRestore.current = null;
+            const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
+            mgr.container.scrollTop = Math.min(saved, maxScroll);
+          }
+        });
+      }
       setShowNotesPanel(false);
     } catch (err) {
       console.warn("Error navegando a marcador:", err);
@@ -1944,7 +1956,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
               onClick={() => { handleGoToBookmark(menuBookmark.b); setMenuBookmark(null); }}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors text-left"
             >
-              <span className="text-lg">📍</span>
+              <Navigation className="w-4 h-4" />
               Ir al marcador
             </button>
             <button
