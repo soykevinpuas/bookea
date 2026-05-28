@@ -70,6 +70,8 @@ export default function ReaderPage() {
   const scrollTopRef = useRef(0);
   const pendingScrollRestore = useRef<number | null>(null);
   const hasRestoredScroll = useRef(false);
+  const bookmarksRef = useRef<BookmarkType[]>([]);
+  const highlightsRef = useRef<Highlight[]>([]);
 
   const { data: book, isLoading: loadingBook } = useBook(bookId);
   const [isExiting, setIsExiting] = useState(false);
@@ -165,6 +167,10 @@ export default function ReaderPage() {
   const [bookCompleted, setBookCompleted] = useState(false);
   const { data: transactions } = useCoinTransactions(userId);
   const alreadyClaimedCoin = transactions?.some((t: any) => t.book_id === bookId && t.source === 'complete_book');
+
+  // Sincronizar refs con state para evitar closures stale en eventos de epub.js
+  bookmarksRef.current = bookmarks;
+  highlightsRef.current = highlights;
 
   // 4.2.2.6 - Estado para Diccionario Inteligente
   const [dictionaryData, setDictionaryData] = useState<{ word: string; definition: string; context: string } | null>(null);
@@ -732,7 +738,7 @@ export default function ReaderPage() {
 
         // Registrar función visual para cada highlight
         const renderHighlights = () => {
-          savedHighlights.forEach((h: any) => {
+          highlightsRef.current.forEach((h: any) => {
              try {
                 rendition.annotations.highlight(h.cfi_start, { id: h.id }, (e: Event) => {
                   handleHighlightClick(h);
@@ -745,10 +751,11 @@ export default function ReaderPage() {
 
         // Registrar marcadores visuales (cintas doradas en el texto)
         const renderBookmarks = () => {
-            savedBookmarks.forEach((b: BookmarkType) => {
+            bookmarksRef.current.forEach((b: BookmarkType) => {
             try {
               rendition.annotations.highlight(b.cfi, { id: `bookmark-${b.id}` }, () => {
-                handleGoToBookmark(b);
+                const rect = document.querySelector(`[id="bookmark-${b.id}"]`)?.getBoundingClientRect();
+                setMenuBookmark({ b, x: rect ? rect.left + rect.width / 2 : 0, y: rect ? rect.top - 8 : 0 });
               }, undefined, { "fill": "#FFB300", "fill-opacity": "0.15", "mix-blend-mode": "normal" });
             } catch (err) {
               console.warn("No se pudo renderizar el marcador", b.id);
