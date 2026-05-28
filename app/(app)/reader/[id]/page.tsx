@@ -13,7 +13,7 @@ import { Bookmark as BookmarkType } from "@/types/bookmark";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
 import { getBookmarks, saveBookmark, deleteBookmark } from "@/lib/bookmarks";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, Bookmark, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins, GripHorizontal, Settings2 } from "lucide-react";
+import { Loader2, ArrowLeft, Bookmark, BookmarkCheck, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins, GripHorizontal, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -123,6 +123,7 @@ export default function ReaderPage() {
   const [activeSelection, setActiveSelection] = useState<{ cfiRange: string; text: string; isExistingId?: string } | null>(null);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [bookmarks, setBookmarks] = useState<BookmarkType[]>([]);
+  const [menuBookmark, setMenuBookmark] = useState<{ b: BookmarkType; x: number; y: number } | null>(null);
   const [editingNote, setEditingNote] = useState<{ id: string; note: string } | null>(null);
   const [isSavingHighlight, setIsSavingHighlight] = useState(false);
 
@@ -1282,8 +1283,28 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
   };
 
   // 4.2.9.3 - Funciones para Marcadores Visuales (Bookmarks)
-  const handleAddBookmark = async () => {
+
+  const getSpineKey = (cfi: string) => {
+    const m = cfi.match(/^([^!]+)!/);
+    return m ? m[1] : cfi;
+  };
+
+  const hasBookmarkOnCurrentPage = () => {
+    if (!lastCfiRef.current) return false;
+    const currentKey = getSpineKey(lastCfiRef.current);
+    return bookmarks.some(b => getSpineKey(b.cfi) === currentKey);
+  };
+
+  const handleToggleBookmark = async () => {
     if (!bookId || !userId || !renditionRef.current || !lastCfiRef.current) return;
+
+    // Si ya hay un marcador en esta página, eliminarlo
+    const currentKey = getSpineKey(lastCfiRef.current);
+    const existing = bookmarks.find(b => getSpineKey(b.cfi) === currentKey);
+    if (existing) {
+      handleDeleteBookmark(existing);
+      return;
+    }
 
     const mgr = (renditionRef.current as any)?.manager;
     const scroll = mgr?.container?.scrollTop ?? 0;
@@ -1315,7 +1336,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       setBookmarks(prev => [bookmark, ...prev]);
       try {
         renditionRef.current.annotations.highlight(bookmark.cfi, { id: `bookmark-${bookmark.id}` }, () => {
-          handleGoToBookmark(bookmark);
+          setMenuBookmark({ b: bookmark, x: 0, y: 0 });
         }, undefined, { "fill": "#FFB300", "fill-opacity": "0.15", "mix-blend-mode": "normal" });
       } catch {}
       toast.success("Marcador añadido");
@@ -1343,6 +1364,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     const success = await deleteBookmark(b.id, bookId);
     if (success) {
       setBookmarks(prev => prev.filter(x => x.id !== b.id));
+      setMenuBookmark(null);
       try {
         renditionRef.current?.annotations.remove(b.cfi, "highlight");
         const DOMTargets = `g[data-epubcfi="${b.cfi}"], mark[data-epubcfi="${b.cfi}"]`;
@@ -1351,6 +1373,8 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         contents?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
       } catch {}
       toast.info("Marcador eliminado");
+    } else {
+      toast.error("No se pudo eliminar el marcador");
     }
   };
 
@@ -1460,11 +1484,15 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
           </button>
           
           <button
-            onClick={handleAddBookmark}
+            onClick={handleToggleBookmark}
             className={`p-2.5 rounded-full transition-colors ${iconBgClass}`}
-            title="Añadir marcador en esta posición"
+            title={hasBookmarkOnCurrentPage() ? "Quitar marcador de esta página" : "Añadir marcador"}
           >
-            <Bookmark className="w-5 h-5" />
+            {hasBookmarkOnCurrentPage() ? (
+              <BookmarkCheck className="w-5 h-5 text-amber-400" />
+            ) : (
+              <Bookmark className="w-5 h-5" />
+            )}
           </button>
           
           <button
@@ -1777,7 +1805,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
                     </span>
                     <button
                       onClick={() => handleDeleteBookmark(b)}
-                      className="absolute right-2 top-2 p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                      className="absolute right-2 top-2 p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 opacity-40 md:opacity-0 group-hover:opacity-100 transition-all"
                       title="Eliminar marcador"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -1887,16 +1915,48 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
               {bookmarks.map((b) => (
                 <div
                   key={b.id}
-                  className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-400 shadow-md z-10 cursor-pointer hover:scale-150 transition-transform"
+                  className={`absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-400 shadow-md z-10 cursor-pointer hover:scale-150 transition-transform ${menuBookmark?.b.id === b.id ? 'ring-2 ring-amber-300 scale-150' : ''}`}
                   style={{ left: `${Math.min(98, Math.max(0, b.progress_at))}%` }}
                   title={`Marcador: ${b.text_preview?.substring(0, 30)}`}
-                  onClick={() => handleGoToBookmark(b)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const rect = (e.target as HTMLElement).getBoundingClientRect();
+                    setMenuBookmark(prev => prev?.b.id === b.id ? null : { b, x: rect.left + rect.width / 2, y: rect.top - 8 });
+                  }}
                 />
               ))}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Mini menú contextual para marcadores */}
+      {menuBookmark && (
+        <div
+          className="fixed inset-0 z-[90]"
+          onClick={() => setMenuBookmark(null)}
+        >
+          <div
+            className="absolute bottom-28 left-1/2 -translate-x-1/2 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 min-w-[180px] animate-in fade-in zoom-in duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => { handleGoToBookmark(menuBookmark.b); setMenuBookmark(null); }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors text-left"
+            >
+              <span className="text-lg">📍</span>
+              Ir al marcador
+            </button>
+            <button
+              onClick={() => handleDeleteBookmark(menuBookmark.b)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors text-left text-red-500"
+            >
+              <Trash2 className="w-4 h-4" />
+              Eliminar marcador
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Quiz de finalización de libro */}
       {book && (
