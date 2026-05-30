@@ -74,6 +74,8 @@ export default function ReaderPage() {
   const lastCfiRef = useRef<string | null>(null);
   // Refs para scroll exacto y restauración de posición
   const scrollTopRef = useRef(0);
+  const scrollPermilleRef = useRef(0);
+  const saveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingScrollRestore = useRef<number | null>(null);
   const hasRestoredScroll = useRef(false);
   const bookmarksRef = useRef<BookmarkType[]>([]);
@@ -819,8 +821,14 @@ export default function ReaderPage() {
             if (mgr?.container) {
               const saved = pendingScrollRestore.current;
               pendingScrollRestore.current = null;
+              let targetScroll: number;
+              if (saved < 0) {
+                targetScroll = (Math.abs(saved) / 1000) * mgr.container.scrollHeight;
+              } else {
+                targetScroll = saved;
+              }
               const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
-              mgr.container.scrollTop = Math.min(saved, maxScroll);
+              mgr.container.scrollTop = Math.min(targetScroll, maxScroll);
             }
           }
         });
@@ -841,6 +849,9 @@ export default function ReaderPage() {
             // 4.2.5.6 - Scroll tracking continuo para guardar posición exacta
             mgr.container.addEventListener('scroll', () => {
               scrollTopRef.current = mgr.container.scrollTop;
+              scrollPermilleRef.current = mgr.container.scrollHeight > 0
+                ? Math.round((mgr.container.scrollTop / mgr.container.scrollHeight) * 1000)
+                : 0;
             }, { passive: true });
           }
           // Desactivar el trimming que causa los saltos al hacer scroll hacia arriba
@@ -855,6 +866,18 @@ export default function ReaderPage() {
           }
           console.log('[Reader] Manager configurado: trim desactivado, offset=3000');
         }, 50);
+
+        // 4.2.5.7 - Guardado periódico de la posición de lectura (cada 10s)
+        // para no perder el progreso si el usuario cierra el libro sin cambiar de capítulo
+        saveIntervalRef.current = setInterval(() => {
+          if (isNavigatingToBookmark.current) return;
+          const cfi = lastCfiRef.current;
+          const pct = progressRef.current;
+          const scroll = scrollPermilleRef.current;
+          if (cfi && userId) {
+            saveReadingProgress(bookId, userId, cfi, pct, scroll);
+          }
+        }, 10000);
 
         // 4.2.7.2 - Capturar eventos de Selección de texto (Highlights)
         rendition.on("selected", (cfiRange: string, contents: EpubContents) => {
@@ -875,7 +898,7 @@ export default function ReaderPage() {
             console.log("[Reader] Restoring position:", savedProgress.cfi_position);
 
             // Programar restauración de scroll exacto ANTES de display
-            if (savedProgress.scroll_top && savedProgress.scroll_top > 0) {
+            if (savedProgress.scroll_top) {
               pendingScrollRestore.current = savedProgress.scroll_top;
             }
 
@@ -902,8 +925,14 @@ export default function ReaderPage() {
             if (mgr?.container && pendingScrollRestore.current) {
               const saved = pendingScrollRestore.current;
               pendingScrollRestore.current = null;
+              let targetScroll: number;
+              if (saved < 0) {
+                targetScroll = (Math.abs(saved) / 1000) * mgr.container.scrollHeight;
+              } else {
+                targetScroll = saved;
+              }
               const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
-              mgr.container.scrollTop = Math.min(saved, maxScroll);
+              mgr.container.scrollTop = Math.min(targetScroll, maxScroll);
             }
           });
         }
@@ -930,10 +959,13 @@ export default function ReaderPage() {
           lastCfiRef.current = location.start.cfi;
           setCurrentSpineKey(getSpineKey(location.start.cfi));
 
-          // Capturar scroll exacto del contenedor
+          // Capturar scroll exacto del contenedor (como permille ‰)
           const mgr = (rendition as any)?.manager;
           if (mgr?.container) {
             scrollTopRef.current = mgr.container.scrollTop;
+            scrollPermilleRef.current = mgr.container.scrollHeight > 0
+              ? -Math.round((mgr.container.scrollTop / mgr.container.scrollHeight) * 1000)
+              : 0;
           }
 
           // Debounce del guardado: espera 1.5s de quietud antes de guardar en Supabase
@@ -941,7 +973,7 @@ export default function ReaderPage() {
           if (!isNavigatingToBookmark.current) {
             if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
             saveDebounceRef.current = setTimeout(() => {
-              saveReadingProgress(bookId, userId, location.start.cfi, percent * 100, scrollTopRef.current);
+              saveReadingProgress(bookId, userId, location.start.cfi, percent * 100, scrollPermilleRef.current);
             }, 1500);
           }
         });
@@ -998,11 +1030,12 @@ export default function ReaderPage() {
 
     return () => {
       if (loadingTimeout) clearTimeout(loadingTimeout);
+      if (saveIntervalRef.current) clearInterval(saveIntervalRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (saveDebounceRef.current) {
         clearTimeout(saveDebounceRef.current);
         if (lastCfiRef.current && userId) {
-          saveReadingProgress(bookId, userId, lastCfiRef.current, progressRef.current, scrollTopRef.current);
+          saveReadingProgress(bookId, userId, lastCfiRef.current, progressRef.current, scrollPermilleRef.current);
         }
       }
       renditionRef.current?.clear();
@@ -1061,7 +1094,7 @@ export default function ReaderPage() {
     const flushPosition = () => {
       const cfi = lastCfiRef.current;
       const pct = progressRef.current;
-      const scroll = scrollTopRef.current;
+      const scroll = scrollPermilleRef.current;
       if (cfi) {
         saveReadingProgress(bookId, userId, cfi, pct, scroll);
       }
@@ -1423,30 +1456,34 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     if (!renditionRef.current) return;
     setIsNavigating(true);
     try {
-      // Marcar para que relocated no guarde reading progress durante la navegación
       isNavigatingToBookmark.current = true;
       setCurrentSpineKey(getSpineKey(b.cfi));
 
-      // Navegar al CFI — relocated se encarga del setProgress
+      // display() con el CFI navega exactamente a la posición carácter-level
       await renditionRef.current.display(b.cfi);
 
-      // Restaurar scroll exacto después de que el layout se estabilice
+      // Fallback para marcadores legacy o cuando display() no posicionó el scroll:
+      // solo restaurar desde permille si el scroll está cerca de 0
+      // (indicando que el CFI era spine-level y no carácter-level)
       requestAnimationFrame(() => {
         const mgr = (renditionRef.current as any)?.manager;
-        if (!mgr?.container) return;
-        let targetScroll = 0;
-        if (b.scroll_top < 0) {
-          // Formato relativo: permille del scrollHeight total
-          const ratio = Math.abs(b.scroll_top) / 1000;
-          targetScroll = ratio * mgr.container.scrollHeight;
-        } else if (b.scroll_top > 0) {
-          // Formato legacy: pixel absoluto
-          targetScroll = b.scroll_top;
+        if (mgr?.container && b.scroll_top) {
+          const atTop = mgr.container.scrollTop < 10;
+          if (atTop) {
+            let targetScroll = 0;
+            if (b.scroll_top < 0) {
+              targetScroll = (Math.abs(b.scroll_top) / 1000) * mgr.container.scrollHeight;
+            } else if (b.scroll_top > 0) {
+              targetScroll = b.scroll_top;
+            }
+            mgr.container.scrollTop = Math.min(
+              targetScroll,
+              Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight)
+            );
+          }
         }
-        const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
-        mgr.container.scrollTop = Math.min(targetScroll, maxScroll);
-        // Re-allow saves now that scroll is restored
         isNavigatingToBookmark.current = false;
+        setIsNavigating(false);
       });
 
       setShowNotesPanel(false);
