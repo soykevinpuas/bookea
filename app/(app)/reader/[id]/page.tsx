@@ -27,6 +27,12 @@ import { BookCompletionQuiz } from "@/components/gamification/BookCompletionQuiz
 import { completeBookAndAwardCoinAction } from "@/lib/actions/coins";
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
+
+const getSpineKey = (cfi: string) => {
+  const m = cfi.match(/^([^!]+)!/);
+  return m ? m[1] : cfi;
+};
+
 export default function ReaderPage() {
   // 4.1.9 - Bloqueo de orientación vertical (Portrait)
   useEffect(() => {
@@ -72,6 +78,8 @@ export default function ReaderPage() {
   const hasRestoredScroll = useRef(false);
   const bookmarksRef = useRef<BookmarkType[]>([]);
   const highlightsRef = useRef<Highlight[]>([]);
+  // Flag para evitar que relocated guarde reading progress durante navegación a marcador
+  const isNavigatingToBookmark = useRef(false);
 
   const { data: book, isLoading: loadingBook } = useBook(bookId);
   const [isExiting, setIsExiting] = useState(false);
@@ -742,7 +750,7 @@ export default function ReaderPage() {
              try {
                 rendition.annotations.highlight(h.cfi_start, { id: h.id }, (e: Event) => {
                   handleHighlightClick(h);
-                }, undefined, { "fill": h.color, "fill-opacity": "0.3", "mix-blend-mode": "multiply" });
+                }, undefined, { "fill": h.color, "fill-opacity": "0.3", "mix-blend-mode": "normal" });
              } catch (err) {
                console.warn("No se pudo renderizar el highlight", h.id);
              }
@@ -750,9 +758,12 @@ export default function ReaderPage() {
         };
 
         // Registrar marcadores visuales (cintas doradas en el texto)
-        const renderBookmarks = () => {
+        const renderBookmarks = (section?: any) => {
+            const sectionSpineKey = section ? getSpineKey(section.cfiBase) : null;
             bookmarksRef.current.forEach((b: BookmarkType) => {
             try {
+              // Solo renderizar marcadores que pertenezcan a este spine
+              if (sectionSpineKey && getSpineKey(b.cfi) !== sectionSpineKey) return;
               rendition.annotations.highlight(b.cfi, { id: `bookmark-${b.id}` }, () => {
                 const rect = document.querySelector(`[id="bookmark-${b.id}"]`)?.getBoundingClientRect();
                 setMenuBookmark({ b, x: rect ? rect.left + rect.width / 2 : 0, y: rect ? rect.top - 8 : 0 });
@@ -793,7 +804,7 @@ export default function ReaderPage() {
           if (loadingTimeout) clearTimeout(loadingTimeout);
           setIsLoading(false);
           renderHighlights();
-          renderBookmarks();
+          renderBookmarks(_section);
           fixViewCSS(view);
 
           // Restaurar scroll exacto después del primer render
@@ -921,10 +932,13 @@ export default function ReaderPage() {
           }
 
           // Debounce del guardado: espera 1.5s de quietud antes de guardar en Supabase
-          if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
-          saveDebounceRef.current = setTimeout(() => {
-            saveReadingProgress(bookId, userId, location.start.cfi, percent * 100, scrollTopRef.current);
-          }, 1500);
+          // Skip durante navegación a marcador para no corromper el reading progress
+          if (!isNavigatingToBookmark.current) {
+            if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+            saveDebounceRef.current = setTimeout(() => {
+              saveReadingProgress(bookId, userId, location.start.cfi, percent * 100, scrollTopRef.current);
+            }, 1500);
+          }
         });
 
         // 4.2.7.3 - Generación de ubicaciones para cálculo preciso del porcentaje
@@ -1208,7 +1222,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
           // El objeto actualizado no lo tenemos aquí directo, así que pasamos un mock parcial 
           const target = highlights.find((h: any) => h.id === activeSelection.isExistingId);
           if (target) handleHighlightClick({...target, color});
-        }, undefined, { "fill": color, "fill-opacity": "0.3", "mix-blend-mode": "multiply" });
+        }, undefined, { "fill": color, "fill-opacity": "0.3", "mix-blend-mode": "normal" });
         
       } else {
         toast.error("Error al actualizar color");
@@ -1231,7 +1245,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         // Dibujar estéticamente el oficial
         renditionRef.current?.annotations.highlight(newHighlight.cfi_start, { id: newHighlight.id }, () => {
           handleHighlightClick(newHighlight);
-        }, undefined, { "fill": color, "fill-opacity": "0.3", "mix-blend-mode": "multiply" });
+        }, undefined, { "fill": color, "fill-opacity": "0.3", "mix-blend-mode": "normal" });
       } else {
         toast.error("Error al guardar subrayado");
       }
@@ -1291,13 +1305,6 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     }
   };
 
-  // 4.2.9.3 - Funciones para Marcadores Visuales (Bookmarks)
-
-  const getSpineKey = (cfi: string) => {
-    const m = cfi.match(/^([^!]+)!/);
-    return m ? m[1] : cfi;
-  };
-
   const hasBookmarkOnCurrentPage = () => {
     if (!currentSpineKey) return false;
     return bookmarks.some(b => getSpineKey(b.cfi) === currentSpineKey);
@@ -1314,7 +1321,31 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     }
 
     const mgr = (renditionRef.current as any)?.manager;
-    const scroll = mgr?.container?.scrollTop ?? 0;
+    const container = mgr?.container;
+
+    // Guardar scroll como permille (‰) del scrollHeight total para ser
+    // independiente de cambios de layout (tamaño de fuente, ventana, etc)
+    const scrollPermille = container
+      ? Math.round((container.scrollTop / Math.max(1, container.scrollHeight)) * 1000)
+      : 0;
+    // Valor negativo indica formato relativo (permille), positivo = absoluto (compatibilidad legacy)
+    const scroll = scrollPermille > 0 ? -scrollPermille : 0;
+
+    // Obtener CFI preciso usando locations (1600 puntos de referencia en el libro)
+    // locations.cfiFromPercentage da un CFI a nivel de carácter, no de spine
+    let preciseCfi = lastCfiRef.current;
+    try {
+      if (bookRef.current?.locations?.length?.() > 0) {
+        const pct = Math.max(0, Math.min(1, (progressRef.current || 0) / 100));
+        preciseCfi = bookRef.current.locations.cfiFromPercentage(pct);
+      } else {
+        // Fallback: currentLocation si locations no están listas
+        const currentLoc = renditionRef.current?.currentLocation();
+        if (currentLoc?.cfi) {
+          preciseCfi = currentLoc.cfi;
+        }
+      }
+    } catch {}
 
     let preview = "";
     try {
@@ -1335,7 +1366,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
     const bookmark = await saveBookmark(
       bookId, userId,
-      lastCfiRef.current, scroll,
+      preciseCfi, scroll,
       preview || "Marcador", progressRef.current
     );
 
@@ -1343,7 +1374,8 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       setBookmarks(prev => [bookmark, ...prev]);
       try {
         renditionRef.current.annotations.highlight(bookmark.cfi, { id: `bookmark-${bookmark.id}` }, () => {
-          setMenuBookmark({ b: bookmark, x: 0, y: 0 });
+          const rect = document.querySelector(`[id="bookmark-${bookmark.id}"]`)?.getBoundingClientRect();
+          setMenuBookmark({ b: bookmark, x: rect ? rect.left + rect.width / 2 : 0, y: rect ? rect.top - 8 : 0 });
         }, undefined, { "fill": "#FFB300", "fill-opacity": "0.15", "mix-blend-mode": "normal" });
       } catch {}
       toast.success("Marcador añadido");
@@ -1353,28 +1385,36 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
   const handleGoToBookmark = async (b: BookmarkType) => {
     if (!renditionRef.current) return;
     try {
-      // Actualizar UI inmediatamente (toggle bookmark reactivo)
+      // Marcar para que relocated no guarde reading progress durante la navegación
+      isNavigatingToBookmark.current = true;
       setCurrentSpineKey(getSpineKey(b.cfi));
 
       // Navegar al CFI — relocated se encarga del setProgress
       await renditionRef.current.display(b.cfi);
 
       // Restaurar scroll exacto después de que el layout se estabilice
-      if (b.scroll_top > 0) {
-        setTimeout(() => {
-          requestAnimationFrame(() => {
-            const mgr = (renditionRef.current as any)?.manager;
-            if (mgr?.container) {
-              const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
-              mgr.container.scrollTop = Math.min(b.scroll_top, maxScroll);
-            }
-          });
-        }, 200);
-      }
+      requestAnimationFrame(() => {
+        const mgr = (renditionRef.current as any)?.manager;
+        if (!mgr?.container) return;
+        let targetScroll = 0;
+        if (b.scroll_top < 0) {
+          // Formato relativo: permille del scrollHeight total
+          const ratio = Math.abs(b.scroll_top) / 1000;
+          targetScroll = ratio * mgr.container.scrollHeight;
+        } else if (b.scroll_top > 0) {
+          // Formato legacy: pixel absoluto
+          targetScroll = b.scroll_top;
+        }
+        const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
+        mgr.container.scrollTop = Math.min(targetScroll, maxScroll);
+        // Re-allow saves now that scroll is restored
+        isNavigatingToBookmark.current = false;
+      });
 
       setShowNotesPanel(false);
     } catch (err) {
       console.warn("Error navegando a marcador:", err);
+      isNavigatingToBookmark.current = false;
     }
   };
 
@@ -1748,13 +1788,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         </div>
         
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {highlights.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center opacity-50 px-4">
-              <p>Aún no has hecho subrayados en este libro.</p>
-              <p className="text-xs mt-2">Selecciona cualquier texto para resaltar o añadir una nota.</p>
-            </div>
-          ) : (
-            highlights.map((h) => (
+          {highlights.length > 0 && highlights.map((h) => (
               <div key={h.id} className="bg-white dark:bg-[#1a1a1a] retro:bg-[#161b22] navy:bg-[#111827] border border-gray-100 dark:border-white/10 retro:border-[#3fb950]/20 navy:border-[#7986cb]/20 rounded-xl p-4 shadow-sm relative group">
                 <div className="absolute left-0 top-4 bottom-4 w-1 rounded-r-md" style={{ backgroundColor: h.color }}></div>
                 
@@ -1802,7 +1836,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-            ))
+            )
           )}
 
           {/* 4.2.16.4 - Sección de Marcadores Visuales */}
@@ -1831,6 +1865,13 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {highlights.length === 0 && bookmarks.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-center opacity-50 px-4">
+              <p>Aún no has hecho subrayados en este libro.</p>
+              <p className="text-xs mt-2">Selecciona cualquier texto para resaltar o añadir una nota.</p>
             </div>
           )}
         </div>
@@ -1955,7 +1996,8 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
           onClick={() => setMenuBookmark(null)}
         >
           <div
-            className="absolute bottom-28 left-1/2 -translate-x-1/2 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 min-w-[180px] animate-in fade-in zoom-in duration-150"
+            className="absolute bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 min-w-[180px] animate-in fade-in zoom-in duration-150"
+            style={{ left: menuBookmark.x - 90, top: menuBookmark.y - 8, transform: "translateY(-100%)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <button

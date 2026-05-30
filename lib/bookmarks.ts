@@ -78,7 +78,8 @@ export async function getBookmarks(
       const all = raw ? JSON.parse(raw) : {};
       const localUnsynced = (all[bookId] || []).filter((b: { synced?: boolean }) => b.synced === false);
       const remoteIds = new Set(data.map(b => b.id));
-      const filteredLocal = localUnsynced.filter((b: Bookmark) => !remoteIds.has(b.id));
+      const remoteCfi = new Set(data.map(b => b.cfi));
+      const filteredLocal = localUnsynced.filter((b: Bookmark) => !remoteIds.has(b.id) && !remoteCfi.has(b.cfi));
       const merged = [...data.map(b => ({ ...b, synced: true })), ...filteredLocal];
       all[bookId] = merged;
       localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(all));

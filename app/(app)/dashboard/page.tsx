@@ -381,7 +381,7 @@ function DashboardContent() {
           )}
         </AnimatePresence>
 
-        {mounted && displayBooks.length === 0 ? (
+        {mounted && (displayBooks.length === 0 ? (
           <div className="py-20 text-center bg-white/5 rounded-3xl border border-dashed border-white/10">
             <BookOpen className="w-12 h-12 mx-auto text-white/10 mb-4" />
             <p className="text-white/40 mb-4">No hay libros que mostrar</p>
@@ -457,7 +457,7 @@ function DashboardContent() {
               )
             ))}
           </div>
-        )}
+        ))}
       </main>
     </div>
   );

@@ -7,4 +7,5 @@ export interface Bookmark {
   text_preview: string;
   progress_at: number;
   created_at: string;
+  synced?: boolean;
 }
