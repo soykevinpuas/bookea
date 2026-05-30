@@ -760,20 +760,14 @@ export default function ReaderPage() {
           });
         };
 
-        // Registrar marcadores visuales (cintas doradas en el texto)
+        // Registrar marcadores visuales en el texto
         const renderBookmarks = (section?: any) => {
             const sectionSpineKey = section ? getSpineKey(section.cfiBase) : null;
             bookmarksRef.current.forEach((b: BookmarkType) => {
             try {
-              // Solo renderizar marcadores que pertenezcan a este spine
               if (sectionSpineKey && getSpineKey(b.cfi) !== sectionSpineKey) return;
-              rendition.annotations.highlight(b.cfi, { id: `bookmark-${b.id}` }, (e: Event) => {
-                const mouseEvent = e as MouseEvent;
-                const viewerRect = viewerRef.current?.getBoundingClientRect();
-                const x = viewerRect ? viewerRect.left + mouseEvent.clientX : mouseEvent.clientX;
-                const y = viewerRect ? viewerRect.top + mouseEvent.clientY : mouseEvent.clientY;
-                setMenuBookmark({ b, x, y });
-              }, undefined, { "fill": "#FFB300", "fill-opacity": "0.15", "mix-blend-mode": "normal" });
+              // Indicador visual mínimo: un punto diminuto casi invisible
+              rendition.annotations.highlight(b.cfi, { id: `bookmark-${b.id}` }, () => {}, undefined, { "fill": "#FFB300", "fill-opacity": "0.03", "mix-blend-mode": "normal" });
             } catch (err) {
               console.warn("No se pudo renderizar el marcador", b.id);
             }
@@ -1439,15 +1433,6 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
     if (bookmark) {
       setBookmarks(prev => [bookmark, ...prev]);
-      try {
-        renditionRef.current.annotations.highlight(bookmark.cfi, { id: `bookmark-${bookmark.id}` }, (e: Event) => {
-          const mouseEvent = e as MouseEvent;
-          const viewerRect = viewerRef.current?.getBoundingClientRect();
-          const x = viewerRect ? viewerRect.left + mouseEvent.clientX : mouseEvent.clientX;
-          const y = viewerRect ? viewerRect.top + mouseEvent.clientY : mouseEvent.clientY;
-          setMenuBookmark({ b: bookmark, x, y });
-        }, undefined, { "fill": "#FFB300", "fill-opacity": "0.15", "mix-blend-mode": "normal" });
-      } catch {}
       toast.success("Marcador añadido");
     }
   };
