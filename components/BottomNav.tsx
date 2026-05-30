@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Compass, User, Library, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -10,8 +10,15 @@ export function BottomNav() {
   const pathname = usePathname();
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
+  useEffect(() => {
+    setNavigatingTo(null);
+  }, [pathname]);
+
+  const isReader = pathname?.includes("/reader/");
+  const isAuth = pathname?.includes("/login") || pathname?.includes("/register");
   const isLanding = pathname === "/";
-  if (isLanding) return null;
+
+  if (isReader || isAuth || isLanding) return null;
 
   const navItems = [
     {
@@ -40,8 +47,8 @@ export function BottomNav() {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[60] flex justify-center pb-safe px-4 md:hidden">
-      <div className="mb-4 mx-auto max-w-sm bg-white/70 dark:bg-black/80 retro:bg-[#0d1117]/90 navy:bg-[#0a0f1e]/90 backdrop-blur-xl border border-black/5 dark:border-white/10 retro:border-[#3fb950]/30 navy:border-[#7986cb]/30 rounded-2xl shadow-2xl flex items-center justify-around py-3 px-2">
+    <div className="fixed bottom-0 left-0 right-0 z-[60] md:hidden">
+      <div className="bg-white/70 dark:bg-black/80 retro:bg-[#0d1117]/90 navy:bg-[#0a0f1e]/90 backdrop-blur-xl border-t border-black/5 dark:border-white/10 retro:border-[#3fb950]/30 navy:border-[#7986cb]/30 flex items-center justify-around py-3 px-2 pb-[max(env(safe-area-inset-bottom,12px),16px)]">
         {navItems.map((item) => {
           const loading = navigatingTo === item.href;
           return (
