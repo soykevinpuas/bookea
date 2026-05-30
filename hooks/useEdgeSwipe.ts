@@ -57,8 +57,15 @@ export function useEdgeSwipe({
       edgeSwipe.current = fromLeftEdge || fromRightEdge
 
       if (edgeSwipe.current) {
-        e.preventDefault()
-        lockBody()
+        // No prevenir default si el target es un elemento interactivo
+        // (botón, link, input, etc.) para no matar clicks en UI de borde
+        // como el avatar de UserMenu, cart toggle, etc.
+        const target = e.target as HTMLElement
+        const isInteractive = target?.closest?.('button, a, [role="button"], input, select, textarea, label')
+        if (!isInteractive) {
+          e.preventDefault()
+          lockBody()
+        }
       }
     }
 
