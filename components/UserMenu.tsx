@@ -37,7 +37,11 @@ export function UserMenu({ email, avatarConfig }: UserMenuProps) {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside as EventListener);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside as EventListener);
+    };
   }, []);
 
   const handleLogout = async () => {
