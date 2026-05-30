@@ -1,50 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Compass, Bookmark, User, Library } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useTransition } from "react";
+import React, { useState } from "react";
+import { usePathname } from "next/navigation";
+import { Compass, User, Library, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { PrefetchLink } from "@/components/ui/LoadingStates";
-
-// ============================================
-// 6.6 - BottomNav: Barra de navegación inferior móvil
-// Diseñada para acceso rápido a secciones principales con lógica de scroll
-// ============================================
 
 export function BottomNav() {
   const pathname = usePathname();
-  const [isVisible, setIsVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
-  // 6.6.1 - Lógica de detección de scroll para mostrar/ocultar
-  useEffect(() => {
-    const controlNavbar = () => {
-      if (typeof window !== "undefined") {
-        if (window.scrollY > lastScrollY && window.scrollY > 100) {
-          // Bajando: ocultar
-          setIsVisible(false);
-        } else {
-          // Subiendo o cerca del inicio: mostrar
-          setIsVisible(true);
-        }
-        setLastScrollY(window.scrollY);
-      }
-    };
-
-    window.addEventListener("scroll", controlNavbar);
-    return () => {
-      window.removeEventListener("scroll", controlNavbar);
-    };
-  }, [lastScrollY]);
-
-  // Si estamos en el lector, en páginas de auth o en la landing, no mostramos el nav
-  const isReader = pathname?.includes("/reader/");
-  const isAuth = pathname?.includes("/login") || pathname?.includes("/register");
   const isLanding = pathname === "/";
-
-  if (isReader || isAuth || isLanding) return null;
+  if (isLanding) return null;
 
   const navItems = [
     {
@@ -67,49 +34,47 @@ export function BottomNav() {
     }
   ];
 
-  return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          key="bottom-nav"
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="fixed bottom-0 left-0 right-0 z-[60] flex justify-center pb-safe px-4 md:hidden"
-        >
-          <div className="mb-4 mx-auto max-w-sm bg-white/70 dark:bg-black/80 retro:bg-[#0d1117]/90 navy:bg-[#0a0f1e]/90 backdrop-blur-xl border border-black/5 dark:border-white/10 retro:border-[#3fb950]/30 navy:border-[#7986cb]/30 rounded-2xl shadow-2xl flex items-center justify-around py-3 px-2">
-            {navItems.map((item) => {
-              return (
-                <PrefetchLink
-                  key={item.href}
-                  href={item.href}
-                  className={`flex flex-col items-center gap-1 transition-all duration-300 relative group px-4 py-1 rounded-xl ${item.active
-                      ? "text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb]"
-                      : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                    }`}
-                >
-                  {/* Indicador de activo (pestaña) */}
-                  {item.active && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute inset-0 bg-blue-500/10 dark:bg-blue-400/10 retro:bg-[#3fb950]/10 navy:bg-[#7986cb]/10 rounded-xl"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
+  const handleNavClick = (href: string) => {
+    if (href === pathname) return;
+    setNavigatingTo(href);
+  };
 
-                  <div className={`relative ${item.active ? 'drop-shadow-[0_0_6px_currentColor]' : ''}`}>
-                    {item.icon}
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-tighter">
-                    {item.label}
-                  </span>
-                </PrefetchLink>
-              );
-            })}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-[60] flex justify-center pb-safe px-4 md:hidden">
+      <div className="mb-4 mx-auto max-w-sm bg-white/70 dark:bg-black/80 retro:bg-[#0d1117]/90 navy:bg-[#0a0f1e]/90 backdrop-blur-xl border border-black/5 dark:border-white/10 retro:border-[#3fb950]/30 navy:border-[#7986cb]/30 rounded-2xl shadow-2xl flex items-center justify-around py-3 px-2">
+        {navItems.map((item) => {
+          const loading = navigatingTo === item.href;
+          return (
+            <PrefetchLink
+              key={item.href}
+              href={item.href}
+              onClick={() => handleNavClick(item.href)}
+              className={`flex flex-col items-center gap-1 transition-all duration-300 relative group px-4 py-1 rounded-xl ${
+                loading
+                  ? "opacity-50 pointer-events-none text-gray-400 dark:text-gray-500"
+                  : item.active
+                    ? "text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb]"
+                    : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              {item.active && !loading && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute inset-0 bg-blue-500/10 dark:bg-blue-400/10 retro:bg-[#3fb950]/10 navy:bg-[#7986cb]/10 rounded-xl"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+
+              <div className={`relative ${item.active ? 'drop-shadow-[0_0_6px_currentColor]' : ''}`}>
+                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : item.icon}
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-tighter">
+                {item.label}
+              </span>
+            </PrefetchLink>
+          );
+        })}
+      </div>
+    </div>
   );
 }
