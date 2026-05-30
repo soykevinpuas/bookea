@@ -61,5 +61,32 @@ export async function syncOfflineProgress() {
     }
   } catch (err) { console.error("Sync highlights error:", err); }
 
+  // 3. SINCRONIZAR MARCADORES
+  try {
+    const rawB = localStorage.getItem("bookea-offline-bookmarks");
+    if (rawB) {
+      const allBookmarks = JSON.parse(rawB);
+      for (const bookId in allBookmarks) {
+        const bookmarks = allBookmarks[bookId] as any[];
+        for (let b of bookmarks) {
+          if (!b.synced && b.user_id) {
+            const { error } = await supabase.from("bookmarks").upsert({
+              id: b.id,
+              user_id: b.user_id,
+              book_id: b.book_id,
+              cfi: b.cfi,
+              scroll_top: b.scroll_top,
+              text_preview: b.text_preview,
+              progress_at: b.progress_at,
+              created_at: b.created_at || new Date().toISOString(),
+            }, { onConflict: "id" });
+            if (!error) b.synced = true;
+          }
+        }
+      }
+      localStorage.setItem("bookea-offline-bookmarks", JSON.stringify(allBookmarks));
+    }
+  } catch (err) { console.error("Sync bookmarks error:", err); }
+
   console.info("✓ Sincronización offline completada");
 }

@@ -89,8 +89,8 @@ export function Header({ initialUser = null }: HeaderProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showCoins]);
 
-  // 6.1.3 - Ocultar Header en la vista del lector para máxima inmersión
-  if (pathname?.startsWith("/reader")) {
+  // 6.1.3 - Ocultar Header en la vista del lector y en la landing page para máxima inmersión
+  if (pathname?.startsWith("/reader") || pathname === "/") {
     return null;
   }
 

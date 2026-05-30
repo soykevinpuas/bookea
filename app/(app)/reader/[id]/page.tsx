@@ -135,6 +135,7 @@ export default function ReaderPage() {
   const [bookmarks, setBookmarks] = useState<BookmarkType[]>([]);
   const [currentSpineKey, setCurrentSpineKey] = useState<string>("");
   const [menuBookmark, setMenuBookmark] = useState<{ b: BookmarkType; x: number; y: number } | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [editingNote, setEditingNote] = useState<{ id: string; note: string } | null>(null);
   const [isSavingHighlight, setIsSavingHighlight] = useState(false);
 
@@ -541,7 +542,7 @@ export default function ReaderPage() {
                 padding-left: max(3%, env(safe-area-inset-left)) !important;
                 padding-right: max(3%, env(safe-area-inset-right)) !important;
                 padding-top: max(44px, env(safe-area-inset-top)) !important;
-                padding-bottom: max(56px, env(safe-area-inset-bottom)) !important;
+                padding-bottom: max(120px, calc(100px + env(safe-area-inset-bottom))) !important;
                 max-width: 900px !important;
                 margin: 0 auto !important;
                 transition: color 0.3s ease, background-color 0.3s ease, font-family 0.2s ease;
@@ -764,9 +765,12 @@ export default function ReaderPage() {
             try {
               // Solo renderizar marcadores que pertenezcan a este spine
               if (sectionSpineKey && getSpineKey(b.cfi) !== sectionSpineKey) return;
-              rendition.annotations.highlight(b.cfi, { id: `bookmark-${b.id}` }, () => {
-                const rect = document.querySelector(`[id="bookmark-${b.id}"]`)?.getBoundingClientRect();
-                setMenuBookmark({ b, x: rect ? rect.left + rect.width / 2 : 0, y: rect ? rect.top - 8 : 0 });
+              rendition.annotations.highlight(b.cfi, { id: `bookmark-${b.id}` }, (e: Event) => {
+                const mouseEvent = e as MouseEvent;
+                const viewerRect = viewerRef.current?.getBoundingClientRect();
+                const x = viewerRect ? viewerRect.left + mouseEvent.clientX : mouseEvent.clientX;
+                const y = viewerRect ? viewerRect.top + mouseEvent.clientY : mouseEvent.clientY;
+                setMenuBookmark({ b, x, y });
               }, undefined, { "fill": "#FFB300", "fill-opacity": "0.15", "mix-blend-mode": "normal" });
             } catch (err) {
               console.warn("No se pudo renderizar el marcador", b.id);
@@ -803,6 +807,7 @@ export default function ReaderPage() {
         rendition.on("rendered", (_section: any, view: any) => {
           if (loadingTimeout) clearTimeout(loadingTimeout);
           setIsLoading(false);
+          setIsNavigating(false);
           renderHighlights();
           renderBookmarks(_section);
           fixViewCSS(view);
@@ -1305,16 +1310,44 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     }
   };
 
+  const isBookmarkVisible = (b: BookmarkType) => {
+    if (!renditionRef.current) return false;
+    
+    // El marcador debe pertenecer al spine (capítulo) actual
+    if (getSpineKey(b.cfi) !== currentSpineKey) return false;
+    
+    const mgr = (renditionRef.current as any)?.manager;
+    const container = mgr?.container;
+    if (!container) return false;
+
+    // Obtener scroll actual
+    const currentScrollTop = container.scrollTop;
+    
+    // Obtener scroll_top del marcador en píxeles
+    let bookmarkScrollTop = 0;
+    if (b.scroll_top < 0) {
+      // Formato relativo (permille): convertir a píxeles usando el scrollHeight actual
+      const ratio = Math.abs(b.scroll_top) / 1000;
+      bookmarkScrollTop = ratio * container.scrollHeight;
+    } else {
+      // Formato absoluto legacy
+      bookmarkScrollTop = b.scroll_top;
+    }
+
+    // Umbral dinámico: 25% de la altura del viewport o mínimo 250px
+    const threshold = Math.max(250, container.clientHeight * 0.25);
+    return Math.abs(currentScrollTop - bookmarkScrollTop) < threshold;
+  };
+
   const hasBookmarkOnCurrentPage = () => {
-    if (!currentSpineKey) return false;
-    return bookmarks.some(b => getSpineKey(b.cfi) === currentSpineKey);
+    return bookmarks.some(b => isBookmarkVisible(b));
   };
 
   const handleToggleBookmark = async () => {
     if (!bookId || !userId || !renditionRef.current || !lastCfiRef.current) return;
 
-    // Si ya hay un marcador en esta página, eliminarlo
-    const existing = bookmarks.find(b => getSpineKey(b.cfi) === currentSpineKey);
+    // Si ya hay un marcador visible en esta pantalla, eliminarlo
+    const existing = bookmarks.find(b => isBookmarkVisible(b));
     if (existing) {
       handleDeleteBookmark(existing);
       return;
@@ -1335,9 +1368,10 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     // locations.cfiFromPercentage da un CFI a nivel de carácter, no de spine
     let preciseCfi = lastCfiRef.current;
     try {
-      if (bookRef.current?.locations?.length?.() > 0) {
+      const book = bookRef.current;
+      if (book && book.locations && typeof book.locations.length === "function" && book.locations.length() > 0) {
         const pct = Math.max(0, Math.min(1, (progressRef.current || 0) / 100));
-        preciseCfi = bookRef.current.locations.cfiFromPercentage(pct);
+        preciseCfi = book.locations.cfiFromPercentage(pct);
       } else {
         // Fallback: currentLocation si locations no están listas
         const currentLoc = renditionRef.current?.currentLocation();
@@ -1373,9 +1407,12 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     if (bookmark) {
       setBookmarks(prev => [bookmark, ...prev]);
       try {
-        renditionRef.current.annotations.highlight(bookmark.cfi, { id: `bookmark-${bookmark.id}` }, () => {
-          const rect = document.querySelector(`[id="bookmark-${bookmark.id}"]`)?.getBoundingClientRect();
-          setMenuBookmark({ b: bookmark, x: rect ? rect.left + rect.width / 2 : 0, y: rect ? rect.top - 8 : 0 });
+        renditionRef.current.annotations.highlight(bookmark.cfi, { id: `bookmark-${bookmark.id}` }, (e: Event) => {
+          const mouseEvent = e as MouseEvent;
+          const viewerRect = viewerRef.current?.getBoundingClientRect();
+          const x = viewerRect ? viewerRect.left + mouseEvent.clientX : mouseEvent.clientX;
+          const y = viewerRect ? viewerRect.top + mouseEvent.clientY : mouseEvent.clientY;
+          setMenuBookmark({ b: bookmark, x, y });
         }, undefined, { "fill": "#FFB300", "fill-opacity": "0.15", "mix-blend-mode": "normal" });
       } catch {}
       toast.success("Marcador añadido");
@@ -1384,6 +1421,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
   const handleGoToBookmark = async (b: BookmarkType) => {
     if (!renditionRef.current) return;
+    setIsNavigating(true);
     try {
       // Marcar para que relocated no guarde reading progress durante la navegación
       isNavigatingToBookmark.current = true;
@@ -1415,6 +1453,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     } catch (err) {
       console.warn("Error navegando a marcador:", err);
       isNavigatingToBookmark.current = false;
+      setIsNavigating(false);
     }
   };
 
@@ -1671,6 +1710,14 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
           <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 ${bgColors}`}>
             <div className="splash-dots mb-4"><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /></div>
             <span className="text-sm opacity-60 font-medium tracking-wide">Preparando libro...</span>
+          </div>
+        )}
+
+        {/* Overlay de navegación: bloquea clics dobles mientras epub.js re-renderiza */}
+        {isNavigating && (
+          <div className={`absolute inset-0 flex flex-col items-center justify-center z-20 backdrop-blur-[2px] pointer-events-auto ${isDark ? 'bg-black/30' : isRetro ? 'bg-[#0d1117]/30' : isNavy ? 'bg-[#0a0f1e]/30' : 'bg-white/30'}`}>
+            <Loader2 className={`w-7 h-7 animate-spin ${isRetro ? 'text-[#3fb950]' : isNavy ? 'text-[#7986cb]' : 'text-blue-500'}`} />
+            <span className="text-xs mt-2 opacity-60 font-medium tracking-wide">Navegando…</span>
           </div>
         )}
 
@@ -1949,9 +1996,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
       {/* 4.2.17 - Barra inferior central (Bottom HUD) de navegación de hojas y rastreo de progreso porcentual estricto */}
       <div 
-        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 pt-4 pb-[max(env(safe-area-inset-bottom),56px)] transition-all duration-300 pointer-events-auto ${
-            showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-        } ${isDark ? 'bg-black/60 backdrop-blur-xl border-t border-white/10' : 
+        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 pt-3 pb-[max(env(safe-area-inset-bottom,12px),28px)] transition-all duration-300 pointer-events-auto translate-y-0 opacity-100 ${isDark ? 'bg-black/60 backdrop-blur-xl border-t border-white/10' : 
             isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-t border-[#3fb950]/20' : 
             isNavy ? 'bg-[#0a0f1e]/90 backdrop-blur-xl border-t border-[#7986cb]/20' :
             'bg-white/70 backdrop-blur-xl border-t border-black/5'} shadow-[0_-8px_30px_rgba(0,0,0,0.15)]`}

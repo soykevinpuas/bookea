@@ -39,11 +39,12 @@ export function BottomNav() {
     };
   }, [lastScrollY]);
 
-  // Si estamos en el lector o en páginas de auth, no mostramos el nav
+  // Si estamos en el lector, en páginas de auth o en la landing, no mostramos el nav
   const isReader = pathname?.includes("/reader/");
   const isAuth = pathname?.includes("/login") || pathname?.includes("/register");
+  const isLanding = pathname === "/";
 
-  if (isReader || isAuth) return null;
+  if (isReader || isAuth || isLanding) return null;
 
   const navItems = [
     {
