@@ -44,6 +44,11 @@ export function BottomNav() {
   const handleNavClick = (href: string) => {
     if (href === pathname) return;
     setNavigatingTo(href);
+    // Safety timeout: si la navegación falla (offline, error, etc.),
+    // resetear navigatingTo después de 8s para que el tab no quede disabled
+    setTimeout(() => {
+      setNavigatingTo(prev => prev === href ? null : prev);
+    }, 8000);
   };
 
   return (
@@ -58,7 +63,7 @@ export function BottomNav() {
               onClick={() => handleNavClick(item.href)}
               className={`flex flex-col items-center gap-1 transition-all duration-300 relative group px-4 py-1 rounded-xl ${
                 loading
-                  ? "opacity-50 pointer-events-none text-gray-400 dark:text-gray-500"
+                  ? "opacity-50 text-gray-400 dark:text-gray-500"
                   : item.active
                     ? "text-blue-600 dark:text-blue-400 retro:text-[#3fb950] navy:text-[#7986cb]"
                     : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
