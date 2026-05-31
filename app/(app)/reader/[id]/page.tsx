@@ -806,9 +806,22 @@ export default function ReaderPage() {
           if (!isNavigatingToBookmark.current) {
             setIsNavigating(false);
           }
-          renderHighlights();
-          renderBookmarks(_section);
+          // fixViewCSS debe ejecutarse inmediato: cambia CSS que afecta layout
+          // y asegura render visual correcto desde el primer frame
           fixViewCSS(view);
+
+          // Diferir renderHighlights/renderBookmarks durante navegación a bookmark
+          // para evitar que añadir spans al DOM distorsione la resolución del scroll
+          // que EpubJS hace después del evento rendered.
+          if (isNavigatingToBookmark.current) {
+            requestAnimationFrame(() => {
+              renderHighlights();
+              renderBookmarks(_section);
+            });
+          } else {
+            renderHighlights();
+            renderBookmarks(_section);
+          }
 
           // Restaurar scroll exacto después del primer render
           if (pendingScrollRestore.current !== null && !hasRestoredScroll.current) {
