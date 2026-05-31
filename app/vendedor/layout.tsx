@@ -165,7 +165,7 @@ export default function VendedorLayout({
 
       {/* Main Content */}
       <main className="flex-1 w-full min-h-screen">
-        <div className="p-4 md:p-10 max-w-7xl mx-auto">
+        <div className="p-4 md:p-10 max-w-7xl mx-auto pb-20 md:pb-10">
           {children}
         </div>
       </main>

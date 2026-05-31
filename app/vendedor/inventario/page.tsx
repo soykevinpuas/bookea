@@ -108,8 +108,8 @@ export default function VendedorInventarioPage() {
                   </div>
                 )}
               </div>
-              <p className="font-medium text-sm truncate">{item.books?.title}</p>
-              <p className="text-xs text-white/40 truncate mb-3">{item.books?.author}</p>
+              <p className="font-medium text-sm truncate min-w-0">{item.books?.title ?? "Libro sin título"}</p>
+              <p className="text-xs text-white/40 truncate mb-3 min-w-0">{item.books?.author ?? "—"}</p>
 
               <div className="flex items-center justify-between">
                 <div>

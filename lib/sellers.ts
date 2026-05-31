@@ -7,11 +7,16 @@ export async function getSellerInventory(
   supabase: SupabaseClient,
   sellerId: string
 ): Promise<SellerInventory[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("seller_inventory")
-    .select("*, books!inner(id, title, author, cover_url, price_physical)")
+    .select("*, books(id, title, author, cover_url, price_physical)")
     .eq("seller_id", sellerId)
     .order("updated_at", { ascending: false });
+
+  if (error) {
+    console.error("[sellers] getSellerInventory error:", error);
+    return [];
+  }
 
   return (data ?? []) as unknown as SellerInventory[];
 }
@@ -86,11 +91,16 @@ export async function getSellerSales(
   supabase: SupabaseClient,
   sellerId: string
 ): Promise<SellerSale[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("seller_sales")
-    .select("*, books!inner(id, title, author, cover_url, price_physical)")
+    .select("*, books(id, title, author, cover_url, price_physical)")
     .eq("seller_id", sellerId)
     .order("sold_at", { ascending: false });
+
+  if (error) {
+    console.error("[sellers] getSellerSales error:", error);
+    return [];
+  }
 
   return (data ?? []) as unknown as SellerSale[];
 }
@@ -134,11 +144,16 @@ export async function getSellerRequests(
   supabase: SupabaseClient,
   sellerId: string
 ): Promise<StockRequest[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("stock_requests")
-    .select("*, items:stock_request_items(*, books!inner(id, title, author, cover_url, price_physical))")
+    .select("*, items:stock_request_items(*, books(id, title, author, cover_url, price_physical))")
     .eq("seller_id", sellerId)
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[sellers] getSellerRequests error:", error);
+    return [];
+  }
 
   return (data ?? []) as unknown as StockRequest[];
 }
@@ -148,10 +163,15 @@ export async function getSellerRequests(
 export async function getAllStockRequests(
   supabase: SupabaseClient
 ): Promise<StockRequest[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("stock_requests")
-    .select("*, items:stock_request_items(*, books!inner(id, title, author, cover_url, price_physical)), seller:seller_id(id, email)")
+    .select("*, items:stock_request_items(*, books(id, title, author, cover_url, price_physical)), seller:seller_id(id, email)")
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[sellers] getAllStockRequests error:", error);
+    return [];
+  }
 
   return (data ?? []) as unknown as StockRequest[];
 }
@@ -279,11 +299,15 @@ export async function getAdminSellerDetail(
   const inventory = await getSellerInventory(supabase, sellerId);
   const sales = await getSellerSales(supabase, sellerId);
 
-  const { data: requests } = await supabase
+  const { data: requests, error: requestsErr } = await supabase
     .from("stock_requests")
-    .select("*, items:stock_request_items(*, books!inner(id, title, author, cover_url, price_physical))")
+    .select("*, items:stock_request_items(*, books(id, title, author, cover_url, price_physical))")
     .eq("seller_id", sellerId)
     .order("created_at", { ascending: false });
+
+  if (requestsErr) {
+    console.error("[sellers] getAdminSellerDetail requests error:", requestsErr);
+  }
 
   return {
     seller: user,
