@@ -13,6 +13,8 @@ import {
   Sparkles,
   Calendar,
   Activity,
+  Store,
+  Package,
 } from "lucide-react";
 
 // 5.2 - Forzar renderizado dinámico (usa cookies para auth)
@@ -37,6 +39,10 @@ interface AdminStats {
   recentPayments: number;
   booksReadThisWeek: number;
   reviewsThisWeek: number;
+  sellers: number;
+  pendingStockRequests: number;
+  totalStockAssigned: number;
+  totalSoldBySellers: number;
 }
 
 interface AdminCard {
@@ -55,13 +61,16 @@ async function getAdminStats(): Promise<AdminStats> {
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
   const oneWeekAgoStr = oneWeekAgo.toISOString();
 
-  const [booksRes, ordersRes, usersRes, analyticsRes, userBooksRes, reviewsRes] = await Promise.all([
+  const [booksRes, ordersRes, usersRes, analyticsRes, userBooksRes, reviewsRes, sellerInvRes, sellerSalesRes, stockReqRes] = await Promise.all([
     supabase.from("books").select("id, is_active, created_at", { count: "exact" }),
     supabase.from("orders_physical").select("id, status, total, created_at", { count: "exact" }),
     supabase.from("users").select("id, role, created_at", { count: "exact" }),
     supabase.from("analytics_events").select("event_name, event_data").gte("created_at", oneWeekAgoStr),
     supabase.from("user_books").select("id, created_at", { count: "exact" }).gte("created_at", oneWeekAgoStr),
     supabase.from("reviews").select("id, created_at", { count: "exact" }).gte("created_at", oneWeekAgoStr),
+    supabase.from("seller_inventory").select("quantity"),
+    supabase.from("seller_sales").select("quantity"),
+    supabase.from("stock_requests").select("id, status", { count: "exact" }),
   ]);
 
   const totalBooks = booksRes.count ?? 0;
@@ -79,6 +88,11 @@ async function getAdminStats(): Promise<AdminStats> {
   const admins = usersRes.data?.filter((u: any) => u.role === "admin").length ?? 0;
   const freeUsers = usersRes.data?.filter((u: any) => u.role === "free").length ?? 0;
 
+  const sellers = usersRes.data?.filter((u: any) => u.role === "vendedor").length ?? 0;
+  const pendingStockRequests = stockReqRes.data?.filter((r: any) => r.status === "pending").length ?? 0;
+  const totalStockAssigned = (sellerInvRes.data ?? []).reduce((sum: number, i: any) => sum + (i.quantity || 0), 0);
+  const totalSoldBySellers = (sellerSalesRes.data ?? []).reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
+
   const analyticsEvents = analyticsRes.data ?? [];
   const paymentCompleted = analyticsEvents.filter((e: any) => e.event_name === 'payment_completed');
   const digitalRevenue = paymentCompleted.reduce((sum: number, e: any) => sum + (Number(e.event_data?.amount) || 0), 0);
@@ -95,6 +109,7 @@ async function getAdminStats(): Promise<AdminStats> {
     totalUsers, newUsersThisWeek, subscribers, admins, freeUsers,
     digitalRevenue, subscriptionPayments,
     recentSignups, recentPayments, booksReadThisWeek, reviewsThisWeek,
+    sellers, pendingStockRequests, totalStockAssigned, totalSoldBySellers,
   };
 }
 
@@ -111,6 +126,7 @@ export default async function AdminDashboard() {
       totalUsers: 0, newUsersThisWeek: 0, subscribers: 0, admins: 0, freeUsers: 0,
       digitalRevenue: 0, subscriptionPayments: 0,
       recentSignups: 0, recentPayments: 0, booksReadThisWeek: 0, reviewsThisWeek: 0,
+      sellers: 0, pendingStockRequests: 0, totalStockAssigned: 0, totalSoldBySellers: 0,
     };
   }
 
@@ -140,6 +156,11 @@ export default async function AdminDashboard() {
   const cardsUsuarios: AdminCard[] = [
     { label: "Usuarios registrados", value: stats.totalUsers, sub: `${stats.newUsersThisWeek} nuevos`, icon: Users, href: "/admin/users", color: "green" },
     { label: "Suscriptores", value: stats.subscribers, sub: `${stats.freeUsers} free`, icon: CreditCard, href: "/admin/users", color: "emerald" },
+  ];
+
+  const cardsVendedores: AdminCard[] = [
+    { label: "Vendedores", value: stats.sellers, sub: `${stats.pendingStockRequests} solicitudes pendientes`, icon: Store, href: "/admin/vendedores", color: "amber" },
+    { label: "Stock asignado", value: stats.totalStockAssigned, sub: `${stats.totalSoldBySellers} vendidos`, icon: Package, href: "/admin/vendedores", color: "orange" },
   ];
 
   const cardsDigital: AdminCard[] = [
@@ -208,6 +229,13 @@ export default async function AdminDashboard() {
 
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <Store className="w-4 h-4" /> Vendedores
+        </h2>
+        <CardGrid cards={cardsVendedores} />
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
           <CreditCard className="w-4 h-4" /> Pagos Digitales
         </h2>
         <CardGrid cards={cardsDigital} />
@@ -233,6 +261,12 @@ export default async function AdminDashboard() {
           </Link>
           <Link href="/admin/users" className="px-4 py-2.5 bg-white/8 text-white/70 text-sm font-medium rounded-xl hover:bg-white/12 transition-colors border border-white/10">
             Gestionar usuarios
+          </Link>
+          <Link href="/admin/vendedores" className="px-4 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-xl hover:bg-amber-700 transition-colors">
+            Ver vendedores
+          </Link>
+          <Link href="/admin/stock-requests" className="px-4 py-2.5 bg-white/8 text-white/70 text-sm font-medium rounded-xl hover:bg-white/12 transition-colors border border-white/10">
+            Solicitudes de stock
           </Link>
         </div>
       </div>
