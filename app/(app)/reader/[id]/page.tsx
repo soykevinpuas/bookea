@@ -1393,20 +1393,17 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     // Valor negativo indica formato relativo (permille), positivo = absoluto (compatibilidad legacy)
     const scroll = scrollPermille > 0 ? -scrollPermille : 0;
 
-    // Obtener CFI preciso usando locations (1600 puntos de referencia en el libro)
-    // locations.cfiFromPercentage da un CFI a nivel de carácter, no de spine
+    // Obtener CFI exacto de la posición actual del viewport
+    // currentLocation().start.cfi es el CFI character-level en el borde superior
+    // visible del viewport, no spine-level. Usar este CFI directamente asegura
+    // que display() navegue al mismo nodo DOM exacto.
     let preciseCfi = lastCfiRef.current;
     try {
-      const book = bookRef.current;
-      if (book && book.locations && typeof book.locations.length === "function" && book.locations.length() > 0) {
-        const pct = Math.max(0, Math.min(1, (progressRef.current || 0) / 100));
-        preciseCfi = book.locations.cfiFromPercentage(pct);
-      } else {
-        // Fallback: currentLocation si locations no están listas
-        const currentLoc = renditionRef.current?.currentLocation();
-        if (currentLoc?.cfi) {
-          preciseCfi = currentLoc.cfi;
-        }
+      const currentLoc: any = renditionRef.current?.currentLocation();
+      if (currentLoc?.start?.cfi) {
+        preciseCfi = currentLoc.start.cfi;
+      } else if (currentLoc?.cfi) {
+        preciseCfi = currentLoc.cfi;
       }
     } catch {}
 
