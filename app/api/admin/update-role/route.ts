@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 });
     }
 
-    if (!['free', 'subscriber', 'admin'].includes(newRole)) {
+    if (!['free', 'subscriber', 'admin', 'vendedor'].includes(newRole)) {
       return NextResponse.json({ error: 'Rol inválido' }, { status: 400 });
     }
 
