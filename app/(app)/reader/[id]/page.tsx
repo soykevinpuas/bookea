@@ -803,7 +803,9 @@ export default function ReaderPage() {
         rendition.on("rendered", (_section: any, view: any) => {
           if (loadingTimeout) clearTimeout(loadingTimeout);
           setIsLoading(false);
-          setIsNavigating(false);
+          if (!isNavigatingToBookmark.current) {
+            setIsNavigating(false);
+          }
           renderHighlights();
           renderBookmarks(_section);
           fixViewCSS(view);
