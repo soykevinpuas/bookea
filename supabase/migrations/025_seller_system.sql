@@ -225,9 +225,21 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
+DECLARE
+  current_stock INT;
 BEGIN
-  UPDATE books SET stock_physical = GREATEST(stock_physical - p_quantity, 0)
-  WHERE id = p_book_id AND stock_physical >= p_quantity;
+  SELECT stock_physical INTO current_stock FROM books WHERE id = p_book_id;
+
+  IF current_stock IS NULL THEN
+    RAISE EXCEPTION 'Libro no encontrado';
+  END IF;
+
+  IF current_stock < p_quantity THEN
+    RAISE EXCEPTION 'Stock insuficiente. Disponible: %, solicitado: %', current_stock, p_quantity;
+  END IF;
+
+  UPDATE books SET stock_physical = stock_physical - p_quantity
+  WHERE id = p_book_id;
 END;
 $$;
 

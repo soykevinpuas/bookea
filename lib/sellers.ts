@@ -162,6 +162,50 @@ export async function updateStockRequestStatus(
   status: StockRequest["status"],
   trackingNumber?: string
 ) {
+  const { data: request } = await supabase
+    .from("stock_requests")
+    .select("*, items:stock_request_items(*)")
+    .eq("id", requestId)
+    .single();
+
+  if (!request) throw new Error("Solicitud no encontrada");
+
+  const items = (request as any).items || [];
+
+  if (status === "shipped") {
+    for (const item of items) {
+      const { error: rpcErr } = await supabase.rpc("decrement_stock", {
+        p_book_id: item.book_id,
+        p_quantity: item.quantity,
+      });
+      if (rpcErr) throw new Error(`Error al descontar stock de ${item.book_id}: ${rpcErr.message}`);
+    }
+  }
+
+  if (status === "delivered") {
+    for (const item of items) {
+      const { data: existing } = await supabase
+        .from("seller_inventory")
+        .select("id, quantity")
+        .eq("seller_id", request.seller_id)
+        .eq("book_id", item.book_id)
+        .maybeSingle();
+
+      if (existing) {
+        const { error: updErr } = await supabase
+          .from("seller_inventory")
+          .update({ quantity: existing.quantity + item.quantity, updated_at: new Date().toISOString() })
+          .eq("id", existing.id);
+        if (updErr) throw updErr;
+      } else {
+        const { error: insErr } = await supabase
+          .from("seller_inventory")
+          .insert({ seller_id: request.seller_id, book_id: item.book_id, quantity: item.quantity });
+        if (insErr) throw insErr;
+      }
+    }
+  }
+
   const update: Record<string, any> = {
     status,
     updated_at: new Date().toISOString(),
@@ -176,53 +220,6 @@ export async function updateStockRequestStatus(
     .eq("id", requestId);
 
   if (error) throw error;
-
-  if (status === "shipped") {
-    const { data: request } = await supabase
-      .from("stock_requests")
-      .select("*, items:stock_request_items(*)")
-      .eq("id", requestId)
-      .single();
-
-    if (request) {
-      for (const item of (request as any).items || []) {
-        await supabase.rpc("decrement_stock", {
-          p_book_id: item.book_id,
-          p_quantity: item.quantity,
-        });
-      }
-    }
-  }
-
-  if (status === "delivered") {
-    const { data: request } = await supabase
-      .from("stock_requests")
-      .select("*, items:stock_request_items(*)")
-      .eq("id", requestId)
-      .single();
-
-    if (request) {
-      for (const item of (request as any).items || []) {
-        const { data: existing } = await supabase
-          .from("seller_inventory")
-          .select("id, quantity")
-          .eq("seller_id", request.seller_id)
-          .eq("book_id", item.book_id)
-          .maybeSingle();
-
-        if (existing) {
-          await supabase
-            .from("seller_inventory")
-            .update({ quantity: existing.quantity + item.quantity, updated_at: new Date().toISOString() })
-            .eq("id", existing.id);
-        } else {
-          await supabase
-            .from("seller_inventory")
-            .insert({ seller_id: request.seller_id, book_id: item.book_id, quantity: item.quantity });
-        }
-      }
-    }
-  }
 }
 
 // ─── Admin: Seller Management ───────────────────────────────
