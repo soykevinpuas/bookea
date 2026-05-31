@@ -1467,17 +1467,18 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       await renditionRef.current.display(b.cfi);
 
       // Esperar a que el DOM sea estable para encontrar la posición exacta
-      // del CFI en píxeles. Usamos dos rAF:
-      //   rAF #1: rendered's deferred highlights/bookmarks corren en este frame
-      //   rAF #2: DOM estable, consultamos posición exacta via Range
+      // del CFI en píxeles. Usamos tres rAF para evitar que relocated
+      // pise el progreso después del scroll event:
+      //   rAF #1: rendered's deferred highlights/bookmarks corren
+      //   rAF #2: DOM estable, seteamos scrollTop
+      //          (scroll event → relocated → skip porque flag=true)
+      //   rAF #3: flag sigue true, actualizamos progreso y limpiamos
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           const mgr = (renditionRef.current as any)?.manager;
           let scrollSet = false;
 
           // Encontrar la posición exacta del CFI usando el Range nativo del DOM
-          // range.getBoundingClientRect() usa el motor de layout del navegador,
-          // que ya tiene fixViewCSS + highlights aplicados.
           try {
             const contents = renditionRef.current?.getContents() as unknown as EpubContents[] | undefined;
             contents?.some((c: any) => {
@@ -1520,22 +1521,26 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
             );
           }
 
-          // Recalcular progreso desde el CFI real del marcador
-          try {
-            const book = bookRef.current;
-            if (book?.locations && typeof book.locations.length === 'function' && book.locations.length() > 0) {
-              const pct = book.locations.percentageFromCfi(b.cfi);
-              if (pct > 0) {
-                const pctVal = Math.max(0, Math.min(1, pct)) * 100;
-                setProgress(pctVal);
-                progressRef.current = pctVal;
+          // Tercer rAF: el scroll event ya disparó, relocated fue ignorado
+          // (isNavigatingToBookmark sigue true). Ahora podemos actualizar
+          // progreso y limpiar el flag sin que relocated pise.
+          requestAnimationFrame(() => {
+            try {
+              const book = bookRef.current;
+              if (book?.locations && typeof book.locations.length === 'function' && book.locations.length() > 0) {
+                const pct = book.locations.percentageFromCfi(b.cfi);
+                if (pct > 0) {
+                  const pctVal = Math.max(0, Math.min(1, pct)) * 100;
+                  setProgress(pctVal);
+                  progressRef.current = pctVal;
+                }
               }
-            }
-            lastCfiRef.current = b.cfi;
-          } catch {}
+              lastCfiRef.current = b.cfi;
+            } catch {}
 
-          isNavigatingToBookmark.current = false;
-          setIsNavigating(false);
+            isNavigatingToBookmark.current = false;
+            setIsNavigating(false);
+          });
         });
       });
 
