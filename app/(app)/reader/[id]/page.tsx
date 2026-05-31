@@ -947,6 +947,13 @@ export default function ReaderPage() {
         }
 
         rendition.on("relocated", (location: { start: { cfi: string; index: number; percentage: number | string }; end?: { percentage: number | string; index: number } }) => {
+          // Skip todo el procesamiento durante navegación a bookmark.
+          // El scroll event que dispara nuestro scrollTop override en
+          // handleGoToBookmark llega aquí; si procesamos, pisamos
+          // el progreso y lastCfiRef que handleGoToBookmark va a
+          // establecer en su segundo rAF.
+          if (isNavigatingToBookmark.current) return;
+
           let percent = 0;
           const totalSpines = (bookInstance.spine as any)?.length || (bookInstance.spine as any)?.items?.length || 1;
 
@@ -1456,31 +1463,51 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       isNavigatingToBookmark.current = true;
       setCurrentSpineKey(getSpineKey(b.cfi));
 
-      // display() con el CFI navega exactamente a la posición carácter-level
+      // display() carga la sección que contiene el marcador
       await renditionRef.current.display(b.cfi);
 
-      // Fallback para marcadores legacy o cuando display() no posicionó el scroll:
-      // solo restaurar desde permille si el scroll está cerca de 0
-      // (indicando que el CFI era spine-level y no carácter-level)
+      // Sobrescribir scroll con permille exacto guardado en el marcador.
+      // display() con CFI no posiciona exactamente en continuous scroll
+      // porque fixViewCSS cambia el layout ANTES de que EpubJS resuelva
+      // el CFI, desviando la posición.
+      // El permille captura scrollTop/scrollHeight en el momento exacto
+      // del guardado, preservando la posición relativa real.
       requestAnimationFrame(() => {
         const mgr = (renditionRef.current as any)?.manager;
         if (mgr?.container && b.scroll_top) {
-          const atTop = mgr.container.scrollTop < 10;
-          if (atTop) {
-            let targetScroll = 0;
-            if (b.scroll_top < 0) {
-              targetScroll = (Math.abs(b.scroll_top) / 1000) * mgr.container.scrollHeight;
-            } else if (b.scroll_top > 0) {
-              targetScroll = b.scroll_top;
-            }
-            mgr.container.scrollTop = Math.min(
-              targetScroll,
-              Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight)
-            );
+          let targetScroll = 0;
+          if (b.scroll_top < 0) {
+            targetScroll = (Math.abs(b.scroll_top) / 1000) * mgr.container.scrollHeight;
+          } else if (b.scroll_top > 0) {
+            targetScroll = b.scroll_top;
           }
+          mgr.container.scrollTop = Math.min(
+            targetScroll,
+            Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight)
+          );
         }
-        isNavigatingToBookmark.current = false;
-        setIsNavigating(false);
+
+        // Segundo rAF: después de que el browser procese el scroll event
+        // y dispare relocated (que será ignorado porque
+        // isNavigatingToBookmark sigue true), actualizamos el progreso
+        // desde el CFI real del marcador y limpiamos el flag.
+        requestAnimationFrame(() => {
+          try {
+            const book = bookRef.current;
+            if (book?.locations && typeof book.locations.length === 'function' && book.locations.length() > 0) {
+              const pct = book.locations.percentageFromCfi(b.cfi);
+              if (pct > 0) {
+                const pctVal = Math.max(0, Math.min(1, pct)) * 100;
+                setProgress(pctVal);
+                progressRef.current = pctVal;
+              }
+            }
+            lastCfiRef.current = b.cfi;
+          } catch {}
+
+          isNavigatingToBookmark.current = false;
+          setIsNavigating(false);
+        });
       });
 
       setShowNotesPanel(false);
