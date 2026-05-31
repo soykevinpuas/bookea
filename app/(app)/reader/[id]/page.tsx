@@ -1466,32 +1466,61 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       // display() carga la sección que contiene el marcador
       await renditionRef.current.display(b.cfi);
 
-      // Sobrescribir scroll con permille exacto guardado en el marcador.
-      // display() con CFI no posiciona exactamente en continuous scroll
-      // porque fixViewCSS cambia el layout ANTES de que EpubJS resuelva
-      // el CFI, desviando la posición.
-      // El permille captura scrollTop/scrollHeight en el momento exacto
-      // del guardado, preservando la posición relativa real.
+      // Esperar a que el DOM sea estable para encontrar la posición exacta
+      // del CFI en píxeles. Usamos dos rAF:
+      //   rAF #1: rendered's deferred highlights/bookmarks corren en este frame
+      //   rAF #2: DOM estable, consultamos posición exacta via Range
       requestAnimationFrame(() => {
-        const mgr = (renditionRef.current as any)?.manager;
-        if (mgr?.container && b.scroll_top) {
-          let targetScroll = 0;
-          if (b.scroll_top < 0) {
-            targetScroll = (Math.abs(b.scroll_top) / 1000) * mgr.container.scrollHeight;
-          } else if (b.scroll_top > 0) {
-            targetScroll = b.scroll_top;
-          }
-          mgr.container.scrollTop = Math.min(
-            targetScroll,
-            Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight)
-          );
-        }
-
-        // Segundo rAF: después de que el browser procese el scroll event
-        // y dispare relocated (que será ignorado porque
-        // isNavigatingToBookmark sigue true), actualizamos el progreso
-        // desde el CFI real del marcador y limpiamos el flag.
         requestAnimationFrame(() => {
+          const mgr = (renditionRef.current as any)?.manager;
+          let scrollSet = false;
+
+          // Encontrar la posición exacta del CFI usando el Range nativo del DOM
+          // range.getBoundingClientRect() usa el motor de layout del navegador,
+          // que ya tiene fixViewCSS + highlights aplicados.
+          try {
+            const contents = renditionRef.current?.getContents() as unknown as EpubContents[] | undefined;
+            contents?.some((c: any) => {
+              try {
+                const range = c.range(b.cfi);
+                if (range) {
+                  const rangeRect = range.getBoundingClientRect();
+                  const iframe = c.iframe || (c as any).iframe;
+                  if (iframe && mgr?.container && rangeRect.top > 0) {
+                    const iframeRect = iframe.getBoundingClientRect();
+                    const containerRect = mgr.container.getBoundingClientRect();
+                    const targetScroll = mgr.container.scrollTop +
+                      (iframeRect.top - containerRect.top) + rangeRect.top;
+                    mgr.container.scrollTop = Math.min(
+                      targetScroll,
+                      Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight)
+                    );
+                    scrollSet = true;
+                  }
+                  return true; // found it, stop iteration
+                }
+              } catch {}
+              return false;
+            });
+          } catch (e) {
+            console.warn("[Bookmark] getRange falló", e);
+          }
+
+          // Fallback: restaurar desde permille si getRange no funcionó
+          if (!scrollSet && mgr?.container && b.scroll_top) {
+            let targetScroll = 0;
+            if (b.scroll_top < 0) {
+              targetScroll = (Math.abs(b.scroll_top) / 1000) * mgr.container.scrollHeight;
+            } else if (b.scroll_top > 0) {
+              targetScroll = b.scroll_top;
+            }
+            mgr.container.scrollTop = Math.min(
+              targetScroll,
+              Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight)
+            );
+          }
+
+          // Recalcular progreso desde el CFI real del marcador
           try {
             const book = bookRef.current;
             if (book?.locations && typeof book.locations.length === 'function' && book.locations.length() > 0) {
