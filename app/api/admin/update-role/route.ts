@@ -41,14 +41,17 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Intentar vía RPC primero (SECURITY DEFINER bypasea RLS)
-    const { error: rpcError } = await supabase.rpc('admin_change_user_role', {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('admin_change_user_role', {
       target_user_id: targetUserId,
       new_role: newRole,
     });
 
-    if (rpcError) {
-      // Si el RPC no existe, intentar update directo (el admin ya tiene policy FOR ALL)
-      console.warn('[admin/update-role] RPC falló, intentando update directo:', rpcError.message);
+    const rpcFailed = rpcError || (rpcData && typeof rpcData === 'object' && !(rpcData as any).success);
+
+    if (rpcFailed) {
+      // Si el RPC falla, intentar update directo (admin ya tiene policy FOR ALL)
+      const reason = rpcError?.message || (rpcData as any)?.error || 'error desconocido';
+      console.warn('[admin/update-role] RPC falló, intentando update directo:', reason);
       
       const { data: updateResult, error: updateError } = await supabase
         .from('users')
@@ -62,9 +65,9 @@ export async function POST(request: NextRequest) {
       }
 
       if (!updateResult || updateResult.length === 0) {
-        console.error('[admin/update-role] Update devolvió 0 filas - RLS bloqueó silenciosamente');
+        console.error('[admin/update-role] Update devolvió 0 filas');
         return NextResponse.json({ 
-          error: 'La base de datos rechazó el cambio. Ejecuta el SQL de 008_rpc_admin_actions.sql en Supabase.' 
+          error: 'La base de datos rechazó el cambio. Verifica RLS.' 
         }, { status: 500 });
       }
 
