@@ -9,7 +9,7 @@ import { toast } from "sonner";
 interface AppUser {
   id: string;
   email: string;
-  role: "free" | "subscriber" | "admin";
+  role: "free" | "subscriber" | "admin" | "vendedor";
   created_at: string;
   subscription_ends_at: string | null;
 }
@@ -18,12 +18,14 @@ const ROLE_STYLES: Record<AppUser["role"], string> = {
   free: "bg-white/5 text-white/50 border border-white/10",
   subscriber: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
   admin: "bg-purple-500/10 text-purple-400 border border-purple-500/20",
+  vendedor: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
 };
 
 const ROLE_LABELS: Record<AppUser["role"], string> = {
   free: "Free",
   subscriber: "Suscriptor",
   admin: "Admin",
+  vendedor: "Vendedor",
 };
 
 export default function AdminUsersPage() {
@@ -202,6 +204,7 @@ export default function AdminUsersPage() {
                     >
                       <option value="free" className="bg-neutral-900 text-white">Free</option>
                       <option value="subscriber" className="bg-neutral-900 text-white">Suscriptor Premium</option>
+                      <option value="vendedor" className="bg-neutral-900 text-white">Vendedor</option>
                       <option value="admin" className="bg-neutral-900 text-white">Admin</option>
                     </select>
                   </td>
