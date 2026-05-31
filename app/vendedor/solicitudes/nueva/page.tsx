@@ -2,7 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { createStockRequest, getPhysicalBooks } from "@/lib/sellers";
+import { getPhysicalBooks } from "@/lib/sellers";
+import { createStockRequestAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
 import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store } from "lucide-react";
 import { useState } from "react";
@@ -73,14 +74,22 @@ export default function NuevaSolicitudPage() {
         book_id: c.book_id,
         quantity: c.quantity,
       }));
-      await createStockRequest(supabase, userId, items, notes || undefined);
+      return await createStockRequestAction(userId, items, notes || undefined);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
+    onSuccess: (newRequest) => {
+      queryClient.setQueryData(["seller-requests", userId], (old: any[] = []) => [
+        newRequest,
+        ...old,
+      ]);
+      setCart([]);
+      setNotes("");
       toast.success("Solicitud creada correctamente");
       router.push("/vendedor/solicitudes");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      console.error("Error creando solicitud:", err);
+      toast.error(err.message);
+    },
   });
 
   const isFormValid = cart.length > 0;
