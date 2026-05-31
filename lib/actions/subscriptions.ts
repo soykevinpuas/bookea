@@ -33,7 +33,7 @@ export async function verifySubscriptionAction(sessionId: string) {
         .eq('id', userId)
         .single()
 
-      if (userData?.role === 'subscriber' || userData?.role === 'admin') {
+      if (userData?.role === 'subscriber' || userData?.role === 'admin' || userData?.role === 'vendedor') {
         revalidatePath('/')
         revalidatePath('/dashboard')
         return { success: true, type: 'subscription' }
@@ -44,7 +44,7 @@ export async function verifySubscriptionAction(sessionId: string) {
         const endsAt = new Date()
         endsAt.setDate(endsAt.getDate() + 30)
         await adminDb.from('users').update({
-          role: userData?.role === 'admin' ? 'admin' : 'subscriber',
+          role: userData?.role === 'admin' ? 'admin' : userData?.role === 'vendedor' ? 'vendedor' : 'subscriber',
           subscription_ends_at: endsAt.toISOString(),
         }).eq('id', userId)
 

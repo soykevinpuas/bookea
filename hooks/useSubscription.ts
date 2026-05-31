@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 
 export interface SubscriptionData {
-  role: 'free' | 'subscriber' | 'admin';
+  role: 'free' | 'subscriber' | 'admin' | 'vendedor';
   subscription_ends_at: string | null;
   isActive: boolean;
   isExpired: boolean;
@@ -44,10 +44,10 @@ export function useSubscription(userId: string | undefined) {
       }
       
       const now = new Date();
-      const isActive = data.role === 'admin' || 
+      const isActive = data.role === 'admin' || data.role === 'vendedor' ||
                       (data.role === 'subscriber' && (endsAt === null || endsAt > now));
       
-      const isExpired = data.role === 'subscriber' && endsAt !== null && endsAt <= now;
+      const isExpired = (data.role === 'subscriber' && endsAt !== null && endsAt <= now);
       
       let daysRemaining = null;
       if (endsAt !== null && endsAt > now) {

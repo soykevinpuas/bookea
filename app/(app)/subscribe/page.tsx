@@ -1,14 +1,42 @@
 "use client";
 
-import { Check, Sparkles, Zap, Shield, BookOpen, CreditCard, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { Check, Sparkles, Zap, Shield, BookOpen, CreditCard, ArrowRight, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useUserId } from "@/hooks/useUser";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export default function SubscribePage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { userId } = useUserId();
+  const { data: subscription, isLoading: subLoading } = useSubscription(userId);
+
+  useEffect(() => {
+    if (subLoading) return;
+    if (!subscription) return;
+    if (subscription.role === 'admin' || subscription.role === 'vendedor') {
+      router.replace('/dashboard');
+    }
+  }, [subscription, subLoading, router]);
+
+  if (subLoading) {
+    return (
+      <div className="min-h-screen bg-[#070708] text-white flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-white/20" />
+      </div>
+    );
+  }
+
+  if (subscription?.role === 'admin' || subscription?.role === 'vendedor') {
+    return (
+      <div className="min-h-screen bg-[#070708] text-white flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-white/20" />
+      </div>
+    );
+  }
 
   const handleSubscribe = async () => {
     try {

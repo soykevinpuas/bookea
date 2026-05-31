@@ -107,6 +107,7 @@ export default function AdminUsersPage() {
   });
 
   const subscribers = users.filter((u) => u.role === "subscriber").length;
+  const vendedores = users.filter((u) => u.role === "vendedor").length;
   const admins = users.filter((u) => u.role === "admin").length;
 
   return (
@@ -115,7 +116,7 @@ export default function AdminUsersPage() {
         <div>
           <h1 className="text-2xl font-bold">Usuarios</h1>
           <p className="text-white/40 text-sm mt-1">
-            {users.length} registrado{users.length !== 1 ? "s" : ""} · {subscribers} suscriptor{subscribers !== 1 ? "es" : ""} · {admins} admin
+            {users.length} registrado{users.length !== 1 ? "s" : ""} · {subscribers} suscriptor{subscribers !== 1 ? "es" : ""} · {vendedores} vendedor{vendedores !== 1 ? "es" : ""} · {admins} admin
           </p>
         </div>
       </div>

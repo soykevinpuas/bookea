@@ -191,22 +191,33 @@ export function Header({ initialUser = null }: HeaderProps) {
                    )}
                  </div>
 
-                 <Link
-                  href="/subscribe"
-                  className={`flex items-center gap-1 px-2 py-1 rounded-full border transition-all text-[10px] sm:text-xs font-black ${
-                    subscription?.isActive 
-                    ? (subscription?.role === 'admin' ? 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-500')
-                    : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
-                  }`}
-                >
-                  <Zap className={`w-2.5 h-2.5 ${subscription?.isActive ? 'fill-current' : ''}`} />
-                  {subscription?.role === 'admin' ? (
-                    <span className="hidden xs:inline">Premium Admin</span>
-                  ) : (
-                    subscription?.isActive ? 'Premium' : 'Hazte Premium'
-                  )}
-                  {subscription?.role === 'admin' && <span className="xs:hidden">Admin</span>}
-                </Link>
+                 {subscription?.role === 'vendedor' ? (
+                  <Link
+                    href="/vendedor"
+                    className="flex items-center gap-1 px-2 py-1 rounded-full border transition-all text-[10px] sm:text-xs font-black bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-500"
+                  >
+                    <Zap className="w-2.5 h-2.5 fill-current" />
+                    <span className="hidden xs:inline">Vendedor</span>
+                    <span className="xs:hidden">Vend</span>
+                  </Link>
+                 ) : (
+                  <Link
+                    href="/subscribe"
+                    className={`flex items-center gap-1 px-2 py-1 rounded-full border transition-all text-[10px] sm:text-xs font-black ${
+                      subscription?.isActive 
+                      ? (subscription?.role === 'admin' ? 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-500')
+                      : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
+                    }`}
+                  >
+                    <Zap className={`w-2.5 h-2.5 ${subscription?.isActive ? 'fill-current' : ''}`} />
+                    {subscription?.role === 'admin' ? (
+                      <span className="hidden xs:inline">Premium Admin</span>
+                    ) : (
+                      subscription?.isActive ? 'Premium' : 'Hazte Premium'
+                    )}
+                    {subscription?.role === 'admin' && <span className="xs:hidden">Admin</span>}
+                  </Link>
+                 )}
                 <UserMenu email={user.email} avatarConfig={profile?.avatar_url} />
               </div>
             ) : (

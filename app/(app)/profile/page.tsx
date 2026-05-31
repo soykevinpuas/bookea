@@ -240,12 +240,12 @@ export default function ProfilePage() {
             <h1 className="text-4xl font-black mb-2 tracking-tight">Mi Perfil</h1>
             <p className="text-gray-400 dark:text-white/40">Gestiona tu identidad y suscripción Premium.</p>
           </div>
-          {isSubscriber && (
-            <div className={`px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-2`}>
-              <Zap className="w-4 h-4 text-amber-500 fill-current" />
-              <span className="text-amber-500 font-bold text-xs uppercase tracking-widest">Miembro Premium</span>
-            </div>
-          )}
+              {isSubscriber && (
+                <div className={`px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-2`}>
+                  <Zap className="w-4 h-4 text-amber-500 fill-current" />
+                  <span className="text-amber-500 font-bold text-xs uppercase tracking-widest">{subscription?.role === 'vendedor' ? 'Vendedor' : 'Miembro Premium'}</span>
+                </div>
+              )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -335,7 +335,7 @@ export default function ProfilePage() {
                 subLoading ? 'bg-white/5 text-white/20 animate-pulse border border-white/10' :
                 isSubscriber ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-600/10 text-blue-500 border border-blue-500/20'
               }`}>
-                {subLoading ? 'Cargando...' : (subscription?.role === 'admin' ? 'Premium Admin' : (isSubscriber ? 'Miembro Premium' : 'Nivel Gratis'))}
+                {subLoading ? 'Cargando...' : (subscription?.role === 'admin' ? 'Premium Admin' : subscription?.role === 'vendedor' ? 'Vendedor' : (isSubscriber ? 'Miembro Premium' : 'Nivel Gratis'))}
               </div>
             </div>
 
@@ -392,28 +392,35 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-5 bg-gray-200 dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 text-center">
                       <p className="text-[10px] text-gray-400 dark:text-white/30 uppercase tracking-widest mb-1">Estado</p>
-                      <p className={`text-xl font-black ${subscription?.role === 'admin' ? 'text-purple-400' : 'text-green-400'}`}>
-                        {subscription?.role === 'admin' ? 'Acceso VIP' : 'Premium Activo'}
+                      <p className={`text-xl font-black ${subscription?.role === 'admin' ? 'text-purple-400' : subscription?.role === 'vendedor' ? 'text-amber-400' : 'text-green-400'}`}>
+                        {subscription?.role === 'admin' ? 'Acceso VIP' : subscription?.role === 'vendedor' ? 'Vendedor' : 'Premium Activo'}
                       </p>
                     </div>
                     <div className="p-5 bg-gray-200 dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 text-center">
                       <p className="text-[10px] text-gray-400 dark:text-white/30 uppercase tracking-widest mb-1">Expiración</p>
                       <p className="text-xl font-black">
-                        {subscription?.role === 'admin' ? 'Vitalicio' : `${subscription?.daysRemaining ?? 0} días`}
+                        {subscription?.role === 'admin' ? 'Vitalicio' : subscription?.role === 'vendedor' ? '—' : `${subscription?.daysRemaining ?? 0} días`}
                       </p>
                     </div>
                   </div>
 
-                  <div className="p-6 bg-gray-200 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div className="text-center md:text-left">
-                      <p className="font-bold mb-1">Gestionar en Stripe</p>
-                      <p className="text-xs text-gray-500 dark:text-white/40">Actualiza tu método de pago o descarga facturas.</p>
+                  {subscription?.role === 'vendedor' ? (
+                    <div className="p-6 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
+                      <p className="text-sm font-bold text-amber-500 mb-1">Rol de Vendedor</p>
+                      <p className="text-xs text-white/40">Tienes acceso de vendedor. Puedes gestionar tu inventario y solicitudes desde tu panel.</p>
                     </div>
-                    <button onClick={handlePortal} disabled={portalLoading} className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-3">
-                      {portalLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : <CreditCard className="w-4 h-4" />}
-                      Abrir Portal
-                    </button>
-                  </div>
+                  ) : (
+                    <div className="p-6 bg-gray-200 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+                      <div className="text-center md:text-left">
+                        <p className="font-bold mb-1">Gestionar en Stripe</p>
+                        <p className="text-xs text-gray-500 dark:text-white/40">Actualiza tu método de pago o descarga facturas.</p>
+                      </div>
+                      <button onClick={handlePortal} disabled={portalLoading} className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-3">
+                        {portalLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : <CreditCard className="w-4 h-4" />}
+                        Abrir Portal
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

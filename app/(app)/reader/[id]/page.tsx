@@ -137,6 +137,8 @@ export default function ReaderPage() {
   const [bookmarks, setBookmarks] = useState<BookmarkType[]>([]);
   const [currentSpineKey, setCurrentSpineKey] = useState<string>("");
   const [menuBookmark, setMenuBookmark] = useState<{ b: BookmarkType; x: number; y: number } | null>(null);
+  const menuBookmarkRef = useRef(menuBookmark);
+  menuBookmarkRef.current = menuBookmark;
   const [isNavigating, setIsNavigating] = useState(false);
   const [editingNote, setEditingNote] = useState<{ id: string; note: string } | null>(null);
   const [isSavingHighlight, setIsSavingHighlight] = useState(false);
@@ -311,6 +313,7 @@ export default function ReaderPage() {
     setShowControls(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
+      if (menuBookmarkRef.current) return;
       setShowControls(false);
       setShowSettings(false);
     }, 4000);

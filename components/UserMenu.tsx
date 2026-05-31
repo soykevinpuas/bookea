@@ -112,6 +112,17 @@ export function UserMenu({ email, avatarConfig }: UserMenuProps) {
               </Link>
             )}
 
+            {subscription?.role === 'vendedor' && (
+              <Link
+                href="/vendedor"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm font-black text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 rounded-xl transition-all group"
+              >
+                <Shield className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                Panel Vendedor
+              </Link>
+            )}
+
             {subscription?.role === 'admin' && (
               <Link
                 href="/admin"
