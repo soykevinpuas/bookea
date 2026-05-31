@@ -2091,7 +2091,9 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
 
       {/* 4.2.17 - Barra inferior central (Bottom HUD) de navegación de hojas y rastreo de progreso porcentual estricto */}
       <div 
-        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 pt-3 pb-[max(env(safe-area-inset-bottom,12px),28px)] transition-all duration-300 pointer-events-auto translate-y-0 opacity-100 ${isDark ? 'bg-black/60 backdrop-blur-xl border-t border-white/10' : 
+        className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 pt-3 pb-[max(env(safe-area-inset-bottom,12px),28px)] transition-all duration-300 pointer-events-none ${
+            showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
+        } ${isDark ? 'bg-black/60 backdrop-blur-xl border-t border-white/10' : 
             isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-t border-[#3fb950]/20' : 
             isNavy ? 'bg-[#0a0f1e]/90 backdrop-blur-xl border-t border-[#7986cb]/20' :
             'bg-white/70 backdrop-blur-xl border-t border-black/5'} shadow-[0_-8px_30px_rgba(0,0,0,0.15)]`}
