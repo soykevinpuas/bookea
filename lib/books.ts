@@ -222,8 +222,8 @@ if (userError || !userData) {
   return false;
 }
 
-    // Administradores tienen acceso total
-    if (userData.role === 'admin') return true;
+    // Administradores y vendedores tienen acceso total al catálogo digital
+    if (userData.role === 'admin' || userData.role === 'vendedor') return true;
 
     // Verificar si es Premium activo
     const now = new Date();
