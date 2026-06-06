@@ -1,11 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { getSellerRequests } from "@/lib/sellers";
+import { receiveStockItemAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { ShoppingCart, Loader2, Package, Filter } from "lucide-react";
+import { ShoppingCart, Loader2, Package, Check, Truck } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendiente", color: "bg-amber-500/10 text-amber-400 border border-amber-500/20" },
@@ -31,6 +33,29 @@ export default function MisSolicitudesPage() {
     queryKey: ["seller-requests", userId],
     queryFn: () => getSellerRequests(supabase, userId!),
     enabled: !!userId,
+  });
+
+  const queryClient = useQueryClient();
+
+  const [receivingItems, setReceivingItems] = useState<Set<string>>(new Set());
+
+  const receiveMutation = useMutation({
+    mutationFn: async ({ itemId, requestId }: { itemId: string; requestId: string }) => {
+      return await receiveStockItemAction(itemId, requestId);
+    },
+    onMutate: ({ itemId }) => {
+      setReceivingItems(prev => new Set(prev).add(itemId));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
+      toast.success("Libro recibido y añadido a tu inventario");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Error al recibir libro");
+    },
+    onSettled: () => {
+      setReceivingItems(new Set());
+    },
   });
 
   const filteredRequests = statusFilter === "all"
@@ -114,6 +139,8 @@ export default function MisSolicitudesPage() {
                     <div className="space-y-1 mb-3">
                       {req.items?.map((item) => {
                         const book = item.books as any;
+                        const isReceived = !!item.received_at;
+                        const isReceiving = receivingItems.has(item.id);
                         return (
                           <div key={item.id} className="flex items-center gap-2 text-sm">
                             {book?.cover_url && (
@@ -123,6 +150,28 @@ export default function MisSolicitudesPage() {
                               {book?.title ?? "Libro"}
                             </span>
                             <span className="text-white font-medium shrink-0">x{item.quantity}</span>
+
+                            {req.status === "shipped" && !isReceived && (
+                              <button
+                                onClick={() => receiveMutation.mutate({ itemId: item.id, requestId: req.id })}
+                                disabled={isReceiving}
+                                className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-green-600 hover:bg-green-500 text-white transition-all disabled:opacity-50 shrink-0"
+                              >
+                                {isReceiving ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Truck className="w-3 h-3" />
+                                )}
+                                Recibir
+                              </button>
+                            )}
+
+                            {isReceived && (
+                              <span className="text-[10px] text-green-400 font-medium flex items-center gap-1 shrink-0">
+                                <Check className="w-3 h-3" />
+                                Recibido
+                              </span>
+                            )}
                           </div>
                         );
                       })}
@@ -139,6 +188,12 @@ export default function MisSolicitudesPage() {
                       </p>
                     )}
 
+                    {req.status === "shipped" && (
+                      <p className="text-xs text-blue-400/60 mt-1 flex items-center gap-1">
+                        <Truck className="w-3 h-3" />
+                        En tránsito — confirma recepción de cada libro
+                      </p>
+                    )}
                     {req.status === "delivered" && (
                       <p className="text-xs text-green-400 mt-1">Recibido por el vendedor</p>
                     )}

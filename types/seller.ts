@@ -42,6 +42,7 @@ export interface StockRequestItem {
   request_id: string;
   book_id: string;
   quantity: number;
+  received_at: string | null;
   books?: BookInventoryInfo | null;
 }
 

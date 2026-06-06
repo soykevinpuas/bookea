@@ -209,7 +209,17 @@ export async function updateStockRequestStatus(
   }
 
   if (status === "delivered") {
+    const now = new Date().toISOString();
+
     for (const item of items) {
+      if ((item as any).received_at) continue;
+
+      const { error: receiveErr } = await supabase
+        .from("stock_request_items")
+        .update({ received_at: now })
+        .eq("id", item.id);
+      if (receiveErr) throw receiveErr;
+
       const { data: existing } = await supabase
         .from("seller_inventory")
         .select("id, quantity")
@@ -220,7 +230,7 @@ export async function updateStockRequestStatus(
       if (existing) {
         const { error: updErr } = await supabase
           .from("seller_inventory")
-          .update({ quantity: existing.quantity + item.quantity, updated_at: new Date().toISOString() })
+          .update({ quantity: existing.quantity + item.quantity, updated_at: now })
           .eq("id", existing.id);
         if (updErr) throw updErr;
       } else {
