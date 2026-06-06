@@ -1,32 +1,66 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { getSellerInventory, getSellerSales, markAsSold, COST_PER_BOOK } from "@/lib/sellers";
+import { getSellerInventory, getSellerSales, COST_PER_BOOK } from "@/lib/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { Store, Package, TrendingUp, DollarSign, Loader2, Minus, Plus, ChevronDown, ChevronUp, LayoutDashboard, BarChart3 } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
+import { Store, Package, TrendingUp, Loader2, BarChart3 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, LineChart, Line } from "recharts";
 
-type Section = "dashboard" | "inventario" | "ventas";
+type Section = "stock" | "vendidos" | "ingresos";
 
 const sections: { key: Section; label: string; icon: any }[] = [
-  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { key: "inventario", label: "Inventario", icon: Package },
-  { key: "ventas", label: "Ventas", icon: BarChart3 },
+  { key: "stock", label: "Stock", icon: Package },
+  { key: "vendidos", label: "Vendidos", icon: TrendingUp },
+  { key: "ingresos", label: "Ingresos", icon: BarChart3 },
 ];
+
+function DateRangePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ranges = [
+    { key: "7d", label: "7d" },
+    { key: "30d", label: "30d" },
+    { key: "90d", label: "90d" },
+    { key: "all", label: "Todo" },
+  ];
+  return (
+    <div className="flex gap-1">
+      {ranges.map((r) => (
+        <button
+          key={r.key}
+          onClick={() => onChange(r.key)}
+          className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg transition-all ${
+            value === r.key
+              ? "bg-amber-600/20 text-amber-400 border border-amber-500/20"
+              : "text-white/40 hover:text-white/60 border border-transparent"
+          }`}
+        >
+          {r.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const ChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-[#1a1a1a] border border-white/10 rounded-xl px-3 py-2 text-xs shadow-xl">
+      <p className="text-white/50 mb-1">{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <p key={i} className="font-medium" style={{ color: entry.color }}>
+          {entry.name}: ${entry.value.toLocaleString("es-MX")}
+        </p>
+      ))}
+    </div>
+  );
+};
 
 export default function VendedorDashboard() {
   const supabase = createClientClient();
-  const queryClient = useQueryClient();
   const { userId } = useUserId();
-  const [activeSection, setActiveSection] = useState<Section>("dashboard");
-
-  const [salePrices, setSalePrices] = useState<Record<string, number>>({});
-  const [saleQtys, setSaleQtys] = useState<Record<string, number>>({});
-  const [selling, setSelling] = useState<string | null>(null);
-  const [expandedBook, setExpandedBook] = useState<string | null>(null);
-  const [showSold, setShowSold] = useState(false);
+  const [activeSection, setActiveSection] = useState<Section>("stock");
+  const [dateRange, setDateRange] = useState("30d");
 
   const { data: inventory = [], isLoading: invLoading } = useQuery({
     queryKey: ["seller-inventory", userId],
@@ -34,42 +68,48 @@ export default function VendedorDashboard() {
     enabled: !!userId,
   });
 
-  const { data: sales = [], isLoading: salesLoading } = useQuery({
+  const { data: sales = [] } = useQuery({
     queryKey: ["seller-sales", userId],
     queryFn: () => getSellerSales(supabase, userId!),
     enabled: !!userId,
   });
 
-  const totalStock = inventory.reduce((s, i) => s + i.quantity, 0);
-  const totalSold = sales.reduce((s, i) => s + i.quantity, 0);
-  const totalInvestment = inventory.reduce((s, i) => s + i.quantity * COST_PER_BOOK, 0) + sales.reduce((s, i) => s + i.quantity * COST_PER_BOOK, 0);
   const totalRevenue = sales.reduce((s, i) => s + i.sale_price * i.quantity, 0);
-  const totalProfit = totalRevenue - (sales.reduce((s, i) => s + i.quantity * COST_PER_BOOK, 0));
+  const totalProfit = totalRevenue - sales.reduce((s, i) => s + i.quantity * COST_PER_BOOK, 0);
+  const totalInvestmentSaved = sales.reduce((s, i) => s + i.quantity * COST_PER_BOOK, 0);
 
-  const handleSell = async (bookId: string, currentQty: number) => {
-    const qty = saleQtys[bookId] || 1;
-    const price = salePrices[bookId] || COST_PER_BOOK;
+  const chartData = useMemo(() => {
+    const cutoff = dateRange === "all" ? null : Date.now() - {
+      "7d": 7, "30d": 30, "90d": 90,
+    }[dateRange]! * 86400000;
 
-    if (qty < 1) { toast.error("Cantidad inválida"); return; }
-    if (qty > currentQty) { toast.error("Stock insuficiente"); return; }
-    if (price <= 0) { toast.error("El precio debe ser mayor a $0"); return; }
+    const dayMap = new Map<string, { revenue: number; cost: number; profit: number }>();
 
-    setSelling(bookId);
-    try {
-      await markAsSold(supabase, userId!, bookId, qty, price);
-      toast.success(`Vendido${qty > 1 ? `s ${qty}` : ""} por $${(price * qty).toLocaleString("es-MX")}`);
-      queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
-      queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
-      setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
-    } catch (e: any) {
-      toast.error(e.message || "Error al registrar venta");
-    } finally {
-      setSelling(null);
+    for (const sale of sales) {
+      const d = new Date(sale.sold_at);
+      if (cutoff && d.getTime() < cutoff) continue;
+
+      const key = d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+      const existing = dayMap.get(key) || { revenue: 0, cost: 0, profit: 0 };
+      existing.revenue += sale.sale_price * sale.quantity;
+      existing.cost += sale.quantity * COST_PER_BOOK;
+      existing.profit += (sale.sale_price - COST_PER_BOOK) * sale.quantity;
+      dayMap.set(key, existing);
     }
-  };
+
+    return Array.from(dayMap.entries())
+      .map(([date, v]) => ({ date, ...v }))
+      .sort((a, b) => {
+        const [da, db] = [a.date, b.date].map(d => new Date(d).getTime());
+        return da - db;
+      });
+  }, [sales, dateRange]);
+
+  const totalChartRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
+  const totalChartProfit = chartData.reduce((s, d) => s + d.profit, 0);
+  const totalChartCost = chartData.reduce((s, d) => s + d.cost, 0);
 
   const activeInventory = inventory.filter(i => i.quantity > 0);
-  const zeroStockInventory = inventory.filter(i => i.quantity === 0);
 
   if (invLoading && inventory.length === 0) {
     return (
@@ -81,16 +121,13 @@ export default function VendedorDashboard() {
 
   return (
     <div>
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Store className="w-6 h-6 text-amber-400" />
           Mi Tienda
         </h1>
-        <p className="text-white/40 text-sm mt-1">Gestiona tu inventario, precios y ventas</p>
       </div>
 
-      {/* Mobile: horizontal tab bar */}
       <div className="flex gap-1 mb-6 overflow-x-auto pb-1 md:hidden">
         {sections.map((sec) => {
           const Icon = sec.icon;
@@ -111,10 +148,8 @@ export default function VendedorDashboard() {
         })}
       </div>
 
-      {/* Desktop: sidebar + content */}
       <div className="flex gap-6">
-        {/* Sidebar */}
-        <aside className="hidden md:flex flex-col gap-1 w-44 shrink-0">
+        <aside className="hidden md:flex flex-col gap-1 w-36 shrink-0">
           {sections.map((sec) => {
             const Icon = sec.icon;
             return (
@@ -134,198 +169,134 @@ export default function VendedorDashboard() {
           })}
         </aside>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
-          {activeSection === "dashboard" && (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-              <div className="bg-white/5 border border-white/8 rounded-xl p-4">
-                <p className="text-2xl font-bold text-white">{totalStock}</p>
-                <p className="text-xs text-white/40 mt-0.5">En stock</p>
-              </div>
-              <div className="bg-white/5 border border-white/8 rounded-xl p-4">
-                <p className="text-2xl font-bold text-amber-400">{totalSold}</p>
-                <p className="text-xs text-white/40 mt-0.5">Vendidos</p>
-              </div>
-              <div className="bg-white/5 border border-white/8 rounded-xl p-4">
-                <p className="text-2xl font-bold text-green-400">${totalRevenue.toLocaleString("es-MX")}</p>
-                <p className="text-xs text-white/40 mt-0.5">Ingresos</p>
-              </div>
-              <div className="bg-white/5 border border-white/8 rounded-xl p-4">
-                <p className="text-2xl font-bold text-blue-400">${totalProfit.toLocaleString("es-MX")}</p>
-                <p className="text-xs text-white/40 mt-0.5">Ganancia</p>
-              </div>
-              <div className="bg-white/5 border border-white/8 rounded-xl p-4">
-                <p className="text-2xl font-bold text-white/50">${totalInvestment.toLocaleString("es-MX")}</p>
-                <p className="text-xs text-white/40 mt-0.5">Inversión ahorrada</p>
-              </div>
-            </div>
-          )}
-
-          {activeSection === "inventario" && (
+          {/* ── STOCK ── */}
+          {activeSection === "stock" && (
             <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
               <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between">
                 <h2 className="font-semibold text-sm flex items-center gap-2">
                   <Package className="w-4 h-4 text-amber-400" />
-                  Inventario ({activeInventory.length + zeroStockInventory.length} títulos)
+                  Stock ({activeInventory.length} títulos)
                 </h2>
-                <span className="text-xs text-white/30">{totalStock} uds.</span>
               </div>
-
-              {activeInventory.length === 0 && zeroStockInventory.length === 0 ? (
+              {activeInventory.length === 0 ? (
                 <div className="text-center py-12 text-white/30 text-sm">
-                  No tienes libros en inventario. Solicita stock al administrador para comenzar.
+                  No tienes libros en inventario.
                 </div>
               ) : (
                 <div className="divide-y divide-white/5">
                   {activeInventory.map((item) => {
                     const book = item.books;
-                    const qty = saleQtys[item.book_id] || 1;
-                    const price = salePrices[item.book_id] || 0;
-                    const isExpanded = expandedBook === item.id;
-                    const isSelling = selling === item.book_id;
-
                     return (
-                      <div key={item.id} className="p-4 hover:bg-white/[0.02] transition-colors">
-                        <div className="flex items-start gap-3">
-                          {book?.cover_url && (
-                            <img src={book.cover_url} alt="" className="w-10 h-14 rounded-lg object-cover bg-white/5 shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{book?.title || "Libro"}</p>
-                            <p className="text-xs text-white/40 truncate">{book?.author || ""}</p>
-                            <p className="text-[10px] text-white/20 mt-0.5">Costo: ${COST_PER_BOOK.toLocaleString("es-MX")} c/u</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-lg font-bold">{item.quantity}</p>
-                            <p className="text-[10px] text-white/30">en stock</p>
-                          </div>
-                          <button
-                            onClick={() => setExpandedBook(isExpanded ? null : item.id)}
-                            className="p-1.5 text-white/30 hover:text-white/60 transition-colors"
-                          >
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          </button>
-                        </div>
-
-                        {isExpanded && (
-                          <div className="mt-3 pl-[52px] flex flex-wrap items-end gap-3">
-                            <div>
-                              <label className="text-[10px] text-white/30 block mb-1">Cantidad</label>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => setSaleQtys(prev => ({ ...prev, [item.book_id]: Math.max(1, (prev[item.book_id] || 1) - 1) }))}
-                                  className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-                                >
-                                  <Minus className="w-3.5 h-3.5" />
-                                </button>
-                                <span className="w-8 text-center text-sm font-bold">{qty}</span>
-                                <button
-                                  onClick={() => setSaleQtys(prev => ({ ...prev, [item.book_id]: Math.min(item.quantity, (prev[item.book_id] || 1) + 1) }))}
-                                  className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="text-[10px] text-white/30 block mb-1">Precio de venta</label>
-                              <div className="flex items-center gap-1">
-                                <span className="text-sm text-white/40">$</span>
-                                <input
-                                  type="number"
-                                  value={price || ""}
-                                  onChange={(e) => setSalePrices(prev => ({ ...prev, [item.book_id]: Number(e.target.value) || 0 }))}
-                                  className="w-24 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white outline-none focus:border-amber-500/50 transition-colors placeholder:text-white/20"
-                                  placeholder="Agrega tu precio"
-                                  min={1}
-                                />
-                              </div>
-                            </div>
-
-                            <div className="text-xs text-white/40 pb-1.5">
-                              Total: <span className="font-bold text-green-400">${(price * qty).toLocaleString("es-MX")}</span>
-                              <span className="text-white/20 ml-1">
-                                (ganancia: ${((price - COST_PER_BOOK) * qty).toLocaleString("es-MX")})
-                              </span>
-                            </div>
-
-                            <button
-                              onClick={() => handleSell(item.book_id, item.quantity)}
-                              disabled={isSelling}
-                              className="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5"
-                            >
-                              {isSelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />}
-                              Vender
-                            </button>
-                          </div>
-                        )}
+                      <div key={item.id} className="px-5 py-3 flex items-center gap-3">
+                        <span className="text-white/90 text-sm flex-1 truncate">
+                          {book?.title || "Libro"}
+                        </span>
+                        <span className="text-white font-bold text-sm shrink-0">
+                          x{item.quantity}
+                        </span>
                       </div>
                     );
                   })}
-
-                  {zeroStockInventory.length > 0 && (
-                    <button
-                      onClick={() => setShowSold(!showSold)}
-                      className="w-full px-5 py-3 text-xs text-white/30 hover:text-white/50 flex items-center justify-between gap-2 transition-colors"
-                    >
-                      <span>{zeroStockInventory.length} título{zeroStockInventory.length > 1 ? "s" : ""} sin stock</span>
-                      {showSold ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                    </button>
-                  )}
-                  {showSold && zeroStockInventory.map((item) => (
-                    <div key={item.id} className="px-5 py-3 flex items-center gap-3 opacity-50">
-                      {item.books?.cover_url && (
-                        <img src={item.books.cover_url} alt="" className="w-8 h-10 rounded object-cover bg-white/5" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate">{item.books?.title}</p>
-                      </div>
-                      <span className="text-xs text-white/30">Agotado</span>
-                    </div>
-                  ))}
                 </div>
               )}
             </div>
           )}
 
-          {activeSection === "ventas" && (
+          {/* ── VENDIDOS ── */}
+          {activeSection === "vendidos" && (
             <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
               <div className="px-5 py-4 border-b border-white/8">
                 <h2 className="font-semibold text-sm flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-green-400" />
-                  Últimas ventas
+                  <TrendingUp className="w-4 h-4 text-amber-400" />
+                  Vendidos ({sales.length} ventas)
                 </h2>
               </div>
               {sales.length === 0 ? (
-                <div className="text-center py-8 text-white/30 text-sm">Aún no has registrado ventas.</div>
+                <div className="text-center py-8 text-white/30 text-sm">Aún no hay ventas.</div>
               ) : (
                 <div className="divide-y divide-white/5">
-                  {sales.slice(0, 10).map((sale) => {
+                  {sales.map((sale) => {
                     const book = sale.books;
-                    const profitPerUnit = sale.sale_price - COST_PER_BOOK;
                     return (
                       <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
-                        {book?.cover_url && (
-                          <img src={book.cover_url} alt="" className="w-8 h-10 rounded object-cover bg-white/5 shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm truncate">{book?.title || "Libro"}</p>
-                          <p className="text-[10px] text-white/30">
-                            {new Date(sale.sold_at).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
-                            {" · "}{sale.quantity} uds.
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold">${(sale.sale_price * sale.quantity).toLocaleString("es-MX")}</p>
-                          <p className={`text-[10px] ${profitPerUnit >= 0 ? "text-green-400" : "text-red-400"}`}>
-                            {profitPerUnit >= 0 ? "+" : ""}${(profitPerUnit * sale.quantity).toLocaleString("es-MX")}
-                          </p>
-                        </div>
+                        <span className="text-white/90 text-sm flex-1 truncate">
+                          {book?.title || "Libro"}
+                        </span>
+                        <span className="text-white/40 text-xs shrink-0">
+                          {new Date(sale.sold_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
+                        </span>
+                        <span className="text-white font-bold text-sm shrink-0">
+                          x{sale.quantity}
+                        </span>
+                        <span className="text-green-400 font-bold text-sm shrink-0">
+                          ${(sale.sale_price * sale.quantity).toLocaleString("es-MX")}
+                        </span>
                       </div>
                     );
                   })}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ── INGRESOS (gráficas) ── */}
+          {activeSection === "ingresos" && (
+            <div className="space-y-5">
+              {/* Metric cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                  <p className="text-lg font-bold text-green-400">${totalChartRevenue.toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ingresos</p>
+                </div>
+                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                  <p className="text-lg font-bold text-blue-400">${totalChartProfit.toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ganancia</p>
+                </div>
+                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                  <p className="text-lg font-bold text-white/60">${totalChartCost.toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Inversión ahorrada</p>
+                </div>
+              </div>
+
+              {/* Date range */}
+              <div className="flex items-center justify-between">
+                <DateRangePicker value={dateRange} onChange={setDateRange} />
+              </div>
+
+              {chartData.length === 0 ? (
+                <div className="text-center py-16 text-white/30 text-sm">Sin datos en este período.</div>
+              ) : (
+                <>
+                  {/* Ingresos y Ganancia - Bar chart */}
+                  <div className="bg-white/5 border border-white/8 rounded-2xl p-5">
+                    <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">Ingresos vs Ganancia</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Bar dataKey="revenue" name="Ingresos" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                        <Bar dataKey="profit" name="Ganancia" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Inversión ahorrada - Line chart */}
+                  <div className="bg-white/5 border border-white/8 rounded-2xl p-5">
+                    <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">Inversión ahorrada</h3>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Line type="monotone" dataKey="cost" name="Inversión ahorrada" stroke="#a78bfa" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
               )}
             </div>
           )}
