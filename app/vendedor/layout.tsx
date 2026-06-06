@@ -22,8 +22,6 @@ import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 
 const navItems = [
   { href: "/vendedor", label: "Mi Tienda", icon: Store, exact: true },
-  { href: "/vendedor/solicitudes/nueva", label: "Solicitar Stock", icon: PlusCircle },
-  { href: "/vendedor/solicitudes", label: "Mis Solicitudes", icon: ClipboardList },
 ];
 
 export default function VendedorLayout({
