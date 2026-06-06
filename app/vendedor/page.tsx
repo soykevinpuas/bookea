@@ -325,15 +325,17 @@ export default function VendedorDashboard() {
                     const qty = saleQtys[item.book_id] || 1;
                     const isSelling = selling === item.book_id;
                     return (
-                      <div key={item.id} className="px-5 py-3 flex items-center gap-3">
-                        {book?.cover_url && (
-                          <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{book?.title || "Libro"}</p>
-                          <p className="text-[10px] text-white/30">Costo: ${COST_PER_BOOK.toLocaleString("es-MX")} · {item.quantity} uds.</p>
+                      <div key={item.id} className="px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {book?.cover_url && (
+                            <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-white/90 break-words">{book?.title || "Libro"}</p>
+                            <p className="text-[10px] text-white/30">Costo: ${COST_PER_BOOK.toLocaleString("es-MX")} · {item.quantity} uds.</p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-2 flex-wrap sm:shrink-0 ml-10 sm:ml-0">
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => setSaleQtys(prev => ({ ...prev, [item.book_id]: Math.max(1, (prev[item.book_id] || 1) - 1) }))}
