@@ -120,7 +120,7 @@ export default function NuevaSolicitudPage() {
           <ChevronLeft className="w-4 h-4" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2 pl-10 md:pl-0">
             <ShoppingCart className="w-6 h-6 text-amber-400" />
             Solicitar Stock
           </h1>

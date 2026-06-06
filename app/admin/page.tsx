@@ -11,7 +11,7 @@ import {
   BarChart3, Package, TrendingUp, ShoppingCart,
   Store, ChevronLeft, ChevronRight,
   Calendar, Truck, Check, Clock, Trash2, DollarSign,
-  Plus, Minus, Search, Loader2,
+  Plus, Minus, Search, Loader2, Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -245,7 +245,10 @@ export default function AdminDashboard() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Admin</h1>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 pl-10 md:pl-0">
+          <Shield className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+          <span>Admin</span>
+        </h1>
         <div className="flex items-center gap-2 text-xs text-white/30 bg-white/5 px-3 py-1.5 rounded-lg">
           <Calendar className="w-3.5 h-3.5" />
           {new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}

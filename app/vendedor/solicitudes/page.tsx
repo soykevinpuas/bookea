@@ -66,7 +66,7 @@ export default function MisSolicitudesPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2 pl-10 md:pl-0">
             <Package className="w-6 h-6 text-amber-400" />
             Mis Solicitudes
           </h1>

@@ -107,9 +107,9 @@ export default function AdminSellerDetailPage() {
           <ChevronLeft className="w-4 h-4" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
+          <h1 className="text-2xl font-bold flex items-center gap-3 pl-10 md:pl-0">
             <Store className="w-6 h-6 text-amber-400" />
-            {seller.email}
+            <span>{seller.email}</span>
           </h1>
           <p className="text-white/40 text-sm mt-1">
             Vendedor desde {new Date(seller.created_at).toLocaleDateString("es-MX")}

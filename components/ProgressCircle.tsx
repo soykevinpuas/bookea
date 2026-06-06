@@ -37,7 +37,7 @@ export default function ProgressCircle({
           stroke="currentColor"
           strokeWidth={strokeWidth}
           fill="transparent"
-          className="text-white/10"
+          className="text-gray-200 dark:text-white/10"
         />
         {/* Progress Circle */}
         <circle
@@ -58,7 +58,7 @@ export default function ProgressCircle({
       </svg>
       {/* Percentage Text */}
       <span className={`
-        ${isComplete ? 'text-[7.5px] text-amber-500' : 'text-[9px] text-white/90'} 
+        ${isComplete ? 'text-[7.5px] text-amber-500' : 'text-[9px] text-gray-700 dark:text-white/90'} 
         font-black leading-none tabular-nums tracking-tighter
       `}>
         {Math.round(validProgress)}{!isComplete && '%'}

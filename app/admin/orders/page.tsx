@@ -78,7 +78,10 @@ export default function AdminOrdersPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold">Órdenes físicas</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2 pl-10 md:pl-0">
+            <Package className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+            <span>Órdenes físicas</span>
+          </h1>
           <p className="text-white/40 text-sm mt-1">
             {orders.length} orden{orders.length !== 1 ? "es" : ""} · {pending} pendiente{pending !== 1 ? "s" : ""}
           </p>

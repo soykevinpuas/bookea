@@ -114,7 +114,10 @@ export default function AdminUsersPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold">Usuarios</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2 pl-10 md:pl-0">
+            <Users className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+            <span>Usuarios</span>
+          </h1>
           <p className="text-white/40 text-sm mt-1">
             {users.length} registrado{users.length !== 1 ? "s" : ""} · {subscribers} suscriptor{subscribers !== 1 ? "es" : ""} · {vendedores} vendedor{vendedores !== 1 ? "es" : ""} · {admins} admin
           </p>

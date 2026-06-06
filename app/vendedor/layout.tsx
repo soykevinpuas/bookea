@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Menu,
   Store,
+  X,
 } from "lucide-react";
 import { useUserId } from "@/hooks/useUser";
 
@@ -26,7 +27,7 @@ export default function VendedorLayout({
   const pathname = usePathname();
   const [user, setUser] = useState<{ email?: string; role?: string } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const { userId } = useUserId();
 
   useEffect(() => {
@@ -53,9 +54,7 @@ export default function VendedorLayout({
     checkVendedor();
   }, [router]);
 
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
+
 
   const handleLogout = async () => {
     const supabase = createClientClient();
@@ -65,31 +64,19 @@ export default function VendedorLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0d0d0d]">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0d0d0d] retro:bg-[#0d1117] navy:bg-[#0a0f1e]">
+        <div className="w-8 h-8 border-2 border-gray-300 dark:border-white/20 border-t-amber-600 dark:border-t-white rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] text-white flex flex-col md:flex-row">
-      {/* Sidebar Overlay */}
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] md:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0d] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-white retro:text-white navy:text-[#e8eaf6] flex flex-col md:flex-row vendedor-theme-container">
 
-      {/* Sidebar */}
-      <aside
-        className={`
-          fixed md:sticky top-0 left-0 bottom-0 z-[70] md:z-50 w-64 bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
-          ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-          pb-[max(5rem,env(safe-area-inset-bottom))] md:pb-0
-        `}
-      >
-        <div className="px-6 py-8 border-b border-white/5 hidden md:block">
+
+      {/* Sidebar - Desktop only */}
+      <aside className="hidden md:flex sticky top-0 left-0 bottom-0 z-50 w-64 bg-[#111111] border-r border-white/5 flex-col overflow-y-auto">
+        <div className="px-6 py-8 border-b border-white/5">
           <Link href="/vendedor" className="flex items-center gap-2">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shadow-lg ${
               user?.role === "admin"
@@ -99,7 +86,7 @@ export default function VendedorLayout({
               <Store className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-bold text-lg leading-tight tracking-tight">Bookea</p>
+              <p className="font-bold text-lg leading-tight tracking-tight text-white">Bookea</p>
               <p className={`text-[10px] font-bold tracking-widest uppercase ${
                 user?.role === "admin" ? "text-blue-400" : "text-amber-400"
               }`}>
@@ -109,7 +96,7 @@ export default function VendedorLayout({
           </Link>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-visible md:overflow-y-auto">
           {navItems.map((item) => {
             const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
             return (
@@ -155,12 +142,6 @@ export default function VendedorLayout({
 
       {/* Main Content */}
       <main className="flex-1 w-full min-h-screen relative">
-        <button
-          onClick={() => setIsMobileMenuOpen(true)}
-          className="md:hidden absolute top-4 right-4 z-[65] text-white/30 hover:text-white transition-colors"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
         <div className="p-4 md:p-10 max-w-7xl mx-auto pb-20 md:pb-10">
           {children}
         </div>

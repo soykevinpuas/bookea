@@ -68,6 +68,18 @@ export default function AdminLayout({
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
+  // Manejar clase de menú abierto en body para el stacking context en móvil
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.classList.add("mobile-menu-open");
+    } else {
+      document.body.classList.remove("mobile-menu-open");
+    }
+    return () => {
+      document.body.classList.remove("mobile-menu-open");
+    };
+  }, [isMobileMenuOpen]);
+
   const handleLogout = async () => {
     const supabase = createClientClient();
     await supabase.auth.signOut();
@@ -76,14 +88,14 @@ export default function AdminLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0d0d0d]">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0d0d0d] retro:bg-[#0d1117] navy:bg-[#0a0f1e]">
+        <div className="w-8 h-8 border-2 border-gray-300 dark:border-white/20 border-t-blue-600 dark:border-t-white rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] text-white flex flex-col md:flex-row">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0d] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-white retro:text-white navy:text-[#e8eaf6] flex flex-col md:flex-row admin-theme-container">
       {/* Sidebar Overlay (Mobile Only) */}
       {isMobileMenuOpen && (
         <div 
@@ -95,12 +107,14 @@ export default function AdminLayout({
       {/* Sidebar aside */}
       <aside className={`
         fixed md:sticky top-0 left-0 bottom-0 z-[70] w-64 bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
+        overflow-y-auto md:overflow-y-visible
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+        pb-[max(5rem,env(safe-area-inset-bottom))] md:pb-0
       `}>
-        <div className="md:hidden flex items-center justify-end px-4 pt-4 pb-2">
+        <div className="md:hidden flex items-center justify-end px-4 pt-[max(env(safe-area-inset-top,16px),16px)] pb-2">
           <button
             onClick={() => setIsMobileMenuOpen(false)}
-            className="p-1.5 text-white/40 hover:text-white bg-white/5 rounded-lg"
+            className="p-1.5 text-gray-400 dark:text-white/45 hover:text-gray-950 dark:hover:text-white bg-gray-100 dark:bg-white/5 rounded-lg"
           >
             <X className="w-4 h-4" />
           </button>
@@ -109,13 +123,13 @@ export default function AdminLayout({
           <Link href="/admin" className="flex items-center gap-2">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-lg font-bold shadow-lg shadow-blue-500/20">B</div>
             <div>
-              <p className="font-bold text-lg leading-tight tracking-tight">Bookea</p>
+              <p className="font-bold text-lg leading-tight tracking-tight text-white">Bookea</p>
               <p className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">Admin</p>
             </div>
           </Link>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-visible md:overflow-y-auto">
           {navItems.map((item) => {
             const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
             return (
@@ -136,7 +150,7 @@ export default function AdminLayout({
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/5 space-y-2 bg-[#0d0d0d]/50 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+        <div className="p-4 border-t border-white/5 space-y-2 bg-[#0d0d0d]/50">
           <button
             onClick={async () => {
               try {
@@ -177,7 +191,7 @@ export default function AdminLayout({
       <main className="flex-1 w-full min-h-screen relative">
         <button
           onClick={() => setIsMobileMenuOpen(true)}
-          className="md:hidden absolute top-4 right-4 z-[65] text-white/30 hover:text-white transition-colors"
+          className="md:hidden absolute top-4 left-4 z-[65] text-gray-400 dark:text-white/30 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>
