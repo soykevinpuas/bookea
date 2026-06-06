@@ -1215,6 +1215,30 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 
 ---
 
+## [2026-06-06] — Admin page reescrito como client component con tabs (Dashboard, Ingresos, Stock, Vendidos, Solicitudes)
+
+### Cambios
+
+**1. `app/admin/page.tsx` — Reescritura completa como Client Component**
+- Migrado de Server Component (`dynamic = 'force-dynamic'`) a Client Component con React Query
+- 5 tabs internas con sidebar desktop + tabs móviles:
+  - **Dashboard**: Stats de catálogo, órdenes, usuarios, vendedores, pagos digitales + acciones rápidas
+  - **Ingresos**: Chart tipo exchange con 3 líneas (Venta, Ganancia, Ahorro) de TODOS los vendedores + selector de mes
+  - **Stock**: Inventario agrupado por vendedor (cards colapsables con portada, título, autor, cantidad)
+  - **Vendidos**: Historial de ventas con stats header (unidades, ingresos, vendedores activos)
+  - **Solicitudes**: Lista inline de stock requests con acciones (enviar/cancelar/entregar), recibido/vendido por ítem
+- Título cambiado de "Dashboard" a "Admin"
+- Reemplazado `CheckCircle2` por `Check` (lucide-react)
+
+**2. `app/admin/layout.tsx` — Branding simplificado**
+- "Admin Panel" → "Admin"
+
+### Archivos Modificados
+- `app/admin/page.tsx` — Server → Client component con tabs y React Query
+- `app/admin/layout.tsx` — Branding: Admin Panel → Admin
+
+---
+
 ## [2026-05-13] — Mis Órdenes + tracking admin + fix total:0
 
 ### Cambios

@@ -1,276 +1,626 @@
-import { createClient } from "@/lib/server";
-import Link from "next/link";
-import React from "react";
+"use client";
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createClientClient } from "@/lib/supabase";
+import { getAllStockRequests, updateStockRequestStatus, COST_PER_BOOK } from "@/lib/sellers";
+import type { StockRequest } from "@/types/seller";
+import { useState, useMemo } from "react";
 import {
-  BookOpen,
-  ShoppingCart,
-  Users,
-  TrendingUp,
-  ArrowUpRight,
-  Eye,
-  CreditCard,
-  Library,
-  Sparkles,
-  Calendar,
-  Activity,
-  Store,
-  Package,
+  LayoutDashboard, BarChart3, Package, TrendingUp, ShoppingCart,
+  Store, BookOpen, Users, Loader2, ChevronLeft, ChevronRight,
+  DollarSign, Sparkles, Activity, Eye, Library, Calendar,
+  ArrowUpRight, Plus, Truck, Check, Clock, CreditCard,
 } from "lucide-react";
+import Link from "next/link";
+import { toast } from "sonner";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
-// 5.2 - Forzar renderizado dinámico (usa cookies para auth)
-export const dynamic = 'force-dynamic';
+type Section = "dashboard" | "ingresos" | "stock" | "vendidos" | "solicitudes";
 
-interface AdminStats {
-  totalBooks: number;
-  activeBooks: number;
-  newBooksThisWeek: number;
-  totalOrders: number;
-  pendingOrders: number;
-  completedOrders: number;
-  revenuePhysical: number;
-  totalUsers: number;
-  newUsersThisWeek: number;
-  subscribers: number;
-  admins: number;
-  freeUsers: number;
-  digitalRevenue: number;
-  subscriptionPayments: number;
-  recentSignups: number;
-  recentPayments: number;
-  booksReadThisWeek: number;
-  reviewsThisWeek: number;
-  sellers: number;
-  pendingStockRequests: number;
-  totalStockAssigned: number;
-  totalSoldBySellers: number;
-  sellerSalesRevenue: number;
-}
+const sections: { key: Section; label: string; icon: any }[] = [
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "ingresos", label: "Ingresos", icon: BarChart3 },
+  { key: "stock", label: "Stock", icon: Package },
+  { key: "vendidos", label: "Vendidos", icon: TrendingUp },
+  { key: "solicitudes", label: "Solicitudes", icon: ShoppingCart },
+];
 
-interface AdminCard {
-  label: string;
-  value: number | string;
-  sub: string;
-  icon: React.ComponentType<{ className?: string }>;
-  href: string;
-  color: string;
-}
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  pending: { label: "Pendiente", color: "bg-amber-500/10 text-amber-400 border border-amber-500/20" },
+  shipped: { label: "Enviado", color: "bg-blue-500/10 text-blue-400 border border-blue-500/20" },
+  delivered: { label: "Entregado", color: "bg-green-500/10 text-green-400 border border-green-500/20" },
+  cancelled: { label: "Cancelado", color: "bg-red-500/10 text-red-400 border border-red-500/20" },
+};
 
-async function getAdminStats(): Promise<AdminStats> {
-  const supabase = await createClient();
-  
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  const oneWeekAgoStr = oneWeekAgo.toISOString();
+const colorMap: Record<string, string> = {
+  blue: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  cyan: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+  amber: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  green: "bg-green-500/10 text-green-400 border-green-500/20",
+  emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  pink: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+  violet: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  orange: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+};
 
-  const [booksRes, ordersRes, usersRes, analyticsRes, userBooksRes, reviewsRes, sellerInvRes, sellerSalesRes, stockReqRes] = await Promise.all([
-    supabase.from("books").select("id, is_active, created_at", { count: "exact" }),
-    supabase.from("orders_physical").select("id, status, total, created_at", { count: "exact" }),
-    supabase.from("users").select("id, role, created_at", { count: "exact" }),
-    supabase.from("analytics_events").select("event_name, event_data").gte("created_at", oneWeekAgoStr),
-    supabase.from("user_books").select("id, created_at", { count: "exact" }).gte("created_at", oneWeekAgoStr),
-    supabase.from("reviews").select("id, created_at", { count: "exact" }).gte("created_at", oneWeekAgoStr),
-    supabase.from("seller_inventory").select("quantity"),
-    supabase.from("seller_sales").select("quantity, sale_price"),
-    supabase.from("stock_requests").select("id, status", { count: "exact" }),
-  ]);
-
-  const totalBooks = booksRes.count ?? 0;
-  const activeBooks = booksRes.data?.filter((b: any) => b.is_active).length ?? 0;
-  const newBooksThisWeek = booksRes.data?.filter((b: any) => new Date(b.created_at) >= oneWeekAgo).length ?? 0;
-
-  const totalOrders = ordersRes.count ?? 0;
-  const pendingOrders = ordersRes.data?.filter((o: any) => o.status === "pending").length ?? 0;
-  const completedOrders = ordersRes.data?.filter((o: any) => o.status === "delivered").length ?? 0;
-  const revenuePhysical = ordersRes.data?.reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0) ?? 0;
-
-  const totalUsers = usersRes.count ?? 0;
-  const newUsersThisWeek = usersRes.data?.filter((u: any) => new Date(u.created_at) >= oneWeekAgo).length ?? 0;
-  const subscribers = usersRes.data?.filter((u: any) => u.role === "subscriber").length ?? 0;
-  const admins = usersRes.data?.filter((u: any) => u.role === "admin").length ?? 0;
-  const freeUsers = usersRes.data?.filter((u: any) => u.role === "free").length ?? 0;
-
-  const sellers = usersRes.data?.filter((u: any) => u.role === "vendedor").length ?? 0;
-  const pendingStockRequests = stockReqRes.data?.filter((r: any) => r.status === "pending").length ?? 0;
-  const totalStockAssigned = (sellerInvRes.data ?? []).reduce((sum: number, i: any) => sum + (i.quantity || 0), 0);
-  const totalSoldBySellers = (sellerSalesRes.data ?? []).reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
-  const sellerSalesRevenue = (sellerSalesRes.data ?? []).reduce((sum: number, s: any) => sum + ((s.sale_price || 0) * (s.quantity || 0)), 0);
-
-  const analyticsEvents = analyticsRes.data ?? [];
-  const paymentCompleted = analyticsEvents.filter((e: any) => e.event_name === 'payment_completed');
-  const digitalRevenue = paymentCompleted.reduce((sum: number, e: any) => sum + (Number(e.event_data?.amount) || 0), 0);
-  const subscriptionPayments = analyticsEvents.filter((e: any) => e.event_name === 'subscription_upgraded').length;
-
-  const booksReadThisWeek = userBooksRes.count ?? 0;
-  const reviewsThisWeek = reviewsRes.count ?? 0;
-  const recentSignups = newUsersThisWeek;
-  const recentPayments = paymentCompleted.length;
-
-  return {
-    totalBooks, activeBooks, newBooksThisWeek,
-    totalOrders, pendingOrders, completedOrders, revenuePhysical,
-    totalUsers, newUsersThisWeek, subscribers, admins, freeUsers,
-    digitalRevenue, subscriptionPayments,
-    recentSignups, recentPayments, booksReadThisWeek, reviewsThisWeek,
-    sellers, pendingStockRequests, totalStockAssigned, totalSoldBySellers, sellerSalesRevenue,
-  };
-}
-
-export default async function AdminDashboard() {
-  let stats: AdminStats;
-
-  try {
-    stats = await getAdminStats();
-  } catch (error) {
-    console.error('[Admin] Error fetching stats:', error);
-    stats = {
-      totalBooks: 0, activeBooks: 0, newBooksThisWeek: 0,
-      totalOrders: 0, pendingOrders: 0, completedOrders: 0, revenuePhysical: 0,
-      totalUsers: 0, newUsersThisWeek: 0, subscribers: 0, admins: 0, freeUsers: 0,
-      digitalRevenue: 0, subscriptionPayments: 0,
-      recentSignups: 0, recentPayments: 0, booksReadThisWeek: 0, reviewsThisWeek: 0,
-      sellers: 0, pendingStockRequests: 0, totalStockAssigned: 0, totalSoldBySellers: 0, sellerSalesRevenue: 0,
-    };
-  }
-
-  const colorMap: Record<string, string> = {
-    blue: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    cyan: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-    amber: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-    purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-    green: "bg-green-500/10 text-green-400 border-green-500/20",
-    emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-    pink: "bg-pink-500/10 text-pink-400 border-pink-500/20",
-    violet: "bg-violet-500/10 text-violet-400 border-violet-500/20",
-    orange: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-  };
-
-  const cardsLibros: AdminCard[] = [
-    { label: "Libros en catálogo", value: stats.totalBooks, sub: `${stats.activeBooks} activos`, icon: BookOpen, href: "/admin/books", color: "blue" },
-    { label: "Nuevos esta semana", value: stats.newBooksThisWeek, sub: "últimos 7 días", icon: Sparkles, href: "/admin/books", color: "cyan" },
-  ];
-
-  const cardsOrdenes: AdminCard[] = [
-    { label: "Órdenes físicas", value: stats.totalOrders, sub: `${stats.pendingOrders} pendientes`, icon: ShoppingCart, href: "/admin/orders", color: "amber" },
-    { label: "Ingresos físicos", value: `$${stats.revenuePhysical.toLocaleString("es-MX")}`, sub: `${stats.completedOrders} completadas`, icon: TrendingUp, href: "/admin/orders", color: "purple" },
-  ];
-
-  const cardsUsuarios: AdminCard[] = [
-    { label: "Usuarios registrados", value: stats.totalUsers, sub: `${stats.newUsersThisWeek} nuevos`, icon: Users, href: "/admin/users", color: "green" },
-    { label: "Suscriptores", value: stats.subscribers, sub: `${stats.freeUsers} free`, icon: CreditCard, href: "/admin/users", color: "emerald" },
-  ];
-
-  const cardsVendedores: AdminCard[] = [
-    { label: "Vendedores", value: stats.sellers, sub: `${stats.pendingStockRequests} solicitudes pendientes`, icon: Store, href: "/admin/vendedores", color: "amber" },
-    { label: "Stock asignado", value: stats.totalStockAssigned, sub: `${stats.totalSoldBySellers} vendidos`, icon: Package, href: "/admin/vendedores", color: "orange" },
-    { label: "Ingresos vendedores", value: `$${stats.sellerSalesRevenue.toLocaleString("es-MX")}`, sub: `${stats.totalSoldBySellers} unidades`, icon: TrendingUp, href: "/admin/vendedores", color: "green" },
-  ];
-
-  const cardsDigital: AdminCard[] = [
-    { label: "Ingresos digitales", value: `$${stats.digitalRevenue.toLocaleString("es-MX")}`, sub: `${stats.subscriptionPayments} suscripciones`, icon: TrendingUp, href: "/admin/orders", color: "indigo" },
-    { label: "Pagos esta semana", value: stats.recentPayments, sub: "últimos 7 días", icon: Activity, href: "/admin/users", color: "pink" },
-  ];
-
-  const cardsEngagement: AdminCard[] = [
-    { label: "Libros leídos", value: stats.booksReadThisWeek, sub: "esta semana", icon: Library, href: "/admin/books", color: "violet" },
-    { label: "Reseñas", value: stats.reviewsThisWeek, sub: "esta semana", icon: Eye, href: "/admin/books", color: "orange" },
-  ];
-
-  const CardGrid = ({ cards }: { cards: AdminCard[] }) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4">
-      {cards.map((card: any) => (
-        <Link key={card.label} href={card.href} className="group relative bg-white/5 border border-white/8 rounded-2xl p-5 hover:bg-white/8 transition-all">
-          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${colorMap[card.color]}`}>
-            <card.icon className="w-5 h-5" />
-          </div>
-          <div className="flex items-start justify-between mt-4">
-            <div>
-              <div className="text-2xl font-bold">{card.value}</div>
-              <div className="text-sm text-white/40 mt-0.5">{card.label}</div>
-              <div className="text-xs text-white/25 mt-0.5">{card.sub}</div>
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-white/20 group-hover:text-white/60 transition-colors" />
-          </div>
-        </Link>
+const ChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-[#1a1a1a] border border-white/10 rounded-xl px-3 py-2 text-xs shadow-xl">
+      <p className="text-white/50 mb-1">{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <p key={i} className="font-medium" style={{ color: entry.color }}>
+          {entry.name}: ${entry.value.toLocaleString("es-MX")}
+        </p>
       ))}
     </div>
   );
+};
+
+function StatCard({ label, value, sub, icon: Icon, href, color }: any) {
+  return (
+    <Link href={href} className="group relative bg-white/5 border border-white/8 rounded-2xl p-5 hover:bg-white/8 transition-all">
+      <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${colorMap[color]}`}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div className="flex items-start justify-between mt-4">
+        <div>
+          <div className="text-2xl font-bold">{value}</div>
+          <div className="text-sm text-white/40 mt-0.5">{label}</div>
+          <div className="text-xs text-white/25 mt-0.5">{sub}</div>
+        </div>
+        <ArrowUpRight className="w-4 h-4 text-white/20 group-hover:text-white/60 transition-colors" />
+      </div>
+    </Link>
+  );
+}
+
+export default function AdminDashboard() {
+  const supabase = createClientClient();
+  const queryClient = useQueryClient();
+  const [activeSection, setActiveSection] = useState<Section>("dashboard");
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
+
+  const oneWeekAgo = useMemo(() => {
+    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString();
+  }, []);
+
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ["admin-stats"],
+    queryFn: async () => {
+      const [booksRes, ordersRes, usersRes, analyticsRes, userBooksRes, reviewsRes, sellerInvRes, sellerSalesRes, stockReqRes] = await Promise.all([
+        supabase.from("books").select("id, is_active, created_at", { count: "exact" }),
+        supabase.from("orders_physical").select("id, status, total", { count: "exact" }),
+        supabase.from("users").select("id, role, created_at", { count: "exact" }),
+        supabase.from("analytics_events").select("event_name, event_data").gte("created_at", oneWeekAgo),
+        supabase.from("user_books").select("id", { count: "exact" }).gte("created_at", oneWeekAgo),
+        supabase.from("reviews").select("id", { count: "exact" }).gte("created_at", oneWeekAgo),
+        supabase.from("seller_inventory").select("quantity"),
+        supabase.from("seller_sales").select("quantity, sale_price"),
+        supabase.from("stock_requests").select("id, status", { count: "exact" }),
+      ]);
+
+      const totalBooks = booksRes.count ?? 0;
+      const activeBooks = booksRes.data?.filter((b: any) => b.is_active).length ?? 0;
+      const newBooksThisWeek = booksRes.data?.filter((b: any) => new Date(b.created_at) >= new Date(oneWeekAgo)).length ?? 0;
+
+      const totalUsers = usersRes.count ?? 0;
+      const newUsersThisWeek = usersRes.data?.filter((u: any) => new Date(u.created_at) >= new Date(oneWeekAgo)).length ?? 0;
+
+      const paymentEvents = (analyticsRes.data ?? []).filter((e: any) => e.event_name === "payment_completed");
+      const digitalRevenue = paymentEvents.reduce((s: number, e: any) => s + (Number(e.event_data?.amount) || 0), 0);
+      const subscriptionPayments = (analyticsRes.data ?? []).filter((e: any) => e.event_name === "subscription_upgraded").length;
+
+      return {
+        totalBooks, activeBooks, newBooksThisWeek,
+        totalOrders: ordersRes.count ?? 0,
+        pendingOrders: ordersRes.data?.filter((o: any) => o.status === "pending").length ?? 0,
+        completedOrders: ordersRes.data?.filter((o: any) => o.status === "delivered").length ?? 0,
+        revenuePhysical: ordersRes.data?.reduce((s: number, o: any) => s + (Number(o.total) || 0), 0) ?? 0,
+        totalUsers, newUsersThisWeek,
+        subscribers: usersRes.data?.filter((u: any) => u.role === "subscriber").length ?? 0,
+        freeUsers: usersRes.data?.filter((u: any) => u.role === "free").length ?? 0,
+        sellers: usersRes.data?.filter((u: any) => u.role === "vendedor").length ?? 0,
+        pendingStockRequests: stockReqRes.data?.filter((r: any) => r.status === "pending").length ?? 0,
+        totalStockAssigned: (sellerInvRes.data ?? []).reduce((s: number, i: any) => s + (i.quantity || 0), 0),
+        totalSoldBySellers: (sellerSalesRes.data ?? []).reduce((s: number, i: any) => s + (i.quantity || 0), 0),
+        sellerSalesRevenue: (sellerSalesRes.data ?? []).reduce((s: number, i: any) => s + ((i.sale_price || 0) * (i.quantity || 0)), 0),
+        digitalRevenue, subscriptionPayments,
+        booksReadThisWeek: userBooksRes.count ?? 0,
+        reviewsThisWeek: reviewsRes.count ?? 0,
+      };
+    },
+  });
+
+  const { data: allSales = [] } = useQuery({
+    queryKey: ["admin-all-sales"],
+    queryFn: async () => {
+      const { data } = await supabase.from("seller_sales").select("*, books(id, title, cover_url)").order("sold_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const { data: allInventory = [] } = useQuery({
+    queryKey: ["admin-all-inventory"],
+    queryFn: async () => {
+      const { data } = await supabase.from("seller_inventory").select("*, books(id, title, cover_url, author)").order("updated_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const { data: allSellers = [] } = useQuery({
+    queryKey: ["admin-all-sellers-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("users").select("id, email").eq("role", "vendedor");
+      return data ?? [];
+    },
+  });
+
+  const { data: requests = [] } = useQuery<StockRequest[]>({
+    queryKey: ["admin-stock-requests"],
+    queryFn: () => getAllStockRequests(supabase),
+  });
+
+  const { data: allSalesForMap = [] } = useQuery({
+    queryKey: ["admin-all-seller-sales-map"],
+    queryFn: async () => {
+      const { data } = await supabase.from("seller_sales").select("seller_id, book_id, quantity");
+      return data ?? [];
+    },
+  });
+
+  const salesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of allSalesForMap) {
+      const key = `${s.seller_id}:${s.book_id}`;
+      map.set(key, (map.get(key) || 0) + s.quantity);
+    }
+    return map;
+  }, [allSalesForMap]);
+
+  const updateStatus = useMutation({
+    mutationFn: async ({ id, status, tracking_number }: { id: string; status: StockRequest["status"]; tracking_number?: string }) => {
+      await updateStockRequestStatus(supabase, id, status, tracking_number);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-stock-requests"] }),
+  });
+
+  const chartData = useMemo(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const dayMap = new Map<number, { venta: number; ahorro: number; ganancia: number }>();
+    for (const sale of allSales) {
+      const d = new Date(sale.sold_at);
+      if (d.getFullYear() !== year || d.getMonth() !== month) continue;
+      const day = d.getDate();
+      const existing = dayMap.get(day) || { venta: 0, ahorro: 0, ganancia: 0 };
+      existing.venta += sale.sale_price * sale.quantity;
+      existing.ahorro += sale.quantity * COST_PER_BOOK;
+      existing.ganancia += (sale.sale_price - COST_PER_BOOK) * sale.quantity;
+      dayMap.set(day, existing);
+    }
+    return Array.from(dayMap.entries())
+      .map(([day, v]) => ({ day, ...v }))
+      .sort((a, b) => a.day - b.day);
+  }, [allSales, currentMonth]);
+
+  const totalChartRevenue = chartData.reduce((s, d) => s + d.venta, 0);
+  const totalChartProfit = chartData.reduce((s, d) => s + d.ganancia, 0);
+  const totalChartCost = chartData.reduce((s, d) => s + d.ahorro, 0);
+
+  const sellerLookup = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of allSellers) map.set(s.id, s.email);
+    return map;
+  }, [allSellers]);
+
+  const inventoryBySeller = useMemo(() => {
+    const map = new Map<string, { email: string; items: any[] }>();
+    for (const item of allInventory) {
+      const sid = (item as any).seller_id;
+      if (!map.has(sid)) map.set(sid, { email: sellerLookup.get(sid) || "Desconocido", items: [] });
+      map.get(sid)!.items.push(item);
+    }
+    return Array.from(map.entries());
+  }, [allInventory, sellerLookup]);
+
+  const handleShip = (req: StockRequest) => {
+    const tracking = trackingInputs[req.id]?.trim();
+    if (!tracking) { toast.error("Ingresa el número de guía"); return; }
+    updateStatus.mutate({ id: req.id, status: "shipped", tracking_number: tracking });
+  };
+
+  if (statsLoading && !stats) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-white/40" />
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-white/40 text-sm mt-1">Visión general de Bookea</p>
-        </div>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Admin</h1>
         <div className="flex items-center gap-2 text-xs text-white/30 bg-white/5 px-3 py-1.5 rounded-lg">
           <Calendar className="w-3.5 h-3.5" />
-          {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+          {new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
         </div>
       </div>
 
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-          <BookOpen className="w-4 h-4" /> Catálogo
-        </h2>
-        <CardGrid cards={cardsLibros} />
-      </section>
+      {/* Mobile tabs */}
+      <div className="flex gap-0 mb-6 md:hidden overflow-x-auto">
+        {sections.map((sec) => {
+          const Icon = sec.icon;
+          return (
+            <button
+              key={sec.key}
+              onClick={() => setActiveSection(sec.key)}
+              className={`flex-1 flex items-center justify-center gap-1 text-[10px] font-bold px-1 py-2.5 rounded-xl transition-all whitespace-nowrap ${
+                activeSection === sec.key
+                  ? "bg-blue-600/20 text-blue-400 border border-blue-500/20"
+                  : "text-white/40 hover:text-white/60"
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              <span>{sec.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-          <ShoppingCart className="w-4 h-4" /> Órdenes Físicas
-        </h2>
-        <CardGrid cards={cardsOrdenes} />
-      </section>
+      <div className="flex gap-6">
+        {/* Desktop sidebar tabs */}
+        <aside className="hidden md:flex flex-col gap-1 w-40 shrink-0">
+          {sections.map((sec) => {
+            const Icon = sec.icon;
+            return (
+              <button
+                key={sec.key}
+                onClick={() => setActiveSection(sec.key)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-left ${
+                  activeSection === sec.key
+                    ? "bg-blue-600/10 text-blue-400 border border-blue-500/10"
+                    : "text-white/40 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {sec.label}
+              </button>
+            );
+          })}
+        </aside>
 
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-          <Users className="w-4 h-4" /> Usuarios
-        </h2>
-        <CardGrid cards={cardsUsuarios} />
-      </section>
+        <div className="flex-1 min-w-0">
+          {/* ── DASHBOARD ── */}
+          {activeSection === "dashboard" && stats && (
+            <div className="space-y-6">
+              <section>
+                <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4" /> Catálogo
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <StatCard label="Libros en catálogo" value={stats.totalBooks} sub={`${stats.activeBooks} activos`} icon={BookOpen} href="/admin/books" color="blue" />
+                  <StatCard label="Nuevos esta semana" value={stats.newBooksThisWeek} sub="últimos 7 días" icon={Sparkles} href="/admin/books" color="cyan" />
+                </div>
+              </section>
 
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-          <Store className="w-4 h-4" /> Vendedores
-        </h2>
-        <CardGrid cards={cardsVendedores} />
-      </section>
+              <section>
+                <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <ShoppingCart className="w-4 h-4" /> Órdenes Físicas
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <StatCard label="Órdenes físicas" value={stats.totalOrders} sub={`${stats.pendingOrders} pendientes`} icon={ShoppingCart} href="/admin/orders" color="amber" />
+                  <StatCard label="Ingresos físicos" value={`$${stats.revenuePhysical.toLocaleString("es-MX")}`} sub={`${stats.completedOrders} completadas`} icon={TrendingUp} href="/admin/orders" color="purple" />
+                </div>
+              </section>
 
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-          <CreditCard className="w-4 h-4" /> Pagos Digitales
-        </h2>
-        <CardGrid cards={cardsDigital} />
-      </section>
+              <section>
+                <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <Users className="w-4 h-4" /> Usuarios
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <StatCard label="Usuarios registrados" value={stats.totalUsers} sub={`${stats.newUsersThisWeek} nuevos`} icon={Users} href="/admin/users" color="green" />
+                  <StatCard label="Suscriptores" value={stats.subscribers} sub={`${stats.freeUsers} free`} icon={CreditCard} href="/admin/users" color="emerald" />
+                </div>
+              </section>
 
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-          <Activity className="w-4 h-4" /> Engagement
-        </h2>
-        <CardGrid cards={cardsEngagement} />
-      </section>
+              <section>
+                <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <Store className="w-4 h-4" /> Vendedores
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  <StatCard label="Vendedores" value={stats.sellers} sub={`${stats.pendingStockRequests} solicitudes pendientes`} icon={Store} href="/admin/vendedores" color="amber" />
+                  <StatCard label="Stock asignado" value={stats.totalStockAssigned} sub={`${stats.totalSoldBySellers} vendidos`} icon={Package} href="/admin/vendedores" color="orange" />
+                  <StatCard label="Ingresos vendedores" value={`$${stats.sellerSalesRevenue.toLocaleString("es-MX")}`} sub={`${stats.totalSoldBySellers} unidades`} icon={TrendingUp} href="/admin/vendedores" color="green" />
+                </div>
+              </section>
 
-      <div className="bg-white/5 border border-white/8 rounded-2xl p-6">
-        <h2 className="font-semibold mb-4 text-white/80 flex items-center gap-2">
-          <Sparkles className="w-4 h-4" /> Acciones rápidas
-        </h2>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/admin/books?action=new" className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">
-            + Agregar libro
-          </Link>
-          <Link href="/admin/orders" className="px-4 py-2.5 bg-white/8 text-white/70 text-sm font-medium rounded-xl hover:bg-white/12 transition-colors border border-white/10">
-            Ver órdenes pendientes
-          </Link>
-          <Link href="/admin/users" className="px-4 py-2.5 bg-white/8 text-white/70 text-sm font-medium rounded-xl hover:bg-white/12 transition-colors border border-white/10">
-            Gestionar usuarios
-          </Link>
-          <Link href="/admin/vendedores" className="px-4 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-xl hover:bg-amber-700 transition-colors">
-            Ver vendedores
-          </Link>
-          <Link href="/admin/stock-requests" className="px-4 py-2.5 bg-white/8 text-white/70 text-sm font-medium rounded-xl hover:bg-white/12 transition-colors border border-white/10">
-            Solicitudes de stock
-          </Link>
+              <section>
+                <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" /> Pagos Digitales
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <StatCard label="Ingresos digitales" value={`$${stats.digitalRevenue.toLocaleString("es-MX")}`} sub={`${stats.subscriptionPayments} suscripciones`} icon={TrendingUp} href="/admin/users" color="indigo" />
+                  <StatCard label="Engagement" value={`${stats.booksReadThisWeek} leídos`} sub={`${stats.reviewsThisWeek} reseñas`} icon={Activity} href="/admin/books" color="pink" />
+                </div>
+              </section>
+
+              <div className="bg-white/5 border border-white/8 rounded-2xl p-6">
+                <h2 className="font-semibold mb-4 text-white/80 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" /> Acciones rápidas
+                </h2>
+                <div className="flex flex-wrap gap-3">
+                  <Link href="/admin/books?action=new" className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">
+                    + Agregar libro
+                  </Link>
+                  <Link href="/admin/orders" className="px-4 py-2.5 bg-white/8 text-white/70 text-sm font-medium rounded-xl hover:bg-white/12 transition-colors border border-white/10">
+                    Ver órdenes pendientes
+                  </Link>
+                  <Link href="/admin/users" className="px-4 py-2.5 bg-white/8 text-white/70 text-sm font-medium rounded-xl hover:bg-white/12 transition-colors border border-white/10">
+                    Gestionar usuarios
+                  </Link>
+                  <Link href="/admin/vendedores" className="px-4 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-xl hover:bg-amber-700 transition-colors">
+                    Ver vendedores
+                  </Link>
+                  <Link href="/admin/stock-requests" className="px-4 py-2.5 bg-white/8 text-white/70 text-sm font-medium rounded-xl hover:bg-white/12 transition-colors border border-white/10">
+                    Solicitudes de stock
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── INGRESOS (agregado: todos los vendedores) ── */}
+          {activeSection === "ingresos" && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                  <p className="text-lg font-bold text-green-400">${totalChartRevenue.toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ingresos totales</p>
+                </div>
+                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                  <p className="text-lg font-bold text-blue-400">${totalChartProfit.toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ganancia total</p>
+                </div>
+                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                  <p className="text-lg font-bold text-white/60">${totalChartCost.toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Inversión ahorrada</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                    className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-white/60" />
+                  </button>
+                  <span className="text-sm font-bold text-white/80 min-w-[140px] text-center">
+                    {currentMonth.toLocaleDateString("es-MX", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase())}
+                  </span>
+                  <button
+                    onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                    disabled={currentMonth >= new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
+                    className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="w-4 h-4 text-white/60" />
+                  </button>
+                </div>
+              </div>
+
+              {chartData.length === 0 ? (
+                <div className="text-center py-16 text-white/30 text-sm">Sin ventas en este mes.</div>
+              ) : (
+                <div className="bg-[#111] border border-white/8 rounded-2xl p-5">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                      <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
+                      <Tooltip content={<ChartTooltip />} />
+                      <Line type="monotone" dataKey="venta" name="Venta" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#22c55e" }} />
+                      <Line type="monotone" dataKey="ganancia" name="Ganancia" stroke="#60a5fa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#60a5fa" }} />
+                      <Line type="monotone" dataKey="ahorro" name="Ahorro" stroke="#a78bfa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#a78bfa" }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── STOCK (todos los vendedores) ── */}
+          {activeSection === "stock" && (
+            <div className="space-y-5">
+              {inventoryBySeller.length === 0 ? (
+                <div className="text-center py-16 text-white/30 text-sm">
+                  <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p>No hay stock asignado a ningún vendedor.</p>
+                </div>
+              ) : (
+                inventoryBySeller.map(([sellerId, { email, items }]) => (
+                  <div key={sellerId} className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
+                    <div className="px-5 py-3 border-b border-white/8 flex items-center justify-between">
+                      <h2 className="font-semibold text-sm flex items-center gap-2">
+                        <Store className="w-4 h-4 text-amber-400" />
+                        {email}
+                      </h2>
+                      <span className="text-[10px] text-white/40">{items.reduce((s, i) => s + i.quantity, 0)} uds.</span>
+                    </div>
+                    <div className="divide-y divide-white/5">
+                      {items.map((item: any) => (
+                        <div key={item.id} className="px-5 py-3 flex items-center gap-3">
+                          {item.books?.cover_url && (
+                            <img src={item.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                          )}
+                          <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{item.books?.title || "Libro"}</span>
+                          <span className="text-xs text-white/40">{item.books?.author}</span>
+                          <span className="text-sm font-bold text-white shrink-0">{item.quantity} uds.</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* ── VENDIDOS (todos los vendedores) ── */}
+          {activeSection === "vendidos" && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                  <p className="text-lg font-bold text-white">{allSales.reduce((s, i) => s + i.quantity, 0)}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Total unidades</p>
+                </div>
+                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                  <p className="text-lg font-bold text-green-400">${allSales.reduce((s, i) => s + i.sale_price * i.quantity, 0).toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ingresos totales</p>
+                </div>
+                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                  <p className="text-lg font-bold text-amber-400">{allSellers.length}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Vendedores activos</p>
+                </div>
+              </div>
+
+              {allSales.length === 0 ? (
+                <div className="text-center py-12 text-white/30 text-sm">Aún no hay ventas.</div>
+              ) : (
+                <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
+                  <div className="divide-y divide-white/5">
+                    {allSales.slice(0, 100).map((sale: any) => (
+                      <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
+                        {sale.books?.cover_url && (
+                          <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                        )}
+                        <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{sale.books?.title || "Libro"}</span>
+                        <span className="text-[10px] text-white/30 shrink-0">
+                          {new Date(sale.sold_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
+                        </span>
+                        <span className="text-sm font-bold text-white shrink-0">x{sale.quantity}</span>
+                        <span className="text-xs font-bold text-green-400 shrink-0">
+                          ${(sale.sale_price * sale.quantity).toLocaleString("es-MX")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── SOLICITUDES ── */}
+          {activeSection === "solicitudes" && (
+            <div className="space-y-5">
+              {requests.length === 0 ? (
+                <div className="text-center py-12 text-white/30 text-sm">
+                  <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p>No hay solicitudes de stock.</p>
+                </div>
+              ) : (
+                requests.map((req) => {
+                  const statusInfo = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending;
+                  return (
+                    <div key={req.id} className="bg-white/5 border border-white/8 rounded-2xl p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusInfo.color}`}>
+                              {statusInfo.label}
+                            </span>
+                            <span className="text-xs text-white/30">
+                              {new Date(req.created_at).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-white/50 mb-2">
+                            <span className="text-white/70 font-medium">Vendedor:</span>{" "}
+                            {(req.seller as any)?.email ?? "Desconocido"}
+                          </p>
+                          <div className="space-y-0.5">
+                            {req.items?.map((item: any) => {
+                              const sellerId = (req as any).seller_id;
+                              const soldQty = salesMap.get(`${sellerId}:${item.book_id}`) || 0;
+                              const isReceived = !!item.received_at;
+                              return (
+                                <div key={item.id} className="flex items-center justify-between text-sm">
+                                  <span className="text-white/70">
+                                    {(item.books as any)?.title ?? "Libro"} x{item.quantity}
+                                  </span>
+                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+                                    isReceived
+                                      ? soldQty >= item.quantity
+                                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                        : soldQty > 0
+                                          ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                                          : "bg-green-500/10 text-green-400 border border-green-500/20"
+                                      : "bg-white/5 text-white/30 border border-white/10"
+                                  }`}>
+                                    {isReceived
+                                      ? soldQty >= item.quantity
+                                        ? "Vendido"
+                                        : soldQty > 0
+                                          ? `Vendido ${soldQty}/${item.quantity}`
+                                          : "Recibido"
+                                      : "No recibido"}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {req.notes && <p className="text-xs text-white/30 mt-2 italic">"{req.notes}"</p>}
+                          {req.tracking_number && (
+                            <p className="text-xs text-blue-400 mt-2 flex items-center gap-1">
+                              <Package className="w-3 h-3" /> Guía: {req.tracking_number}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-3">
+                          {req.status === "pending" && (
+                            <div className="flex flex-col items-end gap-2">
+                              <input
+                                value={trackingInputs[req.id] || ""}
+                                onChange={(e) => setTrackingInputs(prev => ({ ...prev, [req.id]: e.target.value }))}
+                                placeholder="Número de guía"
+                                className="w-full text-xs px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-blue-500/50 transition-colors"
+                              />
+                              <button
+                                onClick={() => handleShip(req)}
+                                disabled={updateStatus.isPending}
+                                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                <Truck className="w-3.5 h-3.5" /> Marcar como Enviado
+                              </button>
+                              <button
+                                onClick={() => updateStatus.mutate({ id: req.id, status: "cancelled" })}
+                                disabled={updateStatus.isPending}
+                                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 rounded-lg transition-colors border border-white/10"
+                              >
+                                <Clock className="w-3.5 h-3.5" /> Cancelar
+                              </button>
+                            </div>
+                          )}
+                          {req.status === "shipped" && (
+                            <button
+                              onClick={() => updateStatus.mutate({ id: req.id, status: "delivered" })}
+                              disabled={updateStatus.isPending}
+                              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              <Check className="w-3.5 h-3.5" /> Marcar como Entregado
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

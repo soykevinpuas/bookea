@@ -118,7 +118,7 @@ export default function AdminLayout({
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-lg font-bold shadow-lg shadow-blue-500/20">B</div>
             <div>
               <p className="font-bold text-lg leading-tight tracking-tight">Bookea</p>
-              <p className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">Admin Panel</p>
+              <p className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">Admin</p>
             </div>
           </Link>
         </div>
