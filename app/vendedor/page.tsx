@@ -14,9 +14,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 type Section = "stock" | "vendidos" | "ingresos" | "solicitudes";
 
 const sections: { key: Section; label: string; icon: any }[] = [
+  { key: "ingresos", label: "Ingresos", icon: BarChart3 },
   { key: "stock", label: "Stock", icon: Package },
   { key: "vendidos", label: "Vendidos", icon: TrendingUp },
-  { key: "ingresos", label: "Ingresos", icon: BarChart3 },
   { key: "solicitudes", label: "Solicitudes", icon: ShoppingCart },
 ];
 
@@ -78,7 +78,7 @@ export default function VendedorDashboard() {
   const queryClient = useQueryClient();
   const { userId } = useUserId();
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState<Section>("stock");
+  const [activeSection, setActiveSection] = useState<Section>("ingresos");
   const [dateRange, setDateRange] = useState("30d");
   const [salePrices, setSalePrices] = useState<Record<string, number>>({});
   const [saleQtys, setSaleQtys] = useState<Record<string, number>>({});
@@ -262,21 +262,21 @@ export default function VendedorDashboard() {
         </h1>
       </div>
 
-      <div className="flex gap-1 mb-6 overflow-x-auto pb-1 md:hidden">
+      <div className="flex gap-0 mb-6 md:hidden">
         {sections.map((sec) => {
           const Icon = sec.icon;
           return (
             <button
               key={sec.key}
               onClick={() => setActiveSection(sec.key)}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl whitespace-nowrap transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1 text-[10px] font-bold px-1 py-2.5 rounded-xl transition-all ${
                 activeSection === sec.key
                   ? "bg-amber-600/20 text-amber-400 border border-amber-500/20"
-                  : "text-white/40 hover:text-white/60 border border-transparent"
+                  : "text-white/40 hover:text-white/60"
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
-              {sec.label}
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              <span>{sec.label}</span>
             </button>
           );
         })}
