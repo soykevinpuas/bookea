@@ -2,7 +2,8 @@
 
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState, useMemo } from "react";
-import { User, CreditCard, Shield, Zap, Loader2, Sparkles, BookOpen, Coins, Flame, Gift, Circle, BookOpenCheck, Trophy, Key, Trash2, AlertTriangle, Package, Paintbrush, ChevronRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { User, CreditCard, Shield, Zap, Loader2, BookOpen, Coins, Flame, Gift, Circle, BookOpenCheck, Trophy, Key, Trash2, AlertTriangle, Paintbrush, ChevronRight, Package, Clock, Truck, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useUserId } from "@/hooks/useUser";
@@ -17,12 +18,37 @@ import { ProfileSkeleton } from "@/components/ui/SkeletonBox";
 import { CoinBalanceDisplay } from "@/components/ui/CoinBalance";
 import { ReferralQR } from "@/components/profile/ReferralQR";
 
-type Section = "personalizar" | "facturacion" | "biblioteca" | "progreso" | "referidos" | "seguridad";
+interface Order {
+  id: string;
+  book_id: string;
+  status: "pending" | "shipped" | "delivered" | "cancelled";
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  phone: string;
+  shipping_cost: number;
+  total: number;
+  tracking_number: string | null;
+  created_at: string;
+  books?: { id: string; title: string; cover_url: string | null; author: string } | null;
+}
+
+const STATUS_CONFIG: Record<Order["status"], { label: string; color: string; icon: any; msg: string }> = {
+  pending: { label: "Pendiente", color: "bg-amber-500/10 text-amber-400 border border-amber-500/20", icon: Clock, msg: "El administrador procesará tu envío pronto." },
+  shipped: { label: "Enviado", color: "bg-blue-500/10 text-blue-400 border border-blue-500/20", icon: Truck, msg: "Tu pedido está en camino." },
+  delivered: { label: "Entregado", color: "bg-green-500/10 text-green-400 border border-green-500/20", icon: CheckCircle2, msg: "Entregado — gracias por tu compra." },
+  cancelled: { label: "Cancelado", color: "bg-red-500/10 text-red-400 border border-red-500/20", icon: Clock, msg: "Esta orden fue cancelada." },
+};
+
+type Section = "personalizar" | "facturacion" | "biblioteca" | "ordenes" | "progreso" | "referidos" | "seguridad";
 
 const sections: { key: Section; icon: typeof User; label: string }[] = [
   { key: "personalizar", icon: Paintbrush, label: "Personalizar" },
   { key: "facturacion", icon: CreditCard, label: "Facturación" },
   { key: "biblioteca", icon: BookOpen, label: "Biblioteca" },
+  { key: "ordenes", icon: Package, label: "Órdenes" },
   { key: "progreso", icon: Trophy, label: "Progreso" },
   { key: "referidos", icon: Gift, label: "Referidos" },
   { key: "seguridad", icon: Shield, label: "Seguridad" },
@@ -188,6 +214,22 @@ export default function ProfilePage() {
 
   const isSubscriber = subscription?.isActive;
 
+  const supabase = createClientClient();
+  const { data: orders = [], isLoading: ordersLoading } = useQuery<Order[]>({
+    queryKey: ["profile-orders", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from("orders_physical")
+        .select("*, books(id, title, cover_url, author)")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Order[];
+    },
+    enabled: !!userId,
+  });
+
   if (authLoading || (profileLoading && !profile)) return <ProfileSkeleton />;
 
   return (
@@ -249,50 +291,54 @@ export default function ProfilePage() {
               </div>
 
               {/* Subscription badge */}
-              <div className={`mt-3 text-[10px] font-bold text-center py-1.5 rounded-lg ${
-                subLoading ? 'bg-white/5 text-white/20 animate-pulse' :
-                isSubscriber ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-              }`}>
-                {subLoading ? 'Cargando...' : (subscription?.role === 'admin' ? 'Premium Admin' : subscription?.role === 'vendedor' ? 'Vendedor' : (isSubscriber ? 'Miembro Premium' : 'Nivel Gratis'))}
-              </div>
-            </div>
+              {subscription?.role === 'vendedor' ? (
+                <Link href="/vendedor"
+                  className="mt-3 block text-[10px] font-bold text-center py-1.5 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 transition-all"
+                >
+                  Panel Vendedor →
+                </Link>
+              ) : subscription?.role === 'admin' ? (
+                <Link href="/admin"
+                  className="mt-3 block text-[10px] font-bold text-center py-1.5 rounded-lg bg-purple-500/10 text-purple-500 border border-purple-500/20 hover:bg-purple-500/20 transition-all"
+                >
+                  Panel Admin →
+                </Link>
+              ) : (
+                <div className={`mt-3 text-[10px] font-bold text-center py-1.5 rounded-lg ${
+                  subLoading ? 'bg-white/5 text-white/20 animate-pulse' :
+                  isSubscriber ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                }`}>
+                  {subLoading ? 'Cargando...' : (isSubscriber ? 'Miembro Premium' : 'Nivel Gratis')}
+                </div>
+              )}
 
-            {/* Section navigation */}
-            <nav className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-2 space-y-0.5">
+            </div>
+          </aside>
+
+          {/* Main content — chrome tabs + active section */}
+          <main className="lg:col-span-8">
+            {/* Chrome tabs */}
+            <div className="flex gap-px overflow-x-auto overflow-y-hidden flex-nowrap mb-0">
               {sections.map(({ key, icon: Icon, label }) => (
                 <button
                   key={key}
                   onClick={() => setActiveSection(key)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all text-left ${
+                  className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-bold whitespace-nowrap transition-all rounded-t-lg ${
                     activeSection === key
-                      ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
-                      : 'text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5'
+                      ? 'bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white border-t border-l border-r border-gray-200 dark:border-white/10 -mb-px z-10 shadow-sm'
+                      : 'text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${activeSection === key ? (isSubscriber ? 'text-amber-500' : 'text-blue-500') : ''}`} />
+                  <Icon className={`w-3.5 h-3.5 ${activeSection === key ? (isSubscriber ? 'text-amber-500' : 'text-blue-500') : ''}`} />
                   {label}
-                  <ChevronRight className={`w-3.5 h-3.5 ml-auto transition-transform ${activeSection === key ? 'rotate-90' : ''} text-gray-400`} />
                 </button>
               ))}
-            </nav>
-
-            {/* Quick links */}
-            <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-3 space-y-1">
-              <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2 text-sm font-bold text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 rounded-xl transition-all">
-                <Sparkles className={`w-4 h-4 ${isSubscriber ? 'text-amber-500' : 'text-blue-500'}`} />
-                Mi Biblioteca
-              </Link>
-              <Link href="/orders" className="flex items-center gap-3 px-3 py-2 text-sm font-bold text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 rounded-xl transition-all">
-                <Package className="w-4 h-4" />
-                Mis Órdenes
-              </Link>
             </div>
-          </aside>
 
-          {/* Main content — only active section */}
-          <main className="lg:col-span-8">
+            {/* Tab content */}
+            <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-b-2xl rounded-tr-2xl p-6 sm:p-8 -mt-px">
             {activeSection === "personalizar" && (
-              <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-6 sm:p-8">
+              <>
                 <h3 className="text-xl font-black flex items-center gap-2.5 mb-8">
                   <Paintbrush className={`w-5 h-5 ${isSubscriber ? 'text-amber-500' : 'text-blue-500'}`} />
                   Personalizar Avatar
@@ -302,11 +348,11 @@ export default function ProfilePage() {
                   onSelect={handleSaveAvatar}
                   isUpdating={isUpdatingAvatar}
                 />
-              </div>
+              </>
             )}
 
             {activeSection === "facturacion" && (
-              <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-6 sm:p-8">
+              <>
                 <h3 className="text-xl font-black flex items-center gap-2.5 mb-6">
                   <CreditCard className="w-5 h-5 text-blue-400" />
                   Facturación y Plan
@@ -357,11 +403,11 @@ export default function ProfilePage() {
                     )}
                   </div>
                 )}
-              </div>
+              </>
             )}
 
             {activeSection === "biblioteca" && (
-              <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-6 sm:p-8">
+              <>
                 <button onClick={() => { if (!purchasedLoading) setPurchasedOpen(!purchasedOpen); }}
                   className="w-full flex items-center justify-between gap-3">
                   <h3 className="text-xl font-black flex items-center gap-2">
@@ -402,11 +448,11 @@ export default function ProfilePage() {
                     )}
                   </div>
                 )}
-              </div>
+              </>
             )}
 
             {activeSection === "progreso" && (
-              <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-6 sm:p-8">
+              <>
                 <h3 className="text-xl font-black flex items-center gap-2.5 mb-6">
                   <Trophy className="w-5 h-5 text-amber-400" />
                   Progreso
@@ -436,21 +482,21 @@ export default function ProfilePage() {
                     <p className="text-[10px] text-gray-400 dark:text-white/30 mt-2">Lee 2+ min para contar</p>
                   </div>
                 </div>
-              </div>
+              </>
             )}
 
             {activeSection === "referidos" && referralLink && (
-              <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-6 sm:p-8">
+              <>
                 <h3 className="text-xl font-black flex items-center gap-2.5 mb-6">
                   <Gift className="w-5 h-5 text-green-400" />
                   Invita a un Amigo
                 </h3>
                 <ReferralQR referralLink={referralLink} referralCount={referralCount} />
-              </div>
+              </>
             )}
 
             {activeSection === "seguridad" && (
-              <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-6 sm:p-8 space-y-4">
+              <>
                 <h3 className="text-xl font-black flex items-center gap-2.5 mb-4">
                   <Shield className="w-5 h-5 text-blue-400" />
                   Seguridad
@@ -497,8 +543,75 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </>
             )}
+
+            {activeSection === "ordenes" && (
+              <>
+                <h3 className="text-xl font-black flex items-center gap-2.5 mb-6">
+                  <Package className="w-5 h-5 text-blue-400" />
+                  Mis Órdenes
+                </h3>
+                {ordersLoading ? (
+                  <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+                ) : orders.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Package className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-white/20" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Aún no has comprado libros físicos.</p>
+                    <Link href="/catalog?tab=fisicos" className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all">
+                      Explorar catálogo físico
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {orders.map((order) => {
+                      const cfg = STATUS_CONFIG[order.status];
+                      const StatusIcon = cfg.icon;
+                      const book = order.books as Order["books"];
+                      return (
+                        <div key={order.id}
+                          className="bg-gray-200 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl p-4 hover:shadow-sm transition-shadow">
+                          <div className="flex items-start gap-3">
+                            <Link href={`/book/${book?.id || order.book_id}`} className="shrink-0">
+                              {book?.cover_url ? (
+                                <img src={book.cover_url} alt={book.title} className="w-12 h-[68px] rounded-lg object-cover" />
+                              ) : (
+                                <div className="w-12 h-[68px] rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-sm text-gray-400">📚</div>
+                              )}
+                            </Link>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cfg.color} flex items-center gap-1`}>
+                                  <StatusIcon className="w-3 h-3" />{cfg.label}
+                                </span>
+                                <span className="text-[10px] text-gray-400 dark:text-white/30">
+                                  {new Date(order.created_at).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
+                                </span>
+                              </div>
+                              <Link href={`/book/${book?.id || order.book_id}`}
+                                className="text-sm font-bold text-gray-900 dark:text-white truncate block hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                {book?.title || "Libro"}
+                              </Link>
+                              {order.tracking_number && (
+                                <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-blue-500 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg">
+                                  <Package className="w-2.5 h-2.5" /> Guía: {order.tracking_number}
+                                </div>
+                              )}
+                              <p className="text-[10px] text-gray-400 dark:text-white/30 mt-1">{cfg.msg}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="font-bold text-xs text-gray-900 dark:text-white">${order.total} MXN</p>
+                              <p className="text-[9px] text-gray-400 dark:text-white/30">Envío: ${order.shipping_cost}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+            </div>
           </main>
         </div>
       </div>

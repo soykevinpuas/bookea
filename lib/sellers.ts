@@ -54,14 +54,19 @@ export async function assignStock(
   if (stockErr) throw stockErr;
 }
 
+export const COST_PER_BOOK = 200;
+
 // ─── Sales ──────────────────────────────────────────────────
 
 export async function markAsSold(
   supabase: SupabaseClient,
   sellerId: string,
   bookId: string,
-  quantity: number = 1
+  quantity: number = 1,
+  salePrice: number = COST_PER_BOOK
 ) {
+  if (salePrice <= 0) throw new Error("El precio de venta debe ser mayor a 0");
+
   const { data: inventory } = await supabase
     .from("seller_inventory")
     .select("id, quantity")
@@ -77,6 +82,7 @@ export async function markAsSold(
     seller_id: sellerId,
     book_id: bookId,
     quantity,
+    sale_price: salePrice,
   });
   if (saleErr) throw saleErr;
 

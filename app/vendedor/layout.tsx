@@ -5,8 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard,
-  Package,
   ShoppingCart,
   ChevronRight,
   LogOut,
@@ -15,10 +13,13 @@ import {
   X,
   Store,
 } from "lucide-react";
+import { useProfile } from "@/hooks/useAvatars";
+import { useUserId } from "@/hooks/useUser";
+import { parseAvatarConfig } from "@/lib/avatars-v2";
+import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 
 const navItems = [
-  { href: "/vendedor", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/vendedor/inventario", label: "Mi Inventario", icon: Package },
+  { href: "/vendedor", label: "Mi Tienda", icon: Store, exact: true },
   { href: "/vendedor/solicitudes/nueva", label: "Solicitar Stock", icon: ShoppingCart },
   { href: "/vendedor/solicitudes", label: "Mis Solicitudes", icon: ShoppingCart },
 ];
@@ -33,6 +34,8 @@ export default function VendedorLayout({
   const [user, setUser] = useState<{ email?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { userId } = useUserId();
+  const { profile } = useProfile(userId);
 
   useEffect(() => {
     const supabase = createClientClient();
@@ -81,7 +84,13 @@ export default function VendedorLayout({
       {/* Mobile Top Bar */}
       <div className="md:hidden flex items-center justify-between px-4 pb-4 bg-[#111111] border-b border-white/5 sticky top-0 z-50 pt-[calc(1rem+env(safe-area-inset-top,0px))]">
         <Link href="/vendedor" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center text-sm font-bold">V</div>
+          <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+            {profile?.avatar_url ? (
+              <AnimalEngine config={parseAvatarConfig(profile.avatar_url)} size="100%" />
+            ) : (
+              <span className="text-sm font-bold text-white/40">V</span>
+            )}
+          </div>
           <span className="font-bold tracking-tight">Vendedor</span>
         </Link>
         <button
@@ -105,6 +114,7 @@ export default function VendedorLayout({
         className={`
           fixed md:sticky top-0 left-0 bottom-0 z-50 w-64 h-screen bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          pt-[max(1rem,env(safe-area-inset-top))] md:pt-0 pb-[max(5rem,env(safe-area-inset-bottom))] md:pb-0
         `}
       >
         <div className="px-6 py-8 border-b border-white/5 hidden md:block">
@@ -140,7 +150,7 @@ export default function VendedorLayout({
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/5 space-y-2 bg-[#0d0d0d]/50 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+        <div className="p-4 border-t border-white/5 space-y-2 bg-[#0d0d0d]/50">
           <Link
             href="/"
             className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/40 hover:text-white hover:bg-white/5 transition-all"

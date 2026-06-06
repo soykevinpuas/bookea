@@ -1,6 +1,6 @@
 "use client";
 
-import { User, LogOut, Shield, Zap, LayoutDashboard, BookOpen, ShoppingCart, Circle } from "lucide-react";
+import { User, LogOut, Shield, Zap, BookOpen, ShoppingCart, Circle, Package } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createClientClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -79,15 +79,27 @@ export function UserMenu({ email }: { email?: string }) {
           {/* User info */}
           <div className="px-4 py-3 border-b border-gray-100 dark:border-white/5">
             <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{email}</p>
-            {isPremium && (
-              <span className="text-[10px] font-bold text-amber-500">Premium{subscription?.role === 'admin' ? ' Admin' : ''}</span>
-            )}
+            <div className="flex items-center gap-1.5 mt-1">
+              {isPremium && (
+                <span className="text-[10px] font-bold text-amber-500">Premium</span>
+              )}
+              {subscription?.role === 'vendedor' && (
+                <Link href="/vendedor" onClick={() => setIsOpen(false)} className="text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:underline">
+                  Vendedor
+                </Link>
+              )}
+              {subscription?.role === 'admin' && (
+                <Link href="/admin" onClick={() => setIsOpen(false)} className="text-[10px] font-bold text-purple-600 dark:text-purple-400 hover:underline">
+                  Admin
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* Navigation */}
           <div className="p-2 space-y-0.5">
-            <MenuItem href="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />} label="Escritorio" onClick={() => setIsOpen(false)} />
             <MenuItem href="/catalog" icon={<BookOpen className="w-4 h-4" />} label="Catálogo" onClick={() => setIsOpen(false)} />
+            <MenuItem href="/orders" icon={<Package className="w-4 h-4" />} label="Mis Órdenes" onClick={() => setIsOpen(false)} />
             <button
               onClick={() => { toggleCart(); setIsOpen(false); }}
               className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-bold text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-all group"

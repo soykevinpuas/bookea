@@ -13,6 +13,7 @@ export function Header({ initialUser = null }: { initialUser?: { id: string; ema
   const [user, setUser] = useState<{ id: string; email?: string } | null>(initialUser);
   const [isLoading, setIsLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const supabase = useMemo(() => createClientClient(), []);
   const pathname = usePathname();
@@ -23,6 +24,10 @@ export function Header({ initialUser = null }: { initialUser?: { id: string; ema
   useEffect(() => {
     setUser(initialUser ?? null);
   }, [initialUser]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
@@ -46,7 +51,7 @@ export function Header({ initialUser = null }: { initialUser?: { id: string; ema
     };
   }, []);
 
-  if (pathname?.startsWith("/reader") || pathname === "/") {
+  if (pathname?.startsWith("/reader") || pathname?.startsWith("/vendedor") || pathname === "/") {
     return null;
   }
 
@@ -58,7 +63,7 @@ export function Header({ initialUser = null }: { initialUser?: { id: string; ema
             href="/"
             className="text-xl sm:text-2xl font-black tracking-tighter text-gray-900 dark:text-white flex items-center gap-0 hover:opacity-80 transition-opacity flex-shrink-0"
           >
-            <span className={subscription?.isActive ? "text-amber-500" : "text-blue-600 dark:text-blue-500"}>B</span>ookea
+            <span className={mounted && subscription?.isActive ? "text-amber-500" : "text-blue-600 dark:text-blue-500"}>B</span>ookea
           </Link>
           {!isOnline && (
             <span className="flex items-center gap-1 text-[10px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">

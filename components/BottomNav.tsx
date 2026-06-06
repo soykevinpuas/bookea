@@ -2,23 +2,34 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Compass, User, Library, Loader2 } from "lucide-react";
+import { Compass, User, Library, Loader2, Store } from "lucide-react";
 import { motion } from "framer-motion";
 import { PrefetchLink } from "@/components/ui/LoadingStates";
+import { useUserId } from "@/hooks/useUser";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export function BottomNav() {
   const pathname = usePathname();
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const { userId } = useUserId();
+  const { data: subscription } = useSubscription(userId);
 
   useEffect(() => {
     setNavigatingTo(null);
   }, [pathname]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isReader = pathname?.includes("/reader/");
   const isAuth = pathname?.includes("/login") || pathname?.includes("/register");
   const isLanding = pathname === "/";
 
   if (isReader || isAuth || isLanding) return null;
+
+  const isVendedor = subscription?.role === 'vendedor';
 
   const navItems = [
     {
@@ -33,6 +44,12 @@ export function BottomNav() {
       href: "/dashboard",
       active: pathname === "/dashboard"
     },
+    ...(isVendedor && mounted ? [{
+      label: "Mi Tienda",
+      icon: <Store className="w-6 h-6" />,
+      href: "/vendedor",
+      active: pathname.startsWith("/vendedor")
+    }] : []),
     {
       label: "Perfil",
       icon: <User className="w-6 h-6" />,

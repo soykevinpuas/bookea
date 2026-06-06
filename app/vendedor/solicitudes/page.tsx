@@ -79,14 +79,20 @@ export default function MisSolicitudesPage() {
                 </div>
 
                 <div className="space-y-1 mb-3">
-                  {req.items?.map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span className="text-white/70">
-                        {(item.books as any)?.title ?? "Libro"}
-                      </span>
-                      <span className="text-white font-medium">x{item.quantity}</span>
-                    </div>
-                  ))}
+                  {req.items?.map((item) => {
+                    const book = item.books as any;
+                    return (
+                      <div key={item.id} className="flex items-center gap-2 text-sm">
+                        {book?.cover_url && (
+                          <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                        )}
+                        <span className="text-white/70 flex-1 min-w-0 truncate">
+                          {book?.title ?? "Libro"}
+                        </span>
+                        <span className="text-white font-medium shrink-0">x{item.quantity}</span>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {req.notes && (

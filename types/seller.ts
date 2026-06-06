@@ -20,6 +20,7 @@ export interface SellerSale {
   seller_id: string;
   book_id: string;
   quantity: number;
+  sale_price: number;
   sold_at: string;
   books?: BookInventoryInfo | null;
 }
