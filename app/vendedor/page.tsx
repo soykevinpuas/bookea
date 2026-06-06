@@ -5,11 +5,11 @@ import { createClientClient } from "@/lib/supabase";
 import { getSellerInventory, getSellerSales, getSellerRequests, getPhysicalBooks, markAsSold, COST_PER_BOOK } from "@/lib/sellers";
 import { receiveStockItemAction, createStockRequestAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { Store, Package, TrendingUp, Loader2, BarChart3, Truck, Check, DollarSign, Plus, Minus, ShoppingCart, Search, X } from "lucide-react";
+import { Store, Package, TrendingUp, Loader2, BarChart3, Truck, Check, DollarSign, Plus, Minus, ShoppingCart, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LineChart, Line } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 type Section = "stock" | "vendidos" | "ingresos" | "solicitudes";
 
@@ -33,32 +33,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Cancelado", color: "bg-red-500/10 text-red-400 border border-red-500/20" },
 };
 
-function DateRangePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const ranges = [
-    { key: "7d", label: "7d" },
-    { key: "30d", label: "30d" },
-    { key: "90d", label: "90d" },
-    { key: "all", label: "Todo" },
-  ];
-  return (
-    <div className="flex gap-1">
-      {ranges.map((r) => (
-        <button
-          key={r.key}
-          onClick={() => onChange(r.key)}
-          className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg transition-all ${
-            value === r.key
-              ? "bg-amber-600/20 text-amber-400 border border-amber-500/20"
-              : "text-white/40 hover:text-white/60 border border-transparent"
-          }`}
-        >
-          {r.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
@@ -79,7 +53,7 @@ export default function VendedorDashboard() {
   const { userId } = useUserId();
   const router = useRouter();
   const [activeSection, setActiveSection] = useState<Section>("ingresos");
-  const [dateRange, setDateRange] = useState("30d");
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [salePrices, setSalePrices] = useState<Record<string, number>>({});
   const [saleQtys, setSaleQtys] = useState<Record<string, number>>({});
   const [selling, setSelling] = useState<string | null>(null);
@@ -115,47 +89,35 @@ export default function VendedorDashboard() {
     queryFn: () => getPhysicalBooks(supabase),
   });
 
-  const { data: sellerInventory = [] } = useQuery({
-    queryKey: ["seller-inventory", userId],
-    queryFn: () => getSellerInventory(supabase, userId!),
-    enabled: !!userId,
-  });
-
-  const inventoryMap = new Map(sellerInventory.map(i => [i.book_id, i.quantity]));
-
   const totalRevenue = sales.reduce((s, i) => s + i.sale_price * i.quantity, 0);
   const totalProfit = totalRevenue - sales.reduce((s, i) => s + i.quantity * COST_PER_BOOK, 0);
 
   const chartData = useMemo(() => {
-    const cutoff = dateRange === "all" ? null : Date.now() - {
-      "7d": 7, "30d": 30, "90d": 90,
-    }[dateRange]! * 86400000;
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
 
-    const dayMap = new Map<string, { revenue: number; cost: number; profit: number }>();
+    const dayMap = new Map<number, { venta: number; ahorro: number; ganancia: number }>();
 
     for (const sale of sales) {
       const d = new Date(sale.sold_at);
-      if (cutoff && d.getTime() < cutoff) continue;
+      if (d.getFullYear() !== year || d.getMonth() !== month) continue;
 
-      const key = d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
-      const existing = dayMap.get(key) || { revenue: 0, cost: 0, profit: 0 };
-      existing.revenue += sale.sale_price * sale.quantity;
-      existing.cost += sale.quantity * COST_PER_BOOK;
-      existing.profit += (sale.sale_price - COST_PER_BOOK) * sale.quantity;
-      dayMap.set(key, existing);
+      const day = d.getDate();
+      const existing = dayMap.get(day) || { venta: 0, ahorro: 0, ganancia: 0 };
+      existing.venta += sale.sale_price * sale.quantity;
+      existing.ahorro += sale.quantity * COST_PER_BOOK;
+      existing.ganancia += (sale.sale_price - COST_PER_BOOK) * sale.quantity;
+      dayMap.set(day, existing);
     }
 
     return Array.from(dayMap.entries())
-      .map(([date, v]) => ({ date, ...v }))
-      .sort((a, b) => {
-        const [da, db] = [a.date, b.date].map(d => new Date(d).getTime());
-        return da - db;
-      });
-  }, [sales, dateRange]);
+      .map(([day, v]) => ({ day, ...v }))
+      .sort((a, b) => a.day - b.day);
+  }, [sales, currentMonth]);
 
-  const totalChartRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
-  const totalChartProfit = chartData.reduce((s, d) => s + d.profit, 0);
-  const totalChartCost = chartData.reduce((s, d) => s + d.cost, 0);
+  const totalChartRevenue = chartData.reduce((s, d) => s + d.venta, 0);
+  const totalChartProfit = chartData.reduce((s, d) => s + d.ganancia, 0);
+  const totalChartCost = chartData.reduce((s, d) => s + d.ahorro, 0);
 
   const activeInventory = inventory.filter(i => i.quantity > 0);
 
@@ -437,41 +399,44 @@ export default function VendedorDashboard() {
                 </div>
               </div>
 
+              {/* Month selector */}
               <div className="flex items-center justify-between">
-                <DateRangePicker value={dateRange} onChange={setDateRange} />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                    className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-white/60" />
+                  </button>
+                  <span className="text-sm font-bold text-white/80 min-w-[140px] text-center">
+                    {currentMonth.toLocaleDateString("es-MX", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase())}
+                  </span>
+                  <button
+                    onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                    disabled={currentMonth >= new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
+                    className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="w-4 h-4 text-white/60" />
+                  </button>
+                </div>
               </div>
 
               {chartData.length === 0 ? (
-                <div className="text-center py-16 text-white/30 text-sm">Sin datos en este período.</div>
+                <div className="text-center py-16 text-white/30 text-sm">Sin ventas en este mes.</div>
               ) : (
-                <>
-                  <div className="bg-white/5 border border-white/8 rounded-2xl p-5">
-                    <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">Ingresos vs Ganancia</h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                        <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <Tooltip content={<ChartTooltip />} />
-                        <Bar dataKey="revenue" name="Ingresos" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                        <Bar dataKey="profit" name="Ganancia" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/8 rounded-2xl p-5">
-                    <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">Inversión ahorrada</h3>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                        <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <Tooltip content={<ChartTooltip />} />
-                        <Line type="monotone" dataKey="cost" name="Inversión ahorrada" stroke="#a78bfa" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </>
+                <div className="bg-[#111] border border-white/8 rounded-2xl p-5">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                      <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
+                      <Tooltip content={<ChartTooltip />} />
+                      <Line type="monotone" dataKey="venta" name="Venta" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#22c55e" }} />
+                      <Line type="monotone" dataKey="ganancia" name="Ganancia" stroke="#60a5fa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#60a5fa" }} />
+                      <Line type="monotone" dataKey="ahorro" name="Ahorro" stroke="#a78bfa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#a78bfa" }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </div>
           )}
