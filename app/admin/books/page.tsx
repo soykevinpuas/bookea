@@ -72,6 +72,7 @@ export default function AdminBooksPage() {
   const [authorPhotoUrl, setAuthorPhotoUrl] = useState("");
   const [authorPhotoUploading, setAuthorPhotoUploading] = useState(false);
   const authorPhotoInputRef = useRef<HTMLInputElement>(null);
+  const [filterTab, setFilterTab] = useState<"all" | "physical" | "no-epub">("all");
 
   const { data: books = [], isLoading } = useQuery({
     queryKey: ["admin-books"],
@@ -93,6 +94,13 @@ export default function AdminBooksPage() {
       const { data } = await supabase.from("authors").select("id, name, slug, bio, photo_url").order("name");
       return data || [];
     },
+  });
+
+  const filteredBooks = filterTab === "all" ? books : books.filter((b) => {
+    const hasNoEpub = !b.epub_url;
+    if (filterTab === "physical") return hasNoEpub && b.price_physical > 0;
+    if (filterTab === "no-epub") return hasNoEpub;
+    return true;
   });
 
   useEffect(() => {
@@ -269,7 +277,7 @@ export default function AdminBooksPage() {
         <div>
           <h1 className="text-2xl font-bold">Libros</h1>
           <p className="text-white/40 text-sm mt-1">
-            {(books || []).length} libro{(books || []).length !== 1 ? "s" : ""} en el catálogo
+            {filteredBooks.length} de {(books || []).length} libro{(books || []).length !== 1 ? "s" : ""}
           </p>
 
         </div>
@@ -282,15 +290,36 @@ export default function AdminBooksPage() {
         </button>
       </div>
 
+      {/* Filter tabs */}
+      <div className="flex gap-1 p-0.5 bg-white/5 border border-white/8 rounded-lg mb-4 w-fit">
+        {[
+          { key: "all" as const, label: "Todos" },
+          { key: "physical" as const, label: "Solo Físico" },
+          { key: "no-epub" as const, label: "Sin EPUB" },
+        ].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setFilterTab(t.key)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+              filterTab === t.key
+                ? "bg-white/10 text-white shadow-sm"
+                : "text-white/40 hover:text-white/70"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {/* Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-white/20" />
         </div>
-      ) : books.length === 0 ? (
+      ) : filteredBooks.length === 0 ? (
         <div className="text-center py-20 text-white/30">
           <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p>No hay libros todavía.</p>
+          <p>No hay libros en esta categoría.</p>
           <button onClick={openNew} className="mt-4 text-blue-400 hover:underline text-sm">
             Agregar el primero →
           </button>
@@ -303,6 +332,7 @@ export default function AdminBooksPage() {
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Libro</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden sm:table-cell">Categoría</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Contenido</th>
+                <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">EPUB</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">Físico</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">Stock</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Estado</th>
@@ -310,7 +340,7 @@ export default function AdminBooksPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {books.map((book) => (
+              {filteredBooks.map((book) => (
                 <tr key={book.id} className="hover:bg-white/3 transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
@@ -333,6 +363,13 @@ export default function AdminBooksPage() {
                       <span className="text-blue-400 font-medium text-xs border border-blue-400/20 px-2 py-0.5 rounded-full bg-blue-400/5">PREMIUM</span>
                     ) : (
                       <span className="text-green-400 font-medium text-xs border border-green-400/20 px-2 py-0.5 rounded-full bg-green-400/5">GRATIS</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-4 hidden md:table-cell">
+                    {book.epub_url ? (
+                      <span className="text-green-400 font-medium text-xs">✓ EPUB</span>
+                    ) : (
+                      <span className="text-red-400/60 font-medium text-xs">—</span>
                     )}
                   </td>
                   <td className="px-5 py-4 text-white/70 hidden md:table-cell">${book.price_physical}</td>

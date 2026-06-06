@@ -103,7 +103,7 @@ export default function RootLayout({
           <SplashScreen />
           <QueryProvider>
             <Header />
-            <main className="flex-1 pb-safe px-safe flex flex-col">
+            <main className="flex-1 pb-[max(5rem,env(safe-area-inset-bottom))] md:pb-0 px-safe flex flex-col">
               <Suspense fallback={null}>
                 {children}
               </Suspense>

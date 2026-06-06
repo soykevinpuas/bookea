@@ -4,13 +4,13 @@ import { useBooks, useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
 import Book3D from "@/components/Book3D";
 import CatalogBookCard from "@/components/CatalogBookCard";
-import { SearchFilters } from "@/components/SearchFilters";
+import Card from "@/components/ui/Card";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CatalogSkeleton, PrefetchLink } from "@/components/ui/LoadingStates";
-import { useMemo, useState, Suspense, useCallback } from "react";
+import { useMemo, useState, Suspense, useEffect } from "react";
 import { Book } from "@/types/book";
 import { useCartStore } from "@/stores/cart";
-import { ShoppingCart, Loader2, CheckCircle2 } from "lucide-react";
+import { ShoppingCart, Loader2, CheckCircle2, Search, LayoutGrid, List } from "lucide-react";
 import { toast } from "sonner";
 
 // 3.1 - CatalogContent: Lógica interna del catálogo con React Query para velocidad SPA
@@ -26,39 +26,46 @@ function CatalogContent() {
     return new Set(userBooks.filter((b: any) => b.access_type === 'permanent').map((b: any) => b.id));
   }, [userBooks]);
 
-  const search = searchParams.get("search") || "";
-  const author = searchParams.get("author") || "";
-  const category = searchParams.get("category") || "all";
-  const view = (searchParams.get("view") as "grid" | "list" | "compact") || "list";
-  const tab = searchParams.get("tab") || "todos";
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+  const [categoryFilter, setCategoryFilter] = useState(searchParams.get("category") || "all");
+  const [viewMode, setViewMode] = useState(searchParams.get("view") as "grid" | "list" || "list");
+  const [tab, setTab] = useState(searchParams.get("tab") || "todos");
+  const [mounted, setMounted] = useState(false);
 
-  // 3.1.1 - Obtención de libros vía React Query (Instantáneo si está cacheado)
-  const { data: booksData, isLoading } = useBooks({ search, author, category });
+  useEffect(() => { setMounted(true); }, []);
 
-  // 3.1.2 - Aplicar barajado (shuffle) solo si no hay filtros activos para rotación de contenido
-  const books = useMemo<Book[]>(() => {
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+  const [debouncedCategory, setDebouncedCategory] = useState(categoryFilter);
+  const [debouncedView, setDebouncedView] = useState(viewMode);
+
+  useEffect(() => {
+    if (!mounted) { setDebouncedQuery(searchQuery); setDebouncedCategory(categoryFilter); setDebouncedView(viewMode); return; }
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+      setDebouncedCategory(categoryFilter);
+      setDebouncedView(viewMode);
+      const params = new URLSearchParams();
+      if (searchQuery) params.set("search", searchQuery);
+      if (categoryFilter && categoryFilter !== "all") params.set("category", categoryFilter);
+      params.set("view", viewMode);
+      if (tab !== "todos") params.set("tab", tab);
+      router.replace(`/catalog${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery, categoryFilter, viewMode, tab, mounted]);
+
+  const { data: booksData, isLoading } = useBooks({ search: debouncedQuery, category: debouncedCategory });
+
+  const filteredByTab = useMemo(() => {
     if (!booksData) return [];
-    let filtered = [...booksData];
+    return booksData.filter((b: Book) => {
+      if (tab === 'digitales') return b.price_digital > 0;
+      if (tab === 'fisicos') return b.price_physical > 0 && b.stock_physical > 0;
+      return true;
+    });
+  }, [booksData, tab]);
 
-    // Filtro por pestaña
-    if (tab === 'digitales') {
-      filtered = filtered.filter((b) => b.price_digital > 0 || b.price_digital === null);
-    } else if (tab === 'fisicos') {
-      filtered = filtered.filter((b) => b.price_physical > 0 && b.stock_physical > 0);
-    }
-
-    const shouldShuffle = !search && !author && (category === 'all' || !category);
-    if (shouldShuffle) {
-      return filtered.sort(() => Math.random() - 0.5);
-    }
-    return filtered;
-  }, [booksData, search, author, category, tab]);
-
-  const setTab = useCallback((t: string) => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('tab', t)
-    router.push(`/catalog?${params.toString()}`)
-  }, [searchParams, router])
+  const categories = ["Ficción", "No Ficción", "Novela", "Clásicos", "Misterio y Suspenso", "Fantasía", "Ciencia Ficción", "Romance", "Terror", "Autoayuda", "Negocios y Finanzas", "Historia", "Biografías", "Cuentos", "Poesía", "Otros"];
 
   const handleAddToCart = async (book: Book, type: 'digital' | 'physical') => {
     const key = `${book.id}-${type}`
@@ -75,171 +82,166 @@ function CatalogContent() {
     }
   }
 
-  if (isLoading && books.length === 0) {
+  if (isLoading && filteredByTab.length === 0) {
     return (
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <CatalogSkeleton variant={view} />
+        <CatalogSkeleton variant={viewMode} />
       </main>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col gap-4 mb-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-                Catálogo de Libros
-              </h1>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Explora nuestra colección premium. {books.length} títulos encontrados.
-              </p>
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Catálogo
+            </h1>
+            <div className="flex gap-1 p-0.5 bg-gray-100 dark:bg-zinc-800/50 rounded-lg">
+              {[
+                { key: 'todos', label: 'Todos' },
+                { key: 'digitales', label: 'Digitales' },
+                { key: 'fisicos', label: 'Físicos' },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                    tab === t.key
+                      ? 'bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex gap-1 p-1 bg-gray-100 dark:bg-white/5 rounded-xl w-fit">
-            {[
-              { key: 'todos', label: 'Todos' },
-              { key: 'digitales', label: 'Digitales' },
-              { key: 'fisicos', label: 'Físicos' },
-            ].map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
-                  tab === t.key
-                    ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
           </div>
         </div>
 
-        <SearchFilters 
-          initialSearch={search} 
-          initialAuthor={author}
-          initialCategory={category} 
-          initialView={view} 
-        />
-
-        {/* 3.1.3 - Lista de libros con diferentes modos de vista */}
-        {books.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm">
+        <div className="flex gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Buscar por título o autor..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-zinc-800 border-0 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/50 transition-shadow"
+            />
+          </div>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="px-3 py-2 bg-gray-100 dark:bg-zinc-800 border-0 rounded-lg text-sm text-gray-600 dark:text-zinc-400 font-medium focus:ring-2 focus:ring-blue-500/50 transition-shadow"
+          >
+            <option value="all">Género</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+          <div className="flex gap-1 p-0.5 bg-gray-100 dark:bg-zinc-800/50 rounded-lg">
+            <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded-md transition-all ${viewMode === "grid" ? "bg-white dark:bg-zinc-700 shadow-sm" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`} title="Cuadrícula"><LayoutGrid className="w-4 h-4" /></button>
+            <button onClick={() => setViewMode("list")} className={`p-1.5 rounded-md transition-all ${viewMode === "list" ? "bg-white dark:bg-zinc-700 shadow-sm" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`} title="Lista"><List className="w-4 h-4" /></button>
+          </div>
+        </div>
+        <p className="text-xs text-zinc-400 mb-2">Mostrando {filteredByTab.length} de {booksData?.length || 0} libros</p>
+        {filteredByTab.length === 0 ? (
+          <Card className="text-center py-20">
             <span className="text-4xl block mb-4">🔍</span>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Sin resultados</h3>
             <p className="text-gray-500 dark:text-gray-400">No encontramos libros que coincidan con tu búsqueda.</p>
-          </div>
+          </Card>
         ) : (
           <div className={
-            view === "grid" 
-              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8" 
-              : view === "compact"
-              ? "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
-              : "flex flex-col gap-4"
+            viewMode === "grid" 
+              ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+              : "flex flex-col gap-3"
           }>
-            {books.map((book: Book) => (
-              view === "compact" ? (
-                <CatalogBookCard key={book.id} book={book}>
-                  <PrefetchLink href={`/book/${book.id}`} bookId={book.id} className="group block">
-                    <div className="aspect-[2/3] relative rounded-2xl overflow-hidden shadow-sm group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-300">
+            {filteredByTab.map((book: Book) => (
+              viewMode === "grid" ? (
+              <CatalogBookCard key={book.id} book={book}>
+                <Card className="flex flex-col overflow-hidden h-full">
+                  <PrefetchLink href={`/book/${book.id}`} bookId={book.id}>
+                    <div className="aspect-[2/3] relative">
                       <Book3D src={book.cover_url || ""} title={book.title} />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
-                         <h4 className="text-white text-xs font-bold truncate">{book.title}</h4>
-                      </div>
                     </div>
                   </PrefetchLink>
-                </CatalogBookCard>
-              ) : (
-              <CatalogBookCard 
-                key={book.id} 
-                book={book}
-              >
-              <div
-                className={`group bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm hover:shadow-xl dark:shadow-none transition-all duration-300 overflow-hidden ${
-                  view === "list" ? "flex flex-row min-h-0 h-32 sm:h-40" : "flex flex-col h-full hover:-translate-y-1"
-                }`}
-              >
-                {/* Portada */}
-                <div className={`${
-                  view === "list" ? "w-20 sm:w-28 h-full shrink-0" : "relative aspect-[2/3]"
-                } flex items-center justify-center bg-transparent overflow-hidden`}>
-                   {book.cover_url ? (
-                    <PrefetchLink href={`/book/${book.id}`} bookId={book.id} className="w-full h-full">
-                      <Book3D 
-                        src={book.cover_url} 
-                        title={book.title} 
-                        className="w-full h-full"
-                        objectFit={view === "list" ? "contain" : "cover"}
-                      />
+                  <div className="p-3 flex flex-col gap-1 flex-1">
+                    <PrefetchLink href={`/book/${book.id}`} bookId={book.id}>
+                      <h3 className="text-xs font-semibold text-gray-900 dark:text-white line-clamp-1">{book.title}</h3>
                     </PrefetchLink>
-                  ) : (
-                    <PrefetchLink href={`/book/${book.id}`} bookId={book.id} className="w-full h-full flex items-center justify-center text-xl text-gray-300 dark:text-white/10 bg-gray-50 dark:bg-white/5 font-serif italic rounded-xl border border-dashed border-white/20">
-                      Bookea
-                    </PrefetchLink>
-                  )}
-                </div>
-
-                {/* Información */}
-                <div className={`p-3 sm:p-5 flex flex-col flex-1 min-w-0 ${view === "list" ? "justify-center" : ""}`}>
-                  <div className="flex justify-between items-start gap-2 mb-1">
-                    <PrefetchLink href={`/book/${book.id}`} bookId={book.id} className="min-w-0 flex-1">
-                      <h3 className="font-bold text-gray-900 dark:text-white text-sm sm:text-lg line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        {book.title}
-                      </h3>
-                    </PrefetchLink>
-                    {book.category && (
-                      <span className="text-[9px] sm:text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-100 dark:border-blue-500/20 whitespace-nowrap shrink-0">
-                        {book.category}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <p className="text-[11px] sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-1 mb-2">
-                    por {book.author}
-                  </p>
-
-                  <div className={`flex ${view === "list" ? "items-start" : "items-center"} justify-between ${view === "list" ? "mt-1 sm:mt-4" : "mt-auto pt-4 border-t border-gray-100 dark:border-white/5"}`}>
-                    <div className="flex flex-wrap gap-1">
-                      {book.price_digital > 0 && (ownedDigitalIds.has(book.id) ? (
-                        <span className="text-[10px] sm:text-xs font-bold bg-green-600/15 text-green-500 border border-green-500/30 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg flex items-center gap-1 whitespace-nowrap">
-                          <CheckCircle2 className="w-3 h-3" /> Adquirido
-                        </span>
+                    <p className="text-[11px] text-gray-400 dark:text-zinc-500 line-clamp-1">{book.author}</p>
+                    <div className="flex items-start gap-1.5 mt-auto pt-2">
+                      {book.price_digital > 0 && book.epub_url && (ownedDigitalIds.has(book.id) ? (
+                        <span className="text-[10px] font-medium text-green-500">Adquirido</span>
                       ) : (
-                        <button
-                          onClick={() => handleAddToCart(book, 'digital')}
-                          disabled={adding === `${book.id}-digital`}
-                          className="text-[10px] sm:text-xs font-bold bg-blue-600 dark:bg-blue-600/30 hover:bg-blue-700 dark:hover:bg-blue-600/50 text-white px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all flex items-center gap-1"
-                        >
-                          {adding === `${book.id}-digital` ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShoppingCart className="w-3 h-3" />}
-                          Digital ${book.price_digital}
-                        </button>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <button onClick={() => handleAddToCart(book, 'digital')} disabled={adding === `${book.id}-digital`}
+                            className="text-[10px] font-bold bg-blue-600 text-white px-2 py-1 rounded-md transition-colors hover:bg-blue-700 flex items-center gap-1"
+                          >
+                            {adding === `${book.id}-digital` ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                            ${book.price_digital}
+                          </button>
+                          <span className="text-[9px] text-gray-400 dark:text-zinc-500">Digital</span>
+                        </div>
                       ))}
                       {book.price_physical > 0 && book.stock_physical > 0 && (
-                        <button
-                          onClick={() => handleAddToCart(book, 'physical')}
-                          disabled={adding === `${book.id}-physical`}
-                          className="text-[10px] sm:text-xs font-bold bg-amber-600 dark:bg-amber-600/30 hover:bg-amber-700 dark:hover:bg-amber-600/50 text-white px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all flex items-center gap-1"
-                        >
-                          {adding === `${book.id}-physical` ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShoppingCart className="w-3 h-3" />}
-                          Físico ${book.price_physical}
-                        </button>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <button onClick={() => handleAddToCart(book, 'physical')} disabled={adding === `${book.id}-physical`}
+                            className="text-[10px] font-bold bg-amber-600 text-white px-2 py-1 rounded-md transition-colors hover:bg-amber-700 flex items-center gap-1"
+                          >
+                            {adding === `${book.id}-physical` ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                            ${book.price_physical}
+                          </button>
+                          <span className="text-[9px] text-gray-400 dark:text-zinc-500">Físico</span>
+                        </div>
                       )}
                     </div>
-                    <PrefetchLink
-                      href={`/book/${book.id}`}
-                      bookId={book.id}
-                      className="text-[10px] sm:text-xs font-bold bg-blue-600 dark:bg-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-600/30 text-white dark:text-blue-400 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition-all shadow-sm whitespace-nowrap"
-                    >
-                      {view === "list" ? "Ver detalles" : "Detalles"}
-                    </PrefetchLink>
                   </div>
-                </div>
-              </div>
+                </Card>
+              </CatalogBookCard>
+              ) : (
+              <CatalogBookCard key={book.id} book={book}>
+                <Card className="flex items-center gap-4 p-3 overflow-hidden">
+                  <PrefetchLink href={`/book/${book.id}`} bookId={book.id} className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="w-12 h-[72px] shrink-0">
+                      <Book3D src={book.cover_url || ""} title={book.title} objectFit="contain" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{book.title}</h3>
+                      <p className="text-xs text-gray-400 dark:text-zinc-500 truncate">por {book.author}</p>
+                      {book.category && (
+                        <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400">{book.category}</span>
+                      )}
+                    </div>
+                  </PrefetchLink>
+                  <div className="flex items-start gap-2 shrink-0">
+                    {book.price_digital > 0 && book.epub_url && (ownedDigitalIds.has(book.id) ? (
+                      <span className="text-[10px] font-medium text-green-500 whitespace-nowrap">Adquirido</span>
+                    ) : (
+                      <div className="flex flex-col items-center gap-0.5">
+                        <button onClick={() => handleAddToCart(book, 'digital')} disabled={adding === `${book.id}-digital`}
+                          className="text-[10px] font-bold bg-blue-600 text-white px-2.5 py-1.5 rounded-md transition-colors hover:bg-blue-700"
+                        >
+                          {adding === `${book.id}-digital` ? <Loader2 className="w-3 h-3 animate-spin" /> : `$${book.price_digital}`}
+                        </button>
+                        <span className="text-[9px] text-gray-400 dark:text-zinc-500">Digital</span>
+                      </div>
+                    ))}
+                    {book.price_physical > 0 && book.stock_physical > 0 && (
+                      <div className="flex flex-col items-center gap-0.5">
+                        <button onClick={() => handleAddToCart(book, 'physical')} disabled={adding === `${book.id}-physical`}
+                          className="text-[10px] font-bold bg-amber-600 text-white px-2.5 py-1.5 rounded-md transition-colors hover:bg-amber-700"
+                        >
+                          {adding === `${book.id}-physical` ? <Loader2 className="w-3 h-3 animate-spin" /> : `$${book.price_physical}`}
+                        </button>
+                        <span className="text-[9px] text-gray-400 dark:text-zinc-500">Físico</span>
+                      </div>
+                    )}
+                  </div>
+                </Card>
               </CatalogBookCard>
               )
             ))}

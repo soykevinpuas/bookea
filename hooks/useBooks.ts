@@ -20,14 +20,16 @@ export function useBooks(options?: { search?: string; category?: string; author?
     queryFn: async () => {
       const data = await getBooks(supabase, options);
       // Persistir el catálogo base para carga instantánea futura
-      if (data && !options?.search && !options?.category && !options?.author && typeof window !== 'undefined') {
+      const noCategoryFilter = !options?.category || options?.category === 'all';
+      if (data && !options?.search && noCategoryFilter && !options?.author && typeof window !== 'undefined') {
         localStorage.setItem('bookea-catalog-cache', JSON.stringify(data));
       }
       return data;
     },
     initialData: () => {
       // Carga instantánea desde el caché si no hay filtros activos
-      if (typeof window !== 'undefined' && !options?.search && !options?.category && !options?.author) {
+      const noCategoryFilter = !options?.category || options?.category === 'all';
+      if (typeof window !== 'undefined' && !options?.search && noCategoryFilter && !options?.author) {
         const cached = localStorage.getItem('bookea-catalog-cache');
         if (cached) {
           try { return JSON.parse(cached); } catch (e) { return undefined; }

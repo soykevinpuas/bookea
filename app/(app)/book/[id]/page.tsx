@@ -22,6 +22,22 @@ import { CoinRedemptionModal } from "@/components/book/CoinRedemptionModal";
 import AccessBadge from "@/components/ui/AccessBadge";
 import BookLoading from "./loading";
 
+function DescriptionText({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const long = text.length > 200;
+  const displayed = long && !expanded ? text.slice(0, 200) + "…" : text;
+  return (
+    <div>
+      <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">{displayed}</p>
+      {long && (
+        <button onClick={() => setExpanded(!expanded)} className="text-sm text-blue-600 dark:text-blue-400 font-medium mt-1 hover:underline">
+          {expanded ? "Leer menos" : "Leer más"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // 3.5.1 - Componente principal de la página de detalle
 function BookDetailContent() {
   const params = useParams();
@@ -256,9 +272,7 @@ function BookDetailContent() {
                 <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-3">
                   Descripción
                 </h2>
-                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                  {book.description || "No hay descripción disponible."}
-                </p>
+                <DescriptionText text={book.description || "No hay descripción disponible."} />
               </div>
 
               {/* 3.5.10.2.3 - Opciones de compra y acceso */}
