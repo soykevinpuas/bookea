@@ -11,7 +11,6 @@ import {
   ShoppingCart,
   Users,
   Store,
-  Package,
   ChevronRight,
   LogOut,
   ExternalLink,
@@ -24,7 +23,6 @@ const navItems = [
   { href: "/admin", label: "Admin", icon: Shield, exact: true },
   { href: "/admin/books", label: "Libros", icon: BookOpen },
   { href: "/admin/orders", label: "Órdenes", icon: ShoppingCart },
-  { href: "/admin/stock-requests", label: "Solic. Stock", icon: Package },
   { href: "/admin/vendedores", label: "Vendedores", icon: Store },
   { href: "/admin/users", label: "Usuarios", icon: Users },
 ];
@@ -86,20 +84,6 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white flex flex-col md:flex-row">
-      {/* Mobile Top Bar */}
-      <div className="md:hidden flex items-center justify-between px-4 pb-4 bg-[#111111] border-b border-white/5 sticky top-0 z-50 pt-[calc(1rem+env(safe-area-inset-top,0px))]">
-        <Link href="/admin" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-sm font-bold">B</div>
-          <span className="font-bold tracking-tight">Admin</span>
-        </Link>
-        <button 
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-white/60 hover:text-white bg-white/5 rounded-lg"
-        >
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-      </div>
-
       {/* Sidebar Overlay (Mobile Only) */}
       {isMobileMenuOpen && (
         <div 
@@ -110,9 +94,17 @@ export default function AdminLayout({
 
       {/* Sidebar aside */}
       <aside className={`
-        fixed md:sticky top-0 left-0 bottom-0 z-50 w-64 h-screen bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
+        fixed md:sticky top-0 left-0 bottom-0 z-[60] md:z-50 w-64 bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}>
+        <div className="md:hidden flex items-center justify-end px-4 pt-4 pb-2">
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="p-1.5 text-white/40 hover:text-white bg-white/5 rounded-lg"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
         <div className="px-6 py-8 border-b border-white/5 hidden md:block">
           <Link href="/admin" className="flex items-center gap-2">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-lg font-bold shadow-lg shadow-blue-500/20">B</div>
@@ -182,7 +174,13 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full min-h-screen">
+      <main className="flex-1 w-full min-h-screen relative">
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="md:hidden absolute top-4 left-4 z-10 text-white/30 hover:text-white transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         <div className="p-4 md:p-10 max-w-7xl mx-auto">
           {children}
         </div>

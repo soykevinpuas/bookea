@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { getSellerInventory, getSellerSales, getSellerRequests, markAsSold, COST_PER_BOOK } from "@/lib/sellers";
+import { getSellerInventory, getSellerSales, getSellerRequests, markAsSold, COST_PER_BOOK, getSellerPendingTotal } from "@/lib/sellers";
 import { receiveStockItemAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
 import { Store, Package, TrendingUp, Loader2, BarChart3, Truck, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
@@ -71,6 +71,22 @@ export default function VendedorDashboard() {
     queryFn: () => getSellerRequests(supabase, userId!),
     enabled: !!userId,
   });
+
+  const { data: pendingPayment = 0 } = useQuery({
+    queryKey: ["seller-pending-payment", userId],
+    queryFn: () => getSellerPendingTotal(supabase, userId!),
+    enabled: !!userId,
+  });
+
+  const { data: userRole } = useQuery({
+    queryKey: ["vendedor-page-role"],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("get_my_role");
+      return data as string;
+    },
+  });
+
+  const isAdmin = userRole === "admin";
 
   const totalRevenue = sales.reduce((s, i) => s + i.sale_price * i.quantity, 0);
   const totalProfit = totalRevenue - sales.reduce((s, i) => s + i.quantity * COST_PER_BOOK, 0);
@@ -317,6 +333,15 @@ export default function VendedorDashboard() {
           {/* ── INGRESOS (gráficas) ── */}
           {activeSection === "ingresos" && (
             <div className="space-y-5">
+              {pendingPayment > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-amber-400">Pendiente de pago</p>
+                    <p className="text-xs text-white/40">Adeudo con el admin</p>
+                  </div>
+                  <p className="text-lg font-bold text-amber-400">${pendingPayment.toLocaleString("es-MX")}</p>
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-white/5 border border-white/8 rounded-xl p-4">
                   <p className="text-lg font-bold text-green-400">${totalChartRevenue.toLocaleString("es-MX")}</p>
@@ -377,21 +402,23 @@ export default function VendedorDashboard() {
           {/* ── SOLICITUDES ── */}
           {activeSection === "solicitudes" && (
             <div className="space-y-5">
-              <Link
-                href="/vendedor/solicitudes/nueva"
-                className="flex items-center justify-between bg-amber-600 hover:bg-amber-500 rounded-2xl px-5 py-4 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                    <Plus className="w-5 h-5 text-white" />
+              {!isAdmin && (
+                <Link
+                  href="/vendedor/solicitudes/nueva"
+                  className="flex items-center justify-between bg-amber-600 hover:bg-amber-500 rounded-2xl px-5 py-4 transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                      <Plus className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-white">Nueva solicitud</p>
+                      <p className="text-xs text-white/60">Solicita libros físicos para tu inventario</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-white">Nueva solicitud</p>
-                    <p className="text-xs text-white/60">Solicita libros físicos para tu inventario</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-white/40 group-hover:text-white/60 transition-colors" />
-              </Link>
+                  <ChevronRight className="w-5 h-5 text-white/40 group-hover:text-white/60 transition-colors" />
+                </Link>
+              )}
 
               {/* Mis solicitudes */}
               <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">

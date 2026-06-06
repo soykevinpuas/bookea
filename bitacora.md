@@ -4,6 +4,52 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-06-06-E] — Unificación Admin/Vendedor: pagos pendientes, admin vende, restricciones
+
+### Cambios
+
+**Fase 1 — Sistema de Pagos Pendientes**
+- `supabase/migrations/030_add_paid_at.sql`: Nuevo campo `paid_at` en `seller_sales` + política RLS para admin UPDATE
+- `types/seller.ts`: `SellerSale` ahora incluye `paid_at: string | null`
+- `lib/sellers.ts`: Nuevas funciones `getPendingPayments()`, `getSellerPendingTotal()`, `markSalesAsPaid()`, `revertMarkAsPaid()`
+- `app/admin/page.tsx`: Nueva 5ta tab "Pagos" que lista ventas no pagadas agrupadas por vendedor con botón "Marcar todo como Pagado"
+- `app/vendedor/page.tsx`: Indicador de adeudo pendiente en la sección de Ingresos (visible solo si debe)
+
+**Fase 2 — Admin puede vender**
+- `app/admin/page.tsx`: Sección "Asignarme stock a mí (Admin)" en la tab Stock con buscador de libros y selector de cantidad
+- Query para obtener `currentUser` y `physicalBooks` para auto-asignación
+
+**Fase 3 — Restringir solicitudes al admin**
+- `app/vendedor/page.tsx`: Botón "Nueva solicitud" oculto si el usuario es admin
+- `lib/actions/sellers.ts`: Validación en server action — admin no puede crear solicitudes
+
+**Fase 4 — Eliminar página duplicada**
+- Eliminado `app/admin/stock-requests/page.tsx` (la funcionalidad está en la tab "Solicitudes" de `/admin`)
+- Sidebar admin: removido "Solic. Stock"
+- `lib/actions/sellers.ts`: `revalidatePath` actualizados a `/admin`
+
+**Fase 5 — Refinamientos UI**
+- `components/BottomNav.tsx`: Admin ve "Admin" → `/admin` Y "Mi Tienda" → `/vendedor` como dos entradas separadas
+- `app/vendedor/layout.tsx`: Branding condicional — admin ve "Admin-Vendedor" en azul, vendedor ve "Vendedor" en ámbar
+
+### Archivos Creados
+- `supabase/migrations/030_add_paid_at.sql`
+
+### Archivos Eliminados
+- `app/admin/stock-requests/page.tsx`
+
+### Archivos Modificados
+- `types/seller.ts` — `paid_at` en SellerSale
+- `lib/sellers.ts` — Funciones de pagos pendientes
+- `lib/actions/sellers.ts` — Validación admin + revalidatePath
+- `app/admin/page.tsx` — Tab Pagos + auto-asignación stock
+- `app/admin/layout.tsx` — Removido Solic. Stock del sidebar
+- `app/vendedor/page.tsx` — Indicador adeudo + ocultar nueva solicitud para admin
+- `app/vendedor/layout.tsx` — Branding condicional admin/vendedor
+- `components/BottomNav.tsx` — Admin ve dos entradas separadas
+
+---
+
 ## [2026-06-06-C] — Admin: removido Dashboard tab, sidebar "Admin" con Shield, fix filtro "Solo Físico"
 
 ### Cambios

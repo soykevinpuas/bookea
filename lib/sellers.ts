@@ -344,6 +344,47 @@ export async function getPhysicalBooks(supabase: SupabaseClient) {
   return data ?? [];
 }
 
+// ─── Payment Tracking ────────────────────────────────────────
+
+export async function getPendingPayments(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from("seller_sales")
+    .select("*, books(id, title, author, cover_url, price_physical), seller:seller_id(id, email), profile:seller_id(name)")
+    .is("paid_at", null)
+    .order("sold_at", { ascending: false });
+
+  return (data ?? []) as unknown as (SellerSale & { seller: { id: string; email: string }; profile: { name: string } })[];
+}
+
+export async function getSellerPendingTotal(supabase: SupabaseClient, sellerId: string) {
+  const { data } = await supabase
+    .from("seller_sales")
+    .select("sale_price, quantity")
+    .eq("seller_id", sellerId)
+    .is("paid_at", null);
+
+  return (data ?? []).reduce((sum, s) => sum + s.sale_price * s.quantity, 0);
+}
+
+export async function markSalesAsPaid(supabase: SupabaseClient, saleIds: string[]) {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("seller_sales")
+    .update({ paid_at: now })
+    .in("id", saleIds);
+
+  if (error) throw error;
+}
+
+export async function revertMarkAsPaid(supabase: SupabaseClient, saleId: string) {
+  const { error } = await supabase
+    .from("seller_sales")
+    .update({ paid_at: null })
+    .eq("id", saleId);
+
+  if (error) throw error;
+}
+
 export async function revertAssignStock(
   supabase: SupabaseClient,
   sellerId: string,

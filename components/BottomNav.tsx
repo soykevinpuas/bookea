@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Compass, User, Library, Loader2, Store } from "lucide-react";
+import { Compass, User, Library, Loader2, Store, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { PrefetchLink } from "@/components/ui/LoadingStates";
 import { useUserId } from "@/hooks/useUser";
@@ -29,7 +29,9 @@ export function BottomNav() {
 
   if (isReader || isAuth || isLanding) return null;
 
-  const isVendedor = subscription?.role === 'vendedor' || subscription?.role === 'admin';
+  const role = subscription?.role;
+  const isVendedor = role === 'vendedor' || role === 'admin';
+  const isAdmin = role === 'admin';
 
   const navItems = [
     {
@@ -44,6 +46,12 @@ export function BottomNav() {
       href: "/dashboard",
       active: pathname === "/dashboard"
     },
+    ...(isAdmin && mounted ? [{
+      label: "Admin",
+      icon: <Shield className="w-6 h-6 text-blue-400" />,
+      href: "/admin",
+      active: pathname.startsWith("/admin")
+    }] : []),
     ...(isVendedor && mounted ? [{
       label: "Mi Tienda",
       icon: <Store className="w-6 h-6" />,

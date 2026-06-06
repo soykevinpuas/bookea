@@ -8,6 +8,10 @@ export async function createStockRequestAction(
   items: { book_id: string; quantity: number }[],
   notes?: string
 ) {
+  const supabase = await createClient();
+  const { data: role } = await supabase.rpc("get_my_role");
+  if (role === "admin") throw new Error("Los administradores no pueden crear solicitudes de stock");
+
   const adminDb = createAdminClient();
 
   const { data: request, error: reqErr } = await adminDb
@@ -35,7 +39,7 @@ export async function createStockRequestAction(
   if (itemsErr) throw new Error(itemsErr.message);
 
   revalidatePath("/vendedor/solicitudes");
-  revalidatePath("/admin/stock-requests");
+  revalidatePath("/admin");
 
   return request;
 }
@@ -99,7 +103,7 @@ export async function receiveStockItemAction(itemId: string, requestId: string) 
   }
 
   revalidatePath("/vendedor/solicitudes");
-  revalidatePath("/admin/stock-requests");
+  revalidatePath("/admin");
 }
 
 export async function deleteStockRequestAction(requestId: string) {
@@ -124,6 +128,47 @@ export async function deleteStockRequestAction(requestId: string) {
 
   if (reqErr) throw new Error(reqErr.message);
 
-  revalidatePath("/admin/stock-requests");
+  revalidatePath("/admin");
+  revalidatePath("/admin/vendedores");
+}
+
+export async function deleteSaleAction(saleId: string) {
+  const supabase = await createClient();
+
+  const { data: roleData } = await supabase.rpc("get_my_role");
+  if (roleData !== "admin") throw new Error("No autorizado");
+
+  const adminDb = createAdminClient();
+
+  const { data: sale } = await adminDb
+    .from("seller_sales")
+    .select("seller_id, book_id, quantity")
+    .eq("id", saleId)
+    .single();
+
+  if (!sale) throw new Error("Venta no encontrada");
+
+  const { error: delErr } = await adminDb
+    .from("seller_sales")
+    .delete()
+    .eq("id", saleId);
+
+  if (delErr) throw new Error(delErr.message);
+
+  const { data: existing } = await adminDb
+    .from("seller_inventory")
+    .select("id, quantity")
+    .eq("seller_id", sale.seller_id)
+    .eq("book_id", sale.book_id)
+    .maybeSingle();
+
+  if (existing) {
+    await adminDb
+      .from("seller_inventory")
+      .update({ quantity: existing.quantity + sale.quantity, updated_at: new Date().toISOString() })
+      .eq("id", existing.id);
+  }
+
+  revalidatePath("/admin");
   revalidatePath("/admin/vendedores");
 }

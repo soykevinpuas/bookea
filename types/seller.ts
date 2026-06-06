@@ -22,6 +22,7 @@ export interface SellerSale {
   quantity: number;
   sale_price: number;
   sold_at: string;
+  paid_at: string | null;
   books?: BookInventoryInfo | null;
 }
 

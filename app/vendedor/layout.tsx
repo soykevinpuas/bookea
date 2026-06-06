@@ -31,7 +31,7 @@ export default function VendedorLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<{ email?: string } | null>(null);
+  const [user, setUser] = useState<{ email?: string; role?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { userId } = useUserId();
@@ -54,7 +54,7 @@ export default function VendedorLayout({
         return;
       }
 
-      setUser({ email: sessionData.session.user.email });
+      setUser({ email: sessionData.session.user.email, role: roleData as string });
       setLoading(false);
     };
 
@@ -82,23 +82,23 @@ export default function VendedorLayout({
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white flex flex-col md:flex-row">
       {/* Mobile Top Bar */}
-      <div className="md:hidden flex items-center justify-between px-4 pb-4 bg-[#111111] border-b border-white/5 sticky top-0 z-50 pt-[calc(1rem+env(safe-area-inset-top,0px))]">
-        <Link href="/vendedor" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-            {profile?.avatar_url ? (
-              <AnimalEngine config={parseAvatarConfig(profile.avatar_url)} size="100%" />
-            ) : (
-              <span className="text-sm font-bold text-white/40">V</span>
-            )}
-          </div>
-          <span className="font-bold tracking-tight">Vendedor</span>
-        </Link>
+      <div className="md:hidden flex items-center justify-between px-4 py-2 bg-[#111111] border-b border-white/5 sticky top-0 z-[90]">
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="p-2 text-white/60 hover:text-white bg-white/5 rounded-lg"
         >
           {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
+        <Link href="/vendedor" className="flex items-center gap-2">
+          <span className="font-bold tracking-tight">Vendedor</span>
+        </Link>
+        <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+          {profile?.avatar_url ? (
+            <AnimalEngine config={parseAvatarConfig(profile.avatar_url)} size="100%" />
+          ) : (
+            <span className="text-sm font-bold text-white/40">V</span>
+          )}
+        </div>
       </div>
 
       {/* Sidebar Overlay — z-index above BottomNav (z-[60]) */}
@@ -112,19 +112,27 @@ export default function VendedorLayout({
       {/* Sidebar — z-index above BottomNav (z-[60]) */}
       <aside
         className={`
-          fixed md:sticky top-0 left-0 bottom-0 z-[80] md:z-50 w-64 h-screen bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
+          fixed md:sticky top-[3.5rem] md:top-0 left-0 bottom-0 z-[80] md:z-50 w-64 bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-          pt-[max(1rem,env(safe-area-inset-top))] md:pt-0 pb-[max(5rem,env(safe-area-inset-bottom))] md:pb-0
+          pb-[max(5rem,env(safe-area-inset-bottom))] md:pb-0
         `}
       >
         <div className="px-6 py-8 border-b border-white/5 hidden md:block">
           <Link href="/vendedor" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-amber-600 rounded-xl flex items-center justify-center text-lg font-bold shadow-lg shadow-amber-500/20">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shadow-lg ${
+              user?.role === "admin"
+                ? "bg-blue-600 shadow-blue-500/20"
+                : "bg-amber-600 shadow-amber-500/20"
+            }`}>
               <Store className="w-5 h-5" />
             </div>
             <div>
               <p className="font-bold text-lg leading-tight tracking-tight">Bookea</p>
-              <p className="text-[10px] text-amber-400 font-bold tracking-widest uppercase">Vendedor</p>
+              <p className={`text-[10px] font-bold tracking-widest uppercase ${
+                user?.role === "admin" ? "text-blue-400" : "text-amber-400"
+              }`}>
+                {user?.role === "admin" ? "Admin-Vendedor" : "Vendedor"}
+              </p>
             </div>
           </Link>
         </div>

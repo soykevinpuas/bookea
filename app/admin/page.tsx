@@ -2,25 +2,28 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { getAllStockRequests, updateStockRequestStatus, COST_PER_BOOK } from "@/lib/sellers";
-import { deleteStockRequestAction } from "@/lib/actions/sellers";
+import { getAllStockRequests, updateStockRequestStatus, COST_PER_BOOK, getPendingPayments, markSalesAsPaid, getPhysicalBooks, assignStock } from "@/lib/sellers";
+import { deleteStockRequestAction, deleteSaleAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   BarChart3, Package, TrendingUp, ShoppingCart,
   Store, ChevronLeft, ChevronRight,
-  Calendar, Truck, Check, Clock, Trash2,
+  Calendar, Truck, Check, Clock, Trash2, DollarSign,
+  Plus, Minus, Search, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
-type Section = "ingresos" | "stock" | "vendidos" | "solicitudes";
+type Section = "ingresos" | "stock" | "vendidos" | "solicitudes" | "pagos";
 
 const sections: { key: Section; label: string; icon: any }[] = [
   { key: "ingresos", label: "Ingresos", icon: BarChart3 },
   { key: "stock", label: "Stock", icon: Package },
   { key: "vendidos", label: "Vendidos", icon: TrendingUp },
   { key: "solicitudes", label: "Solicitudes", icon: ShoppingCart },
+  { key: "pagos", label: "Pagos", icon: DollarSign },
 ];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -51,11 +54,14 @@ export default function AdminDashboard() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
 
   const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
+  const [assignSelfBookId, setAssignSelfBookId] = useState("");
+  const [assignSelfQty, setAssignSelfQty] = useState(1);
+  const [assignSelfSearch, setAssignSelfSearch] = useState("");
 
   const { data: allSales = [] } = useQuery({
     queryKey: ["admin-all-sales"],
     queryFn: async () => {
-      const { data } = await supabase.from("seller_sales").select("*, books(id, title, cover_url)").order("sold_at", { ascending: false });
+      const { data } = await supabase.from("seller_sales").select("*, books(id, title, cover_url), seller:seller_id(id, email), profile:seller_id(name)").order("sold_at", { ascending: false });
       return data ?? [];
     },
   });
@@ -89,6 +95,24 @@ export default function AdminDashboard() {
     },
   });
 
+  const { data: pendingSales = [] } = useQuery({
+    queryKey: ["admin-pending-payments"],
+    queryFn: () => getPendingPayments(supabase),
+  });
+
+  const { data: physicalBooks = [] } = useQuery({
+    queryKey: ["physical-books-admin"],
+    queryFn: () => getPhysicalBooks(supabase),
+  });
+
+  const { data: currentUser } = useQuery({
+    queryKey: ["admin-current-user"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      return user;
+    },
+  });
+
   const salesMap = useMemo(() => {
     const map = new Map<string, number>();
     for (const s of allSalesForMap) {
@@ -114,6 +138,44 @@ export default function AdminDashboard() {
       toast.success("Solicitud eliminada");
     },
     onError: (err: any) => toast.error(err?.message || "Error al eliminar"),
+  });
+
+  const markPaid = useMutation({
+    mutationFn: async (saleIds: string[]) => {
+      await markSalesAsPaid(supabase, saleIds);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-pending-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-all-sales"] });
+      toast.success("Venta(s) marcada(s) como pagada(s)");
+    },
+    onError: (err: any) => toast.error(err?.message || "Error al marcar pago"),
+  });
+
+  const assignSelfMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentUser) throw new Error("No autenticado");
+      await assignStock(supabase, currentUser.id, assignSelfBookId, assignSelfQty);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-all-inventory"] });
+      setAssignSelfBookId("");
+      setAssignSelfQty(1);
+      toast.success("Stock asignado a tu perfil de vendedor");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteSale = useMutation({
+    mutationFn: async (saleId: string) => {
+      await deleteSaleAction(saleId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-all-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-pending-payments"] });
+      toast.success("Venta eliminada y stock revertido");
+    },
+    onError: (err: any) => toast.error(err?.message || "Error al eliminar venta"),
   });
 
   const chartData = useMemo(() => {
@@ -154,6 +216,25 @@ export default function AdminDashboard() {
     }
     return Array.from(map.entries());
   }, [allInventory, sellerLookup]);
+
+  const pendingBySeller = useMemo(() => {
+    const map = new Map<string, { email: string; total: number; sales: any[] }>();
+    for (const sale of pendingSales) {
+      const sid = sale.seller_id;
+      const email = (sale as any).seller?.email || sellerLookup.get(sid) || "Desconocido";
+      if (!map.has(sid)) map.set(sid, { email, total: 0, sales: [] });
+      const entry = map.get(sid)!;
+      entry.total += sale.sale_price * sale.quantity;
+      entry.sales.push(sale);
+    }
+    return Array.from(map.entries());
+  }, [pendingSales, sellerLookup]);
+
+  const filteredSelfBooks = physicalBooks.filter(
+    (b: any) =>
+      b.title.toLowerCase().includes(assignSelfSearch.toLowerCase()) ||
+      b.author.toLowerCase().includes(assignSelfSearch.toLowerCase())
+  );
 
   const handleShip = (req: StockRequest) => {
     const tracking = trackingInputs[req.id]?.trim();
@@ -219,18 +300,27 @@ export default function AdminDashboard() {
           {activeSection === "ingresos" && (
             <div className="space-y-5">
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                <button
+                  onClick={() => setActiveSection("vendidos")}
+                  className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
+                >
                   <p className="text-lg font-bold text-green-400">${totalChartRevenue.toLocaleString("es-MX")}</p>
                   <p className="text-[10px] text-white/40 mt-0.5">Ingresos totales</p>
-                </div>
-                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                </button>
+                <button
+                  onClick={() => setActiveSection("vendidos")}
+                  className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
+                >
                   <p className="text-lg font-bold text-blue-400">${totalChartProfit.toLocaleString("es-MX")}</p>
                   <p className="text-[10px] text-white/40 mt-0.5">Ganancia total</p>
-                </div>
-                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                </button>
+                <button
+                  onClick={() => setActiveSection("vendidos")}
+                  className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
+                >
                   <p className="text-lg font-bold text-white/60">${totalChartCost.toLocaleString("es-MX")}</p>
                   <p className="text-[10px] text-white/40 mt-0.5">Inversión ahorrada</p>
-                </div>
+                </button>
               </div>
 
               <div className="flex items-center justify-between">
@@ -277,6 +367,72 @@ export default function AdminDashboard() {
           {/* ── STOCK (todos los vendedores) ── */}
           {activeSection === "stock" && (
             <div className="space-y-5">
+              {/* Self-assign for admin */}
+              <details className="bg-white/5 border border-blue-500/20 rounded-2xl overflow-hidden group">
+                <summary className="px-5 py-3 bg-blue-600/5 cursor-pointer flex items-center justify-between hover:bg-blue-600/10 transition-colors">
+                  <span className="font-semibold text-sm flex items-center gap-2 text-blue-400">
+                    <Plus className="w-4 h-4" />
+                    Asignarme stock a mí (Admin)
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-blue-400/50 group-open:rotate-90 transition-transform" />
+                </summary>
+                <div className="p-5 border-t border-blue-500/10">
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                    <input
+                      value={assignSelfSearch}
+                      onChange={(e) => setAssignSelfSearch(e.target.value)}
+                      placeholder="Buscar libro físico..."
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-blue-500/50"
+                    />
+                  </div>
+                  <div className="max-h-48 overflow-y-auto mb-3 space-y-1">
+                    {filteredSelfBooks.map((book: any) => (
+                      <button
+                        key={book.id}
+                        onClick={() => setAssignSelfBookId(book.id)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          assignSelfBookId === book.id
+                            ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
+                            : "text-white/60 hover:bg-white/5 border border-transparent"
+                        }`}
+                      >
+                        <span className="font-medium">{book.title}</span>
+                        <span className="text-white/30 ml-2">({book.author})</span>
+                        <span className="text-white/20 text-xs ml-2">Stock: {book.stock_physical}</span>
+                      </button>
+                    ))}
+                    {filteredSelfBooks.length === 0 && (
+                      <p className="text-sm text-white/30 py-2 text-center">Sin resultados</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setAssignSelfQty(Math.max(1, assignSelfQty - 1))}
+                        className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="w-8 text-center font-medium">{assignSelfQty}</span>
+                      <button
+                        onClick={() => setAssignSelfQty(assignSelfQty + 1)}
+                        className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => assignSelfMutation.mutate()}
+                      disabled={!assignSelfBookId || assignSelfMutation.isPending}
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {assignSelfMutation.isPending ? "Asignando..." : "Asignarme"}
+                    </button>
+                  </div>
+                </div>
+              </details>
+
               {inventoryBySeller.length === 0 ? (
                 <div className="text-center py-16 text-white/30 text-sm">
                   <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -314,18 +470,27 @@ export default function AdminDashboard() {
           {activeSection === "vendidos" && (
             <div className="space-y-5">
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                <button
+                  onClick={() => setActiveSection("ingresos")}
+                  className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
+                >
                   <p className="text-lg font-bold text-white">{allSales.reduce((s, i) => s + i.quantity, 0)}</p>
                   <p className="text-[10px] text-white/40 mt-0.5">Total unidades</p>
-                </div>
-                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                </button>
+                <button
+                  onClick={() => setActiveSection("ingresos")}
+                  className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
+                >
                   <p className="text-lg font-bold text-green-400">${allSales.reduce((s, i) => s + i.sale_price * i.quantity, 0).toLocaleString("es-MX")}</p>
                   <p className="text-[10px] text-white/40 mt-0.5">Ingresos totales</p>
-                </div>
-                <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                </button>
+                <Link
+                  href="/admin/vendedores"
+                  className="bg-white/5 border border-white/8 rounded-xl p-4 block hover:bg-white/10 transition-colors"
+                >
                   <p className="text-lg font-bold text-amber-400">{allSellers.length}</p>
                   <p className="text-[10px] text-white/40 mt-0.5">Vendedores activos</p>
-                </div>
+                </Link>
               </div>
 
               {allSales.length === 0 ? (
@@ -338,7 +503,13 @@ export default function AdminDashboard() {
                         {sale.books?.cover_url && (
                           <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
                         )}
-                        <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{sale.books?.title || "Libro"}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm text-white/70 block truncate">{sale.books?.title || "Libro"}</span>
+                          <span className="text-[10px] text-white/30 block truncate">
+                            {(sale as any).seller?.email ?? "Desconocido"}
+                            {(sale as any).profile?.name ? ` · ${(sale as any).profile.name}` : ""}
+                          </span>
+                        </div>
                         <span className="text-[10px] text-white/30 shrink-0">
                           {new Date(sale.sold_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
                         </span>
@@ -346,10 +517,71 @@ export default function AdminDashboard() {
                         <span className="text-xs font-bold text-green-400 shrink-0">
                           ${(sale.sale_price * sale.quantity).toLocaleString("es-MX")}
                         </span>
+                        <button
+                          onClick={() => {
+                            if (window.confirm("¿Eliminar esta venta permanentemente? El stock se revertirá al vendedor.")) {
+                              deleteSale.mutate(sale.id);
+                            }
+                          }}
+                          disabled={deleteSale.isPending}
+                          className="p-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50 shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ── PAGOS PENDIENTES ── */}
+          {activeSection === "pagos" && (
+            <div className="space-y-5">
+              {pendingBySeller.length === 0 ? (
+                <div className="text-center py-16 text-white/30 text-sm">
+                  <DollarSign className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p>No hay pagos pendientes.</p>
+                </div>
+              ) : (
+                pendingBySeller.map(([sellerId, { email, total, sales }]) => (
+                  <div key={sellerId} className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
+                    <div className="px-5 py-3 border-b border-white/8 flex items-center justify-between">
+                      <h2 className="font-semibold text-sm flex items-center gap-2">
+                        <Store className="w-4 h-4 text-amber-400" />
+                        {email}
+                      </h2>
+                      <span className="text-sm font-bold text-amber-400">${total.toLocaleString("es-MX")}</span>
+                    </div>
+                    <div className="divide-y divide-white/5">
+                      {sales.map((sale: any) => (
+                        <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
+                          {sale.books?.cover_url && (
+                            <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                          )}
+                          <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{sale.books?.title || "Libro"}</span>
+                          <span className="text-[10px] text-white/30 shrink-0">
+                            {new Date(sale.sold_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
+                          </span>
+                          <span className="text-sm font-bold text-white shrink-0">x{sale.quantity}</span>
+                          <span className="text-xs font-bold text-green-400 shrink-0">
+                            ${(sale.sale_price * sale.quantity).toLocaleString("es-MX")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="px-5 py-3 border-t border-white/5 bg-white/[0.02]">
+                      <button
+                        onClick={() => markPaid.mutate(sales.map((s: any) => s.id))}
+                        disabled={markPaid.isPending}
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {markPaid.isPending ? "Procesando..." : "Marcar todo como Pagado"}
+                      </button>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           )}
