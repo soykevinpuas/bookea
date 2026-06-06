@@ -1,6 +1,6 @@
 "use server";
 
-import { createAdminClient } from "@/lib/server";
+import { createClient, createAdminClient } from "@/lib/server";
 import { revalidatePath } from "next/cache";
 
 export async function createStockRequestAction(
@@ -100,4 +100,30 @@ export async function receiveStockItemAction(itemId: string, requestId: string) 
 
   revalidatePath("/vendedor/solicitudes");
   revalidatePath("/admin/stock-requests");
+}
+
+export async function deleteStockRequestAction(requestId: string) {
+  const supabase = await createClient();
+
+  const { data: roleData } = await supabase.rpc("get_my_role");
+  if (roleData !== "admin") throw new Error("No autorizado");
+
+  const adminDb = createAdminClient();
+
+  const { error: itemsErr } = await adminDb
+    .from("stock_request_items")
+    .delete()
+    .eq("request_id", requestId);
+
+  if (itemsErr) throw new Error(itemsErr.message);
+
+  const { error: reqErr } = await adminDb
+    .from("stock_requests")
+    .delete()
+    .eq("id", requestId);
+
+  if (reqErr) throw new Error(reqErr.message);
+
+  revalidatePath("/admin/stock-requests");
+  revalidatePath("/admin/vendedores");
 }

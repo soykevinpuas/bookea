@@ -3,13 +3,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { getAllStockRequests, updateStockRequestStatus, COST_PER_BOOK } from "@/lib/sellers";
+import { deleteStockRequestAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo } from "react";
 import {
   LayoutDashboard, BarChart3, Package, TrendingUp, ShoppingCart,
   Store, BookOpen, Users, Loader2, ChevronLeft, ChevronRight,
   DollarSign, Sparkles, Activity, Eye, Library, Calendar,
-  ArrowUpRight, Plus, Truck, Check, Clock, CreditCard,
+  ArrowUpRight, Plus, Truck, Check, Clock, CreditCard, Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -187,6 +188,17 @@ export default function AdminDashboard() {
       await updateStockRequestStatus(supabase, id, status, tracking_number);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-stock-requests"] }),
+  });
+
+  const deleteRequest = useMutation({
+    mutationFn: async (requestId: string) => {
+      await deleteStockRequestAction(requestId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-stock-requests"] });
+      toast.success("Solicitud eliminada");
+    },
+    onError: (err: any) => toast.error(err?.message || "Error al eliminar"),
   });
 
   const chartData = useMemo(() => {
@@ -613,6 +625,19 @@ export default function AdminDashboard() {
                               <Check className="w-3.5 h-3.5" /> Marcar como Entregado
                             </button>
                           )}
+                          <div className="w-full border-t border-white/5 pt-2 mt-1">
+                            <button
+                              onClick={() => {
+                                if (window.confirm("¿Eliminar esta solicitud permanentemente?")) {
+                                  deleteRequest.mutate(req.id);
+                                }
+                              }}
+                              disabled={deleteRequest.isPending}
+                              className="flex items-center justify-center gap-1.5 text-xs font-medium w-full px-3 py-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50"
+                            >
+                              <Trash2 className="w-3 h-3" /> Eliminar
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

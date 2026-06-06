@@ -1239,6 +1239,24 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 
 ---
 
+## [2026-06-06-B] — Eliminar solicitudes de stock (solo admin)
+
+**1. `lib/actions/sellers.ts` — Nueva `deleteStockRequestAction`**
+- Verifica rol admin via `get_my_role` RPC
+- Elimina `stock_request_items` asociados, luego el `stock_requests`
+- Usa `createAdminClient()` para bypass RLS
+
+**2. `app/admin/page.tsx` — Botón "Eliminar" en solicitudes**
+- Importa `deleteStockRequestAction` y `Trash2`
+- Mutación `deleteRequest` con React Query, invalida queries al success
+- Botón con confirmación (`window.confirm`) en cada card de solicitud, separado por línea divisoria
+
+### Archivos Modificados
+- `lib/actions/sellers.ts` — deleteStockRequestAction
+- `app/admin/page.tsx` — Botón eliminar + mutation
+
+---
+
 ## [2026-05-13] — Mis Órdenes + tracking admin + fix total:0
 
 ### Cambios
