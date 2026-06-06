@@ -4,6 +4,23 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-06-06-F] — Fix: Header visible en Mi Tienda, sidebar cubierto por Header, barra fea eliminada
+
+### Cambios
+
+1. **`components/Header.tsx`** — Eliminada exclusión de `/vendedor` para que Header (tema + perfil) se muestre en Mi Tienda
+2. **`app/vendedor/layout.tsx`** — Eliminada barra móvil personalizada (hamburguesa + "Vendedor" + avatar). Sidebar ahora `top-0` (sin offset). Z-index corregido: sidebar `z-[70]`, overlay `z-[55]`, hamburguesa `z-[65]` (todo arriba del Header z-50)
+3. **`app/admin/layout.tsx`** — Hamburguesa cambió de `z-10` a `z-[65]` para quedar sobre el Header
+4. **`components/BottomNav.tsx`** — "Mi Tienda" acortado a "Tienda" para que quepa sin romper
+
+### Archivos Modificados
+- `components/Header.tsx`
+- `app/vendedor/layout.tsx`
+- `app/admin/layout.tsx`
+- `components/BottomNav.tsx`
+
+---
+
 ## [2026-06-06-E] — Unificación Admin/Vendedor: pagos pendientes, admin vende, restricciones
 
 ### Cambios

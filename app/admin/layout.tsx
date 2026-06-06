@@ -177,7 +177,7 @@ export default function AdminLayout({
       <main className="flex-1 w-full min-h-screen relative">
         <button
           onClick={() => setIsMobileMenuOpen(true)}
-          className="md:hidden absolute top-4 left-4 z-10 text-white/30 hover:text-white transition-colors"
+          className="md:hidden absolute top-4 left-4 z-[65] text-white/30 hover:text-white transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>

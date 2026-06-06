@@ -51,7 +51,7 @@ export function Header({ initialUser = null }: { initialUser?: { id: string; ema
     };
   }, []);
 
-  if (pathname?.startsWith("/reader") || pathname?.startsWith("/vendedor") || pathname === "/") {
+  if (pathname?.startsWith("/reader") || pathname === "/") {
     return null;
   }
 

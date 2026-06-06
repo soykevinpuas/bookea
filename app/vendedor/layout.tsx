@@ -5,20 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import {
-  ShoppingCart,
   ChevronRight,
   LogOut,
   ExternalLink,
   Menu,
-  X,
   Store,
-  PlusCircle,
-  ClipboardList,
 } from "lucide-react";
-import { useProfile } from "@/hooks/useAvatars";
 import { useUserId } from "@/hooks/useUser";
-import { parseAvatarConfig } from "@/lib/avatars-v2";
-import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 
 const navItems = [
   { href: "/vendedor", label: "Mi Tienda", icon: Store, exact: true },
@@ -35,7 +28,6 @@ export default function VendedorLayout({
   const [loading, setLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { userId } = useUserId();
-  const { profile } = useProfile(userId);
 
   useEffect(() => {
     const supabase = createClientClient();
@@ -81,38 +73,18 @@ export default function VendedorLayout({
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white flex flex-col md:flex-row">
-      {/* Mobile Top Bar */}
-      <div className="md:hidden flex items-center justify-between px-4 py-2 bg-[#111111] border-b border-white/5 sticky top-0 z-[90]">
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-white/60 hover:text-white bg-white/5 rounded-lg"
-        >
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-        <Link href="/vendedor" className="flex items-center gap-2">
-          <span className="font-bold tracking-tight">Vendedor</span>
-        </Link>
-        <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-          {profile?.avatar_url ? (
-            <AnimalEngine config={parseAvatarConfig(profile.avatar_url)} size="100%" />
-          ) : (
-            <span className="text-sm font-bold text-white/40">V</span>
-          )}
-        </div>
-      </div>
-
-      {/* Sidebar Overlay — z-index above BottomNav (z-[60]) */}
+      {/* Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] md:hidden"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      {/* Sidebar — z-index above BottomNav (z-[60]) */}
+      {/* Sidebar */}
       <aside
         className={`
-          fixed md:sticky top-[3.5rem] md:top-0 left-0 bottom-0 z-[80] md:z-50 w-64 bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
+          fixed md:sticky top-0 left-0 bottom-0 z-[70] md:z-50 w-64 bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
           pb-[max(5rem,env(safe-area-inset-bottom))] md:pb-0
         `}
@@ -182,7 +154,13 @@ export default function VendedorLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 w-full min-h-screen">
+      <main className="flex-1 w-full min-h-screen relative">
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="md:hidden absolute top-4 left-4 z-[65] text-white/30 hover:text-white transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         <div className="p-4 md:p-10 max-w-7xl mx-auto pb-20 md:pb-10">
           {children}
         </div>

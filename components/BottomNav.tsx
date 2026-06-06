@@ -53,7 +53,7 @@ export function BottomNav() {
       active: pathname.startsWith("/admin")
     }] : []),
     ...(isVendedor && mounted ? [{
-      label: "Mi Tienda",
+      label: "Tienda",
       icon: <Store className="w-6 h-6" />,
       href: "/vendedor",
       active: pathname.startsWith("/vendedor")
