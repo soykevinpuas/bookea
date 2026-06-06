@@ -101,7 +101,7 @@ export default function VendedorDashboard() {
         </div>
         <div className="bg-white/5 border border-white/8 rounded-xl p-4">
           <p className="text-2xl font-bold text-white/50">${totalInvestment.toLocaleString("es-MX")}</p>
-          <p className="text-xs text-white/40 mt-0.5">Inversión</p>
+          <p className="text-xs text-white/40 mt-0.5">Inversión ahorrada</p>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ export default function VendedorDashboard() {
             {activeInventory.map((item) => {
               const book = item.books;
               const qty = saleQtys[item.book_id] || 1;
-              const price = salePrices[item.book_id] || COST_PER_BOOK;
+              const price = salePrices[item.book_id] || 0;
               const isExpanded = expandedBook === item.id;
               const isSelling = selling === item.book_id;
 
@@ -180,9 +180,10 @@ export default function VendedorDashboard() {
                           <span className="text-sm text-white/40">$</span>
                           <input
                             type="number"
-                            value={price}
+                            value={price || ""}
                             onChange={(e) => setSalePrices(prev => ({ ...prev, [item.book_id]: Number(e.target.value) || 0 }))}
-                            className="w-20 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm font-bold text-white outline-none focus:border-amber-500/50 transition-colors"
+                            className="w-24 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white outline-none focus:border-amber-500/50 transition-colors placeholder:text-white/20"
+                            placeholder="Agrega tu precio"
                             min={1}
                           />
                         </div>
