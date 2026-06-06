@@ -87,14 +87,14 @@ export default function AdminLayout({
       {/* Sidebar Overlay (Mobile Only) */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar aside */}
       <aside className={`
-        fixed md:sticky top-0 left-0 bottom-0 z-[60] md:z-50 w-64 bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
+        fixed md:sticky top-0 left-0 bottom-0 z-[70] w-64 bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}>
         <div className="md:hidden flex items-center justify-end px-4 pt-4 pb-2">
@@ -177,7 +177,7 @@ export default function AdminLayout({
       <main className="flex-1 w-full min-h-screen relative">
         <button
           onClick={() => setIsMobileMenuOpen(true)}
-          className="md:hidden absolute top-4 left-4 z-[65] text-white/30 hover:text-white transition-colors"
+          className="md:hidden absolute top-4 right-4 z-[65] text-white/30 hover:text-white transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>
