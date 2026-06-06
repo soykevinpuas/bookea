@@ -7,19 +7,16 @@ import { deleteStockRequestAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo } from "react";
 import {
-  LayoutDashboard, BarChart3, Package, TrendingUp, ShoppingCart,
-  Store, BookOpen, Users, Loader2, ChevronLeft, ChevronRight,
-  DollarSign, Sparkles, Activity, Eye, Library, Calendar,
-  ArrowUpRight, Plus, Truck, Check, Clock, CreditCard, Trash2,
+  BarChart3, Package, TrendingUp, ShoppingCart,
+  Store, ChevronLeft, ChevronRight,
+  Calendar, Truck, Check, Clock, Trash2,
 } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
-type Section = "dashboard" | "ingresos" | "stock" | "vendidos" | "solicitudes";
+type Section = "ingresos" | "stock" | "vendidos" | "solicitudes";
 
 const sections: { key: Section; label: string; icon: any }[] = [
-  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { key: "ingresos", label: "Ingresos", icon: BarChart3 },
   { key: "stock", label: "Stock", icon: Package },
   { key: "vendidos", label: "Vendidos", icon: TrendingUp },
@@ -31,19 +28,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   shipped: { label: "Enviado", color: "bg-blue-500/10 text-blue-400 border border-blue-500/20" },
   delivered: { label: "Entregado", color: "bg-green-500/10 text-green-400 border border-green-500/20" },
   cancelled: { label: "Cancelado", color: "bg-red-500/10 text-red-400 border border-red-500/20" },
-};
-
-const colorMap: Record<string, string> = {
-  blue: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  cyan: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  amber: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-  purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  green: "bg-green-500/10 text-green-400 border-green-500/20",
-  emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-  pink: "bg-pink-500/10 text-pink-400 border-pink-500/20",
-  violet: "bg-violet-500/10 text-violet-400 border-violet-500/20",
-  orange: "bg-orange-500/10 text-orange-400 border-orange-500/20",
 };
 
 const ChartTooltip = ({ active, payload, label }: any) => {
@@ -60,82 +44,13 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-function StatCard({ label, value, sub, icon: Icon, href, color }: any) {
-  return (
-    <Link href={href} className="group relative bg-white/5 border border-white/8 rounded-2xl p-5 hover:bg-white/8 transition-all">
-      <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${colorMap[color]}`}>
-        <Icon className="w-5 h-5" />
-      </div>
-      <div className="flex items-start justify-between mt-4">
-        <div>
-          <div className="text-2xl font-bold">{value}</div>
-          <div className="text-sm text-white/40 mt-0.5">{label}</div>
-          <div className="text-xs text-white/25 mt-0.5">{sub}</div>
-        </div>
-        <ArrowUpRight className="w-4 h-4 text-white/20 group-hover:text-white/60 transition-colors" />
-      </div>
-    </Link>
-  );
-}
-
 export default function AdminDashboard() {
   const supabase = createClientClient();
   const queryClient = useQueryClient();
-  const [activeSection, setActiveSection] = useState<Section>("dashboard");
+  const [activeSection, setActiveSection] = useState<Section>("ingresos");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
 
   const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
-
-  const oneWeekAgo = useMemo(() => {
-    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString();
-  }, []);
-
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["admin-stats"],
-    queryFn: async () => {
-      const [booksRes, ordersRes, usersRes, analyticsRes, userBooksRes, reviewsRes, sellerInvRes, sellerSalesRes, stockReqRes] = await Promise.all([
-        supabase.from("books").select("id, is_active, created_at", { count: "exact" }),
-        supabase.from("orders_physical").select("id, status, total", { count: "exact" }),
-        supabase.from("users").select("id, role, created_at", { count: "exact" }),
-        supabase.from("analytics_events").select("event_name, event_data").gte("created_at", oneWeekAgo),
-        supabase.from("user_books").select("id", { count: "exact" }).gte("created_at", oneWeekAgo),
-        supabase.from("reviews").select("id", { count: "exact" }).gte("created_at", oneWeekAgo),
-        supabase.from("seller_inventory").select("quantity"),
-        supabase.from("seller_sales").select("quantity, sale_price"),
-        supabase.from("stock_requests").select("id, status", { count: "exact" }),
-      ]);
-
-      const totalBooks = booksRes.count ?? 0;
-      const activeBooks = booksRes.data?.filter((b: any) => b.is_active).length ?? 0;
-      const newBooksThisWeek = booksRes.data?.filter((b: any) => new Date(b.created_at) >= new Date(oneWeekAgo)).length ?? 0;
-
-      const totalUsers = usersRes.count ?? 0;
-      const newUsersThisWeek = usersRes.data?.filter((u: any) => new Date(u.created_at) >= new Date(oneWeekAgo)).length ?? 0;
-
-      const paymentEvents = (analyticsRes.data ?? []).filter((e: any) => e.event_name === "payment_completed");
-      const digitalRevenue = paymentEvents.reduce((s: number, e: any) => s + (Number(e.event_data?.amount) || 0), 0);
-      const subscriptionPayments = (analyticsRes.data ?? []).filter((e: any) => e.event_name === "subscription_upgraded").length;
-
-      return {
-        totalBooks, activeBooks, newBooksThisWeek,
-        totalOrders: ordersRes.count ?? 0,
-        pendingOrders: ordersRes.data?.filter((o: any) => o.status === "pending").length ?? 0,
-        completedOrders: ordersRes.data?.filter((o: any) => o.status === "delivered").length ?? 0,
-        revenuePhysical: ordersRes.data?.reduce((s: number, o: any) => s + (Number(o.total) || 0), 0) ?? 0,
-        totalUsers, newUsersThisWeek,
-        subscribers: usersRes.data?.filter((u: any) => u.role === "subscriber").length ?? 0,
-        freeUsers: usersRes.data?.filter((u: any) => u.role === "free").length ?? 0,
-        sellers: usersRes.data?.filter((u: any) => u.role === "vendedor").length ?? 0,
-        pendingStockRequests: stockReqRes.data?.filter((r: any) => r.status === "pending").length ?? 0,
-        totalStockAssigned: (sellerInvRes.data ?? []).reduce((s: number, i: any) => s + (i.quantity || 0), 0),
-        totalSoldBySellers: (sellerSalesRes.data ?? []).reduce((s: number, i: any) => s + (i.quantity || 0), 0),
-        sellerSalesRevenue: (sellerSalesRes.data ?? []).reduce((s: number, i: any) => s + ((i.sale_price || 0) * (i.quantity || 0)), 0),
-        digitalRevenue, subscriptionPayments,
-        booksReadThisWeek: userBooksRes.count ?? 0,
-        reviewsThisWeek: reviewsRes.count ?? 0,
-      };
-    },
-  });
 
   const { data: allSales = [] } = useQuery({
     queryKey: ["admin-all-sales"],
@@ -246,14 +161,6 @@ export default function AdminDashboard() {
     updateStatus.mutate({ id: req.id, status: "shipped", tracking_number: tracking });
   };
 
-  if (statsLoading && !stats) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-white/40" />
-      </div>
-    );
-  }
-
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -308,86 +215,7 @@ export default function AdminDashboard() {
         </aside>
 
         <div className="flex-1 min-w-0">
-          {/* ── DASHBOARD ── */}
-          {activeSection === "dashboard" && stats && (
-            <div className="space-y-6">
-              <section>
-                <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <BookOpen className="w-4 h-4" /> Catálogo
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <StatCard label="Libros en catálogo" value={stats.totalBooks} sub={`${stats.activeBooks} activos`} icon={BookOpen} href="/admin/books" color="blue" />
-                  <StatCard label="Nuevos esta semana" value={stats.newBooksThisWeek} sub="últimos 7 días" icon={Sparkles} href="/admin/books" color="cyan" />
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <ShoppingCart className="w-4 h-4" /> Órdenes Físicas
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <StatCard label="Órdenes físicas" value={stats.totalOrders} sub={`${stats.pendingOrders} pendientes`} icon={ShoppingCart} href="/admin/orders" color="amber" />
-                  <StatCard label="Ingresos físicos" value={`$${stats.revenuePhysical.toLocaleString("es-MX")}`} sub={`${stats.completedOrders} completadas`} icon={TrendingUp} href="/admin/orders" color="purple" />
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <Users className="w-4 h-4" /> Usuarios
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <StatCard label="Usuarios registrados" value={stats.totalUsers} sub={`${stats.newUsersThisWeek} nuevos`} icon={Users} href="/admin/users" color="green" />
-                  <StatCard label="Suscriptores" value={stats.subscribers} sub={`${stats.freeUsers} free`} icon={CreditCard} href="/admin/users" color="emerald" />
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <Store className="w-4 h-4" /> Vendedores
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  <StatCard label="Vendedores" value={stats.sellers} sub={`${stats.pendingStockRequests} solicitudes pendientes`} icon={Store} href="/admin/vendedores" color="amber" />
-                  <StatCard label="Stock asignado" value={stats.totalStockAssigned} sub={`${stats.totalSoldBySellers} vendidos`} icon={Package} href="/admin/vendedores" color="orange" />
-                  <StatCard label="Ingresos vendedores" value={`$${stats.sellerSalesRevenue.toLocaleString("es-MX")}`} sub={`${stats.totalSoldBySellers} unidades`} icon={TrendingUp} href="/admin/vendedores" color="green" />
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <CreditCard className="w-4 h-4" /> Pagos Digitales
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <StatCard label="Ingresos digitales" value={`$${stats.digitalRevenue.toLocaleString("es-MX")}`} sub={`${stats.subscriptionPayments} suscripciones`} icon={TrendingUp} href="/admin/users" color="indigo" />
-                  <StatCard label="Engagement" value={`${stats.booksReadThisWeek} leídos`} sub={`${stats.reviewsThisWeek} reseñas`} icon={Activity} href="/admin/books" color="pink" />
-                </div>
-              </section>
-
-              <div className="bg-white/5 border border-white/8 rounded-2xl p-6">
-                <h2 className="font-semibold mb-4 text-white/80 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" /> Acciones rápidas
-                </h2>
-                <div className="flex flex-wrap gap-3">
-                  <Link href="/admin/books?action=new" className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">
-                    + Agregar libro
-                  </Link>
-                  <Link href="/admin/orders" className="px-4 py-2.5 bg-white/8 text-white/70 text-sm font-medium rounded-xl hover:bg-white/12 transition-colors border border-white/10">
-                    Ver órdenes pendientes
-                  </Link>
-                  <Link href="/admin/users" className="px-4 py-2.5 bg-white/8 text-white/70 text-sm font-medium rounded-xl hover:bg-white/12 transition-colors border border-white/10">
-                    Gestionar usuarios
-                  </Link>
-                  <Link href="/admin/vendedores" className="px-4 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-xl hover:bg-amber-700 transition-colors">
-                    Ver vendedores
-                  </Link>
-                  <Link href="/admin/stock-requests" className="px-4 py-2.5 bg-white/8 text-white/70 text-sm font-medium rounded-xl hover:bg-white/12 transition-colors border border-white/10">
-                    Solicitudes de stock
-                  </Link>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── INGRESOS (agregado: todos los vendedores) ── */}
+          {/* ── INGRESOS ── */}
           {activeSection === "ingresos" && (
             <div className="space-y-5">
               <div className="grid grid-cols-3 gap-3">

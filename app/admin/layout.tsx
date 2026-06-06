@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   BookOpen,
-  LayoutDashboard,
+  Shield,
   ShoppingCart,
   Users,
   Store,
@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin", label: "Admin", icon: Shield, exact: true },
   { href: "/admin/books", label: "Libros", icon: BookOpen },
   { href: "/admin/orders", label: "Órdenes", icon: ShoppingCart },
   { href: "/admin/stock-requests", label: "Solic. Stock", icon: Package },

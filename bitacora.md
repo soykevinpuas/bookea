@@ -4,6 +4,31 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-06-06-C] — Admin: removido Dashboard tab, sidebar "Admin" con Shield, fix filtro "Solo Físico"
+
+### Cambios
+
+**1. `app/admin/page.tsx` — Dashboard tab removido**
+- Eliminada la sección completa de Dashboard (stats cards, acciones rápidas, StatCard, colorMap)
+- Eliminado el stats query (ya no se necesita)
+- Eliminadas importaciones no usadas (Link, Loader2, BookOpen, Users, Sparkles, etc.)
+- Sección por defecto ahora es "ingresos"
+- Limpieza de ~80 líneas de código muerto
+
+**2. `app/admin/layout.tsx` — Sidebar: "Dashboard" → "Admin" con Shield**
+- Primer nav item cambia de `{ label: "Dashboard", icon: LayoutDashboard }` a `{ label: "Admin", icon: Shield }`
+
+**3. `app/admin/books/page.tsx` — Fix filtro "Solo Físico"**
+- Antes: `return hasNoEpub && b.price_physical > 0` — mostraba solo físicos SIN epub
+- Después: `return b.price_physical > 0` — muestra TODOS los libros con precio físico, tengan o no epub
+
+### Archivos Modificados
+- `app/admin/page.tsx` — Dashboard tab removido, limpieza de código
+- `app/admin/layout.tsx` — Sidebar Dashboard → Admin con Shield
+- `app/admin/books/page.tsx` — Fix filtro Solo Físico
+
+---
+
 ## [2026-05-17-A] - Diagnóstico: logging en loadNextSpineItem + sin mgr.update()
 
 ### Problema
