@@ -2,12 +2,13 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { getSellerInventory, getSellerSales, getSellerRequests, getPhysicalBooks, markAsSold, COST_PER_BOOK } from "@/lib/sellers";
-import { receiveStockItemAction, createStockRequestAction } from "@/lib/actions/sellers";
+import { getSellerInventory, getSellerSales, getSellerRequests, markAsSold, COST_PER_BOOK } from "@/lib/sellers";
+import { receiveStockItemAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { Store, Package, TrendingUp, Loader2, BarChart3, Truck, Check, DollarSign, Plus, Minus, ShoppingCart, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Store, Package, TrendingUp, Loader2, BarChart3, Truck, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
@@ -19,12 +20,6 @@ const sections: { key: Section; label: string; icon: any }[] = [
   { key: "vendidos", label: "Vendidos", icon: TrendingUp },
   { key: "solicitudes", label: "Solicitudes", icon: ShoppingCart },
 ];
-
-interface CartItem {
-  book_id: string;
-  title: string;
-  quantity: number;
-}
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendiente", color: "bg-amber-500/10 text-amber-400 border border-amber-500/20" },
@@ -59,13 +54,6 @@ export default function VendedorDashboard() {
   const [selling, setSelling] = useState<string | null>(null);
   const [receiving, setReceiving] = useState<string | null>(null);
 
-  // Solicitudes state
-  const [showNewForm, setShowNewForm] = useState(false);
-  const [search, setSearch] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [notes, setNotes] = useState("");
-  const [creating, setCreating] = useState(false);
-
   const { data: inventory = [], isLoading: invLoading } = useQuery({
     queryKey: ["seller-inventory", userId],
     queryFn: () => getSellerInventory(supabase, userId!),
@@ -82,11 +70,6 @@ export default function VendedorDashboard() {
     queryKey: ["seller-requests", userId],
     queryFn: () => getSellerRequests(supabase, userId!),
     enabled: !!userId,
-  });
-
-  const { data: books = [], isLoading: booksLoading } = useQuery({
-    queryKey: ["physical-books"],
-    queryFn: () => getPhysicalBooks(supabase),
   });
 
   const totalRevenue = sales.reduce((s, i) => s + i.sale_price * i.quantity, 0);
@@ -156,56 +139,6 @@ export default function VendedorDashboard() {
       setReceiving(null);
     }
   };
-
-  const addToCart = (book: any) => {
-    setCart((prev) => {
-      const existing = prev.find((c) => c.book_id === book.id);
-      if (existing) {
-        return prev.map((c) =>
-          c.book_id === book.id ? { ...c, quantity: c.quantity + 1 } : c
-        );
-      }
-      return [...prev, { book_id: book.id, title: book.title, quantity: 1 }];
-    });
-  };
-
-  const updateCartQty = (bookId: string, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((c) =>
-          c.book_id === bookId ? { ...c, quantity: Math.max(1, c.quantity + delta) } : c
-        )
-        .filter((c) => c.quantity > 0)
-    );
-  };
-
-  const removeFromCart = (bookId: string) => {
-    setCart((prev) => prev.filter((c) => c.book_id !== bookId));
-  };
-
-  const handleCreateRequest = async () => {
-    if (!userId || cart.length === 0) return;
-    setCreating(true);
-    try {
-      const items = cart.map((c) => ({ book_id: c.book_id, quantity: c.quantity }));
-      await createStockRequestAction(userId, items, notes || undefined);
-      queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
-      setCart([]);
-      setNotes("");
-      setShowNewForm(false);
-      toast.success("Solicitud creada");
-    } catch (e: any) {
-      toast.error(e.message || "Error al crear solicitud");
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const filteredBooks = books.filter(
-    (b: any) =>
-      b.title.toLowerCase().includes(search.toLowerCase()) ||
-      b.author.toLowerCase().includes(search.toLowerCase())
-  );
 
   if (invLoading && inventory.length === 0) {
     return (
@@ -444,121 +377,21 @@ export default function VendedorDashboard() {
           {/* ── SOLICITUDES ── */}
           {activeSection === "solicitudes" && (
             <div className="space-y-5">
-              {/* Nueva solicitud */}
-              <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
-                <button
-                  onClick={() => setShowNewForm(!showNewForm)}
-                  className="w-full px-5 py-3 flex items-center justify-between gap-2 hover:bg-white/[0.02] transition-colors"
-                >
-                  <h2 className="font-semibold text-sm flex items-center gap-2">
-                    <Plus className="w-4 h-4 text-amber-400" />
-                    Nueva solicitud
-                  </h2>
-                  <span className="text-xs text-white/30">{showNewForm ? "Cerrar" : "Abrir"}</span>
-                </button>
-
-                {showNewForm && (
-                  <div className="border-t border-white/8 p-5">
-                    <div className="relative mb-4">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                      <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Buscar libros..."
-                        className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 outline-none focus:border-amber-500/50 transition-colors text-sm"
-                      />
-                    </div>
-
-                    <div className="flex flex-col lg:flex-row gap-4">
-                      <div className="flex-1 max-h-64 overflow-y-auto space-y-1">
-                        {booksLoading ? (
-                          <div className="flex justify-center py-8">
-                            <Loader2 className="w-5 h-5 animate-spin text-white/20" />
-                          </div>
-                        ) : filteredBooks.length === 0 ? (
-                          <p className="text-sm text-white/30 text-center py-8">Sin resultados.</p>
-                        ) : (
-                          filteredBooks.map((book: any) => {
-                            const inCart = cart.find((c) => c.book_id === book.id);
-                            return (
-                              <div
-                                key={book.id}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${
-                                  inCart ? "bg-amber-500/10 border border-amber-500/20" : "hover:bg-white/5 border border-transparent"
-                                }`}
-                              >
-                                {book.cover_url && (
-                                  <img src={book.cover_url} alt="" className="w-6 h-8 rounded object-cover bg-white/5 shrink-0" />
-                                )}
-                                <span className="flex-1 truncate text-white/70 text-xs">{book.title}</span>
-                                <span className="text-[10px] text-white/30 shrink-0">stock: {book.stock_physical}</span>
-                                {inCart ? (
-                                  <button onClick={() => removeFromCart(book.id)} className="p-1 hover:bg-white/10 rounded-lg">
-                                    <X className="w-3 h-3 text-white/40" />
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => addToCart(book)}
-                                    disabled={book.stock_physical <= 0}
-                                    className="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-all disabled:opacity-30"
-                                  >
-                                    + Agregar
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-
-                      <div className="lg:w-64 space-y-3">
-                        {cart.length === 0 ? (
-                          <p className="text-xs text-white/30">Selecciona libros.</p>
-                        ) : (
-                          <div className="space-y-1">
-                            {cart.map((item) => (
-                              <div key={item.book_id} className="flex items-center justify-between text-xs">
-                                <span className="text-white/60 truncate flex-1">{item.title}</span>
-                                <div className="flex items-center gap-1 ml-2">
-                                  <button onClick={() => updateCartQty(item.book_id, -1)} className="p-0.5 hover:bg-white/10 rounded">
-                                    <Minus className="w-2.5 h-2.5" />
-                                  </button>
-                                  <span className="w-4 text-center font-bold text-white">{item.quantity}</span>
-                                  <button onClick={() => updateCartQty(item.book_id, 1)} className="p-0.5 hover:bg-white/10 rounded">
-                                    <Plus className="w-2.5 h-2.5" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <textarea
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Notas opcionales..."
-                          className="w-full text-xs px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-amber-500/50 transition-colors resize-none h-16"
-                        />
-
-                        <button
-                          onClick={handleCreateRequest}
-                          disabled={cart.length === 0 || creating}
-                          className="w-full py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors"
-                        >
-                          {creating ? (
-                            <span className="flex items-center justify-center gap-1">
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                              Enviando...
-                            </span>
-                          ) : (
-                            `Enviar (${cart.reduce((s, i) => s + i.quantity, 0)} uds.)`
-                          )}
-                        </button>
-                      </div>
-                    </div>
+              <Link
+                href="/vendedor/solicitudes/nueva"
+                className="flex items-center justify-between bg-amber-600 hover:bg-amber-500 rounded-2xl px-5 py-4 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                    <Plus className="w-5 h-5 text-white" />
                   </div>
-                )}
-              </div>
+                  <div>
+                    <p className="font-bold text-white">Nueva solicitud</p>
+                    <p className="text-xs text-white/60">Solicita libros físicos para tu inventario</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-white/40 group-hover:text-white/60 transition-colors" />
+              </Link>
 
               {/* Mis solicitudes */}
               <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">

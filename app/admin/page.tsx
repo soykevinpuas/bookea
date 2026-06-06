@@ -43,6 +43,7 @@ interface AdminStats {
   pendingStockRequests: number;
   totalStockAssigned: number;
   totalSoldBySellers: number;
+  sellerSalesRevenue: number;
 }
 
 interface AdminCard {
@@ -69,7 +70,7 @@ async function getAdminStats(): Promise<AdminStats> {
     supabase.from("user_books").select("id, created_at", { count: "exact" }).gte("created_at", oneWeekAgoStr),
     supabase.from("reviews").select("id, created_at", { count: "exact" }).gte("created_at", oneWeekAgoStr),
     supabase.from("seller_inventory").select("quantity"),
-    supabase.from("seller_sales").select("quantity"),
+    supabase.from("seller_sales").select("quantity, sale_price"),
     supabase.from("stock_requests").select("id, status", { count: "exact" }),
   ]);
 
@@ -92,6 +93,7 @@ async function getAdminStats(): Promise<AdminStats> {
   const pendingStockRequests = stockReqRes.data?.filter((r: any) => r.status === "pending").length ?? 0;
   const totalStockAssigned = (sellerInvRes.data ?? []).reduce((sum: number, i: any) => sum + (i.quantity || 0), 0);
   const totalSoldBySellers = (sellerSalesRes.data ?? []).reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
+  const sellerSalesRevenue = (sellerSalesRes.data ?? []).reduce((sum: number, s: any) => sum + ((s.sale_price || 0) * (s.quantity || 0)), 0);
 
   const analyticsEvents = analyticsRes.data ?? [];
   const paymentCompleted = analyticsEvents.filter((e: any) => e.event_name === 'payment_completed');
@@ -109,7 +111,7 @@ async function getAdminStats(): Promise<AdminStats> {
     totalUsers, newUsersThisWeek, subscribers, admins, freeUsers,
     digitalRevenue, subscriptionPayments,
     recentSignups, recentPayments, booksReadThisWeek, reviewsThisWeek,
-    sellers, pendingStockRequests, totalStockAssigned, totalSoldBySellers,
+    sellers, pendingStockRequests, totalStockAssigned, totalSoldBySellers, sellerSalesRevenue,
   };
 }
 
@@ -126,7 +128,7 @@ export default async function AdminDashboard() {
       totalUsers: 0, newUsersThisWeek: 0, subscribers: 0, admins: 0, freeUsers: 0,
       digitalRevenue: 0, subscriptionPayments: 0,
       recentSignups: 0, recentPayments: 0, booksReadThisWeek: 0, reviewsThisWeek: 0,
-      sellers: 0, pendingStockRequests: 0, totalStockAssigned: 0, totalSoldBySellers: 0,
+      sellers: 0, pendingStockRequests: 0, totalStockAssigned: 0, totalSoldBySellers: 0, sellerSalesRevenue: 0,
     };
   }
 
@@ -161,6 +163,7 @@ export default async function AdminDashboard() {
   const cardsVendedores: AdminCard[] = [
     { label: "Vendedores", value: stats.sellers, sub: `${stats.pendingStockRequests} solicitudes pendientes`, icon: Store, href: "/admin/vendedores", color: "amber" },
     { label: "Stock asignado", value: stats.totalStockAssigned, sub: `${stats.totalSoldBySellers} vendidos`, icon: Package, href: "/admin/vendedores", color: "orange" },
+    { label: "Ingresos vendedores", value: `$${stats.sellerSalesRevenue.toLocaleString("es-MX")}`, sub: `${stats.totalSoldBySellers} unidades`, icon: TrendingUp, href: "/admin/vendedores", color: "green" },
   ];
 
   const cardsDigital: AdminCard[] = [

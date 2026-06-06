@@ -5,9 +5,10 @@ import { createClientClient } from "@/lib/supabase";
 import { getPhysicalBooks, getSellerInventory } from "@/lib/sellers";
 import { createStockRequestAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store, Package } from "lucide-react";
+import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store, Package, ChevronLeft } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 interface CartItem {
@@ -102,7 +103,8 @@ export default function NuevaSolicitudPage() {
 
   const isFormValid = cart.length > 0;
 
-  const filteredBooks = books.filter(
+  const booksInStock = books.filter((b: any) => b.stock_physical > 0);
+  const filteredBooks = booksInStock.filter(
     (b: any) =>
       b.title.toLowerCase().includes(search.toLowerCase()) ||
       b.author.toLowerCase().includes(search.toLowerCase())
@@ -110,7 +112,13 @@ export default function NuevaSolicitudPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center gap-3 mb-8">
+        <Link
+          href="/vendedor"
+          className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Link>
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ShoppingCart className="w-6 h-6 text-amber-400" />
@@ -143,6 +151,7 @@ export default function NuevaSolicitudPage() {
             <div className="text-center py-20 text-white/30">
               <Store className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p>No hay libros físicos disponibles.</p>
+              <p className="text-sm text-white/20 mt-1">Solo se muestran libros con stock disponible.</p>
             </div>
           ) : (
             <div className="space-y-2">

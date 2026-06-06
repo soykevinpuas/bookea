@@ -45,13 +45,6 @@ export async function receiveStockItemAction(itemId: string, requestId: string) 
 
   const now = new Date().toISOString();
 
-  const { error: updateErr } = await adminDb
-    .from("stock_request_items")
-    .update({ received_at: now })
-    .eq("id", itemId);
-
-  if (updateErr) throw new Error(updateErr.message);
-
   const { data: item } = await adminDb
     .from("stock_request_items")
     .select("*, stock_requests!inner(seller_id)")
@@ -59,6 +52,14 @@ export async function receiveStockItemAction(itemId: string, requestId: string) 
     .single();
 
   if (!item) throw new Error("Item no encontrado");
+  if ((item as any).received_at) throw new Error("Este libro ya fue recibido");
+
+  const { error: updateErr } = await adminDb
+    .from("stock_request_items")
+    .update({ received_at: now })
+    .eq("id", itemId);
+
+  if (updateErr) throw new Error(updateErr.message);
 
   const sellerId = (item as any).stock_requests?.seller_id;
   if (!sellerId) throw new Error("No se pudo determinar el vendedor");

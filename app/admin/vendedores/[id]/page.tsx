@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
 export default function AdminSellerDetailPage() {
@@ -87,6 +87,16 @@ export default function AdminSellerDetailPage() {
 
   const { seller, inventory, sales, requests } = data;
 
+  const salesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const sale of sales) {
+      map.set(sale.book_id, (map.get(sale.book_id) || 0) + sale.quantity);
+    }
+    return map;
+  }, [sales]);
+
+  const totalRevenue = sales.reduce((s, i) => s + i.sale_price * i.quantity, 0);
+
   return (
     <div>
       <div className="flex items-center gap-3 mb-8">
@@ -108,7 +118,7 @@ export default function AdminSellerDetailPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div className="bg-white/5 border border-white/8 rounded-2xl p-4">
           <p className="text-2xl font-bold text-white">
             {inventory.reduce((s, i) => s + i.quantity, 0)}
@@ -120,6 +130,12 @@ export default function AdminSellerDetailPage() {
             {sales.reduce((s, i) => s + i.quantity, 0)}
           </p>
           <p className="text-sm text-white/40">Vendidos</p>
+        </div>
+        <div className="bg-white/5 border border-white/8 rounded-2xl p-4">
+          <p className="text-2xl font-bold text-green-400">
+            ${totalRevenue.toLocaleString("es-MX")}
+          </p>
+          <p className="text-sm text-white/40">Ingresos</p>
         </div>
         <div className="bg-white/5 border border-white/8 rounded-2xl p-4">
           <p className="text-2xl font-bold text-white">{requests.length}</p>
@@ -287,6 +303,9 @@ export default function AdminSellerDetailPage() {
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-amber-400">-{sale.quantity}</p>
+                  <p className="text-xs text-green-400 font-medium">
+                    ${(sale.sale_price * sale.quantity).toLocaleString("es-MX")}
+                  </p>
                 </div>
               </div>
             ))}
@@ -323,12 +342,35 @@ export default function AdminSellerDetailPage() {
                   )}
                 </div>
                 <div className="space-y-1">
-                  {req.items?.map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span className="text-white/60">{item.books?.title ?? "Libro"}</span>
-                      <span className="text-white font-medium">x{item.quantity}</span>
-                    </div>
-                  ))}
+                  {req.items?.map((item) => {
+                    const soldQty = salesMap.get(item.book_id) || 0;
+                    const isReceived = !!item.received_at;
+                    return (
+                      <div key={item.id} className="flex items-center justify-between text-sm">
+                        <span className="text-white/60">{item.books?.title ?? "Libro"}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium">x{item.quantity}</span>
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                            isReceived
+                              ? soldQty >= item.quantity
+                                ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                : soldQty > 0
+                                  ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                                  : "bg-green-500/10 text-green-400 border border-green-500/20"
+                              : "bg-white/5 text-white/30 border border-white/10"
+                          }`}>
+                            {isReceived
+                              ? soldQty >= item.quantity
+                                ? "Vendido"
+                                : soldQty > 0
+                                  ? `Vendido ${soldQty}/${item.quantity}`
+                                  : "Recibido"
+                              : "No recibido"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}

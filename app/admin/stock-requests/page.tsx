@@ -10,7 +10,7 @@ import {
   Clock,
   Loader2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { StockRequest } from "@/types/seller";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -32,6 +32,23 @@ export default function AdminStockRequestsPage() {
     queryKey: ["admin-stock-requests"],
     queryFn: () => getAllStockRequests(supabase),
   });
+
+  const { data: allSales = [] } = useQuery({
+    queryKey: ["admin-all-seller-sales"],
+    queryFn: async () => {
+      const { data } = await supabase.from("seller_sales").select("seller_id, book_id, quantity");
+      return data ?? [];
+    },
+  });
+
+  const salesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of allSales) {
+      const key = `${s.seller_id}:${s.book_id}`;
+      map.set(key, (map.get(key) || 0) + s.quantity);
+    }
+    return map;
+  }, [allSales]);
 
   const updateStatus = useMutation({
     mutationFn: async ({
@@ -114,13 +131,35 @@ export default function AdminStockRequestsPage() {
                     </p>
 
                     <div className="mt-2 space-y-0.5">
-                      {req.items?.map((item) => (
-                        <div key={item.id} className="flex justify-between text-sm">
-                          <span className="text-white/70">
-                            {(item.books as any)?.title ?? "Libro"} x{item.quantity}
-                          </span>
-                        </div>
-                      ))}
+                      {req.items?.map((item) => {
+                        const sellerId = (req as any).seller_id;
+                        const soldQty = salesMap.get(`${sellerId}:${item.book_id}`) || 0;
+                        const isReceived = !!item.received_at;
+                        return (
+                          <div key={item.id} className="flex items-center justify-between text-sm">
+                            <span className="text-white/70">
+                              {(item.books as any)?.title ?? "Libro"} x{item.quantity}
+                            </span>
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+                              isReceived
+                                ? soldQty >= item.quantity
+                                  ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                  : soldQty > 0
+                                    ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                                    : "bg-green-500/10 text-green-400 border border-green-500/20"
+                                : "bg-white/5 text-white/30 border border-white/10"
+                            }`}>
+                              {isReceived
+                                ? soldQty >= item.quantity
+                                  ? "Vendido"
+                                  : soldQty > 0
+                                    ? `Vendido ${soldQty}/${item.quantity}`
+                                    : "Recibido"
+                                : "No recibido"}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {req.notes && (
