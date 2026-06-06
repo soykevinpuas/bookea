@@ -29,7 +29,7 @@ export function BottomNav() {
 
   if (isReader || isAuth || isLanding) return null;
 
-  const isVendedor = subscription?.role === 'vendedor';
+  const isVendedor = subscription?.role === 'vendedor' || subscription?.role === 'admin';
 
   const navItems = [
     {

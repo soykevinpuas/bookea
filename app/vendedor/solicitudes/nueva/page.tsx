@@ -2,10 +2,10 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { getPhysicalBooks } from "@/lib/sellers";
+import { getPhysicalBooks, getSellerInventory } from "@/lib/sellers";
 import { createStockRequestAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store } from "lucide-react";
+import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store, Package } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -26,10 +26,18 @@ export default function NuevaSolicitudPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [notes, setNotes] = useState("");
 
-  const { data: books = [], isLoading } = useQuery({
+  const { data: books = [], isLoading: booksLoading } = useQuery({
     queryKey: ["physical-books"],
     queryFn: () => getPhysicalBooks(supabase),
   });
+
+  const { data: inventory = [] } = useQuery({
+    queryKey: ["seller-inventory", userId],
+    queryFn: () => getSellerInventory(supabase, userId!),
+    enabled: !!userId,
+  });
+
+  const inventoryMap = new Map(inventory.map(i => [i.book_id, i.quantity]));
 
   const addToCart = (book: any) => {
     setCart((prev) => {
@@ -127,7 +135,7 @@ export default function NuevaSolicitudPage() {
             />
           </div>
 
-          {isLoading ? (
+          {booksLoading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-white/20" />
             </div>
@@ -159,7 +167,12 @@ export default function NuevaSolicitudPage() {
                         <p className="text-sm font-medium truncate">{book.title}</p>
                         <p className="text-xs text-white/40 truncate">{book.author}</p>
                         <p className="text-xs text-white/30">
-                          Stock disponible: {book.stock_physical}
+                          Stock total: {book.stock_physical}
+                          {inventoryMap.has(book.id) && (
+                            <span className="text-amber-400/60 ml-1">
+                              · Tienes: {inventoryMap.get(book.id)}
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>

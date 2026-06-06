@@ -12,6 +12,8 @@ import {
   Menu,
   X,
   Store,
+  PlusCircle,
+  ClipboardList,
 } from "lucide-react";
 import { useProfile } from "@/hooks/useAvatars";
 import { useUserId } from "@/hooks/useUser";
@@ -20,8 +22,8 @@ import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 
 const navItems = [
   { href: "/vendedor", label: "Mi Tienda", icon: Store, exact: true },
-  { href: "/vendedor/solicitudes/nueva", label: "Solicitar Stock", icon: ShoppingCart },
-  { href: "/vendedor/solicitudes", label: "Mis Solicitudes", icon: ShoppingCart },
+  { href: "/vendedor/solicitudes/nueva", label: "Solicitar Stock", icon: PlusCircle },
+  { href: "/vendedor/solicitudes", label: "Mis Solicitudes", icon: ClipboardList },
 ];
 
 export default function VendedorLayout({
@@ -101,18 +103,18 @@ export default function VendedorLayout({
         </button>
       </div>
 
-      {/* Sidebar Overlay */}
+      {/* Sidebar Overlay — z-index above BottomNav (z-[60]) */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — z-index above BottomNav (z-[60]) */}
       <aside
         className={`
-          fixed md:sticky top-0 left-0 bottom-0 z-50 w-64 h-screen bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
+          fixed md:sticky top-0 left-0 bottom-0 z-[80] md:z-50 w-64 h-screen bg-[#111111] border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
           pt-[max(1rem,env(safe-area-inset-top))] md:pt-0 pb-[max(5rem,env(safe-area-inset-bottom))] md:pb-0
         `}
