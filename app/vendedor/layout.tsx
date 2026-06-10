@@ -8,11 +8,11 @@ import {
   ChevronRight,
   LogOut,
   ExternalLink,
-  Menu,
   Store,
   X,
 } from "lucide-react";
 import { useUserId } from "@/hooks/useUser";
+import { useMobileMenu } from "@/stores/menu";
 
 const navItems = [
   { href: "/vendedor", label: "Mi Tienda", icon: Store, exact: true },
@@ -29,6 +29,7 @@ export default function VendedorLayout({
   const [loading, setLoading] = useState(true);
 
   const { userId } = useUserId();
+  const { open: isMobileMenuOpen, setOpen: setMobileMenuOpen } = useMobileMenu();
 
   useEffect(() => {
     const supabase = createClientClient();
@@ -71,12 +72,31 @@ export default function VendedorLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0d] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-white retro:text-white navy:text-[#e8eaf6] flex flex-col md:flex-row vendedor-theme-container">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0d] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-white retro:text-white navy:text-[#e8eaf6] flex flex-col md:flex-row">
+      {/* Sidebar Overlay (Mobile Only) */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
 
-
-      {/* Sidebar - Desktop only */}
-      <aside className="hidden md:flex sticky top-0 left-0 bottom-0 z-50 w-64 bg-[#111111] border-r border-white/5 flex-col overflow-y-auto">
-        <div className="px-6 py-8 border-b border-white/5">
+      {/* Sidebar */}
+      <aside className={`
+        fixed md:sticky top-0 left-0 bottom-0 z-[70] w-64 bg-gray-100 dark:bg-[#111111] border-r border-gray-200 dark:border-white/5 flex flex-col transition-transform duration-300 ease-in-out
+        overflow-y-auto md:overflow-y-visible
+        ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+        pb-[max(5rem,env(safe-area-inset-bottom))] md:pb-0
+      `}>
+        <div className="md:hidden flex items-center justify-end px-4 pt-[max(env(safe-area-inset-top,16px),16px)] pb-2">
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="p-1.5 text-gray-400 dark:text-white/45 hover:text-gray-950 dark:hover:text-white bg-gray-100 dark:bg-white/5 rounded-lg"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="px-6 py-8 border-b border-gray-200 dark:border-white/5 hidden md:block">
           <Link href="/vendedor" className="flex items-center gap-2">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shadow-lg ${
               user?.role === "admin"
@@ -86,7 +106,7 @@ export default function VendedorLayout({
               <Store className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-bold text-lg leading-tight tracking-tight text-white">Bookea</p>
+              <p className="font-bold text-lg leading-tight tracking-tight text-gray-900 dark:text-white">Bookea</p>
               <p className={`text-[10px] font-bold tracking-widest uppercase ${
                 user?.role === "admin" ? "text-blue-400" : "text-amber-400"
               }`}>
@@ -106,10 +126,10 @@ export default function VendedorLayout({
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   isActive
                     ? "bg-amber-600/10 text-amber-400 border border-amber-500/10 shadow-sm"
-                    : "text-white/40 hover:text-white hover:bg-white/5"
+                    : "text-gray-500 dark:text-white/40 hover:text-gray-950 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
                 }`}
               >
-                <item.icon className={`w-4 h-4 ${isActive ? "text-amber-400" : "text-white/40"}`} />
+                <item.icon className={`w-4 h-4 ${isActive ? "text-amber-400" : "text-gray-500 dark:text-white/40"}`} />
                 {item.label}
                 {isActive && <ChevronRight className="w-3 h-3 ml-auto text-amber-400/50" />}
               </Link>
@@ -117,35 +137,35 @@ export default function VendedorLayout({
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/5 space-y-2 bg-[#0d0d0d]/50">
+        <div className="p-4 border-t border-gray-200 dark:border-white/5 space-y-2 bg-gray-50/50 dark:bg-[#0d0d0d]/50">
           <Link
             href="/"
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/40 hover:text-white hover:bg-white/5 transition-all"
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium text-gray-500 dark:text-white/40 hover:text-gray-950 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
           >
             <ExternalLink className="w-4 h-4" />
             Ver catálogo
           </Link>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all"
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium text-gray-500 dark:text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all"
           >
             <LogOut className="w-4 h-4" />
             Cerrar sesión
           </button>
 
-          <div className="mt-4 px-4 py-3 bg-white/5 rounded-xl border border-white/5 overflow-hidden">
-            <p className="text-[10px] text-white/20 font-bold uppercase tracking-wider mb-1">Sesión Activa</p>
-            <p className="text-[11px] text-white/60 truncate">{user?.email}</p>
+          <div className="mt-4 px-4 py-3 bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/5 overflow-hidden">
+            <p className="text-[10px] text-gray-400 dark:text-white/20 font-bold uppercase tracking-wider mb-1">Sesión Activa</p>
+            <p className="text-[11px] text-gray-600 dark:text-white/60 truncate">{user?.email}</p>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 w-full min-h-screen relative">
+      <div className="flex-1 w-full min-h-screen">
         <div className="p-4 md:p-10 max-w-7xl mx-auto pb-20 md:pb-10">
           {children}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
