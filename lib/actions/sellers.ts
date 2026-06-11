@@ -15,11 +15,12 @@ export async function createStockRequestAction(
   const adminDb = createAdminClient();
 
   for (const item of items) {
-    const { data: book } = await adminDb
+    const { data: book, error: bookCheckErr } = await adminDb
       .from("books")
       .select("stock_physical, title")
       .eq("id", item.book_id)
       .single();
+    if (bookCheckErr) throw new Error(`Error al verificar stock de "${item.book_id}": ${bookCheckErr.message}`);
     if (!book || book.stock_physical < item.quantity) {
       throw new Error(`Stock insuficiente para "${book?.title || item.book_id}". Disponible: ${book?.stock_physical ?? 0}, solicitado: ${item.quantity}`);
     }
@@ -50,9 +51,11 @@ export async function createStockRequestAction(
   if (itemsErr) throw new Error(itemsErr.message);
 
   revalidatePath("/vendedor/solicitudes");
+  revalidatePath("/vendedor");
   revalidatePath("/admin");
-
-  return request;
+  revalidatePath("/admin/vendedores");
+  revalidatePath("/vendedor/solicitudes");
+  revalidatePath("/vendedor");
 }
 
 export async function receiveStockItemAction(itemId: string, requestId: string) {
@@ -60,19 +63,21 @@ export async function receiveStockItemAction(itemId: string, requestId: string) 
 
   const now = new Date().toISOString();
 
-  const { data: item } = await adminDb
+  const { data: item, error: itemErr } = await adminDb
     .from("stock_request_items")
     .select("*, stock_requests!inner(seller_id)")
     .eq("id", itemId)
     .single();
 
+  if (itemErr) throw new Error(`Error al obtener item: ${itemErr.message}`);
   if (!item) throw new Error("Item no encontrado");
   if ((item as any).received_at) throw new Error("Este libro ya fue recibido");
 
   const { error: updateErr } = await adminDb
     .from("stock_request_items")
     .update({ received_at: now })
-    .eq("id", itemId);
+    .eq("id", itemId)
+    .is("received_at", null);
 
   if (updateErr) throw new Error(updateErr.message);
 
@@ -151,12 +156,13 @@ export async function deleteSaleAction(saleId: string) {
 
   const adminDb = createAdminClient();
 
-  const { data: sale } = await adminDb
+  const { data: sale, error: saleErr } = await adminDb
     .from("seller_sales")
     .select("seller_id, book_id, quantity")
     .eq("id", saleId)
     .single();
 
+  if (saleErr) throw new Error(`Error al obtener venta: ${saleErr.message}`);
   if (!sale) throw new Error("Venta no encontrada");
 
   const { error: delErr } = await adminDb
@@ -166,18 +172,26 @@ export async function deleteSaleAction(saleId: string) {
 
   if (delErr) throw new Error(delErr.message);
 
-  const { data: existing } = await adminDb
+  const { data: existing, error: invErr } = await adminDb
     .from("seller_inventory")
     .select("id, quantity")
     .eq("seller_id", sale.seller_id)
     .eq("book_id", sale.book_id)
     .maybeSingle();
+  if (invErr) throw invErr;
 
+  const now = new Date().toISOString();
   if (existing) {
-    await adminDb
+    const { error: updErr } = await adminDb
       .from("seller_inventory")
-      .update({ quantity: existing.quantity + sale.quantity, updated_at: new Date().toISOString() })
+      .update({ quantity: existing.quantity + sale.quantity, updated_at: now })
       .eq("id", existing.id);
+    if (updErr) throw updErr;
+  } else {
+    const { error: insErr } = await adminDb
+      .from("seller_inventory")
+      .insert({ seller_id: sale.seller_id, book_id: sale.book_id, quantity: sale.quantity });
+    if (insErr) throw insErr;
   }
 
   revalidatePath("/admin");

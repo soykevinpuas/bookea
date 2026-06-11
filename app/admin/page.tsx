@@ -5,16 +5,20 @@ import { createClientClient } from "@/lib/supabase";
 import { updateStockRequestStatus, COST_PER_BOOK, markSalesAsPaid, assignStock } from "@/lib/sellers";
 import { deleteStockRequestAction, deleteSaleAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+
+const ADMIN_COST_BOOK = 100;
 import Link from "next/link";
 import {
   BarChart3, Package, TrendingUp, ShoppingCart,
   Store, ChevronLeft, ChevronRight,
   Calendar, Truck, Check, Clock, Trash2, DollarSign,
-  Plus, Minus, Search, Loader2, Shield,
+  Plus, Minus, Search, Loader2, Shield, AlertTriangle, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import StockRequestItemsModal from "@/components/StockRequestItemsModal";
 
 type Section = "ingresos" | "stock" | "vendidos" | "solicitudes" | "pagos";
 
@@ -60,7 +64,9 @@ export default function AdminDashboard() {
   const [assignSellerId, setAssignSellerId] = useState("");
   const [assignSellerQtys, setAssignSellerQtys] = useState<Record<string, number>>({});
   const [assignSellerSearch, setAssignSellerSearch] = useState("");
-
+  const [pendingOps, setPendingOps] = useState<Set<string>>(new Set());
+  const [modalItems, setModalItems] = useState<any[] | null>(null);
+  const [stockModalSeller, setStockModalSeller] = useState<{email: string; items: any[]} | null>(null);
   interface DashboardData {
     allSales: any[];
     allInventory: any[];
@@ -70,52 +76,93 @@ export default function AdminDashboard() {
     physicalBooks: any[];
   }
 
-  const { data: dash, isLoading } = useQuery<DashboardData>({
+  const { data: dash, isLoading, refetch } = useQuery<DashboardData>({
     queryKey: ["admin-dashboard"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/dashboard");
+      const res = await fetch("/api/admin/dashboard", { cache: "no-store" });
       if (!res.ok) throw new Error("Error al cargar dashboard");
-      return res.json();
+      const data = await res.json();
+      console.log("ADMIN DASHBOARD RAW RESPONSE:", data);
+      return data;
     },
-    staleTime: 1000 * 60 * 2,
+    staleTime: 0,
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-dashboard-changes")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "seller_sales" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "seller_inventory" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, queryClient]);
+
+  useEffect(() => {
+    const interval = setInterval(() => { refetch(); }, 5000);
+    const onVisible = () => { if (document.visibilityState === "visible") refetch(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
+  }, [refetch]);
 
   const allSales = dash?.allSales ?? [];
   const allInventory = dash?.allInventory ?? [];
   const allSellers = dash?.allSellers ?? [];
   const requests = dash?.requests ?? [];
-  const allSalesForMap = allSales.map((s: any) => ({ seller_id: s.seller_id, book_id: s.book_id, quantity: s.quantity }));
   const pendingSales = dash?.pendingSales ?? [];
   const physicalBooks = dash?.physicalBooks ?? [];
-
   const salesMap = useMemo(() => {
     const map = new Map<string, number>();
-    for (const s of allSalesForMap) {
+    for (const s of allSales) {
       const key = `${s.seller_id}:${s.book_id}`;
-      map.set(key, (map.get(key) || 0) + s.quantity);
+      map.set(key, (map.get(key) || 0) + (s.quantity || 0));
     }
     return map;
-  }, [allSalesForMap]);
+  }, [allSales]);
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status, tracking_number }: { id: string; status: StockRequest["status"]; tracking_number?: string }) => {
-      await updateStockRequestStatus(supabase, id, status, tracking_number);
+    mutationFn: ({ id, status, tracking_number }: { id: string; status: StockRequest["status"]; tracking_number?: string }) =>
+      updateStockRequestStatus(supabase, id, status, tracking_number),
+    onMutate: async ({ id, status }) => {
+      setPendingOps(prev => new Set(prev).add(`status-${id}`));
+      await queryClient.cancelQueries({ queryKey: ["admin-dashboard"] });
+      const previous = queryClient.getQueryData<DashboardData>(["admin-dashboard"]);
+      queryClient.setQueryData<DashboardData>(["admin-dashboard"], (old) => {
+        if (!old) return old;
+        return { ...old, requests: old.requests.map((r) => r.id === id ? { ...r, status, updated_at: new Date().toISOString() } : r) };
+      });
+      return { previous };
     },
-    onSuccess: () => {
+    onError: (err: any, variables, context) => {
+      if (context?.previous) queryClient.setQueryData(["admin-dashboard"], context.previous);
+      toast.error(err?.message || "Error al actualizar estado");
+    },
+    onSuccess: () => { toast.success("Estado actualizado"); },
+    onSettled: (data, error, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      toast.success("Estado actualizado");
+      queryClient.invalidateQueries({ queryKey: ["seller-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
+      setPendingOps(prev => { const next = new Set(prev); next.delete(`status-${variables.id}`); return next; });
     },
   });
 
   const deleteRequest = useMutation({
     mutationFn: async (requestId: string) => {
+      setPendingOps(prev => new Set(prev).add(`del-req-${requestId}`));
       await deleteStockRequestAction(requestId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
       toast.success("Solicitud eliminada");
     },
     onError: (err: any) => toast.error(err?.message || "Error al eliminar"),
+    onSettled: (data, error, requestId) => {
+      setPendingOps(prev => { const next = new Set(prev); next.delete(`del-req-${requestId}`); return next; });
+    },
   });
 
   const markPaid = useMutation({
@@ -124,6 +171,7 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
       toast.success("Venta(s) marcada(s) como pagada(s)");
     },
     onError: (err: any) => toast.error(err?.message || "Error al marcar pago"),
@@ -137,6 +185,7 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
       setAssignSelfBookId("");
       setAssignSelfQty(1);
       toast.success("Stock asignado a tu perfil de vendedor");
@@ -157,6 +206,7 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
       setAssignSellerQtys({});
       toast.success("Stock asignado al vendedor");
     },
@@ -165,32 +215,43 @@ export default function AdminDashboard() {
 
   const deleteSale = useMutation({
     mutationFn: async (saleId: string) => {
+      setPendingOps(prev => new Set(prev).add(`del-sale-${saleId}`));
       await deleteSaleAction(saleId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
       toast.success("Venta eliminada y stock revertido");
     },
     onError: (err: any) => toast.error(err?.message || "Error al eliminar venta"),
+    onSettled: (data, error, saleId) => {
+      setPendingOps(prev => { const next = new Set(prev); next.delete(`del-sale-${saleId}`); return next; });
+    },
   });
 
   const chartData = useMemo(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const dayMap = new Map<number, { venta: number; ahorro: number; ganancia: number }>();
-    for (const sale of allSales) {
-      const d = new Date(sale.sold_at);
-      if (d.getFullYear() !== year || d.getMonth() !== month) continue;
-      const day = d.getDate();
-      const existing = dayMap.get(day) || { venta: 0, ahorro: 0, ganancia: 0 };
-      existing.venta += sale.sale_price * sale.quantity;
-      existing.ahorro += sale.quantity * COST_PER_BOOK;
-      existing.ganancia += (sale.sale_price - COST_PER_BOOK) * sale.quantity;
-      dayMap.set(day, existing);
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const dayMap = new Map<number, { venta: number; ahorro: number; ganancia: number }>();
+      for (const sale of allSales) {
+        const d = new Date(sale.sold_at);
+        if (isNaN(d.getTime()) || d.getFullYear() !== year || d.getMonth() !== month) continue;
+        const day = d.getDate();
+        const qty = sale.quantity || 0;
+        const existing = dayMap.get(day) || { venta: 0, ahorro: 0, ganancia: 0 };
+        existing.venta += qty * COST_PER_BOOK;
+        existing.ahorro += qty * ADMIN_COST_BOOK;
+        existing.ganancia += qty * (COST_PER_BOOK - ADMIN_COST_BOOK);
+        dayMap.set(day, existing);
+      }
+      return Array.from(dayMap.entries())
+        .map(([day, v]) => ({ day, ...v }))
+        .sort((a, b) => a.day - b.day);
+    } catch (e) {
+      console.error("[chartData] error:", e);
+      return [];
     }
-    return Array.from(dayMap.entries())
-      .map(([day, v]) => ({ day, ...v }))
-      .sort((a, b) => a.day - b.day);
   }, [allSales, currentMonth]);
 
   const totalChartRevenue = chartData.reduce((s, d) => s + d.venta, 0);
@@ -204,26 +265,39 @@ export default function AdminDashboard() {
   }, [allSellers]);
 
   const inventoryBySeller = useMemo(() => {
-    const map = new Map<string, { email: string; items: any[] }>();
-    for (const item of allInventory) {
-      const sid = (item as any).seller_id;
-      if (!map.has(sid)) map.set(sid, { email: sellerLookup.get(sid) || "Desconocido", items: [] });
-      map.get(sid)!.items.push(item);
+    try {
+      const map = new Map<string, { email: string; items: any[] }>();
+      for (const item of allInventory) {
+        if (item.quantity <= 0) continue;
+        const sid = (item as any).seller_id;
+        if (!sid) continue;
+        if (!map.has(sid)) map.set(sid, { email: sellerLookup.get(sid) || "Desconocido", items: [] });
+        map.get(sid)!.items.push(item);
+      }
+      return Array.from(map.entries());
+    } catch (e) {
+      console.error("[inventoryBySeller] error:", e);
+      return [];
     }
-    return Array.from(map.entries());
   }, [allInventory, sellerLookup]);
 
   const pendingBySeller = useMemo(() => {
-    const map = new Map<string, { email: string; total: number; sales: any[] }>();
-    for (const sale of pendingSales) {
-      const sid = sale.seller_id;
-      const email = (sale as any).seller?.email || sellerLookup.get(sid) || "Desconocido";
-      if (!map.has(sid)) map.set(sid, { email, total: 0, sales: [] });
-      const entry = map.get(sid)!;
-      entry.total += sale.sale_price * sale.quantity;
-      entry.sales.push(sale);
+    try {
+      const map = new Map<string, { email: string; total: number; sales: any[] }>();
+      for (const sale of pendingSales) {
+        const sid = sale.seller_id;
+        if (!sid) continue;
+        const email = (sale as any).seller?.email || sellerLookup.get(sid) || "Desconocido";
+        if (!map.has(sid)) map.set(sid, { email, total: 0, sales: [] });
+        const entry = map.get(sid)!;
+        entry.total += (sale.quantity || 0) * COST_PER_BOOK;
+        entry.sales.push(sale);
+      }
+      return Array.from(map.entries());
+    } catch (e) {
+      console.error("[pendingBySeller] error:", e);
+      return [];
     }
-    return Array.from(map.entries());
   }, [pendingSales, sellerLookup]);
 
   const filteredSelfBooks = physicalBooks.filter(
@@ -232,17 +306,12 @@ export default function AdminDashboard() {
       b.author.toLowerCase().includes(assignSelfSearch.toLowerCase())
   );
 
-  const handleShip = (req: StockRequest) => {
-    const tracking = trackingInputs[req.id]?.trim();
-    if (!tracking) { toast.error("Ingresa el número de guía"); return; }
-    updateStatus.mutate({ id: req.id, status: "shipped", tracking_number: tracking });
-  };
-
   if (isLoading && allSales.length === 0) {
     return <AdminSkeleton />;
   }
 
   return (
+    <ErrorBoundary>
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 pl-10 md:pl-0">
@@ -302,27 +371,34 @@ export default function AdminDashboard() {
           {/* ── INGRESOS ── */}
           {activeSection === "ingresos" && (
             <div className="space-y-5">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <button
                   onClick={() => setActiveSection("vendidos")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <p className="text-lg font-bold text-green-400">${totalChartRevenue.toLocaleString("es-MX")}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Ingresos totales</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ingresos de vendedores</p>
                 </button>
                 <button
                   onClick={() => setActiveSection("vendidos")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <p className="text-lg font-bold text-blue-400">${totalChartProfit.toLocaleString("es-MX")}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Ganancia total</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ganancia de admin</p>
                 </button>
                 <button
                   onClick={() => setActiveSection("vendidos")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <p className="text-lg font-bold text-white/60">${totalChartCost.toLocaleString("es-MX")}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Inversión ahorrada</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Pagos de vendedores</p>
+                </button>
+                <button
+                  onClick={() => setActiveSection("pagos")}
+                  className="bg-white/5 border border-amber-500/20 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <p className="text-lg font-bold text-amber-400">${pendingSales.reduce((s: number, i: any) => s + (i.quantity || 0) * COST_PER_BOOK, 0).toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Pagos pendientes</p>
                 </button>
               </div>
 
@@ -357,11 +433,37 @@ export default function AdminDashboard() {
                       <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
                       <Tooltip content={<ChartTooltip />} />
-                      <Line type="monotone" dataKey="venta" name="Venta" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#22c55e" }} />
-                      <Line type="monotone" dataKey="ganancia" name="Ganancia" stroke="#60a5fa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#60a5fa" }} />
-                      <Line type="monotone" dataKey="ahorro" name="Ahorro" stroke="#a78bfa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#a78bfa" }} />
+                      <Line type="monotone" dataKey="venta" name="Ingresos vendedores" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#22c55e" }} />
+                      <Line type="monotone" dataKey="ganancia" name="Ganancia admin" stroke="#60a5fa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#60a5fa" }} />
+                      <Line type="monotone" dataKey="ahorro" name="Pagos vendedores" stroke="#a78bfa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#a78bfa" }} />
                     </LineChart>
                   </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* ── PENDIENTES DE PAGO ── */}
+              {pendingBySeller.length > 0 && (
+                <div className="bg-white/5 border border-amber-500/20 rounded-2xl overflow-hidden">
+                  <div className="px-5 py-3 border-b border-amber-500/10 flex items-center justify-between">
+                    <h2 className="font-semibold text-sm flex items-center gap-2 text-amber-400">
+                      <DollarSign className="w-4 h-4" />
+                      Pendientes de pago
+                    </h2>
+                    <button
+                      onClick={() => setActiveSection("pagos")}
+                      className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      Ver todos
+                    </button>
+                  </div>
+                  <div className="divide-y divide-amber-500/5">
+                    {pendingBySeller.map(([sellerId, { email, total, sales }]) => (
+                      <div key={sellerId} className="px-5 py-3 flex items-center justify-between">
+                        <span className="text-sm text-white/70">{email}</span>
+                        <span className="text-sm font-bold text-amber-400">${total.toLocaleString("es-MX")}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -573,7 +675,7 @@ export default function AdminDashboard() {
                       <span className="text-[10px] text-white/40">{items.reduce((s, i) => s + i.quantity, 0)} uds.</span>
                     </div>
                     <div className="divide-y divide-white/5">
-                      {items.map((item: any) => (
+                      {items.slice(0, 3).map((item: any) => (
                         <div key={item.id} className="px-5 py-3 flex items-center gap-3">
                           {item.books?.cover_url && (
                             <img src={item.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
@@ -583,6 +685,14 @@ export default function AdminDashboard() {
                           <span className="text-sm font-bold text-white shrink-0">{item.quantity} uds.</span>
                         </div>
                       ))}
+                      {items.length > 3 && (
+                        <button
+                          onClick={() => setStockModalSeller({ email, items })}
+                          className="w-full px-5 py-2 text-sm text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-colors text-left"
+                        >
+                          +{items.length - 3} libros más
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))
@@ -605,7 +715,7 @@ export default function AdminDashboard() {
                   onClick={() => setActiveSection("ingresos")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
                 >
-                  <p className="text-lg font-bold text-green-400">${allSales.reduce((s, i) => s + i.sale_price * i.quantity, 0).toLocaleString("es-MX")}</p>
+                  <p className="text-lg font-bold text-green-400">${allSales.reduce((s, i) => s + (i.sale_price || 0) * (i.quantity || 0), 0).toLocaleString("es-MX")}</p>
                   <p className="text-[10px] text-white/40 mt-0.5">Ingresos totales</p>
                 </button>
                 <Link
@@ -639,7 +749,7 @@ export default function AdminDashboard() {
                         </span>
                         <span className="text-sm font-bold text-white shrink-0">x{sale.quantity}</span>
                         <span className="text-xs font-bold text-green-400 shrink-0">
-                          ${(sale.sale_price * sale.quantity).toLocaleString("es-MX")}
+                          ${((sale.sale_price || 0) * (sale.quantity || 0)).toLocaleString("es-MX")}
                         </span>
                         <button
                           onClick={() => {
@@ -647,7 +757,7 @@ export default function AdminDashboard() {
                               deleteSale.mutate(sale.id);
                             }
                           }}
-                          disabled={deleteSale.isPending}
+                          disabled={pendingOps.has(`del-sale-${sale.id}`)}
                           className="p-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50 shrink-0"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -690,7 +800,7 @@ export default function AdminDashboard() {
                           </span>
                           <span className="text-sm font-bold text-white shrink-0">x{sale.quantity}</span>
                           <span className="text-xs font-bold text-green-400 shrink-0">
-                            ${(sale.sale_price * sale.quantity).toLocaleString("es-MX")}
+                            ${((sale.quantity || 0) * COST_PER_BOOK).toLocaleString("es-MX")}
                           </span>
                         </div>
                       ))}
@@ -738,14 +848,18 @@ export default function AdminDashboard() {
                             {(req.seller as any)?.email ?? "Desconocido"}
                           </p>
                           <div className="space-y-0.5">
-                            {req.items?.map((item: any) => {
+                            {(req.items ?? []).slice(0, 3).map((item: any) => {
                               const sellerId = (req as any).seller_id;
                               const soldQty = salesMap.get(`${sellerId}:${item.book_id}`) || 0;
                               const isReceived = !!item.received_at;
                               return (
                                 <div key={item.id} className="flex items-center justify-between text-sm">
-                                  <span className="text-white/70">
-                                    {(item.books as any)?.title ?? "Libro"} x{item.quantity}
+                                  <span className="flex items-center gap-2 min-w-0 flex-1">
+                                    {(item.books as any)?.cover_url && (
+                                      <img src={(item.books as any).cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 shrink-0" />
+                                    )}
+                                    <span className="text-white/70 truncate">{(item.books as any)?.title ?? "Libro"}</span>
+                                    <span className="text-white/50 shrink-0">x{item.quantity}</span>
                                   </span>
                                   <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
                                     isReceived
@@ -767,6 +881,14 @@ export default function AdminDashboard() {
                                 </div>
                               );
                             })}
+                            {(req.items?.length ?? 0) > 3 && (
+                              <button
+                                onClick={() => setModalItems(req.items ?? [])}
+                                className="text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1"
+                              >
+                                +{req.items!.length - 3} libros más
+                              </button>
+                            )}
                           </div>
                           {req.notes && <p className="text-xs text-white/30 mt-2 italic">"{req.notes}"</p>}
                           {req.tracking_number && (
@@ -781,33 +903,27 @@ export default function AdminDashboard() {
                               <input
                                 value={trackingInputs[req.id] || ""}
                                 onChange={(e) => setTrackingInputs(prev => ({ ...prev, [req.id]: e.target.value }))}
-                                placeholder="Número de guía"
-                                className="w-full text-xs px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-blue-500/50 transition-colors"
+                                placeholder="Número de guía (opcional)"
+                                className="w-full text-xs px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-green-500/50 transition-colors"
                               />
                               <button
-                                onClick={() => handleShip(req)}
-                                disabled={updateStatus.isPending}
-                                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                                onClick={() => updateStatus.mutate({ id: req.id, status: "delivered", tracking_number: trackingInputs[req.id]?.trim() || undefined })}
+                                disabled={pendingOps.has(`status-${req.id}`)}
+                                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50"
                               >
-                                <Truck className="w-3.5 h-3.5" /> Marcar como Enviado
+                                <Check className="w-3.5 h-3.5" /> Marcar como Entregado
                               </button>
                               <button
-                                onClick={() => updateStatus.mutate({ id: req.id, status: "cancelled" })}
-                                disabled={updateStatus.isPending}
+                                onClick={() => {
+                                  setPendingOps(prev => new Set(prev).add(`status-${req.id}`));
+                                  updateStatus.mutate({ id: req.id, status: "cancelled" });
+                                }}
+                                disabled={pendingOps.has(`status-${req.id}`)}
                                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 rounded-lg transition-colors border border-white/10"
                               >
                                 <Clock className="w-3.5 h-3.5" /> Cancelar
                               </button>
                             </div>
-                          )}
-                          {req.status === "shipped" && (
-                            <button
-                              onClick={() => updateStatus.mutate({ id: req.id, status: "delivered" })}
-                              disabled={updateStatus.isPending}
-                              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50"
-                            >
-                              <Check className="w-3.5 h-3.5" /> Marcar como Entregado
-                            </button>
                           )}
                           <div className="w-full border-t border-white/5 pt-2 mt-1">
                             <button
@@ -816,7 +932,7 @@ export default function AdminDashboard() {
                                   deleteRequest.mutate(req.id);
                                 }
                               }}
-                              disabled={deleteRequest.isPending}
+                              disabled={pendingOps.has(`del-req-${req.id}`)}
                               className="flex items-center justify-center gap-1.5 text-xs font-medium w-full px-3 py-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50"
                             >
                               <Trash2 className="w-3 h-3" /> Eliminar
@@ -833,6 +949,76 @@ export default function AdminDashboard() {
         </div>
       </div>
     </div>
+      <StockRequestItemsModal
+        isOpen={!!modalItems}
+        onClose={() => setModalItems(null)}
+        items={modalItems ?? []}
+        title="Libros en solicitud"
+      >
+        {(item: any) => {
+          const sellerId = (item as any).seller_id ?? (item as any).request_seller_id;
+          const soldQty = salesMap.get(`${sellerId}:${item.book_id}`) || 0;
+          const isReceived = !!item.received_at;
+          return (
+            <div key={item.id} className="flex items-center gap-3">
+              {item.books?.cover_url && (
+                <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
+              )}
+              <span className="text-white/80 text-sm flex-1 min-w-0 truncate">
+                {item.books?.title ?? "Libro"}
+              </span>
+              <span className="text-white font-medium text-sm shrink-0">x{item.quantity}</span>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+                isReceived
+                  ? soldQty >= item.quantity
+                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                    : soldQty > 0
+                      ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                      : "bg-green-500/10 text-green-400 border border-green-500/20"
+                  : "bg-white/5 text-white/30 border border-white/10"
+              }`}>
+                {isReceived
+                  ? soldQty >= item.quantity
+                    ? "Vendido"
+                    : soldQty > 0
+                      ? `Vendido ${soldQty}/${item.quantity}`
+                      : "Recibido"
+                  : "No recibido"}
+              </span>
+            </div>
+          );
+        }}
+      </StockRequestItemsModal>
+
+      {/* Modal: stock completo por vendedor */}
+      {stockModalSeller && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setStockModalSeller(null)} />
+          <div className="relative bg-[#1a1a1a] rounded-2xl border border-white/10 shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col">
+            <div className="sticky top-0 z-10 bg-[#1a1a1a] flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <h3 className="text-sm font-bold text-white">Stock de {stockModalSeller.email}</h3>
+              <button onClick={() => setStockModalSeller(null)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
+                <X className="w-4 h-4 text-white/70" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-5 space-y-3">
+              {stockModalSeller.items.map((item: any) => (
+                <div key={item.id} className="flex items-center gap-3">
+                  {item.books?.cover_url && (
+                    <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white/80 text-sm truncate">{item.books?.title ?? "Libro"}</p>
+                    <p className="text-white/40 text-xs truncate">{item.books?.author}</p>
+                  </div>
+                  <span className="text-white font-medium text-sm shrink-0">{item.quantity} uds.</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </ErrorBoundary>
   );
 }
 

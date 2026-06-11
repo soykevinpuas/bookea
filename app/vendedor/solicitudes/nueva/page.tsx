@@ -87,15 +87,13 @@ export default function NuevaSolicitudPage() {
       }));
       return await createStockRequestAction(userId, items, notes || undefined);
     },
-    onSuccess: (newRequest) => {
-      queryClient.setQueryData(["seller-requests", userId], (old: any[] = []) => [
-        newRequest,
-        ...old,
-      ]);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
+      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
       setCart([]);
       setNotes("");
       toast.success("Solicitud creada correctamente");
-      router.push("/vendedor/solicitudes");
+      router.push("/vendedor?seccion=solicitudes");
     },
     onError: (err) => {
       console.error("Error creando solicitud:", err);
