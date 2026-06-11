@@ -33,14 +33,14 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Manejo defensivo: si getUser falla (red, cold start), dejar pasar la request
+  // Leer sesión de cookies (rápido, sin request HTTP a Supabase).
+  // Para redirects de middleware alcanza — el cliente valida con getUser() real.
   let user = null
   try {
-    const { data } = await supabase.auth.getUser()
-    user = data.user
+    const { data } = await supabase.auth.getSession()
+    user = data.session?.user ?? null
   } catch (err) {
-    // Si falla, dejamos pasar — el layout del cliente maneja el estado no-auth
-    console.warn('⚠️ Middleware: getUser falló, dejando pasar:', err)
+    console.warn('⚠️ Middleware: getSession falló, dejando pasar:', err)
   }
 
   // Protección de rutas (basado en proxy.ts anterior)
