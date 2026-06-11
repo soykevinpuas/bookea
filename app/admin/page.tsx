@@ -58,8 +58,7 @@ export default function AdminDashboard() {
   const [assignSelfQty, setAssignSelfQty] = useState(1);
   const [assignSelfSearch, setAssignSelfSearch] = useState("");
   const [assignSellerId, setAssignSellerId] = useState("");
-  const [assignSellerBookId, setAssignSellerBookId] = useState("");
-  const [assignSellerQty, setAssignSellerQty] = useState(1);
+  const [assignSellerQtys, setAssignSellerQtys] = useState<Record<string, number>>({});
   const [assignSellerSearch, setAssignSellerSearch] = useState("");
 
   interface DashboardData {
@@ -148,12 +147,17 @@ export default function AdminDashboard() {
   const assignSellerMutation = useMutation({
     mutationFn: async () => {
       if (!assignSellerId) throw new Error("Selecciona un vendedor");
-      await assignStock(supabase, assignSellerId, assignSellerBookId, assignSellerQty);
+      const entries = Object.entries(assignSellerQtys).filter(([, qty]) => qty > 0);
+      if (entries.length === 0) throw new Error("No hay cantidades asignadas");
+      await Promise.all(
+        entries.map(([bookId, qty]) =>
+          assignStock(supabase, assignSellerId, bookId, qty)
+        )
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      setAssignSellerBookId("");
-      setAssignSellerQty(1);
+      setAssignSellerQtys({});
       toast.success("Stock asignado al vendedor");
     },
     onError: (err) => toast.error(err.message),
@@ -226,12 +230,6 @@ export default function AdminDashboard() {
     (b: any) =>
       b.title.toLowerCase().includes(assignSelfSearch.toLowerCase()) ||
       b.author.toLowerCase().includes(assignSelfSearch.toLowerCase())
-  );
-
-  const filteredSellerBooks = physicalBooks.filter(
-    (b: any) =>
-      b.title.toLowerCase().includes(assignSellerSearch.toLowerCase()) ||
-      b.author.toLowerCase().includes(assignSellerSearch.toLowerCase())
   );
 
   const handleShip = (req: StockRequest) => {
@@ -383,79 +381,113 @@ export default function AdminDashboard() {
                 </summary>
                 <div className="p-5 border-t border-amber-500/10 space-y-3">
                   {/* Seller selector */}
-                  <div>
-                    <label className="text-xs text-white/40 font-medium mb-1.5 block">Vendedor</label>
-                    <select
-                      value={assignSellerId}
-                      onChange={(e) => setAssignSellerId(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50"
-                    >
-                      <option value="">Seleccionar vendedor...</option>
-                      {allSellers.map((s: any) => (
-                        <option key={s.id} value={s.id}>{s.email}</option>
-                      ))}
-                    </select>
+                  <select
+                    value={assignSellerId}
+                    onChange={(e) => setAssignSellerId(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                  >
+                    <option value="">Seleccionar vendedor...</option>
+                    {allSellers.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.email}</option>
+                    ))}
+                  </select>
+
+                  {/* Search */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                    <input
+                      value={assignSellerSearch}
+                      onChange={(e) => setAssignSellerSearch(e.target.value)}
+                      placeholder="Buscar libro..."
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-amber-500/50"
+                    />
                   </div>
 
-                  {/* Book search */}
-                  <div>
-                    <label className="text-xs text-white/40 font-medium mb-1.5 block">Libro</label>
-                    <div className="relative mb-2">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                      <input
-                        value={assignSellerSearch}
-                        onChange={(e) => setAssignSellerSearch(e.target.value)}
-                        placeholder="Buscar libro físico..."
-                        className="w-full pl-9 pr-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-amber-500/50"
-                      />
-                    </div>
-                    <div className="max-h-40 overflow-y-auto space-y-1">
-                      {filteredSellerBooks.map((book: any) => (
+                  {/* Books table */}
+                  {!assignSellerId ? (
+                    <p className="text-sm text-white/30 py-4 text-center">Selecciona un vendedor primero</p>
+                  ) : (
+                    <>
+                      <div className="divide-y divide-white/5 max-h-80 overflow-y-auto border border-white/8 rounded-xl">
+                        {physicalBooks
+                          .filter((b: any) => b.stock_physical > 0)
+                          .filter((b: any) =>
+                            b.title.toLowerCase().includes(assignSellerSearch.toLowerCase()) ||
+                            b.author.toLowerCase().includes(assignSellerSearch.toLowerCase())
+                          )
+                          .map((book: any) => {
+                            const qty = assignSellerQtys[book.id] || 0;
+                            const lowStock = book.stock_physical <= 3;
+                            return (
+                              <div key={book.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/3 transition-colors">
+                                {book.cover_url && (
+                                  <img src={book.cover_url} alt="" className="w-6 h-9 rounded object-cover bg-white/5 shrink-0" />
+                                )}
+                                <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{book.title}</span>
+                                <span className={`text-xs shrink-0 ${lowStock ? "text-red-400 font-medium" : "text-white/30"}`}>
+                                  {book.stock_physical} uds.{lowStock ? " ⚠️" : ""}
+                                </span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    onClick={() =>
+                                      setAssignSellerQtys((prev) => {
+                                        const current = prev[book.id] || 0;
+                                        const next = Math.max(0, current - 1);
+                                        const copy = { ...prev };
+                                        if (next <= 0) delete copy[book.id];
+                                        else copy[book.id] = next;
+                                        return copy;
+                                      })
+                                    }
+                                    className="p-0.5 bg-white/5 hover:bg-red-500/20 rounded transition-colors"
+                                  >
+                                    <Minus className="w-3 h-3" />
+                                  </button>
+                                  <span className="text-sm font-bold text-white min-w-[2ch] text-center">{qty}</span>
+                                  <button
+                                    onClick={() =>
+                                      setAssignSellerQtys((prev) => ({
+                                        ...prev,
+                                        [book.id]: Math.min(book.stock_physical, (prev[book.id] || 0) + 1),
+                                      }))
+                                    }
+                                    disabled={qty >= book.stock_physical}
+                                    className="p-0.5 bg-white/5 hover:bg-green-500/20 rounded transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      {/* Summary + Assign button */}
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="text-xs text-white/40">
+                          {Object.values(assignSellerQtys).reduce((s, q) => s + q, 0)} uds. por asignar
+                        </span>
                         <button
-                          key={book.id}
-                          onClick={() => setAssignSellerBookId(book.id)}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                            assignSellerBookId === book.id
-                              ? "bg-amber-600/20 text-amber-400 border border-amber-500/30"
-                              : "text-white/60 hover:bg-white/5 border border-transparent"
-                          }`}
+                          onClick={() => assignSellerMutation.mutate()}
+                          disabled={
+                            !assignSellerId ||
+                            Object.values(assignSellerQtys).reduce((s, q) => s + q, 0) === 0 ||
+                            assignSellerMutation.isPending
+                          }
+                          className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
                         >
-                          <span className="font-medium">{book.title}</span>
-                          <span className="text-white/30 ml-2">({book.author})</span>
-                          <span className="text-white/20 text-xs ml-2">Stock: {book.stock_physical}</span>
+                          {assignSellerMutation.isPending ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Asignando...
+                            </span>
+                          ) : (
+                            `Asignar todo (${Object.values(assignSellerQtys).reduce((s, q) => s + q, 0)} uds.)`
+                          )}
                         </button>
-                      ))}
-                      {filteredSellerBooks.length === 0 && (
-                        <p className="text-sm text-white/30 py-2 text-center">Sin resultados</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Quantity + Assign button */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setAssignSellerQty(Math.max(1, assignSellerQty - 1))}
-                        className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-8 text-center font-medium">{assignSellerQty}</span>
-                      <button
-                        onClick={() => setAssignSellerQty(assignSellerQty + 1)}
-                        className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <button
-                      onClick={() => assignSellerMutation.mutate()}
-                      disabled={!assignSellerId || !assignSellerBookId || assignSellerMutation.isPending}
-                      className="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {assignSellerMutation.isPending ? "Asignando..." : "Asignar"}
-                    </button>
-                  </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </details>
 

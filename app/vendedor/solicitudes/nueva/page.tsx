@@ -39,6 +39,7 @@ export default function NuevaSolicitudPage() {
   });
 
   const inventoryMap = new Map(inventory.map(i => [i.book_id, i.quantity]));
+  const booksMap = new Map(books.map((b: any) => [b.id, b]));
 
   const addToCart = (book: any) => {
     setCart((prev) => {
@@ -63,11 +64,12 @@ export default function NuevaSolicitudPage() {
   const updateQty = (bookId: string, delta: number) => {
     setCart((prev) =>
       prev
-        .map((c) =>
-          c.book_id === bookId
-            ? { ...c, quantity: Math.max(1, c.quantity + delta) }
-            : c
-        )
+        .map((c) => {
+          if (c.book_id !== bookId) return c;
+          const book = booksMap.get(bookId) as any;
+          const maxAllowed = book?.stock_physical ?? Infinity;
+          return { ...c, quantity: Math.max(1, Math.min(maxAllowed, c.quantity + delta)) };
+        })
         .filter((c) => c.quantity > 0)
     );
   };
@@ -177,6 +179,9 @@ export default function NuevaSolicitudPage() {
                         <p className="text-xs text-white/40 truncate">{book.author}</p>
                         <p className="text-xs text-white/30">
                           Stock total: {book.stock_physical}
+                          {book.stock_physical <= 3 && (
+                            <span className="text-red-400 ml-1 font-medium">⚠️ Pocos</span>
+                          )}
                           {inventoryMap.has(book.id) && (
                             <span className="text-amber-400/60 ml-1">
                               · Tienes: {inventoryMap.get(book.id)}
