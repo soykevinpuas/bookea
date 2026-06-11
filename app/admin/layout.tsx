@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import {
   BookOpen,
   Shield,
@@ -167,7 +168,9 @@ export default function AdminLayout({
       {/* Main Content Area */}
       <div className="flex-1 w-full min-h-screen">
         <div className="p-4 md:p-10 max-w-7xl mx-auto">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </div>
       </div>
     </div>

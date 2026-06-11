@@ -1,0 +1,119 @@
+-- Migration 034: Fix search_path in stock request RPCs
+-- decrement_stock/increment_stock use unqualified table names (e.g. FROM books)
+-- They inherit search_path from the caller, so our RPCs need search_path = 'public'
+
+CREATE OR REPLACE FUNCTION public.deliver_stock_request(
+  p_request_id UUID,
+  p_tracking_number TEXT DEFAULT NULL
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+DECLARE
+  v_request RECORD;
+  v_item RECORD;
+  v_existing RECORD;
+  v_new_qty INT;
+BEGIN
+  SELECT * INTO v_request FROM public.stock_requests WHERE id = p_request_id FOR UPDATE;
+
+  IF v_request.id IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'Solicitud no encontrada');
+  END IF;
+
+  IF v_request.status != 'pending' THEN
+    RETURN json_build_object('success', false, 'error', 'La solicitud ya fue procesada');
+  END IF;
+
+  FOR v_item IN SELECT * FROM public.stock_request_items WHERE request_id = p_request_id
+  LOOP
+    UPDATE public.stock_request_items
+    SET received_at = NOW()
+    WHERE id = v_item.id AND received_at IS NULL;
+
+    IF NOT FOUND THEN
+      CONTINUE;
+    END IF;
+
+    PERFORM public.decrement_stock(v_item.book_id, v_item.quantity);
+
+    SELECT * INTO v_existing FROM public.seller_inventory
+    WHERE seller_id = v_request.seller_id AND book_id = v_item.book_id;
+
+    IF v_existing.id IS NOT NULL THEN
+      v_new_qty := v_existing.quantity + v_item.quantity;
+      UPDATE public.seller_inventory
+      SET quantity = v_new_qty, updated_at = NOW()
+      WHERE id = v_existing.id;
+    ELSE
+      INSERT INTO public.seller_inventory (seller_id, book_id, quantity)
+      VALUES (v_request.seller_id, v_item.book_id, v_item.quantity);
+    END IF;
+  END LOOP;
+
+  UPDATE public.stock_requests
+  SET status = 'delivered',
+      updated_at = NOW(),
+      tracking_number = COALESCE(p_tracking_number, tracking_number)
+  WHERE id = p_request_id;
+
+  RETURN json_build_object('success', true);
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.cancel_stock_request(p_request_id UUID)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+DECLARE
+  v_request RECORD;
+  v_item RECORD;
+  v_existing RECORD;
+  v_new_qty INT;
+BEGIN
+  SELECT * INTO v_request FROM public.stock_requests WHERE id = p_request_id FOR UPDATE;
+
+  IF v_request.id IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'Solicitud no encontrada');
+  END IF;
+
+  IF v_request.status = 'delivered' THEN
+    FOR v_item IN SELECT * FROM public.stock_request_items WHERE request_id = p_request_id
+    LOOP
+      IF v_item.received_at IS NOT NULL THEN
+        PERFORM public.increment_stock(v_item.book_id, v_item.quantity);
+
+        SELECT * INTO v_existing FROM public.seller_inventory
+        WHERE seller_id = v_request.seller_id AND book_id = v_item.book_id;
+
+        IF v_existing.id IS NOT NULL THEN
+          v_new_qty := v_existing.quantity - v_item.quantity;
+          IF v_new_qty <= 0 THEN
+            DELETE FROM public.seller_inventory WHERE id = v_existing.id;
+          ELSE
+            UPDATE public.seller_inventory
+            SET quantity = v_new_qty, updated_at = NOW()
+            WHERE id = v_existing.id;
+          END IF;
+        END IF;
+      END IF;
+    END LOOP;
+  END IF;
+
+  UPDATE public.stock_requests
+  SET status = 'cancelled', updated_at = NOW()
+  WHERE id = p_request_id;
+
+  RETURN json_build_object('success', true);
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'error', SQLERRM);
+END;
+$$;

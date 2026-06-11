@@ -6,11 +6,12 @@ import { markAsSold, COST_PER_BOOK } from "@/lib/sellers";
 import { receiveStockItemAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
 import { Store, Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import StockRequestItemsModal from "@/components/StockRequestItemsModal";
 
 type Section = "stock" | "vendidos" | "ingresos" | "solicitudes";
 
@@ -36,6 +37,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Cancelado", color: "bg-red-500/10 text-red-400 border border-red-500/20" },
 };
 
+const STATUS_TABS = [
+  { key: "all", label: "Todas" },
+  { key: "pending", label: "Pendientes" },
+  { key: "delivered", label: "Entregadas" },
+  { key: "cancelled", label: "Canceladas" },
+];
+
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
@@ -55,12 +63,46 @@ export default function VendedorDashboard() {
   const queryClient = useQueryClient();
   const { userId } = useUserId();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<Section>("ingresos");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+
+  useEffect(() => {
+    const seccion = searchParams?.get("seccion");
+    if (seccion === "solicitudes" || seccion === "stock" || seccion === "vendidos" || seccion === "ingresos") {
+      setActiveSection(seccion);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("vendedor-dashboard-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "stock_requests" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "seller_sales" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, queryClient, userId]);
+
+  useEffect(() => {
+    const refetch = () => queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"], refetchType: "all" });
+    const interval = setInterval(refetch, 5000);
+    const onVisible = () => { if (document.visibilityState === "visible") refetch(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
+  }, [queryClient]);
+
   const [salePrices, setSalePrices] = useState<Record<string, number>>({});
   const [saleQtys, setSaleQtys] = useState<Record<string, number>>({});
   const [selling, setSelling] = useState<string | null>(null);
   const [receiving, setReceiving] = useState<string | null>(null);
+  const [modalItems, setModalItems] = useState<any[] | null>(null);
+  const [solicitudFilter, setSolicitudFilter] = useState("all");
 
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["vendedor-dashboard"],
@@ -69,7 +111,7 @@ export default function VendedorDashboard() {
       if (!res.ok) throw new Error("Error al cargar dashboard");
       return res.json();
     },
-    staleTime: 1000 * 60 * 2,
+    staleTime: 0,
   });
 
   const inventory = data?.inventory ?? ([] as any[]);
@@ -78,6 +120,10 @@ export default function VendedorDashboard() {
   const pendingPayment = data?.pendingPayment ?? 0;
   const userRole = data?.role as string | undefined;
   const isAdmin = userRole === "admin";
+
+  const filteredRequests = solicitudFilter === "all"
+    ? requests
+    : requests.filter((r: any) => r.status === solicitudFilter);
 
   const totalRevenue = sales.reduce((s: number, i: any) => s + i.sale_price * i.quantity, 0);
   const totalProfit = totalRevenue - sales.reduce((s: number, i: any) => s + i.quantity * COST_PER_BOOK, 0);
@@ -111,6 +157,14 @@ export default function VendedorDashboard() {
 
   const activeInventory = inventory.filter((i: any) => i.quantity > 0);
 
+  const soldByBook = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of sales) {
+      map.set(s.book_id, (map.get(s.book_id) || 0) + s.quantity);
+    }
+    return map;
+  }, [sales]);
+
   const handleSell = async (bookId: string, currentQty: number) => {
     const qty = saleQtys[bookId] || 1;
     const price = salePrices[bookId];
@@ -119,17 +173,30 @@ export default function VendedorDashboard() {
     if (qty > currentQty) { toast.error("Stock insuficiente"); return; }
 
     setSelling(bookId);
+    const saleData = { id: `optimistic-${Date.now()}`, seller_id: userId!, book_id: bookId, quantity: qty, sale_price: price, sold_at: new Date().toISOString(), books: inventory.find(i => i.book_id === bookId)?.books ?? null, paid_at: null };
+    const prevDashboard = queryClient.getQueryData<DashboardData>(["vendedor-dashboard"]);
+    queryClient.setQueryData<DashboardData>(["vendedor-dashboard"], (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        sales: [{ ...saleData }, ...old.sales],
+        inventory: old.inventory.map((i: any) => i.book_id === bookId ? { ...i, quantity: i.quantity - qty } : i),
+        pendingPayment: old.pendingPayment + price * qty,
+      };
+    });
     try {
       await markAsSold(supabase, userId!, bookId, qty, price);
       toast.success(`Vendido${qty > 1 ? `s ${qty}` : ""} por $${(price * qty).toLocaleString("es-MX")}`);
-      queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
-      queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
-      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
       setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
       setSalePrices(prev => { const copy = { ...prev }; delete copy[bookId]; return copy; });
     } catch (e: any) {
+      queryClient.setQueryData<DashboardData>(["vendedor-dashboard"], prevDashboard);
       toast.error(e.message || "Error al registrar venta");
     } finally {
+      queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
+      queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
+      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       setSelling(null);
     }
   };
@@ -402,19 +469,38 @@ export default function VendedorDashboard() {
                 </Link>
               )}
 
+              {/* Status filter tabs */}
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                {STATUS_TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setSolicitudFilter(tab.key)}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-all ${
+                      solicitudFilter === tab.key
+                        ? "bg-amber-600/20 text-amber-400 border border-amber-500/20"
+                        : "text-white/40 hover:text-white/60 border border-transparent"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Mis solicitudes */}
               <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
                 <div className="px-5 py-3 border-b border-white/8">
                   <h2 className="font-semibold text-sm flex items-center gap-2">
                     <ShoppingCart className="w-4 h-4 text-amber-400" />
-                    Mis solicitudes ({requests.length})
+                    Mis solicitudes ({filteredRequests.length})
                   </h2>
                 </div>
-                {requests.length === 0 ? (
-                  <div className="text-center py-8 text-white/30 text-sm">Aún no hay solicitudes.</div>
+                {filteredRequests.length === 0 ? (
+                  <div className="text-center py-8 text-white/30 text-sm">
+                    {solicitudFilter === "all" ? "Aún no hay solicitudes." : `No hay solicitudes ${STATUS_TABS.find(t => t.key === solicitudFilter)?.label.toLowerCase()}.`}
+                  </div>
                 ) : (
                   <div className="divide-y divide-white/5">
-                    {requests.map((req: any) => {
+                    {filteredRequests.map((req: any) => {
                       const statusInfo = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending;
                       const totalItems = (req as any).items?.reduce((s: number, i: any) => s + i.quantity, 0) ?? 0;
                       return (
@@ -432,9 +518,10 @@ export default function VendedorDashboard() {
                           </div>
 
                           <div className="space-y-1">
-                            {((req as any).items || []).map((item: any) => {
+                            {((req as any).items || []).slice(0, 3).map((item: any) => {
                               const book = item.books as any;
                               const isReceived = !!item.received_at;
+                              const soldQty = soldByBook.get(item.book_id) || 0;
                               return (
                                 <div key={item.id} className="flex items-center gap-2 text-xs">
                                   {book?.cover_url && (
@@ -443,7 +530,7 @@ export default function VendedorDashboard() {
                                   <span className="text-white/60 flex-1 truncate">{book?.title || "Libro"}</span>
                                   <span className="text-white font-medium shrink-0">x{item.quantity}</span>
 
-                                  {req.status === "shipped" && !isReceived && (
+                                  {!isReceived && req.status !== "cancelled" && req.status !== "pending" && (
                                     <button
                                       onClick={() => handleReceive(item.id, req.id)}
                                       disabled={receiving === item.id}
@@ -459,14 +546,32 @@ export default function VendedorDashboard() {
                                   )}
 
                                   {isReceived && (
-                                    <span className="text-[10px] text-green-400 font-medium flex items-center gap-1 shrink-0">
+                                    <span className={`text-[10px] font-medium flex items-center gap-1 shrink-0 ${
+                                      soldQty >= item.quantity
+                                        ? "text-blue-400"
+                                        : soldQty > 0
+                                          ? "text-purple-400"
+                                          : "text-green-400"
+                                    }`}>
                                       <Check className="w-2.5 h-2.5" />
-                                      Recibido
+                                      {soldQty >= item.quantity
+                                        ? "Vendido"
+                                        : soldQty > 0
+                                          ? `Vendido ${soldQty}/${item.quantity}`
+                                          : "En stock"}
                                     </span>
                                   )}
                                 </div>
                               );
                             })}
+                            {((req as any).items?.length ?? 0) > 3 && (
+                              <button
+                                onClick={() => setModalItems((req as any).items ?? [])}
+                                className="text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1"
+                              >
+                                +{(req as any).items!.length - 3} libros más
+                              </button>
+                            )}
                           </div>
 
                           {req.notes && (
@@ -485,6 +590,44 @@ export default function VendedorDashboard() {
           )}
         </div>
       </div>
+      <StockRequestItemsModal
+        isOpen={!!modalItems}
+        onClose={() => setModalItems(null)}
+        items={modalItems ?? []}
+        title="Libros en solicitud"
+      >
+        {(item: any) => {
+          const soldQty = soldByBook.get(item.book_id) || 0;
+          return (
+            <div key={item.id} className="flex items-center gap-3">
+              {item.books?.cover_url && (
+                <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
+              )}
+              <span className="text-white/80 text-sm flex-1 min-w-0 truncate">
+                {item.books?.title ?? "Libro"}
+              </span>
+              <span className="text-white font-medium text-sm shrink-0">x{item.quantity}</span>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+                item.received_at
+                  ? soldQty >= item.quantity
+                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                    : soldQty > 0
+                      ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                      : "bg-green-500/10 text-green-400 border border-green-500/20"
+                  : "bg-white/5 text-white/30 border border-white/10"
+              }`}>
+                {item.received_at
+                  ? soldQty >= item.quantity
+                    ? "Vendido"
+                    : soldQty > 0
+                      ? `Vendido ${soldQty}/${item.quantity}`
+                      : "En stock"
+                  : "No recibido"}
+              </span>
+            </div>
+          );
+        }}
+      </StockRequestItemsModal>
     </div>
   );
 }

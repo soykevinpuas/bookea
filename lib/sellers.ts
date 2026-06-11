@@ -1,5 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { SellerInventory, SellerSale, StockRequest, StockRequestItem } from "@/types/seller";
+import { SellerInventory, SellerSale, StockRequest } from "@/types/seller";
 
 // ─── Inventory ──────────────────────────────────────────────
 
@@ -66,14 +66,16 @@ export async function markAsSold(
   salePrice: number = COST_PER_BOOK
 ) {
   if (salePrice <= 0) throw new Error("El precio de venta debe ser mayor a 0");
+  if (!sellerId) throw new Error("Vendedor no autenticado");
 
-  const { data: inventory } = await supabase
+  const { data: inventory, error: invErr } = await supabase
     .from("seller_inventory")
     .select("id, quantity")
     .eq("seller_id", sellerId)
     .eq("book_id", bookId)
     .single();
 
+  if (invErr) throw new Error(`Error al obtener inventario: ${invErr.message}`);
   if (!inventory || inventory.quantity < quantity) {
     throw new Error("Stock insuficiente");
   }
@@ -188,67 +190,41 @@ export async function updateStockRequestStatus(
   status: StockRequest["status"],
   trackingNumber?: string
 ) {
-  const { data: request } = await supabase
-    .from("stock_requests")
-    .select("*, items:stock_request_items(*)")
-    .eq("id", requestId)
-    .single();
-
-  if (!request) throw new Error("Solicitud no encontrada");
-
-  const items = (request as any).items || [];
-
-  if (status === "shipped") {
-    for (const item of items) {
-      const { error: rpcErr } = await supabase.rpc("decrement_stock", {
-        p_book_id: item.book_id,
-        p_quantity: item.quantity,
-      });
-      if (rpcErr) throw new Error(`Error al descontar stock de ${item.book_id}: ${rpcErr.message}`);
-    }
-  }
-
   if (status === "delivered") {
-    const now = new Date().toISOString();
-
-    for (const item of items) {
-      if ((item as any).received_at) continue;
-
-      const { error: receiveErr } = await supabase
-        .from("stock_request_items")
-        .update({ received_at: now })
-        .eq("id", item.id);
-      if (receiveErr) throw receiveErr;
-
-      const { data: existing } = await supabase
-        .from("seller_inventory")
-        .select("id, quantity")
-        .eq("seller_id", request.seller_id)
-        .eq("book_id", item.book_id)
-        .maybeSingle();
-
-      if (existing) {
-        const { error: updErr } = await supabase
-          .from("seller_inventory")
-          .update({ quantity: existing.quantity + item.quantity, updated_at: now })
-          .eq("id", existing.id);
-        if (updErr) throw updErr;
-      } else {
-        const { error: insErr } = await supabase
-          .from("seller_inventory")
-          .insert({ seller_id: request.seller_id, book_id: item.book_id, quantity: item.quantity });
-        if (insErr) throw insErr;
-      }
+    const { data, error: rpcErr } = await supabase.rpc("deliver_stock_request", {
+      p_request_id: requestId,
+      p_tracking_number: trackingNumber || null,
+    });
+    if (rpcErr) {
+      console.error("[updateStockRequestStatus] rpc error:", rpcErr);
+      throw new Error(`Error al entregar solicitud: ${rpcErr.message}`);
     }
+    const raw = (data as any) || {};
+    const result = raw.success !== undefined ? raw : (Array.isArray(raw) ? raw[0] : raw);
+    if (!result?.success) throw new Error(result?.error || "Error al entregar solicitud");
+    return;
   }
 
-  if (status === "cancelled" && request.status === "shipped") {
-    for (const item of items) {
-      const { error: rpcErr } = await supabase.rpc("increment_stock", {
-        p_book_id: item.book_id,
-        p_quantity: item.quantity,
+  if (status === "cancelled") {
+    const { data: request, error: reqErr } = await supabase
+      .from("stock_requests")
+      .select("status")
+      .eq("id", requestId)
+      .maybeSingle();
+    if (reqErr) throw reqErr;
+
+    if (request?.status === "delivered") {
+      const { data, error: rpcErr } = await supabase.rpc("cancel_stock_request", {
+        p_request_id: requestId,
       });
-      if (rpcErr) throw new Error(`Error al restaurar stock de ${item.book_id}: ${rpcErr.message}`);
+      if (rpcErr) {
+        console.error("[updateStockRequestStatus] cancel rpc error:", rpcErr);
+        throw new Error(`Error al cancelar solicitud: ${rpcErr.message}`);
+      }
+      const raw = (data as any) || {};
+      const result = raw.success !== undefined ? raw : (Array.isArray(raw) ? raw[0] : raw);
+      if (!result?.success) throw new Error(result?.error || "Error al cancelar solicitud");
+      return;
     }
   }
 
@@ -264,63 +240,65 @@ export async function updateStockRequestStatus(
     .from("stock_requests")
     .update(update)
     .eq("id", requestId);
-
   if (error) throw error;
 }
 
 // ─── Admin: Seller Management ───────────────────────────────
 
 export async function getAdminSellers(supabase: SupabaseClient) {
-  const { data } = await supabase
+  const { data: usersData, error: usersErr } = await supabase
     .from("users")
     .select("id, email, role, created_at")
     .eq("role", "vendedor")
     .order("created_at", { ascending: false });
+  if (usersErr) throw usersErr;
 
-  const sellers = (data ?? []) as { id: string; email: string; role: string; created_at: string }[];
+  const sellers = (usersData ?? []) as { id: string; email: string; role: string; created_at: string }[];
+  if (sellers.length === 0) return [];
 
-  const enriched = await Promise.all(
-    sellers.map(async (seller) => {
-      const { count: inventoryCount } = await supabase
-        .from("seller_inventory")
-        .select("id", { count: "exact", head: true })
-        .eq("seller_id", seller.id);
+  const sellerIds = sellers.map((s) => s.id);
 
-      const { data: inventoryData } = await supabase
-        .from("seller_inventory")
-        .select("quantity")
-        .eq("seller_id", seller.id);
+  const [{ data: inventoryData }, { data: salesData }] = await Promise.all([
+    supabase
+      .from("seller_inventory")
+      .select("seller_id, quantity")
+      .in("seller_id", sellerIds),
+    supabase
+      .from("seller_sales")
+      .select("seller_id, quantity")
+      .in("seller_id", sellerIds),
+  ]);
 
-      const totalAssigned = (inventoryData ?? []).reduce((sum, i) => sum + (i.quantity || 0), 0);
+  const invCounts = new Map<string, number>();
+  const invQtys = new Map<string, number>();
+  for (const inv of inventoryData ?? []) {
+    invCounts.set(inv.seller_id, (invCounts.get(inv.seller_id) || 0) + 1);
+    invQtys.set(inv.seller_id, (invQtys.get(inv.seller_id) || 0) + (inv.quantity || 0));
+  }
 
-      const { data: salesData } = await supabase
-        .from("seller_sales")
-        .select("quantity")
-        .eq("seller_id", seller.id);
+  const salesQtys = new Map<string, number>();
+  for (const sale of salesData ?? []) {
+    salesQtys.set(sale.seller_id, (salesQtys.get(sale.seller_id) || 0) + (sale.quantity || 0));
+  }
 
-      const totalSold = (salesData ?? []).reduce((sum, s) => sum + (s.quantity || 0), 0);
-
-      return {
-        ...seller,
-        inventory_count: inventoryCount ?? 0,
-        total_assigned: totalAssigned,
-        total_sold: totalSold,
-      };
-    })
-  );
-
-  return enriched;
+  return sellers.map((seller) => ({
+    ...seller,
+    inventory_count: invCounts.get(seller.id) ?? 0,
+    total_assigned: invQtys.get(seller.id) ?? 0,
+    total_sold: salesQtys.get(seller.id) ?? 0,
+  }));
 }
 
 export async function getAdminSellerDetail(
   supabase: SupabaseClient,
   sellerId: string
 ) {
-  const { data: user } = await supabase
+  const { data: user, error: userErr } = await supabase
     .from("users")
     .select("id, email, role, created_at")
     .eq("id", sellerId)
-    .single();
+    .maybeSingle();
+  if (userErr) throw new Error(`Error al obtener vendedor: ${userErr.message}`);
 
   const inventory = await getSellerInventory(supabase, sellerId);
   const sales = await getSellerSales(supabase, sellerId);
@@ -330,13 +308,10 @@ export async function getAdminSellerDetail(
     .select("*, items:stock_request_items(*, books(id, title, author, cover_url, price_physical))")
     .eq("seller_id", sellerId)
     .order("created_at", { ascending: false });
-
-  if (requestsErr) {
-    console.error("[sellers] getAdminSellerDetail requests error:", requestsErr);
-  }
+  if (requestsErr) throw new Error(`Error al obtener solicitudes: ${requestsErr.message}`);
 
   return {
-    seller: user,
+    seller: user ?? null,
     inventory,
     sales,
     requests: (requests ?? []) as unknown as StockRequest[],
@@ -400,12 +375,13 @@ export async function adjustInventory(
   inventoryId: string,
   delta: number
 ) {
-  const { data: item } = await supabase
+  const { data: item, error: itemErr } = await supabase
     .from("seller_inventory")
     .select("id, quantity, book_id, seller_id")
     .eq("id", inventoryId)
     .single();
 
+  if (itemErr) throw new Error(`Error al obtener item: ${itemErr.message}`);
   if (!item) throw new Error("Item no encontrado");
 
   const newQty = item.quantity + delta;
@@ -443,23 +419,27 @@ export async function revertAssignStock(
   bookId: string,
   quantity: number
 ) {
-  const { data: existing } = await supabase
+  const { data: existing, error: invErr } = await supabase
     .from("seller_inventory")
     .select("id, quantity")
     .eq("seller_id", sellerId)
     .eq("book_id", bookId)
     .maybeSingle();
+  if (invErr) throw invErr;
 
-  if (existing) {
-    const newQty = existing.quantity - quantity;
-    if (newQty <= 0) {
-      await supabase.from("seller_inventory").delete().eq("id", existing.id);
-    } else {
-      await supabase
-        .from("seller_inventory")
-        .update({ quantity: newQty, updated_at: new Date().toISOString() })
-        .eq("id", existing.id);
-    }
+  if (!existing) return;
+
+  const now = new Date().toISOString();
+  const newQty = existing.quantity - quantity;
+  if (newQty <= 0) {
+    const { error: delErr } = await supabase.from("seller_inventory").delete().eq("id", existing.id);
+    if (delErr) throw delErr;
+  } else {
+    const { error: updErr } = await supabase
+      .from("seller_inventory")
+      .update({ quantity: newQty, updated_at: now })
+      .eq("id", existing.id);
+    if (updErr) throw updErr;
   }
 
   const { error: stockErr } = await supabase.rpc("increment_stock", {
