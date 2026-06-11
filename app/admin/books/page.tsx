@@ -363,8 +363,8 @@ export default function AdminBooksPage() {
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Contenido</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">EPUB</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">Físico</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">Stock</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Estado</th>
+                <th className="text-left px-5 py-3.5 font-medium text-white/40">Stock</th>
                 <th className="text-left px-5 py-3.5 font-medium text-white/40">Acciones</th>
               </tr>
             </thead>
@@ -402,7 +402,19 @@ export default function AdminBooksPage() {
                     )}
                   </td>
                   <td className="px-5 py-4 text-white/70 hidden md:table-cell">${book.price_physical}</td>
-                  <td className="px-5 py-4 hidden md:table-cell">
+                  <td className="px-5 py-4">
+                    <button
+                      onClick={() => toggleActiveMutation.mutate({ id: book.id, isActive: !book.is_active })}
+                      title={book.is_active ? "Desactivar" : "Activar"}
+                    >
+                      {book.is_active ? (
+                        <ToggleRight className="w-6 h-6 text-green-400" />
+                      ) : (
+                        <ToggleLeft className="w-6 h-6 text-white/25" />
+                      )}
+                    </button>
+                  </td>
+                  <td className="px-5 py-4">
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => adjustStockMutation.mutate({ id: book.id, delta: -1 })}
@@ -422,18 +434,6 @@ export default function AdminBooksPage() {
                         <Plus className="w-3 h-3" />
                       </button>
                     </div>
-                  </td>
-                  <td className="px-5 py-4">
-                    <button
-                      onClick={() => toggleActiveMutation.mutate({ id: book.id, isActive: !book.is_active })}
-                      title={book.is_active ? "Desactivar" : "Activar"}
-                    >
-                      {book.is_active ? (
-                        <ToggleRight className="w-6 h-6 text-green-400" />
-                      ) : (
-                        <ToggleLeft className="w-6 h-6 text-white/25" />
-                      )}
-                    </button>
                   </td>
                   <td className="px-5 py-4">
                     <button
