@@ -1,23 +1,51 @@
 "use client";
 
-import { login } from '@/app/auth/actions'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { createClientClient } from '@/lib/supabase'
 
 // 2.1 - LoginPage: Componente de formulario para inicio de sesión de usuarios existentes
 export default function LoginPage() {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const error = params.get('error')
-    if (error) setErrorMessage(decodeURIComponent(error))
-  }, [])
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     setIsLoading(true)
+    setErrorMessage('')
+
+    const form = e.currentTarget
+    const email = (form.elements.namedItem('email') as HTMLInputElement).value
+    const password = (form.elements.namedItem('password') as HTMLInputElement).value
+
+    const supabase = createClientClient()
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (error) {
+      if (error.message?.includes('Email not confirmed')) {
+        setErrorMessage('Correo no confirmado. Revisa tu bandeja de entrada.')
+      } else if (error.message?.includes('Invalid login credentials')) {
+        setErrorMessage('Correo o contraseña incorrectos')
+      } else {
+        setErrorMessage(error.message)
+      }
+      setIsLoading(false)
+      return
+    }
+
+    const { data: roleData } = await supabase.rpc("get_my_role");
+    const role = roleData as string;
+
+    if (role === "admin") {
+      router.push('/admin');
+    } else if (role === "vendedor") {
+      router.push('/vendedor');
+    } else {
+      router.push('/dashboard');
+    }
   }
 
   return (
@@ -33,9 +61,7 @@ export default function LoginPage() {
             Bienvenido de nuevo a tu biblioteca
           </p>
         </div>
-        {/* 2.1.1 - Formulario conectado a la Subrutina Server Action 'login' externa */}
-        <form action={login} onSubmit={handleSubmit} className="flex flex-col gap-5">
-          {/* 2.1.2 - Campo de Email (Validado nativamente en navegador) */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="email">
               Correo electrónico
@@ -50,7 +76,6 @@ export default function LoginPage() {
             />
           </div>
           
-          {/* 2.1.3 - Campo de Contraseña oculta */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="password">
               Contraseña

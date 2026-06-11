@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -35,11 +35,10 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<{ email?: string; role?: string } | null>(null);
-  const [loading, setLoading] = useState(true);
   const { open: isMobileMenuOpen, setOpen: setMobileMenuOpen } = useMobileMenu();
+  const supabase = useMemo(() => createClientClient(), []);
 
   useEffect(() => {
-    const supabase = createClientClient();
 
     const checkAdmin = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -52,12 +51,15 @@ export default function AdminLayout({
       const { data: roleData, error: rpcError } = await supabase.rpc("get_my_role");
 
       if (rpcError || (roleData as string) !== "admin") {
-        router.push("/dashboard");
+        if (roleData === "vendedor") {
+          router.push("/vendedor");
+        } else {
+          router.push("/dashboard");
+        }
         return;
       }
 
       setUser({ email: authUser.email, role: roleData as string });
-      setLoading(false);
     };
 
     checkAdmin();
@@ -68,14 +70,6 @@ export default function AdminLayout({
     await supabase.auth.signOut();
     router.push("/login");
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0d0d0d] retro:bg-[#0d1117] navy:bg-[#0a0f1e]">
-        <div className="w-8 h-8 border-2 border-gray-300 dark:border-white/20 border-t-blue-600 dark:border-t-white rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0d] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-white retro:text-white navy:text-[#e8eaf6] flex flex-col md:flex-row">

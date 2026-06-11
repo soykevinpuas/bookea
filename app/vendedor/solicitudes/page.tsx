@@ -53,8 +53,8 @@ export default function MisSolicitudesPage() {
     onError: (err: any) => {
       toast.error(err.message || "Error al recibir libro");
     },
-    onSettled: () => {
-      setReceivingItems(new Set());
+    onSettled: (data, error, variables) => {
+      setReceivingItems(prev => { const next = new Set(prev); next.delete(variables.itemId); return next; });
     },
   });
 

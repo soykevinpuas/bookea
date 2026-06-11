@@ -2,10 +2,10 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { getSellerInventory, getSellerSales, getSellerRequests, markAsSold, COST_PER_BOOK, getSellerPendingTotal } from "@/lib/sellers";
+import { markAsSold, COST_PER_BOOK } from "@/lib/sellers";
 import { receiveStockItemAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { Store, Package, TrendingUp, Loader2, BarChart3, Truck, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
+import { Store, Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -13,6 +13,14 @@ import { useRouter } from "next/navigation";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 type Section = "stock" | "vendidos" | "ingresos" | "solicitudes";
+
+interface DashboardData {
+  inventory: any[];
+  sales: any[];
+  requests: any[];
+  pendingPayment: number;
+  role: string;
+}
 
 const sections: { key: Section; label: string; icon: any }[] = [
   { key: "ingresos", label: "Ingresos", icon: BarChart3 },
@@ -54,42 +62,25 @@ export default function VendedorDashboard() {
   const [selling, setSelling] = useState<string | null>(null);
   const [receiving, setReceiving] = useState<string | null>(null);
 
-  const { data: inventory = [], isLoading: invLoading } = useQuery({
-    queryKey: ["seller-inventory", userId],
-    queryFn: () => getSellerInventory(supabase, userId!),
-    enabled: !!userId,
-  });
-
-  const { data: sales = [] } = useQuery({
-    queryKey: ["seller-sales", userId],
-    queryFn: () => getSellerSales(supabase, userId!),
-    enabled: !!userId,
-  });
-
-  const { data: requests = [] } = useQuery({
-    queryKey: ["seller-requests", userId],
-    queryFn: () => getSellerRequests(supabase, userId!),
-    enabled: !!userId,
-  });
-
-  const { data: pendingPayment = 0 } = useQuery({
-    queryKey: ["seller-pending-payment", userId],
-    queryFn: () => getSellerPendingTotal(supabase, userId!),
-    enabled: !!userId,
-  });
-
-  const { data: userRole } = useQuery({
-    queryKey: ["vendedor-page-role"],
+  const { data, isLoading } = useQuery<DashboardData>({
+    queryKey: ["vendedor-dashboard"],
     queryFn: async () => {
-      const { data } = await supabase.rpc("get_my_role");
-      return data as string;
+      const res = await fetch("/api/vendedor/dashboard");
+      if (!res.ok) throw new Error("Error al cargar dashboard");
+      return res.json();
     },
+    staleTime: 1000 * 60 * 2,
   });
 
+  const inventory = data?.inventory ?? ([] as any[]);
+  const sales = data?.sales ?? ([] as any[]);
+  const requests = data?.requests ?? ([] as any[]);
+  const pendingPayment = data?.pendingPayment ?? 0;
+  const userRole = data?.role as string | undefined;
   const isAdmin = userRole === "admin";
 
-  const totalRevenue = sales.reduce((s, i) => s + i.sale_price * i.quantity, 0);
-  const totalProfit = totalRevenue - sales.reduce((s, i) => s + i.quantity * COST_PER_BOOK, 0);
+  const totalRevenue = sales.reduce((s: number, i: any) => s + i.sale_price * i.quantity, 0);
+  const totalProfit = totalRevenue - sales.reduce((s: number, i: any) => s + i.quantity * COST_PER_BOOK, 0);
 
   const chartData = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -118,7 +109,7 @@ export default function VendedorDashboard() {
   const totalChartProfit = chartData.reduce((s, d) => s + d.ganancia, 0);
   const totalChartCost = chartData.reduce((s, d) => s + d.ahorro, 0);
 
-  const activeInventory = inventory.filter(i => i.quantity > 0);
+  const activeInventory = inventory.filter((i: any) => i.quantity > 0);
 
   const handleSell = async (bookId: string, currentQty: number) => {
     const qty = saleQtys[bookId] || 1;
@@ -133,6 +124,7 @@ export default function VendedorDashboard() {
       toast.success(`Vendido${qty > 1 ? `s ${qty}` : ""} por $${(price * qty).toLocaleString("es-MX")}`);
       queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
       queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
+      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
       setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
       setSalePrices(prev => { const copy = { ...prev }; delete copy[bookId]; return copy; });
     } catch (e: any) {
@@ -149,6 +141,7 @@ export default function VendedorDashboard() {
       toast.success("Libro recibido");
       queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
       queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
+      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
     } catch (e: any) {
       toast.error(e.message || "Error al recibir");
     } finally {
@@ -156,23 +149,12 @@ export default function VendedorDashboard() {
     }
   };
 
-  if (invLoading && inventory.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-white/40" />
-      </div>
-    );
+  if (isLoading && inventory.length === 0) {
+    return <VendedorSkeleton />;
   }
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 pl-10 md:pl-0">
-          <Store className="w-6 h-6 text-amber-400" />
-          <span>Mi Tienda</span>
-        </h1>
-      </div>
-
       <div className="flex gap-0 mb-6 md:hidden">
         {sections.map((sec) => {
           const Icon = sec.icon;
@@ -303,7 +285,7 @@ export default function VendedorDashboard() {
                 <div className="text-center py-8 text-white/30 text-sm">Aún no hay ventas.</div>
               ) : (
                 <div className="divide-y divide-white/5">
-                  {sales.map((sale) => {
+                   {sales.map((sale: any) => {
                     const book = sale.books;
                     return (
                       <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
@@ -432,7 +414,7 @@ export default function VendedorDashboard() {
                   <div className="text-center py-8 text-white/30 text-sm">Aún no hay solicitudes.</div>
                 ) : (
                   <div className="divide-y divide-white/5">
-                    {requests.map((req) => {
+                    {requests.map((req: any) => {
                       const statusInfo = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending;
                       const totalItems = (req as any).items?.reduce((s: number, i: any) => s + i.quantity, 0) ?? 0;
                       return (
@@ -501,6 +483,32 @@ export default function VendedorDashboard() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VendedorSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="mb-6">
+        <div className="h-8 w-32 bg-white/10 rounded-lg" />
+      </div>
+      <div className="flex gap-6">
+        <aside className="hidden md:flex flex-col gap-1 w-36 shrink-0">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-11 bg-white/10 rounded-xl" />
+          ))}
+        </aside>
+        <div className="flex-1 min-w-0 space-y-5">
+          <div className="grid grid-cols-3 gap-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-24 bg-white/10 border border-white/8 rounded-xl" />
+            ))}
+          </div>
+          <div className="h-8 w-48 bg-white/10 rounded-lg" />
+          <div className="h-[300px] bg-white/10 border border-white/8 rounded-2xl" />
         </div>
       </div>
     </div>

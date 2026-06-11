@@ -29,8 +29,9 @@ export function useUserId() {
 
       return id;
     },
-    staleTime: 0,
+    staleTime: 1000 * 60 * 5,
     retry: false,
+    initialDataUpdatedAt: 0,
     initialData: () => {
       if (typeof window !== "undefined") {
         return localStorage.getItem("bookea-auth-id") || "";

@@ -25,7 +25,7 @@ export function SplashScreen() {
       setTimeout(() => {
         splash.classList.add("splash-hide");
         setTimeout(() => { splash.style.display = "none"; }, 600);
-      }, 2200);
+      }, 600);
     }
   }, []);
 

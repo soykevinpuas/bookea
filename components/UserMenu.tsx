@@ -13,16 +13,21 @@ import { useCartStore } from "@/stores/cart";
 import { AnimalEngine } from "./avatars/AnimalEngine";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 
-export function UserMenu({ email }: { email?: string }) {
+export function UserMenu({ email, userId: propUserId }: { email?: string; userId?: string }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClientClient();
 
+  useEffect(() => { setMounted(true); }, []);
+
   const { userId } = useUserId();
-  const { data: subscription } = useSubscription(userId);
-  const { profile } = useProfile(userId);
-  const { data: coinsBalance } = useCoins(userId);
+  const resolvedUserId = propUserId || userId;
+  const { data: subscription } = useSubscription(resolvedUserId);
+  const { profile } = useProfile(resolvedUserId);
+  const { data: coinsBalance } = useCoins(resolvedUserId);
   const cartItems = useCartStore((s) => s.items);
   const toggleCart = useCartStore((s) => s.toggleCart);
 
@@ -41,6 +46,7 @@ export function UserMenu({ email }: { email?: string }) {
   }, []);
 
   const handleLogout = async () => {
+    setLoggingOut(true);
     await supabase.auth.signOut();
     router.refresh();
   };
@@ -68,7 +74,7 @@ export function UserMenu({ email }: { email?: string }) {
             </span>
           )}
 
-          {isPremium && (
+          {mounted && isPremium && (
             <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white dark:border-black" />
           )}
         </div>
@@ -165,13 +171,18 @@ export function UserMenu({ email }: { email?: string }) {
 
           {/* Logout */}
           <div className="border-t border-gray-100 dark:border-white/5 p-2">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all group"
-            >
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all group disabled:opacity-50 disabled:pointer-events-none"
+          >
+            {loggingOut ? (
+              <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
               <LogOut className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              Cerrar Sesión
-            </button>
+            )}
+            {loggingOut ? "Cerrando..." : "Cerrar Sesión"}
+          </button>
           </div>
         </div>
       )}

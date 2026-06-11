@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { getAllStockRequests, updateStockRequestStatus, COST_PER_BOOK, getPendingPayments, markSalesAsPaid, getPhysicalBooks, assignStock } from "@/lib/sellers";
+import { updateStockRequestStatus, COST_PER_BOOK, markSalesAsPaid, assignStock, adjustInventory } from "@/lib/sellers";
 import { deleteStockRequestAction, deleteSaleAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo } from "react";
@@ -45,7 +45,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
       ))}
     </div>
   );
-};
+}
 
 export default function AdminDashboard() {
   const supabase = createClientClient();
@@ -58,60 +58,32 @@ export default function AdminDashboard() {
   const [assignSelfQty, setAssignSelfQty] = useState(1);
   const [assignSelfSearch, setAssignSelfSearch] = useState("");
 
-  const { data: allSales = [] } = useQuery({
-    queryKey: ["admin-all-sales"],
+  interface DashboardData {
+    allSales: any[];
+    allInventory: any[];
+    allSellers: any[];
+    requests: StockRequest[];
+    pendingSales: any[];
+    physicalBooks: any[];
+  }
+
+  const { data: dash, isLoading } = useQuery<DashboardData>({
+    queryKey: ["admin-dashboard"],
     queryFn: async () => {
-      const { data } = await supabase.from("seller_sales").select("*, books(id, title, cover_url), seller:seller_id(id, email), profile:seller_id(name)").order("sold_at", { ascending: false });
-      return data ?? [];
+      const res = await fetch("/api/admin/dashboard");
+      if (!res.ok) throw new Error("Error al cargar dashboard");
+      return res.json();
     },
+    staleTime: 1000 * 60 * 2,
   });
 
-  const { data: allInventory = [] } = useQuery({
-    queryKey: ["admin-all-inventory"],
-    queryFn: async () => {
-      const { data } = await supabase.from("seller_inventory").select("*, books(id, title, cover_url, author)").order("updated_at", { ascending: false });
-      return data ?? [];
-    },
-  });
-
-  const { data: allSellers = [] } = useQuery({
-    queryKey: ["admin-all-sellers-list"],
-    queryFn: async () => {
-      const { data } = await supabase.from("users").select("id, email").eq("role", "vendedor");
-      return data ?? [];
-    },
-  });
-
-  const { data: requests = [] } = useQuery<StockRequest[]>({
-    queryKey: ["admin-stock-requests"],
-    queryFn: () => getAllStockRequests(supabase),
-  });
-
-  const { data: allSalesForMap = [] } = useQuery({
-    queryKey: ["admin-all-seller-sales-map"],
-    queryFn: async () => {
-      const { data } = await supabase.from("seller_sales").select("seller_id, book_id, quantity");
-      return data ?? [];
-    },
-  });
-
-  const { data: pendingSales = [] } = useQuery({
-    queryKey: ["admin-pending-payments"],
-    queryFn: () => getPendingPayments(supabase),
-  });
-
-  const { data: physicalBooks = [] } = useQuery({
-    queryKey: ["physical-books-admin"],
-    queryFn: () => getPhysicalBooks(supabase),
-  });
-
-  const { data: currentUser } = useQuery({
-    queryKey: ["admin-current-user"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user;
-    },
-  });
+  const allSales = dash?.allSales ?? [];
+  const allInventory = dash?.allInventory ?? [];
+  const allSellers = dash?.allSellers ?? [];
+  const requests = dash?.requests ?? [];
+  const allSalesForMap = allSales.map((s: any) => ({ seller_id: s.seller_id, book_id: s.book_id, quantity: s.quantity }));
+  const pendingSales = dash?.pendingSales ?? [];
+  const physicalBooks = dash?.physicalBooks ?? [];
 
   const salesMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -126,7 +98,10 @@ export default function AdminDashboard() {
     mutationFn: async ({ id, status, tracking_number }: { id: string; status: StockRequest["status"]; tracking_number?: string }) => {
       await updateStockRequestStatus(supabase, id, status, tracking_number);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-stock-requests"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      toast.success("Estado actualizado");
+    },
   });
 
   const deleteRequest = useMutation({
@@ -134,7 +109,7 @@ export default function AdminDashboard() {
       await deleteStockRequestAction(requestId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-stock-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       toast.success("Solicitud eliminada");
     },
     onError: (err: any) => toast.error(err?.message || "Error al eliminar"),
@@ -145,8 +120,7 @@ export default function AdminDashboard() {
       await markSalesAsPaid(supabase, saleIds);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-pending-payments"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-all-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       toast.success("Venta(s) marcada(s) como pagada(s)");
     },
     onError: (err: any) => toast.error(err?.message || "Error al marcar pago"),
@@ -154,11 +128,12 @@ export default function AdminDashboard() {
 
   const assignSelfMutation = useMutation({
     mutationFn: async () => {
-      if (!currentUser) throw new Error("No autenticado");
-      await assignStock(supabase, currentUser.id, assignSelfBookId, assignSelfQty);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No autenticado");
+      await assignStock(supabase, user.id, assignSelfBookId, assignSelfQty);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-all-inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       setAssignSelfBookId("");
       setAssignSelfQty(1);
       toast.success("Stock asignado a tu perfil de vendedor");
@@ -171,11 +146,40 @@ export default function AdminDashboard() {
       await deleteSaleAction(saleId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-all-sales"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-pending-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       toast.success("Venta eliminada y stock revertido");
     },
     onError: (err: any) => toast.error(err?.message || "Error al eliminar venta"),
+  });
+
+  const adjustMutation = useMutation({
+    mutationFn: async ({ inventoryId, delta }: { inventoryId: string; delta: number }) => {
+      await adjustInventory(supabase, inventoryId, delta);
+    },
+    onMutate: async ({ inventoryId, delta }) => {
+      await queryClient.cancelQueries({ queryKey: ["admin-dashboard"] });
+      const prev = queryClient.getQueryData<DashboardData>(["admin-dashboard"]);
+      if (prev) {
+        queryClient.setQueryData<DashboardData>(["admin-dashboard"], {
+          ...prev,
+          allInventory: prev.allInventory
+            .map((item: any) =>
+              item.id === inventoryId
+                ? { ...item, quantity: Math.max(0, item.quantity + delta) }
+                : item
+            )
+            .filter((item: any) => !(item.id === inventoryId && item.quantity + delta <= 0)),
+        });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["admin-dashboard"], ctx.prev);
+      toast.error("Error al ajustar stock");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
   });
 
   const chartData = useMemo(() => {
@@ -242,6 +246,10 @@ export default function AdminDashboard() {
     updateStatus.mutate({ id: req.id, status: "shipped", tracking_number: tracking });
   };
 
+  if (isLoading && allSales.length === 0) {
+    return <AdminSkeleton />;
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -249,7 +257,7 @@ export default function AdminDashboard() {
           <Shield className="w-6 h-6 text-blue-500 dark:text-blue-400" />
           <span>Admin</span>
         </h1>
-        <div className="flex items-center gap-2 text-xs text-white/30 bg-white/5 px-3 py-1.5 rounded-lg">
+        <div className="flex items-center gap-2 text-xs text-white/30 bg-white/5 px-3 py-1.5 rounded-lg" suppressHydrationWarning>
           <Calendar className="w-3.5 h-3.5" />
           {new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
         </div>
@@ -458,8 +466,25 @@ export default function AdminDashboard() {
                             <img src={item.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
                           )}
                           <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{item.books?.title || "Libro"}</span>
-                          <span className="text-xs text-white/40">{item.books?.author}</span>
-                          <span className="text-sm font-bold text-white shrink-0">{item.quantity} uds.</span>
+                          <span className="text-xs text-white/40 hidden sm:inline">{item.books?.author}</span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => adjustMutation.mutate({ inventoryId: item.id, delta: -1 })}
+                              disabled={adjustMutation.isPending}
+                              className="p-1 bg-white/5 hover:bg-red-500/20 rounded-lg transition-colors disabled:opacity-30"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="text-sm font-bold text-white min-w-[2ch] text-center">{item.quantity}</span>
+                            <button
+                              onClick={() => adjustMutation.mutate({ inventoryId: item.id, delta: 1 })}
+                              disabled={adjustMutation.isPending}
+                              className="p-1 bg-white/5 hover:bg-green-500/20 rounded-lg transition-colors disabled:opacity-30"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                            <span className="text-[10px] text-white/40 ml-1">uds.</span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -709,6 +734,37 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="mb-6 flex items-center justify-between">
+        <div className="h-8 w-24 bg-white/10 rounded-lg" />
+        <div className="h-5 w-40 bg-white/10 rounded-lg" />
+      </div>
+      <div className="md:hidden flex gap-1 mb-6">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="flex-1 h-10 bg-white/10 rounded-xl" />
+        ))}
+      </div>
+      <div className="flex gap-6">
+        <aside className="hidden md:flex flex-col gap-1 w-40 shrink-0">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="h-11 bg-white/10 rounded-xl" />
+          ))}
+        </aside>
+        <div className="flex-1 min-w-0 space-y-5">
+          <div className="grid grid-cols-3 gap-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-24 bg-white/5 border border-white/8 rounded-xl" />
+            ))}
+          </div>
+          <div className="h-[300px] bg-white/5 border border-white/8 rounded-2xl" />
         </div>
       </div>
     </div>

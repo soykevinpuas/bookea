@@ -6,8 +6,8 @@ import { Header } from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PwaListener } from "@/components/PwaListener";
 import { SplashScreen } from "@/components/SplashScreen";
-import { BottomNav } from "@/components/BottomNav";
 import { Suspense } from "react";
+import BottomNavWrapper from "@/components/BottomNavWrapper";
 
 
 // 1.5 - Configuración de fuentes y Metadata global
@@ -50,7 +50,6 @@ export const viewport = {
 
 import { Toaster } from "sonner";
 
-import { createClient } from "@/lib/server";
 import { ReaderColorSync } from "@/components/ReaderColorSync";
 import PanelManager from "@/components/PanelManager";
 
@@ -108,7 +107,7 @@ export default function RootLayout({
                 {children}
               </Suspense>
             </main>
-            <BottomNav />
+            <BottomNavWrapper />
             <Suspense fallback={null}>
               <PanelManager />
             </Suspense>

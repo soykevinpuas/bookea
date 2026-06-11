@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ChevronRight,
   LogOut,
@@ -25,51 +26,36 @@ export default function VendedorLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<{ email?: string; role?: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-
   const { userId } = useUserId();
   const { open: isMobileMenuOpen, setOpen: setMobileMenuOpen } = useMobileMenu();
+  const supabase = useMemo(() => createClientClient(), []);
+
+  const { data: user, isFetched } = useQuery({
+    queryKey: ["my-role"],
+    queryFn: async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session?.user) return null;
+      const { data: roleData } = await supabase.rpc("get_my_role");
+      return { email: sessionData.session.user.email, role: roleData as string };
+    },
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
 
   useEffect(() => {
-    const supabase = createClientClient();
+    if (!isFetched) return;
+    if (!user) {
+      router.push("/login");
+    } else if (user.role !== "vendedor" && user.role !== "admin") {
+      router.push("/dashboard");
+    }
+  }, [user, isFetched, router]);
 
-    const checkVendedor = async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session?.user) {
-        router.push("/login");
-        return;
-      }
-
-      const { data: roleData } = await supabase.rpc("get_my_role");
-
-      if ((roleData as string) !== "vendedor" && (roleData as string) !== "admin") {
-        router.push("/dashboard");
-        return;
-      }
-
-      setUser({ email: sessionData.session.user.email, role: roleData as string });
-      setLoading(false);
-    };
-
-    checkVendedor();
-  }, [router]);
-
-
-
-  const handleLogout = async () => {
-    const supabase = createClientClient();
-    await supabase.auth.signOut();
+  const handleLogout = useCallback(async () => {
+    const s = createClientClient();
+    await s.auth.signOut();
     router.push("/login");
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0d0d0d] retro:bg-[#0d1117] navy:bg-[#0a0f1e]">
-        <div className="w-8 h-8 border-2 border-gray-300 dark:border-white/20 border-t-amber-600 dark:border-t-white rounded-full animate-spin" />
-      </div>
-    );
-  }
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0d] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-white retro:text-white navy:text-[#e8eaf6] flex flex-col md:flex-row">
