@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { updateStockRequestStatus, COST_PER_BOOK, markSalesAsPaid, assignStock, adjustInventory } from "@/lib/sellers";
+import { updateStockRequestStatus, COST_PER_BOOK, markSalesAsPaid, assignStock } from "@/lib/sellers";
 import { deleteStockRequestAction, deleteSaleAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo } from "react";
@@ -57,7 +57,6 @@ export default function AdminDashboard() {
   const [assignSelfBookId, setAssignSelfBookId] = useState("");
   const [assignSelfQty, setAssignSelfQty] = useState(1);
   const [assignSelfSearch, setAssignSelfSearch] = useState("");
-  const [adjustingItems, setAdjustingItems] = useState<Set<string>>(new Set());
 
   interface DashboardData {
     allSales: any[];
@@ -151,39 +150,6 @@ export default function AdminDashboard() {
       toast.success("Venta eliminada y stock revertido");
     },
     onError: (err: any) => toast.error(err?.message || "Error al eliminar venta"),
-  });
-
-  const adjustMutation = useMutation({
-    mutationFn: async ({ inventoryId, delta }: { inventoryId: string; delta: number }) => {
-      await adjustInventory(supabase, inventoryId, delta);
-    },
-    onMutate: async ({ inventoryId, delta }) => {
-      setAdjustingItems(prev => new Set(prev).add(inventoryId));
-      await queryClient.cancelQueries({ queryKey: ["admin-dashboard"] });
-      const prev = queryClient.getQueryData<DashboardData>(["admin-dashboard"]);
-      if (prev) {
-        queryClient.setQueryData<DashboardData>(["admin-dashboard"], {
-          ...prev,
-          allInventory: prev.allInventory
-            .map((item: any) =>
-              item.id === inventoryId
-                ? { ...item, quantity: Math.max(0, item.quantity + delta) }
-                : item
-            )
-            .filter((item: any) => !(item.id === inventoryId && item.quantity + delta <= 0)),
-        });
-      }
-      return { prev };
-    },
-    onError: (_err, vars, ctx) => {
-      setAdjustingItems(prev => { const next = new Set(prev); next.delete(vars.inventoryId); return next; });
-      if (ctx?.prev) queryClient.setQueryData(["admin-dashboard"], ctx.prev);
-      toast.error("Error al ajustar stock");
-    },
-    onSettled: () => {
-      setAdjustingItems(new Set());
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-    },
   });
 
   const chartData = useMemo(() => {
@@ -471,26 +437,7 @@ export default function AdminDashboard() {
                           )}
                           <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{item.books?.title || "Libro"}</span>
                           <span className="text-xs text-white/40 hidden sm:inline">{item.books?.author}</span>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={() => adjustMutation.mutate({ inventoryId: item.id, delta: -1 })}
-                              disabled={adjustingItems.has(item.id)}
-                              className="p-1 bg-white/5 hover:bg-red-500/20 rounded-lg transition-colors disabled:opacity-30"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="text-sm font-bold text-white min-w-[2ch] text-center">
-                              {adjustingItems.has(item.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : item.quantity}
-                            </span>
-                            <button
-                              onClick={() => adjustMutation.mutate({ inventoryId: item.id, delta: 1 })}
-                              disabled={adjustingItems.has(item.id)}
-                              className="p-1 bg-white/5 hover:bg-green-500/20 rounded-lg transition-colors disabled:opacity-30"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                            <span className="text-[10px] text-white/40 ml-1">uds.</span>
-                          </div>
+                          <span className="text-sm font-bold text-white shrink-0">{item.quantity} uds.</span>
                         </div>
                       ))}
                     </div>

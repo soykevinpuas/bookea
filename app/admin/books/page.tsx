@@ -75,7 +75,6 @@ export default function AdminBooksPage() {
   const [authorPhotoUploading, setAuthorPhotoUploading] = useState(false);
   const authorPhotoInputRef = useRef<HTMLInputElement>(null);
   const [filterTab, setFilterTab] = useState<"all" | "physical" | "no-epub">("all");
-  const [stockLoading, setStockLoading] = useState<Set<string>>(new Set());
 
   const { data: books = [], isLoading } = useQuery({
     queryKey: ["admin-books"],
@@ -129,30 +128,6 @@ export default function AdminBooksPage() {
       toast.success("Estado del libro actualizado");
     },
     onError: (err: any) => toast.error(`Error: ${err.message}`),
-  });
-
-  const adjustStockMutation = useMutation({
-    mutationFn: async ({ id, delta }: { id: string; delta: number }) => {
-      const supabase = createClientClient();
-      const book = books.find((b) => b.id === id);
-      if (!book) throw new Error("Libro no encontrado");
-      const newStock = Math.max(0, book.stock_physical + delta);
-      const { error } = await supabase.from("books").update({ stock_physical: newStock }).eq("id", id);
-      if (error) throw error;
-    },
-    onMutate: ({ id }) => {
-      setStockLoading((prev) => new Set(prev).add(id));
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
-    },
-    onError: (_err, vars) => {
-      setStockLoading((prev) => { const next = new Set(prev); next.delete(vars.id); return next; });
-      toast.error("Error al ajustar stock");
-    },
-    onSettled: () => {
-      setStockLoading(new Set());
-    },
   });
 
   const openNew = () => {
@@ -402,27 +377,7 @@ export default function AdminBooksPage() {
                     )}
                   </td>
                   <td className="px-5 py-4 text-white/70 hidden md:table-cell">${book.price_physical}</td>
-                  <td className="px-5 py-4 hidden md:table-cell">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => adjustStockMutation.mutate({ id: book.id, delta: -1 })}
-                        disabled={stockLoading.has(book.id)}
-                        className="p-0.5 bg-white/5 hover:bg-red-500/20 rounded transition-colors disabled:opacity-30"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="text-white/70 min-w-[2ch] text-center text-sm font-medium tabular-nums">
-                        {stockLoading.has(book.id) ? <Loader2 className="w-3 h-3 animate-spin inline" /> : book.stock_physical}
-                      </span>
-                      <button
-                        onClick={() => adjustStockMutation.mutate({ id: book.id, delta: 1 })}
-                        disabled={stockLoading.has(book.id)}
-                        className="p-0.5 bg-white/5 hover:bg-green-500/20 rounded transition-colors disabled:opacity-30"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </td>
+                  <td className="px-5 py-4 text-white/70 hidden md:table-cell">{book.stock_physical}</td>
                   <td className="px-5 py-4">
                     <button
                       onClick={() => toggleActiveMutation.mutate({ id: book.id, isActive: !book.is_active })}
@@ -601,13 +556,29 @@ export default function AdminBooksPage() {
                 </div>
                 <div>
                   <label className="text-xs text-white/40 font-medium mb-1.5 block">Stock físico</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editingBook.stock_physical}
-                    onChange={(e) => setEditingBook((p) => ({ ...p, stock_physical: Number(e.target.value) }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
-                  />
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditingBook((p) => ({ ...p, stock_physical: Math.max(0, p.stock_physical - 1) }))}
+                      className="p-2 bg-white/5 hover:bg-red-500/20 rounded-lg transition-colors"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editingBook.stock_physical}
+                      onChange={(e) => setEditingBook((p) => ({ ...p, stock_physical: Number(e.target.value) }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors text-center"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditingBook((p) => ({ ...p, stock_physical: p.stock_physical + 1 }))}
+                      className="p-2 bg-white/5 hover:bg-green-500/20 rounded-lg transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
