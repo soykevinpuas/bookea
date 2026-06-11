@@ -33,24 +33,13 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Intentar getUser() con timeout de 8s para refrescar cookies de sesión.
-  // Si excede el timeout, caer en getSession() (lee cookies, sin red).
+  // Solo leer cookies — sin request HTTP a Supabase.
+  // El cliente (React) valida la sesión real con getUser().
   let user = null
   try {
-    const result = await Promise.race([
-      supabase.auth.getUser().then(r => r.data.user),
-      new Promise<'TIMEOUT'>((resolve) => setTimeout(() => resolve('TIMEOUT' as const), 8_000)),
-    ])
-    if (result !== 'TIMEOUT') {
-      user = result
-    }
+    const { data } = await supabase.auth.getSession()
+    user = data.session?.user ?? null
   } catch {}
-  if (!user) {
-    try {
-      const { data } = await supabase.auth.getSession()
-      user = data.session?.user ?? null
-    } catch {}
-  }
 
   // Protección de rutas (basado en proxy.ts anterior)
   const { pathname } = request.nextUrl
