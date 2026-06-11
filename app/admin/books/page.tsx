@@ -14,6 +14,8 @@ import {
   ToggleRight,
   ImageIcon,
   FileText,
+  Plus,
+  Minus,
 } from "lucide-react";
 
 interface Book {
@@ -73,6 +75,7 @@ export default function AdminBooksPage() {
   const [authorPhotoUploading, setAuthorPhotoUploading] = useState(false);
   const authorPhotoInputRef = useRef<HTMLInputElement>(null);
   const [filterTab, setFilterTab] = useState<"all" | "physical" | "no-epub">("all");
+  const [stockLoading, setStockLoading] = useState<Set<string>>(new Set());
 
   const { data: books = [], isLoading } = useQuery({
     queryKey: ["admin-books"],
@@ -97,7 +100,7 @@ export default function AdminBooksPage() {
   });
 
   const filteredBooks = filterTab === "all" ? books : books.filter((b) => {
-    if (filterTab === "physical") return b.price_physical > 0 && !b.epub_url;
+    if (filterTab === "physical") return b.stock_physical > 0;
     if (filterTab === "no-epub") return !b.epub_url;
     return true;
   });
@@ -126,6 +129,30 @@ export default function AdminBooksPage() {
       toast.success("Estado del libro actualizado");
     },
     onError: (err: any) => toast.error(`Error: ${err.message}`),
+  });
+
+  const adjustStockMutation = useMutation({
+    mutationFn: async ({ id, delta }: { id: string; delta: number }) => {
+      const supabase = createClientClient();
+      const book = books.find((b) => b.id === id);
+      if (!book) throw new Error("Libro no encontrado");
+      const newStock = Math.max(0, book.stock_physical + delta);
+      const { error } = await supabase.from("books").update({ stock_physical: newStock }).eq("id", id);
+      if (error) throw error;
+    },
+    onMutate: ({ id }) => {
+      setStockLoading((prev) => new Set(prev).add(id));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+    },
+    onError: (_err, vars) => {
+      setStockLoading((prev) => { const next = new Set(prev); next.delete(vars.id); return next; });
+      toast.error("Error al ajustar stock");
+    },
+    onSettled: () => {
+      setStockLoading(new Set());
+    },
   });
 
   const openNew = () => {
@@ -375,7 +402,27 @@ export default function AdminBooksPage() {
                     )}
                   </td>
                   <td className="px-5 py-4 text-white/70 hidden md:table-cell">${book.price_physical}</td>
-                  <td className="px-5 py-4 text-white/70 hidden md:table-cell">{book.stock_physical}</td>
+                  <td className="px-5 py-4 hidden md:table-cell">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => adjustStockMutation.mutate({ id: book.id, delta: -1 })}
+                        disabled={stockLoading.has(book.id)}
+                        className="p-0.5 bg-white/5 hover:bg-red-500/20 rounded transition-colors disabled:opacity-30"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="text-white/70 min-w-[2ch] text-center text-sm font-medium tabular-nums">
+                        {stockLoading.has(book.id) ? <Loader2 className="w-3 h-3 animate-spin inline" /> : book.stock_physical}
+                      </span>
+                      <button
+                        onClick={() => adjustStockMutation.mutate({ id: book.id, delta: 1 })}
+                        disabled={stockLoading.has(book.id)}
+                        className="p-0.5 bg-white/5 hover:bg-green-500/20 rounded transition-colors disabled:opacity-30"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-5 py-4">
                     <button
                       onClick={() => toggleActiveMutation.mutate({ id: book.id, isActive: !book.is_active })}
