@@ -33,14 +33,23 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Leer sesión de cookies (rápido, sin request HTTP a Supabase).
-  // Para redirects de middleware alcanza — el cliente valida con getUser() real.
+  // Intentar getUser() con timeout de 8s para refrescar cookies de sesión.
+  // Si excede el timeout, caer en getSession() (lee cookies, sin red).
   let user = null
   try {
-    const { data } = await supabase.auth.getSession()
-    user = data.session?.user ?? null
-  } catch (err) {
-    console.warn('⚠️ Middleware: getSession falló, dejando pasar:', err)
+    const result = await Promise.race([
+      supabase.auth.getUser().then(r => r.data.user),
+      new Promise<'TIMEOUT'>((resolve) => setTimeout(() => resolve('TIMEOUT' as const), 8_000)),
+    ])
+    if (result !== 'TIMEOUT') {
+      user = result
+    }
+  } catch {}
+  if (!user) {
+    try {
+      const { data } = await supabase.auth.getSession()
+      user = data.session?.user ?? null
+    } catch {}
   }
 
   // Protección de rutas (basado en proxy.ts anterior)
