@@ -57,6 +57,7 @@ export default function AdminDashboard() {
   const [assignSelfBookId, setAssignSelfBookId] = useState("");
   const [assignSelfQty, setAssignSelfQty] = useState(1);
   const [assignSelfSearch, setAssignSelfSearch] = useState("");
+  const [adjustingItems, setAdjustingItems] = useState<Set<string>>(new Set());
 
   interface DashboardData {
     allSales: any[];
@@ -157,6 +158,7 @@ export default function AdminDashboard() {
       await adjustInventory(supabase, inventoryId, delta);
     },
     onMutate: async ({ inventoryId, delta }) => {
+      setAdjustingItems(prev => new Set(prev).add(inventoryId));
       await queryClient.cancelQueries({ queryKey: ["admin-dashboard"] });
       const prev = queryClient.getQueryData<DashboardData>(["admin-dashboard"]);
       if (prev) {
@@ -173,11 +175,13 @@ export default function AdminDashboard() {
       }
       return { prev };
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (_err, vars, ctx) => {
+      setAdjustingItems(prev => { const next = new Set(prev); next.delete(vars.inventoryId); return next; });
       if (ctx?.prev) queryClient.setQueryData(["admin-dashboard"], ctx.prev);
       toast.error("Error al ajustar stock");
     },
     onSettled: () => {
+      setAdjustingItems(new Set());
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
     },
   });
@@ -470,15 +474,17 @@ export default function AdminDashboard() {
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               onClick={() => adjustMutation.mutate({ inventoryId: item.id, delta: -1 })}
-                              disabled={adjustMutation.isPending}
+                              disabled={adjustingItems.has(item.id)}
                               className="p-1 bg-white/5 hover:bg-red-500/20 rounded-lg transition-colors disabled:opacity-30"
                             >
                               <Minus className="w-3 h-3" />
                             </button>
-                            <span className="text-sm font-bold text-white min-w-[2ch] text-center">{item.quantity}</span>
+                            <span className="text-sm font-bold text-white min-w-[2ch] text-center">
+                              {adjustingItems.has(item.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : item.quantity}
+                            </span>
                             <button
                               onClick={() => adjustMutation.mutate({ inventoryId: item.id, delta: 1 })}
-                              disabled={adjustMutation.isPending}
+                              disabled={adjustingItems.has(item.id)}
                               className="p-1 bg-white/5 hover:bg-green-500/20 rounded-lg transition-colors disabled:opacity-30"
                             >
                               <Plus className="w-3 h-3" />

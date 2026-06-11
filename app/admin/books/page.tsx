@@ -97,7 +97,7 @@ export default function AdminBooksPage() {
   });
 
   const filteredBooks = filterTab === "all" ? books : books.filter((b) => {
-    if (filterTab === "physical") return b.price_physical > 0;
+    if (filterTab === "physical") return b.price_physical > 0 && !b.epub_url;
     if (filterTab === "no-epub") return !b.epub_url;
     return true;
   });
