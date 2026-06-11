@@ -81,9 +81,7 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const res = await fetch("/api/admin/dashboard", { cache: "no-store" });
       if (!res.ok) throw new Error("Error al cargar dashboard");
-      const data = await res.json();
-      console.log("ADMIN DASHBOARD RAW RESPONSE:", data);
-      return data;
+      return res.json();
     },
     staleTime: 0,
   });
