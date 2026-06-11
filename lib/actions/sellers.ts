@@ -14,6 +14,17 @@ export async function createStockRequestAction(
 
   const adminDb = createAdminClient();
 
+  for (const item of items) {
+    const { data: book } = await adminDb
+      .from("books")
+      .select("stock_physical, title")
+      .eq("id", item.book_id)
+      .single();
+    if (!book || book.stock_physical < item.quantity) {
+      throw new Error(`Stock insuficiente para "${book?.title || item.book_id}". Disponible: ${book?.stock_physical ?? 0}, solicitado: ${item.quantity}`);
+    }
+  }
+
   const { data: request, error: reqErr } = await adminDb
     .from("stock_requests")
     .insert({

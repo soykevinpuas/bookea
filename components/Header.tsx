@@ -4,14 +4,17 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState, useMemo } from "react";
-import { UserMenu } from "./UserMenu";
+import dynamic from "next/dynamic";
 import { ThemeToggle } from "./ThemeToggle";
 import { useSubscription } from "@/hooks/useSubscription";
-import { WifiOff } from "lucide-react";
+import { Menu, WifiOff } from "lucide-react";
+import { useMobileMenu } from "@/stores/menu";
 
-export function Header({ initialUser = null }: { initialUser?: { id: string; email?: string } | null }) {
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(initialUser);
-  const [isLoading, setIsLoading] = useState(false);
+const UserMenu = dynamic(() => import("./UserMenu").then(m => m.UserMenu));
+
+export function Header() {
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -20,25 +23,57 @@ export function Header({ initialUser = null }: { initialUser?: { id: string; ema
   const router = useRouter();
 
   const { data: subscription } = useSubscription(user?.id);
+  const { open: menuOpen, setOpen: setMenuOpen } = useMobileMenu();
 
-  useEffect(() => {
-    setUser(initialUser ?? null);
-  }, [initialUser]);
+  const isAdmin = pathname?.startsWith("/admin");
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUser(user);
+      }
+      setIsLoading(false);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       setUser(session?.user ?? null);
-      setIsLoading(false);
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         router.refresh();
       }
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [supabase, router]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) setUser(user);
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [supabase]);
+
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.classList.add("mobile-menu-open");
+    } else {
+      document.body.classList.remove("mobile-menu-open");
+    }
+  }, [menuOpen]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname, setMenuOpen]);
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -59,6 +94,14 @@ export function Header({ initialUser = null }: { initialUser?: { id: string; ema
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-gray-100/90 dark:bg-black/60 retro:bg-[#0d1117]/90 border-b border-gray-200 dark:border-white/10 retro:border-[#3fb950]/20 shadow-sm dark:shadow-[0_4px_30px_rgba(0,0,0,0.1)] transition-all pt-safe">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {isAdmin && (
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="md:hidden p-2 -ml-1 text-gray-500 dark:text-white/40 hover:text-gray-900 dark:hover:text-white bg-gray-200/50 dark:bg-white/5 rounded-lg transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
           <Link
             href="/"
             className="text-xl sm:text-2xl font-black tracking-tighter text-gray-900 dark:text-white flex items-center gap-0 hover:opacity-80 transition-opacity flex-shrink-0"
@@ -78,7 +121,7 @@ export function Header({ initialUser = null }: { initialUser?: { id: string; ema
 
           {!isLoading && (
             user ? (
-              <UserMenu email={user.email} />
+              <UserMenu email={user.email} userId={user.id} />
             ) : (
               <div className="flex items-center gap-3">
                 <Link

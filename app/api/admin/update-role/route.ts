@@ -49,6 +49,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
+    // 5. Asegurar que el usuario tiene un perfil
+    const { data: existingProfile } = await adminDb
+      .from('profiles')
+      .select('id')
+      .eq('user_id', targetUserId)
+      .maybeSingle();
+
+    if (!existingProfile) {
+      const { error: profileError } = await adminDb
+        .from('profiles')
+        .insert({ user_id: targetUserId, id: targetUserId });
+
+      if (profileError) {
+        console.error('[admin/update-role] Error creando profile:', profileError);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       method: 'admin_client',

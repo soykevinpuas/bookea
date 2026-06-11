@@ -3,11 +3,11 @@
 const CACHE_NAME = 'bookea-v3';
 const BOOKS_CACHE = 'bookea-books';
 
-// Solo cachear lo mínimo que sabemos que existe como archivo estático
 const PRECACHE = [
   '/manifest.json',
   '/icon-192x192.png',
   '/icon-512x512.png',
+  '/',
 ];
 
 // 1.1.1 - Instalación: Precachear solo archivos estáticos seguros
@@ -114,20 +114,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ─── ESTRATEGIA 5: Assets de la app (JS, CSS, imágenes, fuentes) - Network First + Cache ───
-  // NO filtrar por type === 'basic' porque Vercel CDN sirve assets como 'cors'
+  // ─── ESTRATEGIA 5: Assets de la app (JS, CSS, imágenes, fuentes) - Cache First + background refresh ───
   event.respondWith(
-    fetch(request).then((res) => {
-      // Cachear TODOS los assets válidos (basic Y cors) excepto opaque
-      if (res.ok && (res.type === 'basic' || res.type === 'cors')) {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then((c) => c.put(request, clone));
-      }
-      return res;
-    }).catch(() =>
-      caches.match(request).then((cached) =>
-        cached || new Response('', { status: 404 })
-      )
-    )
+    caches.match(request).then((cached) => {
+      const fetchPromise = fetch(request).then((res) => {
+        if (res.ok && (res.type === 'basic' || res.type === 'cors')) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(request, clone));
+        }
+        return res;
+      }).catch(() => cached || new Response('', { status: 404 }));
+
+      return cached || fetchPromise;
+    })
   );
 });

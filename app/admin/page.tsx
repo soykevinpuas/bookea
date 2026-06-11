@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { getAllStockRequests, updateStockRequestStatus, COST_PER_BOOK, getPendingPayments, markSalesAsPaid, getPhysicalBooks, assignStock } from "@/lib/sellers";
+import { updateStockRequestStatus, COST_PER_BOOK, markSalesAsPaid, assignStock } from "@/lib/sellers";
 import { deleteStockRequestAction, deleteSaleAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo } from "react";
@@ -45,7 +45,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
       ))}
     </div>
   );
-};
+}
 
 export default function AdminDashboard() {
   const supabase = createClientClient();
@@ -57,61 +57,36 @@ export default function AdminDashboard() {
   const [assignSelfBookId, setAssignSelfBookId] = useState("");
   const [assignSelfQty, setAssignSelfQty] = useState(1);
   const [assignSelfSearch, setAssignSelfSearch] = useState("");
+  const [assignSellerId, setAssignSellerId] = useState("");
+  const [assignSellerQtys, setAssignSellerQtys] = useState<Record<string, number>>({});
+  const [assignSellerSearch, setAssignSellerSearch] = useState("");
 
-  const { data: allSales = [] } = useQuery({
-    queryKey: ["admin-all-sales"],
+  interface DashboardData {
+    allSales: any[];
+    allInventory: any[];
+    allSellers: any[];
+    requests: StockRequest[];
+    pendingSales: any[];
+    physicalBooks: any[];
+  }
+
+  const { data: dash, isLoading } = useQuery<DashboardData>({
+    queryKey: ["admin-dashboard"],
     queryFn: async () => {
-      const { data } = await supabase.from("seller_sales").select("*, books(id, title, cover_url), seller:seller_id(id, email), profile:seller_id(name)").order("sold_at", { ascending: false });
-      return data ?? [];
+      const res = await fetch("/api/admin/dashboard");
+      if (!res.ok) throw new Error("Error al cargar dashboard");
+      return res.json();
     },
+    staleTime: 1000 * 60 * 2,
   });
 
-  const { data: allInventory = [] } = useQuery({
-    queryKey: ["admin-all-inventory"],
-    queryFn: async () => {
-      const { data } = await supabase.from("seller_inventory").select("*, books(id, title, cover_url, author)").order("updated_at", { ascending: false });
-      return data ?? [];
-    },
-  });
-
-  const { data: allSellers = [] } = useQuery({
-    queryKey: ["admin-all-sellers-list"],
-    queryFn: async () => {
-      const { data } = await supabase.from("users").select("id, email").eq("role", "vendedor");
-      return data ?? [];
-    },
-  });
-
-  const { data: requests = [] } = useQuery<StockRequest[]>({
-    queryKey: ["admin-stock-requests"],
-    queryFn: () => getAllStockRequests(supabase),
-  });
-
-  const { data: allSalesForMap = [] } = useQuery({
-    queryKey: ["admin-all-seller-sales-map"],
-    queryFn: async () => {
-      const { data } = await supabase.from("seller_sales").select("seller_id, book_id, quantity");
-      return data ?? [];
-    },
-  });
-
-  const { data: pendingSales = [] } = useQuery({
-    queryKey: ["admin-pending-payments"],
-    queryFn: () => getPendingPayments(supabase),
-  });
-
-  const { data: physicalBooks = [] } = useQuery({
-    queryKey: ["physical-books-admin"],
-    queryFn: () => getPhysicalBooks(supabase),
-  });
-
-  const { data: currentUser } = useQuery({
-    queryKey: ["admin-current-user"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user;
-    },
-  });
+  const allSales = dash?.allSales ?? [];
+  const allInventory = dash?.allInventory ?? [];
+  const allSellers = dash?.allSellers ?? [];
+  const requests = dash?.requests ?? [];
+  const allSalesForMap = allSales.map((s: any) => ({ seller_id: s.seller_id, book_id: s.book_id, quantity: s.quantity }));
+  const pendingSales = dash?.pendingSales ?? [];
+  const physicalBooks = dash?.physicalBooks ?? [];
 
   const salesMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -126,7 +101,10 @@ export default function AdminDashboard() {
     mutationFn: async ({ id, status, tracking_number }: { id: string; status: StockRequest["status"]; tracking_number?: string }) => {
       await updateStockRequestStatus(supabase, id, status, tracking_number);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-stock-requests"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      toast.success("Estado actualizado");
+    },
   });
 
   const deleteRequest = useMutation({
@@ -134,7 +112,7 @@ export default function AdminDashboard() {
       await deleteStockRequestAction(requestId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-stock-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       toast.success("Solicitud eliminada");
     },
     onError: (err: any) => toast.error(err?.message || "Error al eliminar"),
@@ -145,8 +123,7 @@ export default function AdminDashboard() {
       await markSalesAsPaid(supabase, saleIds);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-pending-payments"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-all-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       toast.success("Venta(s) marcada(s) como pagada(s)");
     },
     onError: (err: any) => toast.error(err?.message || "Error al marcar pago"),
@@ -154,14 +131,34 @@ export default function AdminDashboard() {
 
   const assignSelfMutation = useMutation({
     mutationFn: async () => {
-      if (!currentUser) throw new Error("No autenticado");
-      await assignStock(supabase, currentUser.id, assignSelfBookId, assignSelfQty);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No autenticado");
+      await assignStock(supabase, user.id, assignSelfBookId, assignSelfQty);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-all-inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       setAssignSelfBookId("");
       setAssignSelfQty(1);
       toast.success("Stock asignado a tu perfil de vendedor");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const assignSellerMutation = useMutation({
+    mutationFn: async () => {
+      if (!assignSellerId) throw new Error("Selecciona un vendedor");
+      const entries = Object.entries(assignSellerQtys).filter(([, qty]) => qty > 0);
+      if (entries.length === 0) throw new Error("No hay cantidades asignadas");
+      await Promise.all(
+        entries.map(([bookId, qty]) =>
+          assignStock(supabase, assignSellerId, bookId, qty)
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      setAssignSellerQtys({});
+      toast.success("Stock asignado al vendedor");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -171,8 +168,7 @@ export default function AdminDashboard() {
       await deleteSaleAction(saleId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-all-sales"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-pending-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       toast.success("Venta eliminada y stock revertido");
     },
     onError: (err: any) => toast.error(err?.message || "Error al eliminar venta"),
@@ -242,6 +238,10 @@ export default function AdminDashboard() {
     updateStatus.mutate({ id: req.id, status: "shipped", tracking_number: tracking });
   };
 
+  if (isLoading && allSales.length === 0) {
+    return <AdminSkeleton />;
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -249,7 +249,7 @@ export default function AdminDashboard() {
           <Shield className="w-6 h-6 text-blue-500 dark:text-blue-400" />
           <span>Admin</span>
         </h1>
-        <div className="flex items-center gap-2 text-xs text-white/30 bg-white/5 px-3 py-1.5 rounded-lg">
+        <div className="flex items-center gap-2 text-xs text-white/30 bg-white/5 px-3 py-1.5 rounded-lg" suppressHydrationWarning>
           <Calendar className="w-3.5 h-3.5" />
           {new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
         </div>
@@ -370,6 +370,127 @@ export default function AdminDashboard() {
           {/* ── STOCK (todos los vendedores) ── */}
           {activeSection === "stock" && (
             <div className="space-y-5">
+              {/* Assign to any seller */}
+              <details className="bg-white/5 border border-amber-500/20 rounded-2xl overflow-hidden group">
+                <summary className="px-5 py-3 bg-amber-600/5 cursor-pointer flex items-center justify-between hover:bg-amber-600/10 transition-colors">
+                  <span className="font-semibold text-sm flex items-center gap-2 text-amber-400">
+                    <Store className="w-4 h-4" />
+                    Asignar stock a vendedor
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-amber-400/50 group-open:rotate-90 transition-transform" />
+                </summary>
+                <div className="p-5 border-t border-amber-500/10 space-y-3">
+                  {/* Seller selector */}
+                  <select
+                    value={assignSellerId}
+                    onChange={(e) => setAssignSellerId(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                  >
+                    <option value="">Seleccionar vendedor...</option>
+                    {allSellers.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.email}</option>
+                    ))}
+                  </select>
+
+                  {/* Search */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                    <input
+                      value={assignSellerSearch}
+                      onChange={(e) => setAssignSellerSearch(e.target.value)}
+                      placeholder="Buscar libro..."
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  {/* Books table */}
+                  {!assignSellerId ? (
+                    <p className="text-sm text-white/30 py-4 text-center">Selecciona un vendedor primero</p>
+                  ) : (
+                    <>
+                      <div className="divide-y divide-white/5 max-h-80 overflow-y-auto border border-white/8 rounded-xl">
+                        {physicalBooks
+                          .filter((b: any) => b.stock_physical > 0)
+                          .filter((b: any) =>
+                            b.title.toLowerCase().includes(assignSellerSearch.toLowerCase()) ||
+                            b.author.toLowerCase().includes(assignSellerSearch.toLowerCase())
+                          )
+                          .map((book: any) => {
+                            const qty = assignSellerQtys[book.id] || 0;
+                            const lowStock = book.stock_physical <= 3;
+                            return (
+                              <div key={book.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/3 transition-colors">
+                                {book.cover_url && (
+                                  <img src={book.cover_url} alt="" className="w-6 h-9 rounded object-cover bg-white/5 shrink-0" />
+                                )}
+                                <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{book.title}</span>
+                                <span className={`text-xs shrink-0 ${lowStock ? "text-red-400 font-medium" : "text-white/30"}`}>
+                                  {book.stock_physical} uds.{lowStock ? " ⚠️" : ""}
+                                </span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    onClick={() =>
+                                      setAssignSellerQtys((prev) => {
+                                        const current = prev[book.id] || 0;
+                                        const next = Math.max(0, current - 1);
+                                        const copy = { ...prev };
+                                        if (next <= 0) delete copy[book.id];
+                                        else copy[book.id] = next;
+                                        return copy;
+                                      })
+                                    }
+                                    className="p-0.5 bg-white/5 hover:bg-red-500/20 rounded transition-colors"
+                                  >
+                                    <Minus className="w-3 h-3" />
+                                  </button>
+                                  <span className="text-sm font-bold text-white min-w-[2ch] text-center">{qty}</span>
+                                  <button
+                                    onClick={() =>
+                                      setAssignSellerQtys((prev) => ({
+                                        ...prev,
+                                        [book.id]: Math.min(book.stock_physical, (prev[book.id] || 0) + 1),
+                                      }))
+                                    }
+                                    disabled={qty >= book.stock_physical}
+                                    className="p-0.5 bg-white/5 hover:bg-green-500/20 rounded transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      {/* Summary + Assign button */}
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="text-xs text-white/40">
+                          {Object.values(assignSellerQtys).reduce((s, q) => s + q, 0)} uds. por asignar
+                        </span>
+                        <button
+                          onClick={() => assignSellerMutation.mutate()}
+                          disabled={
+                            !assignSellerId ||
+                            Object.values(assignSellerQtys).reduce((s, q) => s + q, 0) === 0 ||
+                            assignSellerMutation.isPending
+                          }
+                          className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                        >
+                          {assignSellerMutation.isPending ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Asignando...
+                            </span>
+                          ) : (
+                            `Asignar todo (${Object.values(assignSellerQtys).reduce((s, q) => s + q, 0)} uds.)`
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </details>
+
               {/* Self-assign for admin */}
               <details className="bg-white/5 border border-blue-500/20 rounded-2xl overflow-hidden group">
                 <summary className="px-5 py-3 bg-blue-600/5 cursor-pointer flex items-center justify-between hover:bg-blue-600/10 transition-colors">
@@ -458,7 +579,7 @@ export default function AdminDashboard() {
                             <img src={item.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
                           )}
                           <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{item.books?.title || "Libro"}</span>
-                          <span className="text-xs text-white/40">{item.books?.author}</span>
+                          <span className="text-xs text-white/40 hidden sm:inline">{item.books?.author}</span>
                           <span className="text-sm font-bold text-white shrink-0">{item.quantity} uds.</span>
                         </div>
                       ))}
@@ -709,6 +830,37 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="mb-6 flex items-center justify-between">
+        <div className="h-8 w-24 bg-white/10 rounded-lg" />
+        <div className="h-5 w-40 bg-white/10 rounded-lg" />
+      </div>
+      <div className="md:hidden flex gap-1 mb-6">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="flex-1 h-10 bg-white/10 rounded-xl" />
+        ))}
+      </div>
+      <div className="flex gap-6">
+        <aside className="hidden md:flex flex-col gap-1 w-40 shrink-0">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="h-11 bg-white/10 rounded-xl" />
+          ))}
+        </aside>
+        <div className="flex-1 min-w-0 space-y-5">
+          <div className="grid grid-cols-3 gap-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-24 bg-white/5 border border-white/8 rounded-xl" />
+            ))}
+          </div>
+          <div className="h-[300px] bg-white/5 border border-white/8 rounded-2xl" />
         </div>
       </div>
     </div>

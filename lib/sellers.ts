@@ -242,6 +242,16 @@ export async function updateStockRequestStatus(
     }
   }
 
+  if (status === "cancelled" && request.status === "shipped") {
+    for (const item of items) {
+      const { error: rpcErr } = await supabase.rpc("increment_stock", {
+        p_book_id: item.book_id,
+        p_quantity: item.quantity,
+      });
+      if (rpcErr) throw new Error(`Error al restaurar stock de ${item.book_id}: ${rpcErr.message}`);
+    }
+  }
+
   const update: Record<string, any> = {
     status,
     updated_at: new Date().toISOString(),
@@ -359,11 +369,11 @@ export async function getPendingPayments(supabase: SupabaseClient) {
 export async function getSellerPendingTotal(supabase: SupabaseClient, sellerId: string) {
   const { data } = await supabase
     .from("seller_sales")
-    .select("sale_price, quantity")
+    .select("quantity")
     .eq("seller_id", sellerId)
     .is("paid_at", null);
 
-  return (data ?? []).reduce((sum, s) => sum + s.sale_price * s.quantity, 0);
+  return (data ?? []).reduce((sum, s) => sum + s.quantity * COST_PER_BOOK, 0);
 }
 
 export async function markSalesAsPaid(supabase: SupabaseClient, saleIds: string[]) {
@@ -383,6 +393,48 @@ export async function revertMarkAsPaid(supabase: SupabaseClient, saleId: string)
     .eq("id", saleId);
 
   if (error) throw error;
+}
+
+export async function adjustInventory(
+  supabase: SupabaseClient,
+  inventoryId: string,
+  delta: number
+) {
+  const { data: item } = await supabase
+    .from("seller_inventory")
+    .select("id, quantity, book_id, seller_id")
+    .eq("id", inventoryId)
+    .single();
+
+  if (!item) throw new Error("Item no encontrado");
+
+  const newQty = item.quantity + delta;
+  if (newQty < 0) throw new Error("Stock no puede ser negativo");
+
+  if (delta > 0) {
+    const { error: rpcErr } = await supabase.rpc("decrement_stock", {
+      p_book_id: item.book_id,
+      p_quantity: Math.abs(delta),
+    });
+    if (rpcErr) throw rpcErr;
+  } else if (delta < 0) {
+    const { error: rpcErr } = await supabase.rpc("increment_stock", {
+      p_book_id: item.book_id,
+      p_quantity: Math.abs(delta),
+    });
+    if (rpcErr) throw rpcErr;
+  }
+
+  if (newQty <= 0) {
+    const { error } = await supabase.from("seller_inventory").delete().eq("id", inventoryId);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("seller_inventory")
+      .update({ quantity: newQty, updated_at: new Date().toISOString() })
+      .eq("id", inventoryId);
+    if (error) throw error;
+  }
 }
 
 export async function revertAssignStock(

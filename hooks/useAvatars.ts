@@ -19,24 +19,14 @@ export function useProfile(userId: string | undefined) {
       return data;
     },
     enabled: !!userId,
-    staleTime: 0,
+    staleTime: 1000 * 60 * 5,
+    initialDataUpdatedAt: 0,
     initialData: () => {
       if (!userId || typeof window === "undefined") return undefined;
-      const cached = localStorage.getItem("bookea-avatar-cache");
-      if (cached) {
-        try {
-          const config = JSON.parse(cached);
-          return {
-            id: "temp",
-            user_id: userId,
-            name: null,
-            avatar_url: `v2:${config.type}:${config.color}:${config.seed}`,
-            bio: null,
-            reading_streak: 0,
-            total_books_read: 0,
-          } as Profile;
-        } catch (e) {}
-      }
+      try {
+        const cached = localStorage.getItem(`profile-${userId}`);
+        if (cached) return JSON.parse(cached) as Profile;
+      } catch (e) {}
       return undefined;
     },
   });
