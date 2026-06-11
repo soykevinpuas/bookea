@@ -4,17 +4,6 @@ import { NextResponse, type NextRequest } from 'next/server'
 const AUTH_TIMEOUT = 5000
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  const protectedPaths = ['/dashboard', '/reader', '/admin', '/catalog', '/profile', '/vendedor']
-  const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
-  const isAuthPath = pathname === '/login' || pathname === '/register'
-
-  // Saltar check de auth en login/register — no es necesario para mostrar el formulario
-  if (!isProtectedPath && !isAuthPath) {
-    return NextResponse.next()
-  }
-
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -59,6 +48,11 @@ export async function middleware(request: NextRequest) {
     console.warn('⚠️ Middleware: getUser falló, dejando pasar:', err)
   }
 
+  const { pathname } = request.nextUrl
+  const protectedPaths = ['/dashboard', '/reader', '/admin', '/catalog', '/profile', '/vendedor']
+  const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
+  const isAuthPath = pathname === '/login' || pathname === '/register'
+
   if (!user && isProtectedPath) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
@@ -72,6 +66,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:json|svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:json|svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
