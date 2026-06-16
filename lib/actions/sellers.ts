@@ -178,3 +178,24 @@ export async function deleteSaleAction(saleId: string) {
   revalidatePath("/admin");
   revalidatePath("/admin/vendedores");
 }
+
+export async function removeSellerInventoryAction(sellerId: string, bookId: string) {
+  const supabase = await createClient();
+
+  const { data: role } = await supabase.rpc("get_my_role");
+  if (role !== "admin") throw new Error("No autorizado");
+
+  const adminDb = createAdminClient();
+  const { data, error } = await adminDb.rpc("remove_seller_stock", {
+    p_seller_id: sellerId,
+    p_book_id: bookId,
+  });
+
+  if (error) throw new Error(error.message);
+
+  const result = (data as any) || {};
+  if (!result.success) throw new Error(result.error || "Error al remover stock");
+
+  revalidatePath("/admin");
+  return result;
+}

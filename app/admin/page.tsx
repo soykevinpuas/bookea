@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { updateStockRequestStatus, COST_PER_BOOK, markSalesAsPaid, assignStock, revertAssignStock } from "@/lib/sellers";
-import { deleteStockRequestAction, deleteSaleAction } from "@/lib/actions/sellers";
+import { deleteStockRequestAction, deleteSaleAction, removeSellerInventoryAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo, useEffect } from "react";
 
@@ -66,7 +66,7 @@ export default function AdminDashboard() {
   const [assignSellerSearch, setAssignSellerSearch] = useState("");
   const [pendingOps, setPendingOps] = useState<Set<string>>(new Set());
   const [modalItems, setModalItems] = useState<any[] | null>(null);
-  const [stockModalSeller, setStockModalSeller] = useState<{email: string; items: any[]} | null>(null);
+  const [stockModalSeller, setStockModalSeller] = useState<{sellerId: string; email: string; items: any[]} | null>(null);
   interface DashboardData {
     allSales: any[];
     allInventory: any[];
@@ -220,6 +220,21 @@ export default function AdminDashboard() {
       toast.success("Stock asignado al vendedor");
     },
     onError: (err) => toast.error(err.message),
+  });
+
+  const removeInventory = useMutation({
+    mutationFn: async ({ sellerId, bookId }: { sellerId: string; bookId: string }) => {
+      setPendingOps(prev => new Set(prev).add(`del-inv-${sellerId}-${bookId}`));
+      await removeSellerInventoryAction(sellerId, bookId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      toast.success("Stock removido del vendedor");
+    },
+    onError: (err: any) => toast.error(err?.message || "Error al remover stock"),
+    onSettled: (data, error, { sellerId, bookId }) => {
+      setPendingOps(prev => { const next = new Set(prev); next.delete(`del-inv-${sellerId}-${bookId}`); return next; });
+    },
   });
 
   const deleteSale = useMutation({
@@ -723,11 +738,22 @@ export default function AdminDashboard() {
                           <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{item.books?.title || "Libro"}</span>
                           <span className="text-xs text-white/40 hidden sm:inline">{item.books?.author}</span>
                           <span className="text-sm font-bold text-white shrink-0">{item.quantity} uds.</span>
+                          <button
+                            onClick={() => {
+                              if (window.confirm("¿Remover este stock del vendedor? El inventario regresará al almacén general.")) {
+                                removeInventory.mutate({ sellerId, bookId: item.book_id });
+                              }
+                            }}
+                            disabled={pendingOps.has(`del-inv-${sellerId}-${item.book_id}`)}
+                            className="p-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50 shrink-0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       ))}
                       {items.length > 3 && (
                         <button
-                          onClick={() => setStockModalSeller({ email, items })}
+                          onClick={() => setStockModalSeller({ sellerId, email, items })}
                           className="w-full px-5 py-2 text-sm text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-colors text-left"
                         >
                           +{items.length - 3} libros más
@@ -1042,18 +1068,32 @@ export default function AdminDashboard() {
               </button>
             </div>
             <div className="overflow-y-auto p-5 space-y-3">
-              {stockModalSeller.items.map((item: any) => (
-                <div key={item.id} className="flex items-center gap-3">
-                  {item.books?.cover_url && (
-                    <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white/80 text-sm truncate">{item.books?.title ?? "Libro"}</p>
-                    <p className="text-white/40 text-xs truncate">{item.books?.author}</p>
+              {stockModalSeller.items.map((item: any) => {
+                const { sellerId } = stockModalSeller;
+                return (
+                  <div key={item.id} className="flex items-center gap-3">
+                    {item.books?.cover_url && (
+                      <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white/80 text-sm truncate">{item.books?.title ?? "Libro"}</p>
+                      <p className="text-white/40 text-xs truncate">{item.books?.author}</p>
+                    </div>
+                    <span className="text-white font-medium text-sm shrink-0">{item.quantity} uds.</span>
+                    <button
+                      onClick={() => {
+                        if (window.confirm("¿Remover este stock del vendedor? El inventario regresará al almacén general.")) {
+                          removeInventory.mutate({ sellerId, bookId: item.book_id });
+                        }
+                      }}
+                      disabled={pendingOps.has(`del-inv-${sellerId}-${item.book_id}`)}
+                      className="p-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50 shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <span className="text-white font-medium text-sm shrink-0">{item.quantity} uds.</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

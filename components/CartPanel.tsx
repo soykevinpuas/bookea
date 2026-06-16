@@ -136,7 +136,7 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
   }
 
   return (
-    <div className={`fixed inset-0 z-50 flex pointer-events-none ${open ? '' : ''}`}>
+    <div className={`fixed inset-0 z-[70] flex pointer-events-none ${open ? '' : ''}`}>
       {open && (
         <div className="absolute inset-0 bg-white/5 dark:bg-black/30 backdrop-blur-2xl backdrop-saturate-150 pointer-events-auto" onClick={onClose} />
       )}

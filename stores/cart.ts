@@ -120,7 +120,13 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
   },
 
   setOpen: (open) => set({ open }),
-  toggleCart: () => set((s) => ({ open: !s.open })),
+  toggleCart: () => {
+    const { open } = get();
+    if (!open) {
+      get().fetchCart();
+    }
+    set({ open: !open });
+  },
   setLibraryOpen: (open) => set({ libraryOpen: open }),
   toggleLibrary: () => set((s) => ({ libraryOpen: !s.libraryOpen })),
 

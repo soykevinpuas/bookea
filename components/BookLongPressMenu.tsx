@@ -81,7 +81,38 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     };
   }, [showMenu]);
 
-  const handleTouchStart = () => {
+  const [pressProgress, setPressProgress] = useState(0);
+  const pressStartTime = useRef(0);
+  const rafRef = useRef<number>(0);
+  const touchStartPos = useRef<{x: number; y: number} | null>(null);
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    setIsPressing(false);
+    setPressProgress(0);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+  };
+
+  useEffect(() => {
+    if (!isPressing) return;
+    pressStartTime.current = Date.now();
+    const animate = () => {
+      const elapsed = Date.now() - pressStartTime.current;
+      setPressProgress(Math.min(elapsed / 700, 1));
+      if (elapsed < 700) {
+        rafRef.current = requestAnimationFrame(animate);
+      }
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [isPressing]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (showMenu) return;
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     setIsPressing(true);
     longPressTimer.current = setTimeout(() => {
       setIsPressing(false);
@@ -89,12 +120,17 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     }, 700);
   };
 
-  const handleTouchEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+    if (dx > 10 || dy > 10) {
+      cancelLongPress();
     }
-    setIsPressing(false);
+  };
+
+  const handleTouchEnd = () => {
+    cancelLongPress();
   };
 
   const handleDownload = async () => {
@@ -181,7 +217,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' } as any}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      onTouchMove={handleTouchEnd}
+      onTouchMove={handleTouchMove}
       onContextMenu={(e) => { 
         e.preventDefault(); 
         e.stopPropagation();
@@ -196,7 +232,17 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       )}
 
       {isPressing && (
-        <div className="absolute inset-0 z-30 rounded-xl ring-2 ring-amber-400/50 bg-amber-400/5 animate-pulse pointer-events-none" />
+        <div
+          className="absolute inset-0 z-30 rounded-xl pointer-events-none"
+          style={{
+            background: pressProgress > 0
+              ? `radial-gradient(circle at center, rgba(251,191,36,${pressProgress * 0.15}) 0%, transparent ${Math.max(50, 80 - pressProgress * 60)}%)`
+              : 'none',
+            boxShadow: `inset 0 0 ${pressProgress * 14}px rgba(251,191,36,${pressProgress * 0.3})`,
+            border: `1.5px solid rgba(251,191,36,${pressProgress * 0.5})`,
+            transition: 'background 0.05s linear, box-shadow 0.05s linear, border-color 0.05s linear',
+          }}
+        />
       )}
 
       {children}
@@ -221,6 +267,9 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: menuPosition === "bottom" ? -20 : 20 }}
             transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             className={`absolute left-1/2 -translate-x-1/2 z-[100] w-56 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl ${
               menuPosition === "bottom" ? "top-full mt-2" : "bottom-full mb-2"
             }`}
@@ -228,7 +277,12 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
             {/* Header del menú */}
             <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
               <p className="text-xs font-bold text-white/60 truncate max-w-[160px]">{bookTitle}</p>
-              <button onClick={() => setShowMenu(false)} className="p-1 hover:bg-white/10 rounded-full">
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+                className="p-1 hover:bg-white/10 rounded-full"
+              >
                 <X className="w-3 h-3 text-white/40" />
               </button>
             </div>
