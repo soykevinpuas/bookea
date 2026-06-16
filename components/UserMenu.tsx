@@ -1,6 +1,6 @@
 "use client";
 
-import { User, LogOut, Shield, Zap, BookOpen, ShoppingCart, Circle, Package } from "lucide-react";
+import { User, LogOut, Shield, Zap, BookOpen, ShoppingCart, Circle, Package, Store } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createClientClient } from "@/lib/supabase";
 import { useRouter, usePathname } from "next/navigation";
@@ -105,6 +105,9 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
           {/* Navigation */}
           <div className="p-2 space-y-0.5">
             <MenuItem href="/catalog" icon={<BookOpen className="w-4 h-4" />} label="Catálogo" onClick={() => setIsOpen(false)} />
+            {(subscription?.role === 'vendedor' || subscription?.role === 'admin') && mounted && (
+              <MenuItem href="/vendedor" icon={<Store className="w-4 h-4" />} label="Tienda" onClick={() => setIsOpen(false)} />
+            )}
             <MenuItem href="/orders" icon={<Package className="w-4 h-4" />} label="Mis Órdenes" onClick={() => setIsOpen(false)} />
             <button
               onClick={() => { toggleCart(); setIsOpen(false); }}

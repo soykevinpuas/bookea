@@ -77,7 +77,7 @@ export function BottomNav() {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[60] md:hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-[60]">
       <div className="bg-white/70 dark:bg-black/80 retro:bg-[#0d1117]/90 navy:bg-[#0a0f1e]/90 backdrop-blur-xl border-t border-black/5 dark:border-white/10 retro:border-[#3fb950]/30 navy:border-[#7986cb]/30 flex items-center justify-around py-3 px-2 pb-[max(env(safe-area-inset-bottom,12px),16px)]">
         {navItems.map((item) => {
           const loading = navigatingTo === item.href;
