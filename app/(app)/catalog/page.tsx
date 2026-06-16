@@ -17,8 +17,9 @@ import { toast } from "sonner";
 function CatalogContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { addItem } = useCartStore();
+  const { addItem, items: cartItems } = useCartStore();
   const [adding, setAdding] = useState<string | null>(null);
+  const isInCart = (bookId: string, type: string) => cartItems.some(i => i.book_id === bookId && i.type === type);
   const { userId } = useUserId();
   const { data: userBooks } = useUserBooks(userId || '');
   const ownedDigitalIds = useMemo(() => {
@@ -174,29 +175,37 @@ function CatalogContent() {
                     </PrefetchLink>
                     <p className="text-[11px] text-gray-400 dark:text-zinc-500 line-clamp-1">{book.author}</p>
                     <div className="flex items-start gap-1.5 mt-auto pt-2">
-                      {book.price_digital > 0 && book.epub_url && (ownedDigitalIds.has(book.id) ? (
-                        <span className="text-[10px] font-medium text-green-500">Adquirido</span>
-                      ) : (
-                        <div className="flex flex-col items-center gap-0.5">
-                          <button onClick={() => handleAddToCart(book, 'digital')} disabled={adding === `${book.id}-digital`}
-                            className="text-[10px] font-bold bg-blue-600 text-white px-2 py-1 rounded-md transition-colors hover:bg-blue-700 flex items-center gap-1"
-                          >
-                            {adding === `${book.id}-digital` ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                            ${book.price_digital}
-                          </button>
-                          <span className="text-[9px] text-gray-400 dark:text-zinc-500">Digital</span>
-                        </div>
-                      ))}
+                      {book.price_digital > 0 && book.epub_url && (
+                        ownedDigitalIds.has(book.id) ? (
+                          <span className="text-[10px] font-medium text-green-500 whitespace-nowrap">Adquirido</span>
+                        ) : isInCart(book.id, 'digital') ? (
+                          <span className="text-[10px] font-medium text-blue-500 whitespace-nowrap">En carrito</span>
+                        ) : (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <button onClick={() => handleAddToCart(book, 'digital')} disabled={adding === `${book.id}-digital`}
+                              className="text-[10px] font-bold bg-blue-600 text-white px-2 py-1 rounded-md transition-colors hover:bg-blue-700 flex items-center gap-1"
+                            >
+                              {adding === `${book.id}-digital` ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                              ${book.price_digital}
+                            </button>
+                            <span className="text-[9px] text-gray-400 dark:text-zinc-500">Digital</span>
+                          </div>
+                        )
+                      )}
                       {book.price_physical > 0 && book.stock_physical > 0 && (
-                        <div className="flex flex-col items-center gap-0.5">
-                          <button onClick={() => handleAddToCart(book, 'physical')} disabled={adding === `${book.id}-physical`}
-                            className="text-[10px] font-bold bg-amber-600 text-white px-2 py-1 rounded-md transition-colors hover:bg-amber-700 flex items-center gap-1"
-                          >
-                            {adding === `${book.id}-physical` ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                            ${book.price_physical}
-                          </button>
-                          <span className="text-[9px] text-gray-400 dark:text-zinc-500">Físico</span>
-                        </div>
+                        isInCart(book.id, 'physical') ? (
+                          <span className="text-[10px] font-medium text-blue-500 whitespace-nowrap">En carrito</span>
+                        ) : (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <button onClick={() => handleAddToCart(book, 'physical')} disabled={adding === `${book.id}-physical`}
+                              className="text-[10px] font-bold bg-amber-600 text-white px-2 py-1 rounded-md transition-colors hover:bg-amber-700 flex items-center gap-1"
+                            >
+                              {adding === `${book.id}-physical` ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                              ${book.price_physical}
+                            </button>
+                            <span className="text-[9px] text-gray-400 dark:text-zinc-500">Físico</span>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
@@ -218,27 +227,35 @@ function CatalogContent() {
                     </div>
                   </PrefetchLink>
                   <div className="flex items-start gap-2 shrink-0">
-                    {book.price_digital > 0 && book.epub_url && (ownedDigitalIds.has(book.id) ? (
-                      <span className="text-[10px] font-medium text-green-500 whitespace-nowrap">Adquirido</span>
-                    ) : (
-                      <div className="flex flex-col items-center gap-0.5">
-                        <button onClick={() => handleAddToCart(book, 'digital')} disabled={adding === `${book.id}-digital`}
-                          className="text-[10px] font-bold bg-blue-600 text-white px-2.5 py-1.5 rounded-md transition-colors hover:bg-blue-700"
-                        >
-                          {adding === `${book.id}-digital` ? <Loader2 className="w-3 h-3 animate-spin" /> : `$${book.price_digital}`}
-                        </button>
-                        <span className="text-[9px] text-gray-400 dark:text-zinc-500">Digital</span>
-                      </div>
-                    ))}
+                    {book.price_digital > 0 && book.epub_url && (
+                      ownedDigitalIds.has(book.id) ? (
+                        <span className="text-[10px] font-medium text-green-500 whitespace-nowrap">Adquirido</span>
+                      ) : isInCart(book.id, 'digital') ? (
+                        <span className="text-[10px] font-medium text-blue-500 whitespace-nowrap">En carrito</span>
+                      ) : (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <button onClick={() => handleAddToCart(book, 'digital')} disabled={adding === `${book.id}-digital`}
+                            className="text-[10px] font-bold bg-blue-600 text-white px-2.5 py-1.5 rounded-md transition-colors hover:bg-blue-700"
+                          >
+                            {adding === `${book.id}-digital` ? <Loader2 className="w-3 h-3 animate-spin" /> : `$${book.price_digital}`}
+                          </button>
+                          <span className="text-[9px] text-gray-400 dark:text-zinc-500">Digital</span>
+                        </div>
+                      )
+                    )}
                     {book.price_physical > 0 && book.stock_physical > 0 && (
-                      <div className="flex flex-col items-center gap-0.5">
-                        <button onClick={() => handleAddToCart(book, 'physical')} disabled={adding === `${book.id}-physical`}
-                          className="text-[10px] font-bold bg-amber-600 text-white px-2.5 py-1.5 rounded-md transition-colors hover:bg-amber-700"
-                        >
-                          {adding === `${book.id}-physical` ? <Loader2 className="w-3 h-3 animate-spin" /> : `$${book.price_physical}`}
-                        </button>
-                        <span className="text-[9px] text-gray-400 dark:text-zinc-500">Físico</span>
-                      </div>
+                      isInCart(book.id, 'physical') ? (
+                        <span className="text-[10px] font-medium text-blue-500 whitespace-nowrap">En carrito</span>
+                      ) : (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <button onClick={() => handleAddToCart(book, 'physical')} disabled={adding === `${book.id}-physical`}
+                            className="text-[10px] font-bold bg-amber-600 text-white px-2.5 py-1.5 rounded-md transition-colors hover:bg-amber-700"
+                          >
+                            {adding === `${book.id}-physical` ? <Loader2 className="w-3 h-3 animate-spin" /> : `$${book.price_physical}`}
+                          </button>
+                          <span className="text-[9px] text-gray-400 dark:text-zinc-500">Físico</span>
+                        </div>
+                      )
                     )}
                   </div>
                 </Card>

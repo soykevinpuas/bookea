@@ -311,8 +311,9 @@ export default function AdminDashboard() {
 
   const filteredSelfBooks = physicalBooks.filter(
     (b: any) =>
-      b.title.toLowerCase().includes(assignSelfSearch.toLowerCase()) ||
-      b.author.toLowerCase().includes(assignSelfSearch.toLowerCase())
+      b.stock_physical > 0 &&
+      (b.title.toLowerCase().includes(assignSelfSearch.toLowerCase()) ||
+      b.author.toLowerCase().includes(assignSelfSearch.toLowerCase()))
   );
 
   if (isLoading && allSales.length === 0) {
@@ -514,13 +515,14 @@ export default function AdminDashboard() {
                     />
                   </div>
 
-                  {/* Books table */}
+                  {/* Books list */}
                   {!assignSellerId ? (
                     <p className="text-sm text-white/30 py-4 text-center">Selecciona un vendedor primero</p>
                   ) : (
                     <>
-                      <div className="divide-y divide-white/5 max-h-80 overflow-y-auto border border-white/8 rounded-xl">
+                      <div className="space-y-2 max-h-80 overflow-y-auto">
                         {physicalBooks
+                          .filter((b: any) => b.stock_physical > 0)
                           .filter((b: any) =>
                             b.title.toLowerCase().includes(assignSellerSearch.toLowerCase()) ||
                             b.author.toLowerCase().includes(assignSellerSearch.toLowerCase())
@@ -529,43 +531,69 @@ export default function AdminDashboard() {
                             const qty = assignSellerQtys[book.id] || 0;
                             const lowStock = book.stock_physical <= 3;
                             return (
-                              <div key={book.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/3 transition-colors">
+                              <div
+                                key={book.id}
+                                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${
+                                  qty > 0
+                                    ? "bg-amber-500/5 border border-amber-500/20"
+                                    : "bg-white/5 border border-white/8 hover:bg-white/10"
+                                }`}
+                              >
                                 {book.cover_url && (
-                                  <img src={book.cover_url} alt="" className="w-6 h-9 rounded object-cover bg-white/5 shrink-0" />
+                                  <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
                                 )}
-                                <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{book.title}</span>
-                                <span className={`text-xs shrink-0 ${lowStock ? "text-red-400 font-medium" : "text-white/30"}`}>
-                                  {book.stock_physical} uds.{lowStock ? " ⚠️" : ""}
-                                </span>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button
-                                    onClick={() =>
-                                      setAssignSellerQtys((prev) => {
-                                        const current = prev[book.id] || 0;
-                                        const next = Math.max(0, current - 1);
-                                        const copy = { ...prev };
-                                        if (next <= 0) delete copy[book.id];
-                                        else copy[book.id] = next;
-                                        return copy;
-                                      })
-                                    }
-                                    className="p-0.5 bg-white/5 hover:bg-red-500/20 rounded transition-colors"
-                                  >
-                                    <Minus className="w-3 h-3" />
-                                  </button>
-                                  <span className="text-sm font-bold text-white min-w-[2ch] text-center">{qty}</span>
-                                  <button
-                                    onClick={() =>
-                                      setAssignSellerQtys((prev) => ({
-                                        ...prev,
-                                        [book.id]: Math.min(book.stock_physical, (prev[book.id] || 0) + 1),
-                                      }))
-                                    }
-                                    disabled={qty >= book.stock_physical}
-                                    className="p-0.5 bg-white/5 hover:bg-green-500/20 rounded transition-colors disabled:opacity-20 disabled:pointer-events-none"
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                  </button>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{book.title}</p>
+                                  <p className="text-xs text-white/40 truncate">{book.author}</p>
+                                  <p className={`text-xs ${lowStock ? "text-red-400 font-medium" : "text-white/30"}`}>
+                                    Stock: {book.stock_physical} {lowStock ? "⚠️" : ""}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {qty > 0 ? (
+                                    <>
+                                      <button
+                                        onClick={() =>
+                                          setAssignSellerQtys((prev) => {
+                                            const current = prev[book.id] || 0;
+                                            const next = Math.max(0, current - 1);
+                                            const copy = { ...prev };
+                                            if (next <= 0) delete copy[book.id];
+                                            else copy[book.id] = next;
+                                            return copy;
+                                          })
+                                        }
+                                        className="p-1 bg-white/5 hover:bg-red-500/20 rounded-lg transition-colors"
+                                      >
+                                        <Minus className="w-3.5 h-3.5" />
+                                      </button>
+                                      <span className="text-sm font-bold text-amber-400 min-w-[2ch] text-center">{qty}</span>
+                                      <button
+                                        onClick={() =>
+                                          setAssignSellerQtys((prev) => ({
+                                            ...prev,
+                                            [book.id]: Math.min(book.stock_physical, (prev[book.id] || 0) + 1),
+                                          }))
+                                        }
+                                        disabled={qty >= book.stock_physical}
+                                        className="p-1 bg-white/5 hover:bg-green-500/20 rounded-lg transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() =>
+                                        setAssignSellerQtys((prev) => ({
+                                          ...prev,
+                                          [book.id]: 1,
+                                        }))
+                                      }
+                                      className="text-xs font-medium px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
+                                    >
+                                      + Asignar
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -620,20 +648,24 @@ export default function AdminDashboard() {
                       className="w-full pl-9 pr-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-blue-500/50"
                     />
                   </div>
-                  <div className="max-h-48 overflow-y-auto mb-3 space-y-1">
+                  <div className="space-y-2 max-h-48 overflow-y-auto mb-3">
                     {filteredSelfBooks.map((book: any) => (
                       <button
                         key={book.id}
-                        onClick={() => setAssignSelfBookId(book.id)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                        onClick={() => { setAssignSelfBookId(book.id); setAssignSelfQty(1); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
                           assignSelfBookId === book.id
                             ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
                             : "text-white/60 hover:bg-white/5 border border-transparent"
                         }`}
                       >
-                        <span className="font-medium">{book.title}</span>
-                        <span className="text-white/30 ml-2">({book.author})</span>
-                        <span className="text-white/20 text-xs ml-2">Stock: {book.stock_physical}</span>
+                        {book.cover_url && (
+                          <img src={book.cover_url} alt="" className="w-6 h-9 rounded object-cover bg-white/5 shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="text-sm font-medium truncate">{book.title}</p>
+                          <p className="text-xs text-white/30 truncate">Stock: {book.stock_physical}</p>
+                        </div>
                       </button>
                     ))}
                     {filteredSelfBooks.length === 0 && (

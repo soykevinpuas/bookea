@@ -65,7 +65,7 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
     const snapshot = mutateId
     set({ loading: true })
     try {
-      const res = await fetch('/api/cart')
+      const res = await fetch('/api/cart', { cache: 'no-store' })
       if (!res.ok) return
       if (snapshot !== mutateId) return
       const data = await res.json()

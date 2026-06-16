@@ -30,6 +30,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   const [isLibraryProcessing, setIsLibraryProcessing] = useState(false);
   const [isDownloadProcessing, setIsDownloadProcessing] = useState(false);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const [isPressing, setIsPressing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { userId } = useUserId();
   const queryClient = useQueryClient();
@@ -81,9 +82,11 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   }, [showMenu]);
 
   const handleTouchStart = () => {
+    setIsPressing(true);
     longPressTimer.current = setTimeout(() => {
+      setIsPressing(false);
       setShowMenu(true);
-    }, 500);
+    }, 700);
   };
 
   const handleTouchEnd = () => {
@@ -91,6 +94,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+    setIsPressing(false);
   };
 
   const handleDownload = async () => {
@@ -173,7 +177,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   return (
     <div
       ref={containerRef}
-      className="relative select-none"
+      className={`relative select-none transition-transform duration-150 ${isPressing ? 'scale-[0.97]' : ''}`}
       style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' } as any}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -189,6 +193,10 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
         <div className="absolute top-1 right-1 z-20 bg-green-500 rounded-full p-0.5 shadow-lg">
           <CheckCircle className="w-3 h-3 text-white" />
         </div>
+      )}
+
+      {isPressing && (
+        <div className="absolute inset-0 z-30 rounded-xl ring-2 ring-amber-400/50 bg-amber-400/5 animate-pulse pointer-events-none" />
       )}
 
       {children}
@@ -209,10 +217,10 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
         {showMenu && (
           <motion.div
             ref={menuRef}
-            initial={{ opacity: 0, scale: 0.9, y: menuPosition === "bottom" ? -10 : 10 }}
+            initial={{ opacity: 0, scale: 0.85, y: menuPosition === "bottom" ? -20 : 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: menuPosition === "bottom" ? -10 : 10 }}
-            transition={{ duration: 0.15 }}
+            exit={{ opacity: 0, scale: 0.85, y: menuPosition === "bottom" ? -20 : 20 }}
+            transition={{ type: "spring", damping: 20, stiffness: 300 }}
             className={`absolute left-1/2 -translate-x-1/2 z-[100] w-56 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl ${
               menuPosition === "bottom" ? "top-full mt-2" : "bottom-full mb-2"
             }`}
