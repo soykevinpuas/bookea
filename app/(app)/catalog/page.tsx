@@ -76,8 +76,8 @@ function CatalogContent() {
       toast.success(`${book.title} agregado (${type === 'digital' ? 'Digital' : 'Físico'})`, {
         action: { label: 'Ver carrito', onClick: () => useCartStore.getState().setOpen(true) },
       })
-    } catch {
-      toast.error('Error al agregar al carrito')
+    } catch (e: any) {
+      toast.error(e.message || 'Error al agregar al carrito')
     } finally {
       setAdding(null)
     }

@@ -87,8 +87,9 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
         body: JSON.stringify({ bookId, type }),
       })
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Error al agregar al carrito' }))
-        throw new Error(err.error || 'Error al agregar al carrito')
+        const body = await res.json().catch(() => ({}))
+        console.error('[cart] addItem API error:', res.status, body)
+        throw new Error(body.error || `Error del servidor (${res.status})`)
       }
       const data = await res.json()
       set({ items: data.items || [] })
