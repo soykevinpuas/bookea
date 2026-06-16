@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { updateStockRequestStatus, COST_PER_BOOK, markSalesAsPaid, assignStock } from "@/lib/sellers";
+import { updateStockRequestStatus, COST_PER_BOOK, markSalesAsPaid, assignStock, revertAssignStock } from "@/lib/sellers";
 import { deleteStockRequestAction, deleteSaleAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo, useEffect } from "react";
@@ -196,11 +196,22 @@ export default function AdminDashboard() {
       if (!assignSellerId) throw new Error("Selecciona un vendedor");
       const entries = Object.entries(assignSellerQtys).filter(([, qty]) => qty > 0);
       if (entries.length === 0) throw new Error("No hay cantidades asignadas");
-      await Promise.all(
-        entries.map(([bookId, qty]) =>
-          assignStock(supabase, assignSellerId, bookId, qty)
-        )
-      );
+      const completed: { bookId: string; qty: number }[] = [];
+      try {
+        for (const [bookId, qty] of entries) {
+          await assignStock(supabase, assignSellerId, bookId, qty);
+          completed.push({ bookId, qty });
+        }
+      } catch (err) {
+        for (const { bookId, qty } of completed) {
+          try {
+            await revertAssignStock(supabase, assignSellerId, bookId, qty);
+          } catch (rollbackErr) {
+            console.error("Error al revertir asignación:", rollbackErr);
+          }
+        }
+        throw err;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
@@ -510,7 +521,6 @@ export default function AdminDashboard() {
                     <>
                       <div className="divide-y divide-white/5 max-h-80 overflow-y-auto border border-white/8 rounded-xl">
                         {physicalBooks
-                          .filter((b: any) => b.stock_physical > 0)
                           .filter((b: any) =>
                             b.title.toLowerCase().includes(assignSellerSearch.toLowerCase()) ||
                             b.author.toLowerCase().includes(assignSellerSearch.toLowerCase())

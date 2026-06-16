@@ -50,75 +50,45 @@ export async function createStockRequestAction(
 
   if (itemsErr) throw new Error(itemsErr.message);
 
-  revalidatePath("/vendedor/solicitudes");
   revalidatePath("/vendedor");
   revalidatePath("/admin");
   revalidatePath("/admin/vendedores");
-  revalidatePath("/vendedor/solicitudes");
-  revalidatePath("/vendedor");
 }
 
 export async function receiveStockItemAction(itemId: string, requestId: string) {
-  const adminDb = createAdminClient();
+  const supabase = await createClient();
 
-  const now = new Date().toISOString();
+  const { data: role } = await supabase.rpc("get_my_role");
+  if (role !== "vendedor") throw new Error("No autorizado");
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  const adminDb = createAdminClient();
 
   const { data: item, error: itemErr } = await adminDb
     .from("stock_request_items")
-    .select("*, stock_requests!inner(seller_id)")
+    .select("*, stock_requests!inner(seller_id, status)")
     .eq("id", itemId)
     .single();
 
   if (itemErr) throw new Error(`Error al obtener item: ${itemErr.message}`);
   if (!item) throw new Error("Item no encontrado");
+
+  const req = (item as any).stock_requests;
+  if (req.seller_id !== user.id) throw new Error("Esta solicitud no te pertenece");
+  if (req.status !== "delivered") throw new Error("La solicitud debe estar entregada para recibir libros");
   if ((item as any).received_at) throw new Error("Este libro ya fue recibido");
 
   const { error: updateErr } = await adminDb
     .from("stock_request_items")
-    .update({ received_at: now })
+    .update({ received_at: new Date().toISOString() })
     .eq("id", itemId)
     .is("received_at", null);
 
   if (updateErr) throw new Error(updateErr.message);
 
-  const sellerId = (item as any).stock_requests?.seller_id;
-  if (!sellerId) throw new Error("No se pudo determinar el vendedor");
-
-  const { data: existing } = await adminDb
-    .from("seller_inventory")
-    .select("id, quantity")
-    .eq("seller_id", sellerId)
-    .eq("book_id", item.book_id)
-    .maybeSingle();
-
-  if (existing) {
-    const { error: updErr } = await adminDb
-      .from("seller_inventory")
-      .update({ quantity: existing.quantity + item.quantity, updated_at: now })
-      .eq("id", existing.id);
-    if (updErr) throw new Error(updErr.message);
-  } else {
-    const { error: insErr } = await adminDb
-      .from("seller_inventory")
-      .insert({ seller_id: sellerId, book_id: item.book_id, quantity: item.quantity });
-    if (insErr) throw new Error(insErr.message);
-  }
-
-  const { data: allItems } = await adminDb
-    .from("stock_request_items")
-    .select("id, received_at")
-    .eq("request_id", requestId);
-
-  const allReceived = (allItems ?? []).every((i: any) => i.received_at !== null);
-  if (allReceived) {
-    const { error: statusErr } = await adminDb
-      .from("stock_requests")
-      .update({ status: "delivered", updated_at: now })
-      .eq("id", requestId);
-    if (statusErr) throw new Error(statusErr.message);
-  }
-
-  revalidatePath("/vendedor/solicitudes");
+  revalidatePath("/vendedor");
   revalidatePath("/admin");
 }
 
@@ -129,6 +99,17 @@ export async function deleteStockRequestAction(requestId: string) {
   if (roleData !== "admin") throw new Error("No autorizado");
 
   const adminDb = createAdminClient();
+
+  const { data: request, error: reqCheck } = await adminDb
+    .from("stock_requests")
+    .select("status")
+    .eq("id", requestId)
+    .single();
+
+  if (reqCheck) throw new Error("Solicitud no encontrada");
+  if (request.status === "delivered" || request.status === "cancelled") {
+    throw new Error("No se puede eliminar una solicitud entregada o cancelada");
+  }
 
   const { error: itemsErr } = await adminDb
     .from("stock_request_items")

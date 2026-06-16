@@ -68,31 +68,17 @@ export async function markAsSold(
   if (salePrice <= 0) throw new Error("El precio de venta debe ser mayor a 0");
   if (!sellerId) throw new Error("Vendedor no autenticado");
 
-  const { data: inventory, error: invErr } = await supabase
-    .from("seller_inventory")
-    .select("id, quantity")
-    .eq("seller_id", sellerId)
-    .eq("book_id", bookId)
-    .single();
-
-  if (invErr) throw new Error(`Error al obtener inventario: ${invErr.message}`);
-  if (!inventory || inventory.quantity < quantity) {
-    throw new Error("Stock insuficiente");
-  }
-
-  const { error: saleErr } = await supabase.from("seller_sales").insert({
-    seller_id: sellerId,
-    book_id: bookId,
-    quantity,
-    sale_price: salePrice,
+  const { data, error: rpcErr } = await supabase.rpc("sell_book", {
+    p_seller_id: sellerId,
+    p_book_id: bookId,
+    p_quantity: quantity,
+    p_sale_price: salePrice,
   });
-  if (saleErr) throw saleErr;
 
-  const { error: updateErr } = await supabase
-    .from("seller_inventory")
-    .update({ quantity: inventory.quantity - quantity, updated_at: new Date().toISOString() })
-    .eq("id", inventory.id);
-  if (updateErr) throw updateErr;
+  if (rpcErr) throw new Error(`Error al registrar venta: ${rpcErr.message}`);
+
+  const result = (data as any) || {};
+  if (!result.success) throw new Error(result.error || "Error al registrar venta");
 }
 
 export async function getSellerSales(
@@ -324,6 +310,7 @@ export async function getPhysicalBooks(supabase: SupabaseClient) {
     .select("id, title, author, cover_url, price_physical, stock_physical")
     .eq("is_active", true)
     .gt("price_physical", 0)
+    .gt("stock_physical", 0)
     .order("title", { ascending: true });
 
   return data ?? [];

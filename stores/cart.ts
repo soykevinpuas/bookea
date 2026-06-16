@@ -50,6 +50,9 @@ function saveShipping(s: CartStore['shipping']) {
   }
 }
 
+let fetchId = 0
+let mutateId = 0
+
 export const useCartStore = create<CartStoreState>((set, get) => ({
   items: [],
   loading: false,
@@ -58,37 +61,53 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
   shipping: loadShipping(),
 
   fetchCart: async () => {
+    const id = ++fetchId
+    const snapshot = mutateId
     set({ loading: true })
     try {
       const res = await fetch('/api/cart')
-      if (res.ok) {
-        const data = await res.json()
-        set({ items: data.items || [] })
-      }
+      if (!res.ok) return
+      if (snapshot !== mutateId) return
+      const data = await res.json()
+      if (id === fetchId) set({ items: data.items || [] })
     } catch {
       // silencioso
+    } finally {
+      if (id === fetchId) set({ loading: false })
+    }
+  },
+
+  addItem: async (bookId, type) => {
+    ++mutateId
+    set({ loading: true })
+    try {
+      const res = await fetch('/api/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId, type }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Error al agregar al carrito' }))
+        throw new Error(err.error || 'Error al agregar al carrito')
+      }
+      const data = await res.json()
+      set({ items: data.items || [] })
     } finally {
       set({ loading: false })
     }
   },
 
-  addItem: async (bookId, type) => {
-    const res = await fetch('/api/cart', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookId, type }),
-    })
-    if (res.ok) {
-      const data = await res.json()
-      set({ items: data.items })
-    }
-  },
-
   removeItem: async (itemId) => {
-    const res = await fetch(`/api/cart?id=${itemId}`, { method: 'DELETE' })
-    if (res.ok) {
-      const data = await res.json()
-      set({ items: data.items })
+    ++mutateId
+    set({ loading: true })
+    try {
+      const res = await fetch(`/api/cart?id=${itemId}`, { method: 'DELETE' })
+      if (res.ok) {
+        const data = await res.json()
+        set({ items: data.items || [] })
+      }
+    } finally {
+      set({ loading: false })
     }
   },
 

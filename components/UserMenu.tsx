@@ -3,7 +3,7 @@
 import { User, LogOut, Shield, Zap, BookOpen, ShoppingCart, Circle, Package } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createClientClient } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useUserId } from "@/hooks/useUser";
@@ -191,13 +191,19 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
 }
 
 function MenuItem({ href, icon, label, className = "", onClick }: { href: string; icon: React.ReactNode; label: string; className?: string; onClick?: () => void }) {
+  const pathname = usePathname();
+  const isActive = pathname === href;
   return (
     <Link
       href={href}
       onClick={onClick}
-      className={`flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-all group ${className}`}
+      className={`flex items-center gap-3 px-3 py-2.5 text-sm font-bold rounded-xl transition-all group ${
+        isActive
+          ? "text-gray-900 dark:text-white bg-gray-100 dark:bg-white/10"
+          : "text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
+      } ${className}`}
     >
-      <span className="group-hover:scale-110 transition-transform">{icon}</span>
+      <span className={`transition-transform ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>{icon}</span>
       {label}
     </Link>
   );
