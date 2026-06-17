@@ -10,7 +10,7 @@ import Book3D from "@/components/Book3D";
 import BookLongPressMenu from "@/components/BookLongPressMenu";
 import ProgressCircle from "@/components/ProgressCircle";
 import Card from "@/components/ui/Card";
-import { BookOpen, BookOpenCheck, Loader2, Compass, Search, WifiOff, History, Sparkles } from "lucide-react";
+import { BookOpen, BookOpenCheck, Compass, Search, WifiOff, Sparkles } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { verifySubscriptionAction } from "@/lib/actions/subscriptions";
@@ -221,7 +221,7 @@ function DashboardContent() {
             <BookOpenCheck className="w-5 h-5 text-amber-400" />
             <div>
               <span className="text-lg font-black text-amber-400">{totalCompleted}</span>
-              <span className="text-xs text-white/40 font-medium ml-1.5">leídos</span>
+              <span className="text-xs text-amber-700/60 dark:text-white/40 font-medium ml-1.5">leídos</span>
             </div>
           </Card>
         </div>

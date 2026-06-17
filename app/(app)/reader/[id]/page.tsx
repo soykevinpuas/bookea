@@ -13,7 +13,7 @@ import { Bookmark as BookmarkType } from "@/types/bookmark";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
 import { getBookmarks, saveBookmark, deleteBookmark } from "@/lib/bookmarks";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, Bookmark, BookmarkCheck, FileText, X, Trash2, Check, PenSquare, Sparkles, Coins, GripHorizontal, Settings2, Navigation } from "lucide-react";
+import { Loader2, ArrowLeft, Bookmark, BookmarkCheck, FileText, X, Trash2, Check, PenSquare, Sparkles, GripHorizontal, Settings2, Navigation } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";

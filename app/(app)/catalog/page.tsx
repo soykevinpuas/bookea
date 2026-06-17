@@ -107,7 +107,7 @@ function CatalogContent() {
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key)}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${
                     tab === t.key
                       ? 'bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm'
                       : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -142,8 +142,8 @@ function CatalogContent() {
             ))}
           </select>
           <div className="flex gap-1 p-0.5 bg-gray-100 dark:bg-zinc-800/50 rounded-lg">
-            <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded-md transition-all ${viewMode === "grid" ? "bg-white dark:bg-zinc-700 shadow-sm" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`} title="Cuadrícula"><LayoutGrid className="w-4 h-4" /></button>
-            <button onClick={() => setViewMode("list")} className={`p-1.5 rounded-md transition-all ${viewMode === "list" ? "bg-white dark:bg-zinc-700 shadow-sm" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`} title="Lista"><List className="w-4 h-4" /></button>
+            <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-white dark:bg-zinc-700 shadow-sm" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`} title="Cuadrícula"><LayoutGrid className="w-4 h-4" /></button>
+            <button onClick={() => setViewMode("list")} className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white dark:bg-zinc-700 shadow-sm" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`} title="Lista"><List className="w-4 h-4" /></button>
           </div>
         </div>
         <p className="text-xs text-zinc-400 mb-2">Mostrando {filteredByTab.length} de {booksData?.length || 0} libros</p>
@@ -176,11 +176,11 @@ function CatalogContent() {
                     <div className="flex items-start gap-1.5 mt-auto pt-2">
                       {book.price_digital > 0 && book.epub_url && (
                         ownedDigitalIds.has(book.id) ? (
-                          <span className="text-[10px] font-semibold text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded-md flex items-center gap-1 whitespace-nowrap">
+                          <span className="text-[10px] font-semibold text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap">
                             <CheckCircle2 className="w-3 h-3" /> Adquirido
                           </span>
                         ) : isInCart(book.id, 'digital') ? (
-                          <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-md flex items-center gap-1 whitespace-nowrap">
+                          <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap">
                             <ShoppingCart className="w-3 h-3" /> En carrito
                           </span>
                         ) : (
@@ -196,7 +196,7 @@ function CatalogContent() {
                       )}
                       {book.price_physical > 0 && book.stock_physical > 0 && (
                         isInCart(book.id, 'physical') ? (
-                          <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-md flex items-center gap-1 whitespace-nowrap">
+                          <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap">
                             <ShoppingCart className="w-3 h-3" /> En carrito
                           </span>
                         ) : (
