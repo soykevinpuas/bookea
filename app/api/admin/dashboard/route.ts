@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from '@/lib/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient();
 
@@ -18,43 +18,93 @@ export async function GET() {
     }
 
     const adminClient = createAdminClient();
+    const { searchParams } = new URL(request.url);
+
+    const salesPage = Math.max(1, parseInt(searchParams.get('salesPage') || '1'));
+    const salesPerPage = Math.min(500, Math.max(1, parseInt(searchParams.get('salesPerPage') || '100')));
+    const inventoryPage = Math.max(1, parseInt(searchParams.get('inventoryPage') || '1'));
+    const inventoryPerPage = Math.min(500, Math.max(1, parseInt(searchParams.get('inventoryPerPage') || '200')));
+    const requestsPage = Math.max(1, parseInt(searchParams.get('requestsPage') || '1'));
+    const requestsPerPage = Math.min(500, Math.max(1, parseInt(searchParams.get('requestsPerPage') || '50')));
+
+    const salesFrom = (salesPage - 1) * salesPerPage;
+    const salesTo = salesFrom + salesPerPage - 1;
+    const invFrom = (inventoryPage - 1) * inventoryPerPage;
+    const invTo = invFrom + inventoryPerPage - 1;
+    const reqFrom = (requestsPage - 1) * requestsPerPage;
+    const reqTo = reqFrom + requestsPerPage - 1;
 
     const [
-      { data: allSales },
-      { data: allInventory },
-      { data: allSellers },
-      { data: requests },
-      { data: pendingSales },
-      { data: physicalBooks },
+      sellersResult,
+      physicalBooksResult,
+      pendingSalesResult,
+      salesResult,
+      requestsResult,
+      inventoryResult,
+      salesMapResult,
     ] = await Promise.all([
-      adminClient.from("seller_sales")
-        .select("*, books(id, title, author, cover_url), seller:seller_id(id, email)")
-        .order("sold_at", { ascending: false }),
-      adminClient.from("seller_inventory")
-        .select("*, books(id, title, cover_url, author)")
-        .order("updated_at", { ascending: false }),
       adminClient.from("users").select("id, email").eq("role", "vendedor"),
-      adminClient.from("stock_requests")
-        .select("*, items:stock_request_items(*, books(id, title, author, cover_url, price_physical)), seller:seller_id(id, email)")
-        .order("created_at", { ascending: false }),
-      adminClient.from("seller_sales")
-        .select("*, books(id, title, author, cover_url, price_physical), seller:seller_id(id, email)")
-        .is("paid_at", null)
-        .order("sold_at", { ascending: false }),
+
       adminClient.from("books")
         .select("id, title, author, cover_url, price_physical, stock_physical")
         .eq("is_active", true)
         .gt("price_physical", 0)
         .order("title", { ascending: true }),
+
+      adminClient.from("seller_sales")
+        .select("*, books(id, title, author, cover_url, price_physical), seller:seller_id(id, email)")
+        .is("paid_at", null)
+        .order("sold_at", { ascending: false }),
+
+      adminClient.from("seller_sales")
+        .select("*, books(id, title, author, cover_url), seller:seller_id(id, email)", { count: "exact", head: false })
+        .order("sold_at", { ascending: false })
+        .range(salesFrom, salesTo),
+
+      adminClient.from("stock_requests")
+        .select("*, items:stock_request_items(*, books(id, title, author, cover_url, price_physical)), seller:seller_id(id, email)", { count: "exact", head: false })
+        .order("created_at", { ascending: false })
+        .range(reqFrom, reqTo),
+
+      adminClient.from("seller_inventory")
+        .select("*, books(id, title, cover_url, author)", { count: "exact", head: false })
+        .order("updated_at", { ascending: false })
+        .range(invFrom, invTo),
+
+      adminClient.from("seller_sales")
+        .select("seller_id, book_id, quantity")
+        .not("book_id", "is", null),
     ]);
 
+    const salesMap: Record<string, number> = {};
+    for (const s of (salesMapResult.data ?? [])) {
+      const key = `${s.seller_id}:${s.book_id}`;
+      salesMap[key] = (salesMap[key] || 0) + (s.quantity || 0);
+    }
+
     return NextResponse.json({
-      allSales: allSales ?? [],
-      allInventory: allInventory ?? [],
-      allSellers: allSellers ?? [],
-      requests: requests ?? [],
-      pendingSales: pendingSales ?? [],
-      physicalBooks: physicalBooks ?? [],
+      sellers: sellersResult.data ?? [],
+      physicalBooks: physicalBooksResult.data ?? [],
+      pendingSales: pendingSalesResult.data ?? [],
+      sales: {
+        data: salesResult.data ?? [],
+        total: salesResult.count ?? 0,
+        page: salesPage,
+        perPage: salesPerPage,
+      },
+      requests: {
+        data: requestsResult.data ?? [],
+        total: requestsResult.count ?? 0,
+        page: requestsPage,
+        perPage: requestsPerPage,
+      },
+      inventory: {
+        data: inventoryResult.data ?? [],
+        total: inventoryResult.count ?? 0,
+        page: inventoryPage,
+        perPage: inventoryPerPage,
+      },
+      salesMap,
     });
   } catch (error) {
     console.error('[api/admin/dashboard] Error:', error);

@@ -67,23 +67,39 @@ export default function AdminDashboard() {
   const [pendingOps, setPendingOps] = useState<Set<string>>(new Set());
   const [modalItems, setModalItems] = useState<any[] | null>(null);
   const [stockModalSeller, setStockModalSeller] = useState<{sellerId: string; email: string; items: any[]} | null>(null);
-  interface DashboardData {
-    allSales: any[];
-    allInventory: any[];
-    allSellers: any[];
-    requests: StockRequest[];
-    pendingSales: any[];
-    physicalBooks: any[];
+  interface PaginatedResponse<T> {
+    data: T[];
+    total: number;
+    page: number;
+    perPage: number;
   }
 
-  const { data: dash, isLoading, refetch } = useQuery<DashboardData>({
-    queryKey: ["admin-dashboard"],
+  interface DashboardData {
+    sales: PaginatedResponse<any>;
+    inventory: PaginatedResponse<any>;
+    sellers: any[];
+    requests: PaginatedResponse<StockRequest>;
+    pendingSales: any[];
+    physicalBooks: any[];
+    salesMap: Record<string, number>;
+  }
+
+  const [salesPage, setSalesPage] = useState(1);
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [requestsPage, setRequestsPage] = useState(1);
+
+  const { data: dash, isLoading } = useQuery<DashboardData>({
+    queryKey: ["admin-dashboard", salesPage, requestsPage],
     queryFn: async () => {
-      const res = await fetch("/api/admin/dashboard", { cache: "no-store" });
+      const params = new URLSearchParams({
+        salesPage: String(salesPage),
+        requestsPage: String(requestsPage),
+      });
+      const res = await fetch(`/api/admin/dashboard?${params}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Error al cargar dashboard");
       return res.json();
     },
-    staleTime: 0,
+    staleTime: 30000,
   });
 
   useEffect(() => {
@@ -99,27 +115,17 @@ export default function AdminDashboard() {
     return () => { supabase.removeChannel(channel); };
   }, [supabase, queryClient]);
 
-  useEffect(() => {
-    const interval = setInterval(() => { refetch(); }, 5000);
-    const onVisible = () => { if (document.visibilityState === "visible") refetch(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
-  }, [refetch]);
-
-  const allSales = dash?.allSales ?? [];
-  const allInventory = dash?.allInventory ?? [];
-  const allSellers = dash?.allSellers ?? [];
-  const requests = dash?.requests ?? [];
+  const allSales = dash?.sales?.data ?? [];
+  const salesTotal = dash?.sales?.total ?? 0;
+  const salesPerPage = dash?.sales?.perPage ?? 100;
+  const allInventory = dash?.inventory?.data ?? [];
+  const allSellers = dash?.sellers ?? [];
+  const requests = dash?.requests?.data ?? [];
+  const requestsTotal = dash?.requests?.total ?? 0;
+  const requestsPerPage = dash?.requests?.perPage ?? 50;
   const pendingSales = dash?.pendingSales ?? [];
   const physicalBooks = dash?.physicalBooks ?? [];
-  const salesMap = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const s of allSales) {
-      const key = `${s.seller_id}:${s.book_id}`;
-      map.set(key, (map.get(key) || 0) + (s.quantity || 0));
-    }
-    return map;
-  }, [allSales]);
+  const salesMap = dash?.salesMap ?? {};
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status, tracking_number }: { id: string; status: StockRequest["status"]; tracking_number?: string }) =>
@@ -130,7 +136,7 @@ export default function AdminDashboard() {
       const previous = queryClient.getQueryData<DashboardData>(["admin-dashboard"]);
       queryClient.setQueryData<DashboardData>(["admin-dashboard"], (old) => {
         if (!old) return old;
-        return { ...old, requests: old.requests.map((r) => r.id === id ? { ...r, status, updated_at: new Date().toISOString() } : r) };
+        return { ...old, requests: { ...old.requests, data: old.requests.data.map((r) => r.id === id ? { ...r, status, updated_at: new Date().toISOString() } : r) } };
       });
       return { previous };
     },
@@ -802,7 +808,7 @@ export default function AdminDashboard() {
               ) : (
                 <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
                   <div className="divide-y divide-white/5">
-                    {allSales.slice(0, 100).map((sale: any) => (
+                    {allSales.map((sale: any) => (
                       <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
                         {sale.books?.cover_url && (
                           <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
@@ -834,6 +840,28 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     ))}
+                  </div>
+                  <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between text-xs text-white/40">
+                    <span>
+                      Mostrando {Math.min(allSales.length, salesPerPage)} de {salesTotal} ventas
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSalesPage(p => Math.max(1, p - 1))}
+                        disabled={salesPage <= 1}
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-white/60">Pág. {salesPage}</span>
+                      <button
+                        onClick={() => setSalesPage(p => p + 1)}
+                        disabled={allSales.length < salesPerPage}
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -897,9 +925,10 @@ export default function AdminDashboard() {
                 <div className="text-center py-12 text-white/30 text-sm">
                   <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
                   <p>No hay solicitudes de stock.</p>
-                </div>
-              ) : (
-                requests.map((req) => {
+            </div>
+          ) : (
+            <>
+              {requests.map((req) => {
                   const statusInfo = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending;
                   return (
                     <div key={req.id} className="bg-white/5 border border-white/8 rounded-2xl p-5">
@@ -920,7 +949,7 @@ export default function AdminDashboard() {
                           <div className="space-y-0.5">
                             {(req.items ?? []).slice(0, 3).map((item: any) => {
                               const sellerId = (req as any).seller_id;
-                              const soldQty = salesMap.get(`${sellerId}:${item.book_id}`) || 0;
+                              const soldQty = salesMap[`${sellerId}:${item.book_id}`] || 0;
                               const isReceived = !!item.received_at;
                               return (
                                 <div key={item.id} className="flex items-center justify-between text-sm">
@@ -1012,10 +1041,34 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
+                })}
+              <div className="flex items-center justify-between text-xs text-white/40 pt-2">
+                <span>
+                  Mostrando {Math.min(requests.length, requestsPerPage)} de {requestsTotal} solicitudes
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setRequestsPage(p => Math.max(1, p - 1))}
+                    disabled={requestsPage <= 1}
+                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-white/60">Pág. {requestsPage}</span>
+                  <button
+                    onClick={() => setRequestsPage(p => p + 1)}
+                    disabled={requests.length < requestsPerPage}
+                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </>
           )}
+        </div>
+      )}
+
         </div>
       </div>
     </div>
@@ -1027,7 +1080,7 @@ export default function AdminDashboard() {
       >
         {(item: any) => {
           const sellerId = (item as any).seller_id ?? (item as any).request_seller_id;
-          const soldQty = salesMap.get(`${sellerId}:${item.book_id}`) || 0;
+          const soldQty = salesMap[`${sellerId}:${item.book_id}`] || 0;
           const isReceived = !!item.received_at;
           return (
             <div key={item.id} className="flex items-center gap-3">
