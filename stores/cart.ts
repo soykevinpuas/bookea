@@ -72,8 +72,8 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
       if (snapshot !== mutateId) return
       const data = await res.json()
       if (id === fetchId) set({ items: data.items || [] })
-    } catch {
-      // silencioso
+    } catch (err) {
+      console.error('[cart] fetchCart error:', err)
     } finally {
       if (id === fetchId) set({ loading: false })
     }

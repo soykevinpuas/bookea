@@ -136,44 +136,13 @@ export async function deleteSaleAction(saleId: string) {
   if (roleData !== "admin") throw new Error("No autorizado");
 
   const adminDb = createAdminClient();
+  const { data, error } = await adminDb.rpc("delete_sale_and_restore_stock", {
+    p_sale_id: saleId,
+  });
 
-  const { data: sale, error: saleErr } = await adminDb
-    .from("seller_sales")
-    .select("seller_id, book_id, quantity")
-    .eq("id", saleId)
-    .single();
-
-  if (saleErr) throw new Error(`Error al obtener venta: ${saleErr.message}`);
-  if (!sale) throw new Error("Venta no encontrada");
-
-  const { error: delErr } = await adminDb
-    .from("seller_sales")
-    .delete()
-    .eq("id", saleId);
-
-  if (delErr) throw new Error(delErr.message);
-
-  const { data: existing, error: invErr } = await adminDb
-    .from("seller_inventory")
-    .select("id, quantity")
-    .eq("seller_id", sale.seller_id)
-    .eq("book_id", sale.book_id)
-    .maybeSingle();
-  if (invErr) throw invErr;
-
-  const now = new Date().toISOString();
-  if (existing) {
-    const { error: updErr } = await adminDb
-      .from("seller_inventory")
-      .update({ quantity: existing.quantity + sale.quantity, updated_at: now })
-      .eq("id", existing.id);
-    if (updErr) throw updErr;
-  } else {
-    const { error: insErr } = await adminDb
-      .from("seller_inventory")
-      .insert({ seller_id: sale.seller_id, book_id: sale.book_id, quantity: sale.quantity });
-    if (insErr) throw insErr;
-  }
+  if (error) throw new Error(error.message);
+  const result = (data as any) || {};
+  if (!result.success) throw new Error(result.error || "Error al eliminar venta");
 
   revalidatePath("/admin");
   revalidatePath("/admin/vendedores");

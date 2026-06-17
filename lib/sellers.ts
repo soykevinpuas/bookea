@@ -27,31 +27,15 @@ export async function assignStock(
   bookId: string,
   quantity: number
 ) {
-  const { data: existing } = await supabase
-    .from("seller_inventory")
-    .select("id, quantity")
-    .eq("seller_id", sellerId)
-    .eq("book_id", bookId)
-    .maybeSingle();
-
-  if (existing) {
-    const { error } = await supabase
-      .from("seller_inventory")
-      .update({ quantity: existing.quantity + quantity, updated_at: new Date().toISOString() })
-      .eq("id", existing.id);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .from("seller_inventory")
-      .insert({ seller_id: sellerId, book_id: bookId, quantity });
-    if (error) throw error;
-  }
-
-  const { error: stockErr } = await supabase.rpc("decrement_stock", {
+  const { data, error } = await supabase.rpc("assign_stock", {
+    p_seller_id: sellerId,
     p_book_id: bookId,
     p_quantity: quantity,
   });
-  if (stockErr) throw stockErr;
+
+  if (error) throw error;
+  const result = (data as any) || {};
+  if (!result.success) throw new Error(result.error || "Error al asignar stock");
 }
 
 export const COST_PER_BOOK = 200;

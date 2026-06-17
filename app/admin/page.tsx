@@ -148,9 +148,10 @@ export default function AdminDashboard() {
   });
 
   const deleteRequest = useMutation({
-    mutationFn: async (requestId: string) => {
+    mutationFn: (requestId: string) => deleteStockRequestAction(requestId),
+    onMutate: async (requestId) => {
       setPendingOps(prev => new Set(prev).add(`del-req-${requestId}`));
-      await deleteStockRequestAction(requestId);
+      await queryClient.cancelQueries({ queryKey: ["admin-dashboard"] });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
@@ -223,9 +224,11 @@ export default function AdminDashboard() {
   });
 
   const removeInventory = useMutation({
-    mutationFn: async ({ sellerId, bookId }: { sellerId: string; bookId: string }) => {
+    mutationFn: ({ sellerId, bookId }: { sellerId: string; bookId: string }) =>
+      removeSellerInventoryAction(sellerId, bookId),
+    onMutate: async ({ sellerId, bookId }) => {
       setPendingOps(prev => new Set(prev).add(`del-inv-${sellerId}-${bookId}`));
-      await removeSellerInventoryAction(sellerId, bookId);
+      await queryClient.cancelQueries({ queryKey: ["admin-dashboard"] });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
@@ -238,9 +241,10 @@ export default function AdminDashboard() {
   });
 
   const deleteSale = useMutation({
-    mutationFn: async (saleId: string) => {
+    mutationFn: (saleId: string) => deleteSaleAction(saleId),
+    onMutate: async (saleId) => {
       setPendingOps(prev => new Set(prev).add(`del-sale-${saleId}`));
-      await deleteSaleAction(saleId);
+      await queryClient.cancelQueries({ queryKey: ["admin-dashboard"] });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
