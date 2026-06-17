@@ -13,7 +13,7 @@ interface CartPanelProps {
 
 export default function CartPanel({ open, onClose }: CartPanelProps) {
   const { userId } = useUserId()
-  const { items, loading, fetchCart, addItem, removeItem, shipping, setShipping } = useCartStore()
+  const { items, loading, removingItems, fetchCart, addItem, removeItem, shipping, setShipping } = useCartStore()
   const [checkingOut, setCheckingOut] = useState(false)
   const [showShipping, setShowShipping] = useState(false)
   const [error, setError] = useState('')
@@ -157,7 +157,7 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
         </div>
 
         <div className="p-4 space-y-3">
-          {loading ? (
+          {items.length === 0 && loading ? (
             <div className="flex justify-center py-12"><div className="splash-dots"><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" /></div></div>
           ) : items.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
@@ -189,8 +189,8 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
                     <span className="text-sm font-bold">${item.price} MXN</span>
                   </div>
                 </div>
-                <button onClick={() => removeItem(item.id)} className="p-1.5 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-500 transition-colors shrink-0 mt-0.5">
-                  <Trash2 className="w-4 h-4" />
+                <button onClick={() => removeItem(item.id)} disabled={removingItems.has(item.id)} className="p-1.5 hover:bg-red-100 dark:hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-500 transition-colors shrink-0 mt-0.5 disabled:opacity-50 disabled:pointer-events-none">
+                  {removingItems.has(item.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 </button>
               </div>
             ))

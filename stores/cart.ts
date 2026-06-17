@@ -14,6 +14,7 @@ export interface CartItem {
 interface CartStore {
   items: CartItem[]
   loading: boolean
+  removingItems: Set<string>
   open: boolean
   libraryOpen: boolean
   shipping: { name: string; address: string; city: string; state: string; zip: string; phone: string }
@@ -56,6 +57,7 @@ let mutateId = 0
 export const useCartStore = create<CartStoreState>((set, get) => ({
   items: [],
   loading: false,
+  removingItems: new Set<string>(),
   open: false,
   libraryOpen: false,
   shipping: loadShipping(),
@@ -100,7 +102,7 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
 
   removeItem: async (itemId) => {
     ++mutateId
-    set({ loading: true })
+    set((s) => ({ removingItems: new Set(s.removingItems).add(itemId) }))
     try {
       const res = await fetch(`/api/cart?id=${itemId}`, { method: 'DELETE' })
       if (res.ok) {
@@ -108,7 +110,7 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
         set({ items: data.items || [] })
       }
     } finally {
-      set({ loading: false })
+      set((s) => { const next = new Set(s.removingItems); next.delete(itemId); return { removingItems: next }; })
     }
   },
 
