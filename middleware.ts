@@ -33,15 +33,16 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Solo leer cookies — sin request HTTP a Supabase.
-  // El cliente (React) valida la sesión real con getUser().
+  // Validar sesión con getUser() — refresca tokens expirados automáticamente
   let user = null
   try {
-    const { data } = await supabase.auth.getSession()
-    user = data.session?.user ?? null
-  } catch {}
+    const { data } = await supabase.auth.getUser()
+    user = data.user ?? null
+  } catch {
+    // Si getUser() falla (red, Supabase caído), tratar como no autenticado
+  }
 
-  // Protección de rutas (basado en proxy.ts anterior)
+  // Protección de rutas
   const { pathname } = request.nextUrl
   const protectedPaths = ['/dashboard', '/reader', '/admin', '/catalog', '/profile', '/vendedor']
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))

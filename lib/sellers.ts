@@ -406,32 +406,13 @@ export async function revertAssignStock(
   bookId: string,
   quantity: number
 ) {
-  const { data: existing, error: invErr } = await supabase
-    .from("seller_inventory")
-    .select("id, quantity")
-    .eq("seller_id", sellerId)
-    .eq("book_id", bookId)
-    .maybeSingle();
-  if (invErr) throw invErr;
-
-  if (!existing) return;
-
-  const now = new Date().toISOString();
-  const newQty = existing.quantity - quantity;
-  if (newQty <= 0) {
-    const { error: delErr } = await supabase.from("seller_inventory").delete().eq("id", existing.id);
-    if (delErr) throw delErr;
-  } else {
-    const { error: updErr } = await supabase
-      .from("seller_inventory")
-      .update({ quantity: newQty, updated_at: now })
-      .eq("id", existing.id);
-    if (updErr) throw updErr;
-  }
-
-  const { error: stockErr } = await supabase.rpc("increment_stock", {
+  const { data, error } = await supabase.rpc("revert_assign_stock", {
+    p_seller_id: sellerId,
     p_book_id: bookId,
     p_quantity: quantity,
   });
-  if (stockErr) throw stockErr;
+
+  if (error) throw error;
+  const result = (data as any) || {};
+  if (!result.success) throw new Error(result.error || "Error al revertir asignación");
 }

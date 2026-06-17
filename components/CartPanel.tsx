@@ -20,11 +20,8 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const dragState = useRef({ startX: 0, startY: 0, offset: 0, isDragging: false, panelWidth: 0 })
 
-  const fetchedOnOpen = useRef(false)
-
   useEffect(() => {
     if (userId && open) {
-      fetchedOnOpen.current = false
       fetchCart()
     }
   }, [userId, fetchCart, open])

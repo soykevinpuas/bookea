@@ -32,12 +32,14 @@ export function Header() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setUser(user);
-      }
-      setIsLoading(false);
-    });
+    supabase.auth.getUser()
+      .then(({ data: { user } }) => {
+        if (user) setUser(user);
+      })
+      .catch(() => {
+        // Error de red o Supabase caído — tratar como no autenticado
+      })
+      .finally(() => setIsLoading(false));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       setUser(session?.user ?? null);
@@ -54,9 +56,11 @@ export function Header() {
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        supabase.auth.getUser().then(({ data: { user } }) => {
-          if (user) setUser(user);
-        });
+        supabase.auth.getUser()
+          .then(({ data: { user } }) => {
+            if (user) setUser(user);
+          })
+          .catch(() => {});
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
