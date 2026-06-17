@@ -5,13 +5,12 @@ import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect, Suspense } from "react";
 import { useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
-import { useCoins, useStreak } from "@/hooks/useCoins";
 import { useProfile } from "@/hooks/useAvatars";
 import Book3D from "@/components/Book3D";
 import BookLongPressMenu from "@/components/BookLongPressMenu";
 import ProgressCircle from "@/components/ProgressCircle";
 import Card from "@/components/ui/Card";
-import { BookOpen, Trophy, Flame, Loader2, Compass, Search, WifiOff, History, Sparkles, Circle } from "lucide-react";
+import { BookOpen, BookOpenCheck, Loader2, Compass, Search, WifiOff, History, Sparkles } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { verifySubscriptionAction } from "@/lib/actions/subscriptions";
@@ -141,8 +140,6 @@ function DashboardContent() {
   }, []);
 
   const { data: allBooks, isLoading } = useUserBooks(userId);
-  const { data: coinsBalance } = useCoins(userId);
-  const { data: streak } = useStreak(userId);
   const { profile } = useProfile(userId);
 
   const displayBooks = useMemo(() => {
@@ -220,22 +217,12 @@ function DashboardContent() {
         )}
 
         <div className="flex items-center gap-4 mb-8">
-          <Card className="flex items-center gap-2 px-3 py-2">
-            <Flame className={`w-4 h-4 ${(streak || 0) > 0 ? 'text-orange-500' : 'text-gray-300 dark:text-zinc-600'}`} />
-            <span className="text-sm font-bold text-gray-900 dark:text-white">{streak ?? 0}</span>
-            <span className="text-[10px] text-gray-400 dark:text-zinc-500 font-medium">racha</span>
-          </Card>
-          <Card className="flex items-center gap-2 px-3 py-2">
-            <Trophy className={`w-4 h-4 ${(totalCompleted || 0) > 0 ? 'text-amber-500' : 'text-gray-300 dark:text-zinc-600'}`} />
-            <span className="text-sm font-bold text-gray-900 dark:text-white">{totalCompleted}</span>
-            <span className="text-[10px] text-gray-400 dark:text-zinc-500 font-medium">leídos</span>
-          </Card>
-          <Card className="flex items-center gap-2 px-3 py-2">
-            <Circle className="w-4 h-4 text-amber-400 fill-current" />
-            <span className="text-sm font-bold text-gray-900 dark:text-white">
-              {coinsBalance ? (coinsBalance.bronze || 0) + (coinsBalance.silver || 0) + (coinsBalance.gold || 0) + (coinsBalance.diamond || 0) : 0}
-            </span>
-            <span className="text-[10px] text-gray-400 dark:text-zinc-500 font-medium">monedas</span>
+          <Card className="flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-amber-500/10 to-amber-500/5 border-amber-500/20">
+            <BookOpenCheck className="w-5 h-5 text-amber-400" />
+            <div>
+              <span className="text-lg font-black text-amber-400">{totalCompleted}</span>
+              <span className="text-xs text-white/40 font-medium ml-1.5">leídos</span>
+            </div>
           </Card>
         </div>
 

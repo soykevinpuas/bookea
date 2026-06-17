@@ -54,12 +54,7 @@ export default function ReviewForm({ bookId }: ReviewFormProps) {
 
     try {
       await saveReview({ userId, rating, content });
-      const earnedCoin = content.length >= 50 && rating >= 3;
-      toast.success(
-        earnedCoin
-          ? "¡Reseña guardada! Has ganado 1 moneda de Bronce 🪙"
-          : "¡Reseña guardada con éxito!"
-      );
+      toast.success("¡Reseña guardada con éxito!");
       setIsExpanded(false);
     } catch {
       toast.error("Error al guardar la reseña");

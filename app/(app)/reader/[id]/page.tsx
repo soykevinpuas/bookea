@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useBook } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
-import { useCoins, useCoinTransactions } from "@/hooks/useCoins";
+import { useCoins } from "@/hooks/useCoins";
 import { getReadingProgress, saveReadingProgress } from "@/lib/reading";
 import { Highlight } from "@/types/reading";
 import { Bookmark as BookmarkType } from "@/types/bookmark";
@@ -23,8 +23,7 @@ import { addToLibrary, hasBookAccess } from "@/lib/books";
 import { addToLibraryAction } from "@/lib/actions/library";
 import type { EpubContents } from "@/types/epub";
 import { recordReadingSession, canCountStreakDay } from "@/lib/streaks";
-import { BookCompletionQuiz } from "@/components/gamification/BookCompletionQuiz";
-import { completeBookAndAwardCoinAction } from "@/lib/actions/coins";
+
 
 // 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 
@@ -143,9 +142,6 @@ export default function ReaderPage() {
   const [editingNote, setEditingNote] = useState<{ id: string; note: string } | null>(null);
   const [isSavingHighlight, setIsSavingHighlight] = useState(false);
 
-  // 4.2.2.5 - Estado para gamificación (quiz de finalización y racha)
-  const [showQuiz, setShowQuiz] = useState(false);
-  
   // 4.2.2.6 - Estado para el color del subrayado
   const [highlightColor, setHighlightColor] = useState('#FFEB3B');
   
@@ -177,10 +173,6 @@ export default function ReaderPage() {
       }
     };
   }, [mounted]);
-  const [bookCompleted, setBookCompleted] = useState(false);
-  const { data: transactions } = useCoinTransactions(userId);
-  const alreadyClaimedCoin = transactions?.some((t: any) => t.book_id === bookId && t.source === 'complete_book');
-
   // Sincronizar refs con state para evitar closures stale en eventos de epub.js
   bookmarksRef.current = bookmarks;
   highlightsRef.current = highlights;
@@ -190,14 +182,6 @@ export default function ReaderPage() {
   const [isDictionaryLoading, setIsDictionaryLoading] = useState(false);
   const [dictionaryError, setDictionaryError] = useState<string | null>(null);
   const [dictionaryPos, setDictionaryPos] = useState<{ x: number; y: number } | null>(null);
-
-  // 4.2.1.2 - Detectar cuando el libro se completa (100%) y mostrar quiz
-  useEffect(() => {
-    if (progress >= 99.5 && !bookCompleted && !alreadyClaimedCoin) {
-      setBookCompleted(true);
-      setShowQuiz(true);
-    }
-  }, [progress, bookCompleted, alreadyClaimedCoin]);
 
   const themeRef = useRef<string | undefined>(theme);
   const fontRef = useRef<string>(fontFamily);
@@ -1581,29 +1565,6 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     );
   }
 
-  // 4.2.10 - Handler para completar libro (pasar quiz)
-  const handleBookComplete = async () => {
-    if (alreadyClaimedCoin) return;
-    try {
-      const result = await completeBookAndAwardCoinAction(bookId);
-
-      if (result.success) {
-        toast.success('¡Libro completado! Has ganado una moneda de bronce 🪙');
-        // Invalidar queries para refrescar el balance y las transacciones (esto actualizará alreadyClaimedCoin)
-        queryClient.invalidateQueries({ queryKey: ['user-coins', userId] });
-        queryClient.invalidateQueries({ queryKey: ['user-coin-transactions', userId] });
-      } else {
-        if (result.error === 'insufficient_progress') {
-          toast.error('Debes leer un poco más del libro para ganar la moneda.');
-        } else {
-          console.error('[BookComplete] Error:', result.error);
-        }
-      }
-    } catch (err) {
-      console.error('[BookComplete] Exception:', err);
-    }
-  };
-
   if (error) {
     return (
       <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-[#0a0a0a] retro:bg-[#0d1117] text-white px-4 text-center">
@@ -2163,16 +2124,6 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         </div>
       )}
 
-      {/* Quiz de finalización de libro */}
-      {book && (
-        <BookCompletionQuiz
-          isOpen={showQuiz}
-          onClose={() => setShowQuiz(false)}
-          onComplete={handleBookComplete}
-          bookTitle={book.title}
-          bookId={bookId}
-        />
-      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { User, LogOut, Shield, Zap, BookOpen, ShoppingCart, Circle, Package, Store } from "lucide-react";
+import { User, LogOut, Shield, Zap, BookOpen, ShoppingCart, Package, Store } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createClientClient } from "@/lib/supabase";
 import { useRouter, usePathname } from "next/navigation";
@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useUserId } from "@/hooks/useUser";
 import { useProfile } from "@/hooks/useAvatars";
-import { useCoins } from "@/hooks/useCoins";
+
 import { useCartStore } from "@/stores/cart";
 import { AnimalEngine } from "./avatars/AnimalEngine";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
@@ -27,7 +27,6 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
   const resolvedUserId = propUserId || userId;
   const { data: subscription } = useSubscription(resolvedUserId);
   const { profile } = useProfile(resolvedUserId);
-  const { data: coinsBalance } = useCoins(resolvedUserId);
   const cartItems = useCartStore((s) => s.items);
   const toggleCart = useCartStore((s) => s.toggleCart);
 
@@ -52,9 +51,6 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
   };
 
   const isPremium = subscription?.isActive;
-  const totalCoins = coinsBalance
-    ? (coinsBalance.bronze || 0) + (coinsBalance.silver || 0) + (coinsBalance.gold || 0) + (coinsBalance.diamond || 0)
-    : 0;
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -128,15 +124,6 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
           {/* Account */}
           <div className="border-t border-gray-100 dark:border-white/5 p-2 space-y-0.5">
             <MenuItem href="/profile" icon={<User className="w-4 h-4" />} label="Perfil" onClick={() => setIsOpen(false)} />
-            {totalCoins > 0 && (
-              <div className="flex items-center justify-between px-3 py-2.5 text-sm font-bold text-gray-600 dark:text-white/60">
-                <span className="flex items-center gap-3">
-                  <Circle className="w-4 h-4 text-amber-500 fill-current" />
-                  Monedas
-                </span>
-                <span className="text-[11px] text-amber-500 font-black">{totalCoins}</span>
-              </div>
-            )}
           </div>
 
           {/* Subscription / Role links */}

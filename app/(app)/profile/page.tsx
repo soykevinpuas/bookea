@@ -3,7 +3,7 @@
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { User, CreditCard, Shield, Zap, Loader2, BookOpen, Coins, Flame, Gift, Circle, BookOpenCheck, Trophy, Key, Trash2, AlertTriangle, Paintbrush, ChevronRight, Package, Clock, Truck, CheckCircle2 } from "lucide-react";
+import { User, CreditCard, Shield, Zap, Loader2, BookOpen, Gift, BookOpenCheck, Trophy, Key, Trash2, AlertTriangle, Paintbrush, ChevronRight, Package, Clock, Truck, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useUserId } from "@/hooks/useUser";
@@ -15,7 +15,6 @@ import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 import AvatarSelector from "@/components/profile/AvatarSelector";
 import { ProfileSkeleton } from "@/components/ui/SkeletonBox";
-import { CoinBalanceDisplay } from "@/components/ui/CoinBalance";
 import { ReferralQR } from "@/components/profile/ReferralQR";
 
 interface Order {
@@ -67,8 +66,6 @@ export default function ProfilePage() {
   const { data: subscription, isLoading: subLoading } = useSubscription(userId);
   const { data: profileData, isLoading: profileDataLoading } = useProfileData(userId);
 
-  const coinsBalance = profileData?.coins;
-  const streak = profileData?.streak ?? 0;
   const referralLink = profileData?.referralLink || '';
   const referralCount = profileData?.referralCount || 0;
 
@@ -275,18 +272,9 @@ export default function ProfilePage() {
               {/* Mini stats inline */}
               <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-200 dark:border-white/5">
                 <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-white/40">
-                  <Flame className="w-3 h-3 text-orange-400" />
-                  <span className="font-bold text-gray-900 dark:text-white">{streak ?? 0}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-white/40">
                   <BookOpenCheck className="w-3 h-3 text-blue-400" />
                   <span className="font-bold text-gray-900 dark:text-white">{completedBooks}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-white/40">
-                  <Circle className="w-3 h-3 text-amber-400 fill-current" />
-                  <span className="font-bold text-gray-900 dark:text-white">
-                    {coinsBalance ? (coinsBalance.bronze || 0) + (coinsBalance.silver || 0) + (coinsBalance.gold || 0) + (coinsBalance.diamond || 0) : 0}
-                  </span>
+                  <span className="text-gray-400 dark:text-white/40">leídos</span>
                 </div>
               </div>
 
@@ -452,37 +440,15 @@ export default function ProfilePage() {
             )}
 
             {activeSection === "progreso" && (
-              <>
-                <h3 className="text-xl font-black flex items-center gap-2.5 mb-6">
-                  <Trophy className="w-5 h-5 text-amber-400" />
-                  Progreso
-                </h3>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {coinsBalance && (
-                    <div className="bg-gray-200 dark:bg-white/5 rounded-xl p-4 border border-gray-300 dark:border-white/5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Coins className="w-4 h-4 text-amber-400" />
-                        <span className="text-sm font-bold">Monedas</span>
-                      </div>
-                      <CoinBalanceDisplay balance={coinsBalance} variant="full" />
-                    </div>
-                  )}
-                  <div className="bg-gray-200 dark:bg-white/5 rounded-xl p-4 border border-gray-300 dark:border-white/5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Flame className="w-4 h-4 text-orange-400" />
-                      <span className="text-sm font-bold">Racha: {streak ?? 0} días</span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      <div className="text-center p-1.5 rounded bg-white/5"><p className="text-[10px] font-bold text-amber-500">3d</p></div>
-                      <div className="text-center p-1.5 rounded bg-white/5"><p className="text-[10px] font-bold text-amber-500">5d</p></div>
-                      <div className="text-center p-1.5 rounded bg-white/5"><p className="text-[10px] font-bold text-yellow-500">10d</p></div>
-                      <div className="text-center p-1.5 rounded bg-white/5"><p className="text-[10px] font-bold text-cyan-400">30d</p></div>
-                    </div>
-                    <p className="text-[10px] text-gray-400 dark:text-white/30 mt-2">Lee 2+ min para contar</p>
-                  </div>
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center mb-5">
+                  <Trophy className="w-7 h-7 text-amber-400" />
                 </div>
-              </>
+                <h3 className="text-lg font-black text-white/80 mb-2">Progreso</h3>
+                <p className="text-sm text-white/30 max-w-xs leading-relaxed">
+                  Próximamente podrás trackear tu progreso, rachas y monedas conseguidas.
+                </p>
+              </div>
             )}
 
             {activeSection === "referidos" && referralLink && (
