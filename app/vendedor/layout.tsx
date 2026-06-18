@@ -33,13 +33,13 @@ export default function VendedorLayout({
   const { data: user, isFetched } = useQuery({
     queryKey: ["my-role"],
     queryFn: async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session?.user) return null;
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return null;
       const { data: roleData } = await supabase.rpc("get_my_role");
-      return { email: sessionData.session.user.email, role: roleData as string };
+      return { email: userData.user.email, role: roleData as string };
     },
     staleTime: 1000 * 60 * 5,
-    retry: false,
+    retry: 3,
   });
 
   useEffect(() => {

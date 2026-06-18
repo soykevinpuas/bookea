@@ -42,13 +42,13 @@ export default function AdminLayout({
   useEffect(() => {
 
     const checkAdmin = async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session?.user) {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
         router.push("/login");
         return;
       }
 
-      const authUser = sessionData.session.user;
+      const authUser = userData.user;
       const { data: roleData, error: rpcError } = await supabase.rpc("get_my_role");
 
       if (rpcError || (roleData as string) !== "admin") {

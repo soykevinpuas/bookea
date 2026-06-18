@@ -2,27 +2,25 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createClientClient } from "@/lib/supabase";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { ThemeToggle } from "./ThemeToggle";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useAuth } from "@/lib/auth-provider";
 import { Menu, WifiOff } from "lucide-react";
 import { useMobileMenu } from "@/stores/menu";
 
 const UserMenu = dynamic(() => import("./UserMenu").then(m => m.UserMenu));
 
 export function Header() {
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { userId, email, isLoading } = useAuth();
   const [isOnline, setIsOnline] = useState(true);
   const [mounted, setMounted] = useState(false);
 
-  const supabase = useMemo(() => createClientClient(), []);
   const pathname = usePathname();
   const router = useRouter();
 
-  const { data: subscription } = useSubscription(user?.id);
+  const { data: subscription } = useSubscription(userId);
   const { open: menuOpen, setOpen: setMenuOpen } = useMobileMenu();
 
   const isAdmin = pathname?.startsWith("/admin");
@@ -30,42 +28,6 @@ export function Header() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    supabase.auth.getUser()
-      .then(({ data: { user } }) => {
-        if (user) setUser(user);
-      })
-      .catch(() => {
-        // Error de red o Supabase caído — tratar como no autenticado
-      })
-      .finally(() => setIsLoading(false));
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
-      setUser(session?.user ?? null);
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        router.refresh();
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase, router]);
-
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        supabase.auth.getUser()
-          .then(({ data: { user } }) => {
-            if (user) setUser(user);
-          })
-          .catch(() => {});
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [supabase]);
 
   useEffect(() => {
     if (menuOpen) {
@@ -124,8 +86,8 @@ export function Header() {
           <ThemeToggle />
 
           {!isLoading && (
-            user ? (
-              <UserMenu email={user.email} userId={user.id} />
+            userId ? (
+              <UserMenu email={email} userId={userId} />
             ) : (
               <div className="flex items-center gap-3">
                 <Link
