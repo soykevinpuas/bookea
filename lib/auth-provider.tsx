@@ -10,6 +10,9 @@ interface AuthState {
   isReady: boolean;
 }
 
+const CACHE_KEY = "bookea-auth-id";
+const getCachedId = () => (typeof window !== "undefined" ? localStorage.getItem(CACHE_KEY) || "" : "");
+
 const AuthContext = createContext<AuthState>({
   userId: "",
   email: "",
@@ -22,11 +25,14 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    userId: "",
-    email: "",
-    isLoading: true,
-    isReady: false,
+  const [state, setState] = useState<AuthState>(() => {
+    const cachedId = getCachedId();
+    return {
+      userId: cachedId,
+      email: "",
+      isLoading: !!cachedId,
+      isReady: false,
+    };
   });
   const supabase = useRef(createClientClient());
 
@@ -36,9 +42,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const id = data.user?.id || "";
       const email = data.user?.email || "";
       if (id) {
-        localStorage.setItem("bookea-auth-id", id);
+        localStorage.setItem(CACHE_KEY, id);
       } else {
-        localStorage.removeItem("bookea-auth-id");
+        localStorage.removeItem(CACHE_KEY);
       }
       setState({ userId: id, email, isLoading: false, isReady: true });
     } catch {
@@ -51,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: listener } = supabase.current.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
-        localStorage.removeItem("bookea-auth-id");
+        localStorage.removeItem(CACHE_KEY);
         setState({ userId: "", email: "", isLoading: false, isReady: true });
       } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         syncUser();
@@ -61,7 +67,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => listener?.subscription?.unsubscribe();
   }, [syncUser]);
 
-  // Re-check auth every time the app comes to foreground
   useEffect(() => {
     const handle = () => {
       if (document.visibilityState === "visible") {

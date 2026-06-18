@@ -13,7 +13,7 @@ import { useMobileMenu } from "@/stores/menu";
 const UserMenu = dynamic(() => import("./UserMenu").then(m => m.UserMenu));
 
 export function Header() {
-  const { userId, email, isLoading } = useAuth();
+  const { userId, email } = useAuth();
   const [isOnline, setIsOnline] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -85,25 +85,23 @@ export function Header() {
         <nav className="flex items-center gap-3">
           <ThemeToggle />
 
-          {!isLoading && (
-            userId ? (
-              <UserMenu email={email} userId={userId} />
-            ) : (
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/login"
-                  className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  Iniciar
-                </Link>
-                <Link
-                  href="/register"
-                  className="text-sm font-bold bg-gray-900 dark:bg-white hover:opacity-90 text-white dark:text-black px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all shadow-sm"
-                >
-                  Regístrate
-                </Link>
-              </div>
-            )
+          {userId ? (
+            <UserMenu email={email} userId={userId} />
+          ) : (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Iniciar
+              </Link>
+              <Link
+                href="/register"
+                className="text-sm font-bold bg-gray-900 dark:bg-white hover:opacity-90 text-white dark:text-black px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all shadow-sm"
+              >
+                Regístrate
+              </Link>
+            </div>
           )}
         </nav>
       </div>
