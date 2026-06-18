@@ -14,6 +14,7 @@ export async function createStockRequestAction(
 
   const { data: role } = await supabase.rpc("get_my_role");
   if (role === "admin") throw new Error("Los administradores no pueden crear solicitudes de stock");
+  if (role !== "vendedor") throw new Error("Solo los vendedores pueden crear solicitudes de stock");
   if (sellerId !== user.id) throw new Error("No puedes crear solicitudes para otro vendedor");
 
   const adminDb = createAdminClient();
