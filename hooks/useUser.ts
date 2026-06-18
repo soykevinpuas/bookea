@@ -1,18 +1,25 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createClientClient } from "@/lib/supabase";
 
 export function useUserId() {
   const queryClient = useQueryClient();
   const supabase = createClientClient();
+  const debounceRef = useRef(0);
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
-      queryClient.invalidateQueries({ queryKey: ["auth-user"] });
+      window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["auth-user"] });
+      }, 100);
     });
-    return () => listener?.subscription?.unsubscribe();
+    return () => {
+      window.clearTimeout(debounceRef.current);
+      listener?.subscription?.unsubscribe();
+    };
   }, [supabase, queryClient]);
 
   const query = useQuery({
@@ -29,9 +36,9 @@ export function useUserId() {
 
       return id;
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
     retry: false,
-    initialDataUpdatedAt: 0,
     initialData: () => {
       if (typeof window !== "undefined") {
         return localStorage.getItem("bookea-auth-id") || "";

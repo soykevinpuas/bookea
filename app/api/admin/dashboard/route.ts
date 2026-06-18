@@ -59,7 +59,8 @@ export async function GET(request: Request) {
       adminClient.from("seller_sales")
         .select("*, books(id, title, author, cover_url, price_physical), seller:seller_id(id, email)")
         .is("paid_at", null)
-        .order("sold_at", { ascending: false }),
+        .order("sold_at", { ascending: false })
+        .limit(500),
 
       adminClient.from("seller_sales")
         .select("*, books(id, title, author, cover_url), seller:seller_id(id, email)", { count: "exact", head: false })
@@ -79,7 +80,8 @@ export async function GET(request: Request) {
       adminClient.from("seller_sales")
         .select("seller_id, book_id, quantity")
         .not("book_id", "is", null)
-        .gte("sold_at", new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()),
+        .gte("sold_at", new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString())
+        .limit(1000),
     ]);
 
     const salesMap: Record<string, number> = {};
