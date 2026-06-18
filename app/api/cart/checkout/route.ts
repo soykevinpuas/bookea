@@ -48,7 +48,7 @@ export async function POST(req: Request) {
         quantity: item.quantity || 1,
       })
 
-      itemsMeta.push({ book_id: item.book_id, type: item.type, cart_item_id: item.id })
+      itemsMeta.push({ book_id: item.book_id, type: item.type, cart_item_id: item.id, quantity: item.quantity || 1 })
     }
 
     if (hasPhysical) {

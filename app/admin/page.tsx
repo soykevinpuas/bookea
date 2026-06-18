@@ -65,7 +65,7 @@ export default function AdminDashboard() {
   const [assignSellerQtys, setAssignSellerQtys] = useState<Record<string, number>>({});
   const [assignSellerSearch, setAssignSellerSearch] = useState("");
   const [pendingOps, setPendingOps] = useState<Set<string>>(new Set());
-  const [modalItems, setModalItems] = useState<any[] | null>(null);
+  const [modalItems, setModalItems] = useState<{ sellerId: string; items: any[] } | null>(null);
   const [stockModalSeller, setStockModalSeller] = useState<{sellerId: string; email: string; items: any[]} | null>(null);
   interface PaginatedResponse<T> {
     data: T[];
@@ -89,10 +89,11 @@ export default function AdminDashboard() {
   const [requestsPage, setRequestsPage] = useState(1);
 
   const { data: dash, isLoading } = useQuery<DashboardData>({
-    queryKey: ["admin-dashboard", salesPage, requestsPage],
+    queryKey: ["admin-dashboard", salesPage, inventoryPage, requestsPage],
     queryFn: async () => {
       const params = new URLSearchParams({
         salesPage: String(salesPage),
+        inventoryPage: String(inventoryPage),
         requestsPage: String(requestsPage),
       });
       const res = await fetch(`/api/admin/dashboard?${params}`, { cache: "no-store" });
@@ -203,22 +204,12 @@ export default function AdminDashboard() {
       if (!assignSellerId) throw new Error("Selecciona un vendedor");
       const entries = Object.entries(assignSellerQtys).filter(([, qty]) => qty > 0);
       if (entries.length === 0) throw new Error("No hay cantidades asignadas");
-      const completed: { bookId: string; qty: number }[] = [];
-      try {
-        for (const [bookId, qty] of entries) {
-          await assignStock(supabase, assignSellerId, bookId, qty);
-          completed.push({ bookId, qty });
-        }
-      } catch (err) {
-        for (const { bookId, qty } of completed) {
-          try {
-            await revertAssignStock(supabase, assignSellerId, bookId, qty);
-          } catch (rollbackErr) {
-            console.error("Error al revertir asignación:", rollbackErr);
-          }
-        }
-        throw err;
-      }
+      const items = entries.map(([bookId, qty]) => ({ book_id: bookId, quantity: qty }));
+      const { error } = await supabase.rpc("assign_stock_batch", {
+        p_seller_id: assignSellerId,
+        p_items: JSON.stringify(items),
+      });
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
@@ -856,7 +847,7 @@ export default function AdminDashboard() {
                       <span className="text-white/60">Pág. {salesPage}</span>
                       <button
                         onClick={() => setSalesPage(p => p + 1)}
-                        disabled={allSales.length < salesPerPage}
+                        disabled={salesPage * salesPerPage >= salesTotal}
                         className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors"
                       >
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -982,7 +973,7 @@ export default function AdminDashboard() {
                             })}
                             {(req.items?.length ?? 0) > 3 && (
                               <button
-                                onClick={() => setModalItems(req.items ?? [])}
+                                onClick={() => setModalItems({ sellerId: req.seller_id, items: req.items ?? [] })}
                                 className="text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1"
                               >
                                 +{req.items!.length - 3} libros más
@@ -1057,7 +1048,7 @@ export default function AdminDashboard() {
                   <span className="text-white/60">Pág. {requestsPage}</span>
                   <button
                     onClick={() => setRequestsPage(p => p + 1)}
-                    disabled={requests.length < requestsPerPage}
+                    disabled={requestsPage * requestsPerPage >= requestsTotal}
                     className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -1075,11 +1066,11 @@ export default function AdminDashboard() {
       <StockRequestItemsModal
         isOpen={!!modalItems}
         onClose={() => setModalItems(null)}
-        items={modalItems ?? []}
+        items={modalItems?.items ?? []}
         title="Libros en solicitud"
       >
         {(item: any) => {
-          const sellerId = (item as any).seller_id ?? (item as any).request_seller_id;
+          const sellerId = modalItems?.sellerId ?? '';
           const soldQty = salesMap[`${sellerId}:${item.book_id}`] || 0;
           const isReceived = !!item.received_at;
           return (

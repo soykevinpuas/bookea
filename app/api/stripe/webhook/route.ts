@@ -58,24 +58,39 @@ export async function POST(request: NextRequest) {
 
         // 7.2.2.1 - Procesar suscripción mensual
         if (session.mode === 'subscription') {
-          const endsAt = new Date();
+          // Leer fecha actual de expiración para extender desde ahí
+          const { data: userRow } = await supabase
+            .from('users')
+            .select('subscription_ends_at')
+            .eq('id', userId)
+            .single();
+
+          const now = new Date();
+          const existingEnd = userRow?.subscription_ends_at ? new Date(userRow.subscription_ends_at) : null;
+          const baseDate = existingEnd && existingEnd > now ? existingEnd : now;
+          const endsAt = new Date(baseDate);
           endsAt.setDate(endsAt.getDate() + 30);
 
-          const { error: roleError } = await supabase
-            .from('users')
-            .update({ role: 'subscriber', subscription_ends_at: endsAt.toISOString() })
-            .eq('id', userId);
+          // Idempotencia: si ya expira en >= la nueva fecha, saltar
+          if (existingEnd && existingEnd >= endsAt) {
+            console.log('[webhook] Suscripción ya procesada, saltando');
+          } else {
+            const { error: roleError } = await supabase
+              .from('users')
+              .update({ role: 'subscriber', subscription_ends_at: endsAt.toISOString() })
+              .eq('id', userId);
 
-          if (roleError) {
-            console.error('Error actualizando rol a suscriptor:', roleError);
-            return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+            if (roleError) {
+              console.error('Error actualizando rol a suscriptor:', roleError);
+              return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+            }
           }
         }
 
         // 7.2.2.2 - Procesar compra de carrito (múltiples items)
         const cartItemsStr = session.metadata?.items;
         if (session.mode === 'payment' && cartItemsStr) {
-          let items: { book_id: string; type: string; cart_item_id: string }[];
+          let items: { book_id: string; type: string; cart_item_id: string; quantity?: number }[];
           try {
             items = JSON.parse(cartItemsStr);
           } catch {
@@ -105,6 +120,13 @@ export async function POST(request: NextRequest) {
                 });
               }
             } else if (item.type === 'physical') {
+              const { data: existingOrder } = await supabase
+                .from('orders_physical')
+                .select('id')
+                .eq('stripe_payment_id', session.id)
+                .eq('book_id', item.book_id)
+                .maybeSingle();
+              if (existingOrder) continue;
               const { data: bookPrice } = await supabase
                 .from('books')
                 .select('price_physical')
@@ -125,7 +147,7 @@ export async function POST(request: NextRequest) {
                 total: price + 50,
                 stripe_payment_id: session.id,
               });
-              await supabase.rpc('decrement_stock', { p_book_id: item.book_id });
+              await supabase.rpc('decrement_stock', { p_book_id: item.book_id, p_quantity: item.quantity || 1 });
             }
           }
 
@@ -207,7 +229,8 @@ export async function POST(request: NextRequest) {
               }
 
               try {
-                await supabase.rpc('decrement_stock', { p_book_id: bookId });
+                const qty = parseInt(session.metadata?.quantity || '1');
+                await supabase.rpc('decrement_stock', { p_book_id: bookId, p_quantity: qty });
               } catch (stockErr) {
                 console.error('Error decrementando stock en webhook:', stockErr);
               }
@@ -246,7 +269,7 @@ export async function POST(request: NextRequest) {
         if (users) {
           await supabase
             .from('users')
-            .update({ role: 'free' })
+            .update({ role: 'free', subscription_ends_at: null })
             .eq('id', users.id);
         }
 

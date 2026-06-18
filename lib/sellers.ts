@@ -27,6 +27,7 @@ export async function assignStock(
   bookId: string,
   quantity: number
 ) {
+  if (quantity <= 0) throw new Error("La cantidad debe ser mayor a 0");
   const { data, error } = await supabase.rpc("assign_stock", {
     p_seller_id: sellerId,
     p_book_id: bookId,
@@ -339,49 +340,6 @@ export async function revertMarkAsPaid(supabase: SupabaseClient, saleId: string)
     .eq("id", saleId);
 
   if (error) throw error;
-}
-
-export async function adjustInventory(
-  supabase: SupabaseClient,
-  inventoryId: string,
-  delta: number
-) {
-  const { data: item, error: itemErr } = await supabase
-    .from("seller_inventory")
-    .select("id, quantity, book_id, seller_id")
-    .eq("id", inventoryId)
-    .single();
-
-  if (itemErr) throw new Error(`Error al obtener item: ${itemErr.message}`);
-  if (!item) throw new Error("Item no encontrado");
-
-  const newQty = item.quantity + delta;
-  if (newQty < 0) throw new Error("Stock no puede ser negativo");
-
-  if (delta > 0) {
-    const { error: rpcErr } = await supabase.rpc("decrement_stock", {
-      p_book_id: item.book_id,
-      p_quantity: Math.abs(delta),
-    });
-    if (rpcErr) throw rpcErr;
-  } else if (delta < 0) {
-    const { error: rpcErr } = await supabase.rpc("increment_stock", {
-      p_book_id: item.book_id,
-      p_quantity: Math.abs(delta),
-    });
-    if (rpcErr) throw rpcErr;
-  }
-
-  if (newQty <= 0) {
-    const { error } = await supabase.from("seller_inventory").delete().eq("id", inventoryId);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .from("seller_inventory")
-      .update({ quantity: newQty, updated_at: new Date().toISOString() })
-      .eq("id", inventoryId);
-    if (error) throw error;
-  }
 }
 
 export async function revertAssignStock(

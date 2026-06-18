@@ -219,18 +219,6 @@ export async function completeBookAndAwardCoinAction(bookId: string) {
   }
 
   try {
-    // 8.x.1 - ANTI-FARMING: Verificar si ya se otorgó una moneda por este libro y fuente
-    const { data: existingTransaction } = await supabase
-      .from('coin_transactions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('book_id', bookId)
-      .eq('source', 'complete_book')
-      .maybeSingle()
-
-    if (existingTransaction) {
-      return { success: false, error: 'already_awarded' }
-    }
     // Verificar que el usuario tenga al menos 10% de progreso
     const { data: progress } = await supabase
       .from('reading_progress')
@@ -266,8 +254,16 @@ export async function completeBookAndAwardCoinAction(bookId: string) {
       })
 
     if (error) {
+      const msg = error.message?.toLowerCase() || ''
+      if (msg.includes('unique') || msg.includes('already') || msg.includes('duplicate')) {
+        return { success: false, error: 'already_awarded' }
+      }
       console.error('[completeBookAndAwardCoinAction] RPC error:', error.message)
       return { success: false, error: 'Error al otorgar moneda' }
+    }
+
+    if (!result?.success) {
+      return { success: false, error: result?.error || 'already_awarded' }
     }
 
     revalidatePath('/dashboard')

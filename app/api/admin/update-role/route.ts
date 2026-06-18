@@ -11,14 +11,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    // 2. Verificar rol admin
-    const { data: adminCheck } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (adminCheck?.role !== 'admin') {
+    // 2. Verificar rol admin vía RPC (SECURITY DEFINER, bypass RLS)
+    const { data: roleData } = await supabase.rpc('get_my_role');
+    if (roleData !== 'admin') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 

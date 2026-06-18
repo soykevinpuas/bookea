@@ -530,7 +530,7 @@ export default function VendedorDashboard() {
                                   <span className="text-white/60 flex-1 truncate">{book?.title || "Libro"}</span>
                                   <span className="text-white font-medium shrink-0">x{item.quantity}</span>
 
-                                  {!isReceived && req.status !== "cancelled" && req.status !== "pending" && (
+                                  {!isReceived && req.status === "delivered" && (
                                     <button
                                       onClick={() => handleReceive(item.id, req.id)}
                                       disabled={receiving === item.id}

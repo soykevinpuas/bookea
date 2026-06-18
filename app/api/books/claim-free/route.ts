@@ -10,8 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     // 7.3.1 - Verificar autenticación del usuario
     const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'No autorizado. Inicia sesión para reclamar este libro.' }, { status: 401 });

@@ -17,11 +17,16 @@ export async function addToLibraryAction(bookId: string, accessType: 'subscripti
   }
 
   try {
-    // 1. Verificar si el libro existe primero
-    const { data: bookCheck, error: bookError } = await supabase.from('books').select('id').eq('id', bookId).single();
+    // 1. Verificar si el libro existe y si es gratuito
+    const { data: bookCheck, error: bookError } = await supabase.from('books').select('id, price_digital, is_premium').eq('id', bookId).single();
     if (bookError || !bookCheck) {
       console.error("[addToLibraryAction] Book not found:", bookId, bookError);
       return { success: false, error: `El libro no existe o no fue encontrado en la base de datos.` }
+    }
+
+    // Validar access_type: 'permanent' solo para libros gratuitos
+    if (accessType === 'permanent' && (bookCheck.is_premium !== false || (bookCheck.price_digital || 0) > 0)) {
+      return { success: false, error: 'No tienes permiso para añadir este libro permanentemente' }
     }
 
     const result = await libAddToLibrary(supabase, user.id, bookId, accessType)

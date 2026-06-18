@@ -44,6 +44,16 @@ export async function GET(request: NextRequest) {
   const { createClient } = await import('@/lib/server');
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
+
+  const { data: role } = await supabase.rpc('get_my_role');
+  if (role !== 'admin') {
+    return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+  }
+
   // Calcular fecha límite
   const days = period === '30d' ? 30 : period === '90d' ? 90 : 7;
   const since = new Date();

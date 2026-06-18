@@ -9,12 +9,17 @@ export async function createStockRequestAction(
   notes?: string
 ) {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
   const { data: role } = await supabase.rpc("get_my_role");
   if (role === "admin") throw new Error("Los administradores no pueden crear solicitudes de stock");
+  if (sellerId !== user.id) throw new Error("No puedes crear solicitudes para otro vendedor");
 
   const adminDb = createAdminClient();
 
   for (const item of items) {
+    if (item.quantity <= 0) throw new Error("La cantidad debe ser mayor a 0");
     const { data: book, error: bookCheckErr } = await adminDb
       .from("books")
       .select("stock_physical, title")

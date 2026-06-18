@@ -9,6 +9,9 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type') as EmailOtpType | null
   const next = searchParams.get('next') ?? '/dashboard'
 
+  // Validar que next sea una URL relativa (mismo origen)
+  const safeNext = next.startsWith('/') ? next : '/dashboard'
+
   if (token_hash && type) {
     const supabase = await createClient()
     const otpType = type === 'magiclink' ? 'email' : type
@@ -19,8 +22,7 @@ export async function GET(request: NextRequest) {
     })
     
     if (!error) {
-      // Si todo sale bien, lo mandamos al Home
-      redirect(next)
+      redirect(safeNext)
     }
   }
 

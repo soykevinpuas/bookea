@@ -22,6 +22,11 @@ export async function verifySubscriptionAction(sessionId: string) {
       expand: ['line_items', 'line_items.data.price.product'],
     })
 
+    // Verificar que esta sesión de Stripe pertenece al usuario autenticado
+    if (session.metadata?.userId !== user.id) {
+      return { success: false, error: 'Esta sesión de pago no te pertenece' }
+    }
+
     const userId = user.id
     const adminDb = createAdminClient()
 

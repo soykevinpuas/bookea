@@ -3,6 +3,11 @@ import { createClient, createAdminClient } from '@/lib/server';
 
 export const dynamic = 'force-dynamic';
 
+function safeParseInt(val: string | null, def: number): number {
+  const n = parseInt(val || '', 10);
+  return Number.isNaN(n) ? def : n;
+}
+
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
@@ -20,12 +25,12 @@ export async function GET(request: Request) {
     const adminClient = createAdminClient();
     const { searchParams } = new URL(request.url);
 
-    const salesPage = Math.max(1, parseInt(searchParams.get('salesPage') || '1'));
-    const salesPerPage = Math.min(500, Math.max(1, parseInt(searchParams.get('salesPerPage') || '100')));
-    const inventoryPage = Math.max(1, parseInt(searchParams.get('inventoryPage') || '1'));
-    const inventoryPerPage = Math.min(500, Math.max(1, parseInt(searchParams.get('inventoryPerPage') || '200')));
-    const requestsPage = Math.max(1, parseInt(searchParams.get('requestsPage') || '1'));
-    const requestsPerPage = Math.min(500, Math.max(1, parseInt(searchParams.get('requestsPerPage') || '50')));
+    const salesPage = Math.max(1, safeParseInt(searchParams.get('salesPage'), 1));
+    const salesPerPage = Math.min(500, Math.max(1, safeParseInt(searchParams.get('salesPerPage'), 100)));
+    const inventoryPage = Math.max(1, safeParseInt(searchParams.get('inventoryPage'), 1));
+    const inventoryPerPage = Math.min(500, Math.max(1, safeParseInt(searchParams.get('inventoryPerPage'), 200)));
+    const requestsPage = Math.max(1, safeParseInt(searchParams.get('requestsPage'), 1));
+    const requestsPerPage = Math.min(500, Math.max(1, safeParseInt(searchParams.get('requestsPerPage'), 50)));
 
     const salesFrom = (salesPage - 1) * salesPerPage;
     const salesTo = salesFrom + salesPerPage - 1;
@@ -73,7 +78,8 @@ export async function GET(request: Request) {
 
       adminClient.from("seller_sales")
         .select("seller_id, book_id, quantity")
-        .not("book_id", "is", null),
+        .not("book_id", "is", null)
+        .gte("sold_at", new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()),
     ]);
 
     const salesMap: Record<string, number> = {};
