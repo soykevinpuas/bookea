@@ -10,7 +10,9 @@ import { useAuth } from "@/lib/auth-provider";
 import { Menu, WifiOff } from "lucide-react";
 import { useMobileMenu } from "@/stores/menu";
 
-const UserMenu = dynamic(() => import("./UserMenu").then(m => m.UserMenu));
+const UserMenu = dynamic(() => import("./UserMenu").then(m => m.UserMenu), {
+  loading: () => <div className="w-20 h-8 bg-gray-200 dark:bg-white/10 rounded-full animate-pulse" />,
+});
 
 export function Header() {
   const { userId, email } = useAuth();

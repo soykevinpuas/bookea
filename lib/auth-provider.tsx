@@ -11,7 +11,6 @@ interface AuthState {
 }
 
 const CACHE_KEY = "bookea-auth-id";
-const getCachedId = () => (typeof window !== "undefined" ? localStorage.getItem(CACHE_KEY) || "" : "");
 
 const AuthContext = createContext<AuthState>({
   userId: "",
@@ -25,14 +24,11 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>(() => {
-    const cachedId = getCachedId();
-    return {
-      userId: cachedId,
-      email: "",
-      isLoading: !!cachedId,
-      isReady: false,
-    };
+  const [state, setState] = useState<AuthState>({
+    userId: "",
+    email: "",
+    isLoading: true,
+    isReady: false,
   });
   const supabase = useRef(createClientClient());
 
@@ -48,11 +44,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setState({ userId: id, email, isLoading: false, isReady: true });
     } catch {
-      setState({ userId: "", email: "", isLoading: false, isReady: true });
+      // Network error — keep last known state
+      setState((prev) => ({ ...prev, isLoading: false }));
     }
   }, []);
 
   useEffect(() => {
+    // Fast path: getSession() lee cookies localmente, SIN request de red
+    supabase.current.auth.getSession().then(({ data }) => {
+      const sessionUser = data.session?.user;
+      if (sessionUser) {
+        const id = sessionUser.id;
+        const email = sessionUser.email || "";
+        localStorage.setItem(CACHE_KEY, id);
+        setState({ userId: id, email, isLoading: false, isReady: true });
+      } else {
+        localStorage.removeItem(CACHE_KEY);
+        setState({ userId: "", email: "", isLoading: false, isReady: true });
+      }
+    }).catch(() => {
+      setState({ userId: "", email: "", isLoading: false, isReady: true });
+    });
+
+    // Slow path: getUser() verifica con el server (refresca token si expiró)
     syncUser();
 
     const { data: listener } = supabase.current.auth.onAuthStateChange((event) => {
@@ -67,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => listener?.subscription?.unsubscribe();
   }, [syncUser]);
 
+  // Re-check auth cada vez que la app vuelve a primer plano
   useEffect(() => {
     const handle = () => {
       if (document.visibilityState === "visible") {
