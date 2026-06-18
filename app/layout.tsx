@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/lib/providers";
+import { AuthProvider } from "@/lib/auth-provider";
 import { Header } from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PwaListener } from "@/components/PwaListener";
@@ -101,16 +102,18 @@ export default function RootLayout({
           <PwaListener />
           <SplashScreen />
           <QueryProvider>
-            <Header />
-            <main className="flex-1 pb-[max(5rem,env(safe-area-inset-bottom))] px-safe flex flex-col">
+            <AuthProvider>
+              <Header />
+              <main className="flex-1 pb-[max(5rem,env(safe-area-inset-bottom))] px-safe flex flex-col">
+                <Suspense fallback={null}>
+                  {children}
+                </Suspense>
+              </main>
+              <BottomNavWrapper />
               <Suspense fallback={null}>
-                {children}
+                <PanelManager />
               </Suspense>
-            </main>
-            <BottomNavWrapper />
-            <Suspense fallback={null}>
-              <PanelManager />
-            </Suspense>
+            </AuthProvider>
           </QueryProvider>
           <Toaster 
             position="bottom-right" 
