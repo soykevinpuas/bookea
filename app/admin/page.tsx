@@ -327,7 +327,6 @@ export default function AdminDashboard() {
 
   const filteredSelfBooks = physicalBooks.filter(
     (b: any) =>
-      b.stock_physical > 0 &&
       (b.title.toLowerCase().includes(assignSelfSearch.toLowerCase()) ||
       b.author.toLowerCase().includes(assignSelfSearch.toLowerCase()))
   );
@@ -538,14 +537,14 @@ export default function AdminDashboard() {
                     <>
                       <div className="space-y-2 max-h-80 overflow-y-auto">
                         {physicalBooks
-                          .filter((b: any) => b.stock_physical > 0)
                           .filter((b: any) =>
                             b.title.toLowerCase().includes(assignSellerSearch.toLowerCase()) ||
                             b.author.toLowerCase().includes(assignSellerSearch.toLowerCase())
                           )
                           .map((book: any) => {
                             const qty = assignSellerQtys[book.id] || 0;
-                            const lowStock = book.stock_physical <= 3;
+                            const lowStock = book.stock_physical > 0 && book.stock_physical <= 3;
+                            const outOfStock = !book.stock_physical || book.stock_physical <= 0;
                             return (
                               <div
                                 key={book.id}
@@ -561,8 +560,8 @@ export default function AdminDashboard() {
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium truncate">{book.title}</p>
                                   <p className="text-xs text-white/40 truncate">{book.author}</p>
-                                  <p className={`text-xs ${lowStock ? "text-red-400 font-medium" : "text-white/30"}`}>
-                                    Stock: {book.stock_physical} {lowStock ? "⚠️" : ""}
+                                  <p className={`text-xs ${outOfStock ? "text-red-400" : lowStock ? "text-amber-400 font-medium" : "text-white/30"}`}>
+                                    {outOfStock ? "Agotado" : `Stock: ${book.stock_physical} ${lowStock ? "⚠️" : ""}`}
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
@@ -664,15 +663,19 @@ export default function AdminDashboard() {
                       className="w-full pl-9 pr-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-blue-500/50"
                     />
                   </div>
-                  <div className="space-y-2 max-h-48 overflow-y-auto mb-3">
-                    {filteredSelfBooks.map((book: any) => (
+                      <div className="space-y-2 max-h-48 overflow-y-auto mb-3">
+                    {filteredSelfBooks.map((book: any) => {
+                      const outOfStock = !book.stock_physical || book.stock_physical <= 0;
+                      return (
                       <button
                         key={book.id}
-                        onClick={() => { setAssignSelfBookId(book.id); setAssignSelfQty(1); }}
+                        onClick={() => { if (!outOfStock) { setAssignSelfBookId(book.id); setAssignSelfQty(1); } }}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
-                          assignSelfBookId === book.id
-                            ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
-                            : "text-white/60 hover:bg-white/5 border border-transparent"
+                          outOfStock
+                            ? "text-red-400/50 cursor-not-allowed"
+                            : assignSelfBookId === book.id
+                              ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
+                              : "text-white/60 hover:bg-white/5 border border-transparent"
                         }`}
                       >
                         {book.cover_url && (
@@ -680,10 +683,11 @@ export default function AdminDashboard() {
                         )}
                         <div className="flex-1 min-w-0 text-left">
                           <p className="text-sm font-medium truncate">{book.title}</p>
-                          <p className="text-xs text-white/30 truncate">Stock: {book.stock_physical}</p>
+                          <p className="text-xs text-white/30 truncate">{outOfStock ? "Agotado" : `Stock: ${book.stock_physical}`}</p>
                         </div>
                       </button>
-                    ))}
+                      );
+                    })}
                     {filteredSelfBooks.length === 0 && (
                       <p className="text-sm text-white/30 py-2 text-center">Sin resultados</p>
                     )}
