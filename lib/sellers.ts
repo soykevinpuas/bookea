@@ -40,6 +40,7 @@ export async function assignStock(
 }
 
 export const COST_PER_BOOK = 200;
+export const ADMIN_COST_BOOK = 100;
 
 // ─── Sales ──────────────────────────────────────────────────
 

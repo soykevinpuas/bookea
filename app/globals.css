@@ -552,6 +552,46 @@
   }
 }
 
+/* 1.7.11 - Light mode contrast for admin/vendedor dashboards */
+/* These panels use text-white/* opacity classes designed for dark backgrounds.
+   In light mode (no .dark), we remap them to visible gray shades. */
+html:not(.dark):not(.retro):not(.navy) [class*="text-white/"] {
+  color: #374151;
+}
+html:not(.dark):not(.retro):not(.navy) [class*="bg-white/5"],
+html:not(.dark):not(.retro):not(.navy) [class*="bg-white/"] {
+  background-color: #f3f4f6;
+}
+html:not(.dark):not(.retro):not(.navy) [class*="border-white/"] {
+  border-color: #e5e7eb;
+}
+/* Bare text-white on non-button data values (quantities, totals, etc.) */
+html:not(.dark):not(.retro):not(.navy) [class~="text-white"]:not(button):not(a):not([class*="bg-amber-"]):not([class*="bg-blue-"]):not([class*="bg-green-"]):not([class*="bg-red-"]) {
+  color: #111827;
+}
+/* Input text & placeholders */
+html:not(.dark):not(.retro):not(.navy) [class*="placeholder-white/"] {
+  color: #9ca3af;
+}
+html:not(.dark):not(.retro):not(.navy) input[class*="text-white"],
+html:not(.dark):not(.retro):not(.navy) textarea[class*="text-white"],
+html:not(.dark):not(.retro):not(.navy) select[class*="text-white"] {
+  color: #111827;
+}
+/* Chart backgrounds */
+html:not(.dark):not(.retro):not(.navy) .bg-\[#1a1a1a\] {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+}
+html:not(.dark):not(.retro):not(.navy) .bg-\[#111\] {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+}
+/* Chart tooltip text */
+html:not(.dark):not(.retro):not(.navy) .bg-\[#1a1a1a\] [class*="text-white/"] {
+  color: #374151;
+}
+
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }

@@ -22,7 +22,7 @@ export async function GET() {
       getSellerInventory(supabase, user.id),
       getSellerSales(supabase, user.id),
       getSellerRequests(supabase, user.id),
-      getSellerPendingTotal(supabase, user.id),
+      role === 'admin' ? Promise.resolve(0) : getSellerPendingTotal(supabase, user.id),
     ]);
 
     return NextResponse.json({

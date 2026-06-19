@@ -141,17 +141,22 @@ export async function deleteSaleAction(saleId: string) {
   const { data: roleData } = await supabase.rpc("get_my_role");
   if (roleData !== "admin") throw new Error("No autorizado");
 
-  const adminDb = createAdminClient();
-  const { data, error } = await adminDb.rpc("delete_sale_and_restore_stock", {
-    p_sale_id: saleId,
-  });
+  try {
+    const adminDb = createAdminClient();
+    const { data, error } = await adminDb.rpc("delete_sale_and_restore_stock", {
+      p_sale_id: saleId,
+    });
 
-  if (error) throw new Error(error.message);
-  const result = (data as any) || {};
-  if (!result.success) throw new Error(result.error || "Error al eliminar venta");
+    if (error) throw new Error(error.message);
+    const result = (data as any) || {};
+    if (!result.success) throw new Error(result.error || "Error al eliminar venta");
 
-  revalidatePath("/admin");
-  revalidatePath("/admin/vendedores");
+    revalidatePath("/admin");
+    revalidatePath("/admin/vendedores");
+  } catch (e: any) {
+    console.error("[deleteSaleAction]", e);
+    throw new Error(e?.message || "Error al eliminar venta");
+  }
 }
 
 export async function removeSellerInventoryAction(sellerId: string, bookId: string) {

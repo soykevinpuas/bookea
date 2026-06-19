@@ -10,7 +10,7 @@ import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from "recharts";
 import StockRequestItemsModal from "@/components/StockRequestItemsModal";
 
 type Section = "stock" | "vendidos" | "ingresos" | "solicitudes";
@@ -117,16 +117,17 @@ export default function VendedorDashboard() {
   const inventory = data?.inventory ?? ([] as any[]);
   const sales = data?.sales ?? ([] as any[]);
   const requests = data?.requests ?? ([] as any[]);
-  const pendingPayment = data?.pendingPayment ?? 0;
   const userRole = data?.role as string | undefined;
   const isAdmin = userRole === "admin";
+  const pendingPayment = isAdmin ? 0 : (data?.pendingPayment ?? 0);
 
   const filteredRequests = solicitudFilter === "all"
     ? requests
     : requests.filter((r: any) => r.status === solicitudFilter);
 
+  const effectiveCost = isAdmin ? 0 : COST_PER_BOOK;
   const totalRevenue = sales.reduce((s: number, i: any) => s + i.sale_price * i.quantity, 0);
-  const totalProfit = totalRevenue - sales.reduce((s: number, i: any) => s + i.quantity * COST_PER_BOOK, 0);
+  const totalProfit = totalRevenue - sales.reduce((s: number, i: any) => s + i.quantity * effectiveCost, 0);
 
   const chartData = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -140,16 +141,17 @@ export default function VendedorDashboard() {
 
       const day = d.getDate();
       const existing = dayMap.get(day) || { venta: 0, ahorro: 0, ganancia: 0 };
+      const cost = isAdmin ? 0 : COST_PER_BOOK;
       existing.venta += sale.sale_price * sale.quantity;
-      existing.ahorro += sale.quantity * COST_PER_BOOK;
-      existing.ganancia += (sale.sale_price - COST_PER_BOOK) * sale.quantity;
+      existing.ahorro += sale.quantity * cost;
+      existing.ganancia += (sale.sale_price - cost) * sale.quantity;
       dayMap.set(day, existing);
     }
 
     return Array.from(dayMap.entries())
       .map(([day, v]) => ({ day, ...v }))
       .sort((a, b) => a.day - b.day);
-  }, [sales, currentMonth]);
+  }, [sales, currentMonth, isAdmin]);
 
   const totalChartRevenue = chartData.reduce((s, d) => s + d.venta, 0);
   const totalChartProfit = chartData.reduce((s, d) => s + d.ganancia, 0);
@@ -292,7 +294,7 @@ export default function VendedorDashboard() {
                           )}
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-white/90 break-words">{book?.title || "Libro"}</p>
-                            <p className="text-[10px] text-white/30">Costo: ${COST_PER_BOOK.toLocaleString("es-MX")} · {item.quantity} uds.</p>
+                            <p className="text-[10px] text-white/30">Costo: ${effectiveCost.toLocaleString("es-MX")} · {item.quantity} uds.{isAdmin ? " (eres administrador)" : ""}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap sm:shrink-0 ml-10 sm:ml-0">
@@ -432,16 +434,20 @@ export default function VendedorDashboard() {
                 <div className="text-center py-16 text-white/30 text-sm">Sin ventas en este mes.</div>
               ) : (
                 <div className="bg-[#111] border border-white/8 rounded-2xl p-5">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
-                      <Tooltip content={<ChartTooltip />} />
-                      <Line type="monotone" dataKey="venta" name="Venta" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#22c55e" }} />
-                      <Line type="monotone" dataKey="ganancia" name="Ganancia" stroke="#60a5fa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#60a5fa" }} />
-                      <Line type="monotone" dataKey="ahorro" name="Ahorro" stroke="#a78bfa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#a78bfa" }} />
-                    </LineChart>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barGap={2} barCategoryGap="20%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                      <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
+                      <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                      <Bar dataKey="venta" name="Venta" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                        <LabelList dataKey="venta" position="top" fill="#22c55e" fontSize={10} fontWeight={700} formatter={(v: any) => `$${(v || 0).toLocaleString("es-MX")}`} />
+                      </Bar>
+                      <Bar dataKey="ganancia" name="Ganancia" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                        <LabelList dataKey="ganancia" position="top" fill="#60a5fa" fontSize={10} fontWeight={600} formatter={(v: any) => `$${(v || 0).toLocaleString("es-MX")}`} />
+                      </Bar>
+                      <Bar dataKey="ahorro" name="Inversión ahorrada" fill="#a78bfa" radius={[4, 4, 0, 0]} maxBarSize={20} />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}

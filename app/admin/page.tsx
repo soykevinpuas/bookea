@@ -2,12 +2,11 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { updateStockRequestStatus, COST_PER_BOOK, markSalesAsPaid, assignStock, revertAssignStock } from "@/lib/sellers";
+import { updateStockRequestStatus, COST_PER_BOOK, ADMIN_COST_BOOK, markSalesAsPaid, assignStock, revertAssignStock } from "@/lib/sellers";
 import { deleteStockRequestAction, deleteSaleAction, removeSellerInventoryAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo, useEffect } from "react";
 
-const ADMIN_COST_BOOK = 100;
 import Link from "next/link";
 import {
   BarChart3, Package, TrendingUp, ShoppingCart,
@@ -16,7 +15,7 @@ import {
   Plus, Minus, Search, Loader2, Shield, AlertTriangle, X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from "recharts";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import StockRequestItemsModal from "@/components/StockRequestItemsModal";
 
@@ -75,6 +74,7 @@ export default function AdminDashboard() {
   }
 
   interface DashboardData {
+    adminUserId: string;
     sales: PaginatedResponse<any>;
     inventory: PaginatedResponse<any>;
     sellers: any[];
@@ -127,6 +127,7 @@ export default function AdminDashboard() {
   const pendingSales = dash?.pendingSales ?? [];
   const physicalBooks = dash?.physicalBooks ?? [];
   const salesMap = dash?.salesMap ?? {};
+  const adminUserId = dash?.adminUserId ?? "";
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status, tracking_number }: { id: string; status: StockRequest["status"]; tracking_number?: string }) =>
@@ -258,16 +259,17 @@ export default function AdminDashboard() {
     try {
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth();
-      const dayMap = new Map<number, { venta: number; ahorro: number; ganancia: number }>();
+      const dayMap = new Map<number, { inversion: number; ganancia: number }>();
       for (const sale of allSales) {
         const d = new Date(sale.sold_at);
         if (isNaN(d.getTime()) || d.getFullYear() !== year || d.getMonth() !== month) continue;
         const day = d.getDate();
         const qty = sale.quantity || 0;
-        const existing = dayMap.get(day) || { venta: 0, ahorro: 0, ganancia: 0 };
-        existing.venta += qty * COST_PER_BOOK;
-        existing.ahorro += qty * ADMIN_COST_BOOK;
-        existing.ganancia += qty * (COST_PER_BOOK - ADMIN_COST_BOOK);
+        const existing = dayMap.get(day) || { inversion: 0, ganancia: 0 };
+        const isSelfSale = sale.seller_id === adminUserId;
+        const effectiveCost = isSelfSale ? 0 : ADMIN_COST_BOOK;
+        existing.inversion += qty * effectiveCost;
+        existing.ganancia += isSelfSale ? qty * (sale.sale_price || 0) : qty * (COST_PER_BOOK - ADMIN_COST_BOOK);
         dayMap.set(day, existing);
       }
       return Array.from(dayMap.entries())
@@ -277,11 +279,10 @@ export default function AdminDashboard() {
       console.error("[chartData] error:", e);
       return [];
     }
-  }, [allSales, currentMonth]);
+  }, [allSales, currentMonth, adminUserId]);
 
-  const totalChartRevenue = chartData.reduce((s, d) => s + d.venta, 0);
-  const totalChartProfit = chartData.reduce((s, d) => s + d.ganancia, 0);
-  const totalChartCost = chartData.reduce((s, d) => s + d.ahorro, 0);
+  const totalChartInversion = chartData.reduce((s, d) => s + d.inversion, 0);
+  const totalChartGanancia = chartData.reduce((s, d) => s + d.ganancia, 0);
 
   const sellerLookup = useMemo(() => {
     const map = new Map<string, string>();
@@ -310,6 +311,7 @@ export default function AdminDashboard() {
     try {
       const map = new Map<string, { email: string; total: number; sales: any[] }>();
       for (const sale of pendingSales) {
+        if (sale.seller_id === adminUserId) continue;
         const sid = sale.seller_id;
         if (!sid) continue;
         const email = (sale as any).seller?.email || sellerLookup.get(sid) || "Desconocido";
@@ -323,7 +325,7 @@ export default function AdminDashboard() {
       console.error("[pendingBySeller] error:", e);
       return [];
     }
-  }, [pendingSales, sellerLookup]);
+  }, [pendingSales, sellerLookup, adminUserId]);
 
   const filteredSelfBooks = physicalBooks.filter(
     (b: any) =>
@@ -401,28 +403,28 @@ export default function AdminDashboard() {
                   onClick={() => setActiveSection("vendidos")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
                 >
-                  <p className="text-lg font-bold text-green-400">${totalChartRevenue.toLocaleString("es-MX")}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Ingresos de vendedores</p>
+                  <p className="text-lg font-bold text-green-400">${totalChartGanancia.toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ganancia total</p>
                 </button>
                 <button
                   onClick={() => setActiveSection("vendidos")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
                 >
-                  <p className="text-lg font-bold text-blue-400">${totalChartProfit.toLocaleString("es-MX")}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Ganancia de admin</p>
+                  <p className="text-lg font-bold text-blue-400">${totalChartInversion.toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Inversión total</p>
                 </button>
                 <button
                   onClick={() => setActiveSection("vendidos")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
                 >
-                  <p className="text-lg font-bold text-white/60">${totalChartCost.toLocaleString("es-MX")}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Pagos de vendedores</p>
+                  <p className="text-lg font-bold text-white/60">{allSales.reduce((s: number, i: any) => s + i.quantity, 0)}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Unidades vendidas</p>
                 </button>
                 <button
                   onClick={() => setActiveSection("pagos")}
                   className="bg-white/5 border border-amber-500/20 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
                 >
-                  <p className="text-lg font-bold text-amber-400">${pendingSales.reduce((s: number, i: any) => s + (i.quantity || 0) * COST_PER_BOOK, 0).toLocaleString("es-MX")}</p>
+                  <p className="text-lg font-bold text-amber-400">${pendingSales.filter((i: any) => i.seller_id !== adminUserId).reduce((s: number, i: any) => s + (i.quantity || 0) * COST_PER_BOOK, 0).toLocaleString("es-MX")}</p>
                   <p className="text-[10px] text-white/40 mt-0.5">Pagos pendientes</p>
                 </button>
               </div>
@@ -452,16 +454,17 @@ export default function AdminDashboard() {
                 <div className="text-center py-16 text-white/30 text-sm">Sin ventas en este mes.</div>
               ) : (
                 <div className="bg-[#111] border border-white/8 rounded-2xl p-5">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
-                      <Tooltip content={<ChartTooltip />} />
-                      <Line type="monotone" dataKey="venta" name="Ingresos vendedores" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#22c55e" }} />
-                      <Line type="monotone" dataKey="ganancia" name="Ganancia admin" stroke="#60a5fa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#60a5fa" }} />
-                      <Line type="monotone" dataKey="ahorro" name="Pagos vendedores" stroke="#a78bfa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#a78bfa" }} />
-                    </LineChart>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barGap={2} barCategoryGap="20%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                      <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
+                      <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                      <Bar dataKey="ganancia" name="Ganancia" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={24}>
+                        <LabelList dataKey="ganancia" position="top" fill="#22c55e" fontSize={10} fontWeight={700} formatter={(v: any) => `$${(v || 0).toLocaleString("es-MX")}`} />
+                      </Bar>
+                      <Bar dataKey="inversion" name="Inversión" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}

@@ -91,6 +91,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
+      adminUserId: user.id,
       sellers: sellersResult.data ?? [],
       physicalBooks: physicalBooksResult.data ?? [],
       pendingSales: pendingSalesResult.data ?? [],
