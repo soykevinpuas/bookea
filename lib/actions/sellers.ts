@@ -141,22 +141,19 @@ export async function deleteSaleAction(saleId: string) {
   const { data: roleData } = await supabase.rpc("get_my_role");
   if (roleData !== "admin") throw new Error("No autorizado");
 
-  try {
-    const adminDb = createAdminClient();
-    const { data, error } = await adminDb.rpc("delete_sale_and_restore_stock", {
-      p_sale_id: saleId,
-    });
+  // Usar el cliente normal (con sesión del usuario) para que auth.uid()
+  // funcione correctamente en la RPC. La RPC es SECURITY DEFINER así que
+  // tiene los permisos necesarios aunque la llame un usuario normal.
+  const { data, error } = await supabase.rpc("delete_sale_and_restore_stock", {
+    p_sale_id: saleId,
+  });
 
-    if (error) throw new Error(error.message);
-    const result = (data as any) || {};
-    if (!result.success) throw new Error(result.error || "Error al eliminar venta");
+  if (error) throw new Error(error.message);
+  const result = (data as any) || {};
+  if (!result.success) throw new Error(result.error || "Error al eliminar venta");
 
-    revalidatePath("/admin");
-    revalidatePath("/admin/vendedores");
-  } catch (e: any) {
-    console.error("[deleteSaleAction]", e);
-    throw new Error(e?.message || "Error al eliminar venta");
-  }
+  revalidatePath("/admin");
+  revalidatePath("/admin/vendedores");
 }
 
 export async function removeSellerInventoryAction(sellerId: string, bookId: string) {
