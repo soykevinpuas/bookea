@@ -240,13 +240,12 @@ export default function AdminDashboard() {
 
   const deleteSale = useMutation({
     mutationFn: (saleId: string) => deleteSaleAction(saleId),
-    onMutate: async (saleId) => {
+    onMutate: (saleId) => {
       setPendingOps(prev => new Set(prev).add(`del-sale-${saleId}`));
-      await queryClient.cancelQueries({ queryKey: ["admin-dashboard"] });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
+      queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
+      queryClient.refetchQueries({ queryKey: ["admin-sellers"] });
       toast.success("Venta eliminada y stock revertido");
     },
     onError: (err: any) => toast.error(err?.message || "Error al eliminar venta"),
