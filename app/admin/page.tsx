@@ -264,9 +264,10 @@ export default function AdminDashboard() {
         const qty = sale.quantity || 0;
         const existing = dayMap.get(day) || { inversion: 0, ganancia: 0 };
         const isSelfSale = sale.seller_id === adminUserId;
-        const effectiveCost = isSelfSale ? 0 : ADMIN_COST_BOOK;
-        existing.inversion += qty * effectiveCost;
-        existing.ganancia += isSelfSale ? qty * (sale.sale_price || 0) : qty * (COST_PER_BOOK - ADMIN_COST_BOOK);
+        existing.inversion += qty * ADMIN_COST_BOOK;
+        existing.ganancia += isSelfSale
+          ? qty * ((sale.sale_price || 0) - ADMIN_COST_BOOK)
+          : qty * (COST_PER_BOOK - ADMIN_COST_BOOK);
         dayMap.set(day, existing);
       }
       return Array.from(dayMap.entries())

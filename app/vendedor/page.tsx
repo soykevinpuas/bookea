@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { markAsSold, COST_PER_BOOK } from "@/lib/sellers";
+import { markAsSold, COST_PER_BOOK, ADMIN_COST_BOOK } from "@/lib/sellers";
 import { receiveStockItemAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
 import { Store, Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
@@ -125,7 +125,7 @@ export default function VendedorDashboard() {
     ? requests
     : requests.filter((r: any) => r.status === solicitudFilter);
 
-  const effectiveCost = isAdmin ? 0 : COST_PER_BOOK;
+  const effectiveCost = isAdmin ? ADMIN_COST_BOOK : COST_PER_BOOK;
   const totalRevenue = sales.reduce((s: number, i: any) => s + i.sale_price * i.quantity, 0);
   const totalProfit = totalRevenue - sales.reduce((s: number, i: any) => s + i.quantity * effectiveCost, 0);
 
@@ -141,7 +141,7 @@ export default function VendedorDashboard() {
 
       const day = d.getDate();
       const existing = dayMap.get(day) || { venta: 0, ahorro: 0, ganancia: 0 };
-      const cost = isAdmin ? 0 : COST_PER_BOOK;
+      const cost = isAdmin ? ADMIN_COST_BOOK : COST_PER_BOOK;
       existing.venta += sale.sale_price * sale.quantity;
       existing.ahorro += sale.quantity * cost;
       existing.ganancia += (sale.sale_price - cost) * sale.quantity;
