@@ -193,16 +193,41 @@ export async function removeSellerInventoryAction(sellerId: string, bookId: stri
   if (role !== "admin") throw new Error("No autorizado");
 
   const adminDb = createAdminClient();
-  const { data, error } = await adminDb.rpc("remove_seller_stock", {
-    p_seller_id: sellerId,
-    p_book_id: bookId,
-  });
 
-  if (error) throw new Error(error.message);
+  // Obtener inventario actual
+  const { data: inv, error: invErr } = await adminDb
+    .from("seller_inventory")
+    .select("id, quantity")
+    .eq("seller_id", sellerId)
+    .eq("book_id", bookId)
+    .maybeSingle();
 
-  const result = (data as any) || {};
-  if (!result.success) throw new Error(result.error || "Error al remover stock");
+  if (invErr) throw new Error(invErr.message);
+  if (!inv) throw new Error("No hay inventario asignado");
+
+  const removedQty = inv.quantity;
+
+  // Eliminar registro de inventario del vendedor
+  const { error: delErr } = await adminDb
+    .from("seller_inventory")
+    .delete()
+    .eq("id", inv.id);
+
+  if (delErr) throw new Error(delErr.message);
+
+  // Devolver stock al almacén general
+  const { data: book } = await adminDb
+    .from("books")
+    .select("stock_physical")
+    .eq("id", bookId)
+    .single();
+
+  if (book) {
+    await adminDb
+      .from("books")
+      .update({ stock_physical: book.stock_physical + removedQty })
+      .eq("id", bookId);
+  }
 
   revalidatePath("/admin");
-  return result;
 }
