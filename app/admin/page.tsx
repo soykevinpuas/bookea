@@ -157,13 +157,12 @@ export default function AdminDashboard() {
 
   const deleteRequest = useMutation({
     mutationFn: (requestId: string) => deleteStockRequestAction(requestId),
-    onMutate: async (requestId) => {
+    onMutate: (requestId) => {
       setPendingOps(prev => new Set(prev).add(`del-req-${requestId}`));
-      await queryClient.cancelQueries({ queryKey: ["admin-dashboard"] });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
+      queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
+      queryClient.refetchQueries({ queryKey: ["admin-sellers"] });
       toast.success("Solicitud eliminada");
     },
     onError: (err: any) => toast.error(err?.message || "Error al eliminar"),
@@ -224,12 +223,11 @@ export default function AdminDashboard() {
   const removeInventory = useMutation({
     mutationFn: ({ sellerId, bookId }: { sellerId: string; bookId: string }) =>
       removeSellerInventoryAction(sellerId, bookId),
-    onMutate: async ({ sellerId, bookId }) => {
+    onMutate: ({ sellerId, bookId }) => {
       setPendingOps(prev => new Set(prev).add(`del-inv-${sellerId}-${bookId}`));
-      await queryClient.cancelQueries({ queryKey: ["admin-dashboard"] });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
       toast.success("Stock removido del vendedor");
     },
     onError: (err: any) => toast.error(err?.message || "Error al remover stock"),
