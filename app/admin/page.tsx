@@ -207,7 +207,7 @@ export default function AdminDashboard() {
       const items = entries.map(([bookId, qty]) => ({ book_id: bookId, quantity: qty }));
       const { error } = await supabase.rpc("assign_stock_batch", {
         p_seller_id: assignSellerId,
-        p_items: JSON.stringify(items),
+        p_items: items,
       });
       if (error) throw new Error(error.message);
     },
