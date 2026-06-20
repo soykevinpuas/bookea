@@ -2,6 +2,7 @@
 
 import { useBooks, useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
+import { useSubscription } from "@/hooks/useSubscription";
 import Book3D from "@/components/Book3D";
 import CatalogBookCard from "@/components/CatalogBookCard";
 import Card from "@/components/ui/Card";
@@ -21,11 +22,15 @@ function CatalogContent() {
   const [adding, setAdding] = useState<string | null>(null);
   const isInCart = (bookId: string, type: string) => cartItems.some(i => i.book_id === bookId && i.type === type);
   const { userId } = useUserId();
+  const { data: subscription } = useSubscription(userId);
   const { data: userBooks } = useUserBooks(userId || '');
   const ownedDigitalIds = useMemo(() => {
     if (!userBooks) return new Set<string>();
     return new Set(userBooks.filter((b: any) => b.access_type === 'permanent').map((b: any) => b.id));
   }, [userBooks]);
+
+  const showDigital = !subscription || subscription.role === 'free' || subscription.role === 'admin';
+  const showPhysical = !subscription || subscription.role !== 'vendedor';
 
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get("category") || "all");
@@ -174,7 +179,7 @@ function CatalogContent() {
                     </PrefetchLink>
                     <p className="text-[11px] text-gray-400 dark:text-zinc-500 line-clamp-1">{book.author}</p>
                     <div className="flex items-start gap-1.5 mt-auto pt-2">
-                      {book.price_digital > 0 && book.epub_url && (
+                      {showDigital && book.price_digital > 0 && book.epub_url && (
                         ownedDigitalIds.has(book.id) ? (
                           <span className="text-[10px] font-semibold text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap">
                             <CheckCircle2 className="w-3 h-3" /> Adquirido
@@ -194,7 +199,7 @@ function CatalogContent() {
                           </div>
                         )
                       )}
-                      {book.price_physical > 0 && book.stock_physical > 0 && (
+                      {showPhysical && book.price_physical > 0 && book.stock_physical > 0 && (
                         isInCart(book.id, 'physical') ? (
                           <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap">
                             <ShoppingCart className="w-3 h-3" /> En carrito
@@ -230,7 +235,7 @@ function CatalogContent() {
                     </div>
                   </PrefetchLink>
                   <div className="flex items-start gap-2 shrink-0">
-                    {book.price_digital > 0 && book.epub_url && (
+                    {showDigital && book.price_digital > 0 && book.epub_url && (
                       ownedDigitalIds.has(book.id) ? (
                         <span className="text-[10px] font-semibold text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-1.5 rounded-lg flex items-center gap-1 whitespace-nowrap">
                           <CheckCircle2 className="w-3 h-3" /> Adquirido
@@ -250,7 +255,7 @@ function CatalogContent() {
                         </div>
                       )
                     )}
-                    {book.price_physical > 0 && book.stock_physical > 0 && (
+                    {showPhysical && book.price_physical > 0 && book.stock_physical > 0 && (
                       isInCart(book.id, 'physical') ? (
                         <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 border border-blue-500/20 px-2 py-1.5 rounded-lg flex items-center gap-1 whitespace-nowrap">
                           <ShoppingCart className="w-3 h-3" /> En carrito

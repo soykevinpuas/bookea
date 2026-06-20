@@ -100,21 +100,9 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error("Error al cargar dashboard");
       return res.json();
     },
-    staleTime: 30000,
+    staleTime: 0,
+    refetchOnMount: true,
   });
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("admin-dashboard-changes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "seller_sales" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "seller_inventory" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [supabase, queryClient]);
 
   const allSales = dash?.sales?.data ?? [];
   const salesTotal = dash?.sales?.total ?? 0;
@@ -128,6 +116,29 @@ export default function AdminDashboard() {
   const physicalBooks = dash?.physicalBooks ?? [];
   const salesMap = dash?.salesMap ?? {};
   const adminUserId = dash?.adminUserId ?? "";
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-dashboard-changes")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "seller_sales" }, () => {
+        queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "seller_inventory" }, () => {
+        queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, queryClient]);
+
+  useEffect(() => {
+    const refetch = () => queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
+    const interval = setInterval(refetch, 5000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refetch();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
+  }, [queryClient]);
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status, tracking_number }: { id: string; status: StockRequest["status"]; tracking_number?: string }) =>

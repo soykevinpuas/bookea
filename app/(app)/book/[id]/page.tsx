@@ -374,7 +374,7 @@ function BookDetailContent() {
                 )}
 
                 {/* 3.5.10.2.3.3 - Estado: Libro físico disponible en inventario */}
-                {book.stock_physical > 0 && (
+                {subscription?.role !== 'vendedor' && book.stock_physical > 0 && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-white/5 rounded-xl gap-4">
                     <div>
                       <span className="block text-sm text-gray-500 dark:text-gray-400 mb-1">

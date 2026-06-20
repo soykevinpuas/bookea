@@ -390,7 +390,7 @@ export default function VendedorDashboard() {
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-amber-400">Pendiente de pago</p>
-                    <p className="text-xs text-white/40">Adeudo con el admin</p>
+                    <p className="text-xs text-white/40">Pago pendiente</p>
                   </div>
                   <p className="text-lg font-bold text-amber-400">${pendingPayment.toLocaleString("es-MX")}</p>
                 </div>
