@@ -5,7 +5,7 @@ import { createClientClient } from "@/lib/supabase";
 import { markAsSold, COST_PER_BOOK, ADMIN_COST_BOOK } from "@/lib/sellers";
 import { receiveStockItemAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { Store, Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
+import { Store, Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -158,6 +158,8 @@ export default function VendedorDashboard() {
   const totalChartCost = chartData.reduce((s, d) => s + d.ahorro, 0);
 
   const activeInventory = inventory.filter((i: any) => i.quantity > 0);
+
+  const inventoryByBookId = new Map(inventory.map((i: any) => [i.book_id, i.quantity]));
 
   const soldByBook = useMemo(() => {
     const map = new Map<string, number>();
@@ -553,18 +555,26 @@ export default function VendedorDashboard() {
 
                                   {isReceived && (
                                     <span className={`text-[10px] font-medium flex items-center gap-1 shrink-0 ${
-                                      soldQty >= item.quantity
-                                        ? "text-blue-400"
-                                        : soldQty > 0
-                                          ? "text-purple-400"
-                                          : "text-green-400"
+                                      !inventoryByBookId.has(item.book_id)
+                                        ? "text-red-400"
+                                        : soldQty >= item.quantity
+                                          ? "text-blue-400"
+                                          : soldQty > 0
+                                            ? "text-purple-400"
+                                            : "text-green-400"
                                     }`}>
-                                      <Check className="w-2.5 h-2.5" />
-                                      {soldQty >= item.quantity
-                                        ? "Vendido"
-                                        : soldQty > 0
-                                          ? `Vendido ${soldQty}/${item.quantity}`
-                                          : "En stock"}
+                                      {!inventoryByBookId.has(item.book_id) ? (
+                                        <X className="w-2.5 h-2.5" />
+                                      ) : (
+                                        <Check className="w-2.5 h-2.5" />
+                                      )}
+                                      {!inventoryByBookId.has(item.book_id)
+                                        ? "Eliminado por admin"
+                                        : soldQty >= item.quantity
+                                          ? "Vendido"
+                                          : soldQty > 0
+                                            ? `Vendido ${soldQty}/${item.quantity}`
+                                            : "En stock"}
                                     </span>
                                   )}
                                 </div>
