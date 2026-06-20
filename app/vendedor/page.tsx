@@ -437,10 +437,10 @@ export default function VendedorDashboard() {
               ) : (
                 <div className="bg-[#111] border border-white/8 rounded-2xl p-5">
                   <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barGap={2} barCategoryGap="20%">
+                    <BarChart data={chartData} margin={{ top: 28, right: 8, bottom: 0, left: 0 }} barGap={2} barCategoryGap="20%">
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                       <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
+                      <YAxis domain={[0, 'auto']} tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
                       <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                       <Bar dataKey="venta" name="Venta" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={20}>
                         <LabelList dataKey="venta" position="top" fill="#22c55e" fontSize={10} fontWeight={700} formatter={(v: any) => `$${(v || 0).toLocaleString("es-MX")}`} />
