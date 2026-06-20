@@ -141,16 +141,46 @@ export async function deleteSaleAction(saleId: string) {
   const { data: roleData } = await supabase.rpc("get_my_role");
   if (roleData !== "admin") throw new Error("No autorizado");
 
-  // Usar el cliente normal (con sesión del usuario) para que auth.uid()
-  // funcione correctamente en la RPC. La RPC es SECURITY DEFINER así que
-  // tiene los permisos necesarios aunque la llame un usuario normal.
-  const { data, error } = await supabase.rpc("delete_sale_and_restore_stock", {
-    p_sale_id: saleId,
-  });
+  // Hacemos la lógica directa con el admin client (bypass RLS) en vez de
+  // la RPC, porque auth.uid() puede fallar en Server Actions según el
+  // contexto. El server action ya validó que el usuario es admin.
+  const adminDb = createAdminClient();
 
-  if (error) throw new Error(error.message);
-  const result = (data as any) || {};
-  if (!result.success) throw new Error(result.error || "Error al eliminar venta");
+  // Obtener venta
+  const { data: sale, error: saleErr } = await adminDb
+    .from("seller_sales")
+    .select("seller_id, book_id, quantity")
+    .eq("id", saleId)
+    .single();
+
+  if (saleErr || !sale) throw new Error(saleErr?.message || "Venta no encontrada");
+
+  // Eliminar venta
+  const { error: delErr } = await adminDb
+    .from("seller_sales")
+    .delete()
+    .eq("id", saleId);
+
+  if (delErr) throw new Error(delErr.message);
+
+  // Restaurar stock al vendedor
+  const { data: existingInv } = await adminDb
+    .from("seller_inventory")
+    .select("id, quantity")
+    .eq("seller_id", sale.seller_id)
+    .eq("book_id", sale.book_id)
+    .maybeSingle();
+
+  if (existingInv) {
+    await adminDb
+      .from("seller_inventory")
+      .update({ quantity: existingInv.quantity + sale.quantity, updated_at: new Date().toISOString() })
+      .eq("id", existingInv.id);
+  } else {
+    await adminDb
+      .from("seller_inventory")
+      .insert({ seller_id: sale.seller_id, book_id: sale.book_id, quantity: sale.quantity });
+  }
 
   revalidatePath("/admin");
   revalidatePath("/admin/vendedores");
