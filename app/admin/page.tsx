@@ -100,8 +100,7 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error("Error al cargar dashboard");
       return res.json();
     },
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 30000,
   });
 
   const allSales = dash?.sales?.data ?? [];
