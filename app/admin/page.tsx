@@ -621,13 +621,16 @@ export default function AdminDashboard() {
                                     >
                                       + Asignar
                                     </button>
-                                  </div>
+                                  )}
+                                </div>
+                              </div>
                                 );
                               })}
                             </div>
                           </>
                         )}
-                      </details>
+                      </div>
+                    </details>
 
               {/* Self-assign for admin */}
               <details className="bg-white/5 border border-blue-500/20 rounded-2xl overflow-hidden group">
