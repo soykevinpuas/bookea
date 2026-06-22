@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from "recharts";
 import StockRequestItemsModal from "@/components/StockRequestItemsModal";
+import BookPreviewModal from "@/components/BookPreviewModal";
 
 type Section = "stock" | "vendidos" | "ingresos" | "solicitudes";
 
@@ -66,6 +67,7 @@ export default function VendedorDashboard() {
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<Section>("ingresos");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [previewBook, setPreviewBook] = useState<any>(null);
 
   useEffect(() => {
     const seccion = searchParams?.get("seccion");
@@ -292,7 +294,9 @@ export default function VendedorDashboard() {
                       <div key={item.id} className="px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           {book?.cover_url && (
-                            <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                            <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                              <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                            </button>
                           )}
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-white/90 break-words">{book?.title || "Libro"}</p>
@@ -361,7 +365,9 @@ export default function VendedorDashboard() {
                     return (
                       <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
                         {book?.cover_url && (
-                          <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                          <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                            <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                          </button>
                         )}
                         <span className="text-sm flex-1 min-w-0 truncate text-white/80">
                           {book?.title || "Libro"}
@@ -533,7 +539,9 @@ export default function VendedorDashboard() {
                               return (
                                 <div key={item.id} className="flex items-center gap-2 text-xs">
                                   {book?.cover_url && (
-                                    <img src={book.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 shrink-0" />
+                                    <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                                      <img src={book.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                                    </button>
                                   )}
                                   <span className="text-white/60 flex-1 truncate">{book?.title || "Libro"}</span>
                                   <span className="text-white font-medium shrink-0">x{item.quantity}</span>
@@ -617,7 +625,9 @@ export default function VendedorDashboard() {
           return (
             <div key={item.id} className="flex items-center gap-3">
               {item.books?.cover_url && (
-                <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
+                <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                  <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                </button>
               )}
               <span className="text-white/80 text-sm flex-1 min-w-0 truncate">
                 {item.books?.title ?? "Libro"}
@@ -644,6 +654,10 @@ export default function VendedorDashboard() {
           );
         }}
       </StockRequestItemsModal>
+
+      {previewBook && (
+        <BookPreviewModal book={previewBook} onClose={() => setPreviewBook(null)} />
+      )}
     </div>
   );
 }

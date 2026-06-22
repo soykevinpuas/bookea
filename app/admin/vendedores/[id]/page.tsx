@@ -23,6 +23,7 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import StockRequestItemsModal from "@/components/StockRequestItemsModal";
+import BookPreviewModal from "@/components/BookPreviewModal";
 
 export default function AdminSellerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +37,7 @@ export default function AdminSellerDetailPage() {
   const [showAllRequests, setShowAllRequests] = useState(false);
   const [assignBookId, setAssignBookId] = useState("");
   const [assignQty, setAssignQty] = useState(1);
+  const [previewBook, setPreviewBook] = useState<any>(null);
   const [bookSearch, setBookSearch] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -250,11 +252,13 @@ export default function AdminSellerDetailPage() {
               >
                 <div className="flex gap-3">
                   {item.books?.cover_url && (
-                    <img
-                      src={item.books.cover_url}
-                      alt=""
-                      className="w-12 h-16 rounded-lg object-cover bg-white/5"
-                    />
+                    <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                      <img
+                        src={item.books.cover_url}
+                        alt=""
+                        className="w-12 h-16 rounded-lg object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all"
+                      />
+                    </button>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{item.books?.title}</p>
@@ -307,11 +311,13 @@ export default function AdminSellerDetailPage() {
               >
                 <div className="flex items-center gap-3">
                   {sale.books?.cover_url && (
-                    <img
-                      src={sale.books.cover_url}
-                      alt=""
-                      className="w-8 h-10 rounded object-cover bg-white/5"
-                    />
+                    <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                      <img
+                        src={sale.books.cover_url}
+                        alt=""
+                        className="w-8 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all"
+                      />
+                    </button>
                   )}
                   <div>
                     <p className="text-sm font-medium">{sale.books?.title ?? "Libro"}</p>
@@ -381,7 +387,9 @@ export default function AdminSellerDetailPage() {
                       <div key={item.id} className="flex items-center justify-between text-sm">
                         <span className="flex items-center gap-2 min-w-0 flex-1">
                           {item.books?.cover_url && (
-                            <img src={item.books.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 shrink-0" />
+                            <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                              <img src={item.books.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                            </button>
                           )}
                           <span className="text-white/60 truncate">{item.books?.title ?? "Libro"}</span>
                           <span className="text-white/50 shrink-0">x{item.quantity}</span>
@@ -445,7 +453,9 @@ export default function AdminSellerDetailPage() {
               {inventory.map((item) => (
                 <div key={item.id} className="flex items-center gap-3">
                   {item.books?.cover_url && (
-                    <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
+                    <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                      <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                    </button>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-white/80 text-sm truncate">{item.books?.title ?? "Libro"}</p>
@@ -474,7 +484,9 @@ export default function AdminSellerDetailPage() {
               {sales.map((sale) => (
                 <div key={sale.id} className="flex items-center gap-3">
                   {sale.books?.cover_url && (
-                    <img src={sale.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
+                    <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                      <img src={sale.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                    </button>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-white/80 text-sm truncate">{sale.books?.title ?? "Libro"}</p>
@@ -526,7 +538,9 @@ export default function AdminSellerDetailPage() {
                         <div key={item.id} className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-2 min-w-0 flex-1">
                             {item.books?.cover_url && (
-                              <img src={item.books.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 shrink-0" />
+                              <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                                <img src={item.books.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                              </button>
                             )}
                             <span className="text-white/60 truncate">{item.books?.title ?? "Libro"}</span>
                             <span className="text-white/50 shrink-0">x{item.quantity}</span>
@@ -571,7 +585,9 @@ export default function AdminSellerDetailPage() {
           return (
             <div key={item.id} className="flex items-center gap-3">
               {item.books?.cover_url && (
-                <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
+                <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                  <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                </button>
               )}
               <span className="text-white/80 text-sm flex-1 min-w-0 truncate">
                 {item.books?.title ?? "Libro"}
@@ -598,6 +614,10 @@ export default function AdminSellerDetailPage() {
           );
         }}
       </StockRequestItemsModal>
+
+      {previewBook && (
+        <BookPreviewModal book={previewBook} onClose={() => setPreviewBook(null)} />
+      )}
     </ErrorBoundary>
   );
 }

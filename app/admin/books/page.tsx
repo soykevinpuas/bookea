@@ -17,6 +17,7 @@ import {
   Plus,
   Minus,
 } from "lucide-react";
+import BookPreviewModal from "@/components/BookPreviewModal";
 
 interface Book {
   id: string;
@@ -76,6 +77,7 @@ export default function AdminBooksPage() {
   const authorPhotoInputRef = useRef<HTMLInputElement>(null);
   const [filterTab, setFilterTab] = useState<"all" | "physical" | "no-epub">("all");
   const [stockLoading, setStockLoading] = useState<Set<string>>(new Set());
+  const [previewBook, setPreviewBook] = useState<any>(null);
 
   const { data: books = [], isLoading } = useQuery({
     queryKey: ["admin-books"],
@@ -374,7 +376,9 @@ export default function AdminBooksPage() {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       {book.cover_url ? (
-                        <img src={book.cover_url} alt={book.title} className="w-8 h-11 object-contain rounded-md flex-shrink-0 bg-white/5 shadow-inner" />
+                        <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                          <img src={book.cover_url} alt={book.title} className="w-8 h-11 object-contain rounded-md flex-shrink-0 bg-white/5 shadow-inner hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                        </button>
                       ) : (
                         <div className="w-8 h-11 bg-white/10 rounded-md flex-shrink-0" />
                       )}
@@ -727,6 +731,10 @@ export default function AdminBooksPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {previewBook && (
+        <BookPreviewModal book={previewBook} onClose={() => setPreviewBook(null)} />
       )}
     </div>
   );

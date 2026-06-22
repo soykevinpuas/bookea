@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from "recharts";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import StockRequestItemsModal from "@/components/StockRequestItemsModal";
+import BookPreviewModal from "@/components/BookPreviewModal";
 
 type Section = "ingresos" | "stock" | "vendidos" | "solicitudes" | "pagos";
 
@@ -66,6 +67,7 @@ export default function AdminDashboard() {
   const [pendingOps, setPendingOps] = useState<Set<string>>(new Set());
   const [modalItems, setModalItems] = useState<{ sellerId: string; items: any[] } | null>(null);
   const [stockModalSeller, setStockModalSeller] = useState<{sellerId: string; email: string; items: any[]} | null>(null);
+  const [previewBook, setPreviewBook] = useState<any>(null);
   interface PaginatedResponse<T> {
     data: T[];
     total: number;
@@ -619,41 +621,13 @@ export default function AdminDashboard() {
                                     >
                                       + Asignar
                                     </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-
-                      {/* Summary + Assign button */}
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="text-xs text-white/40">
-                          {Object.values(assignSellerQtys).reduce((s, q) => s + q, 0)} uds. por asignar
-                        </span>
-                        <button
-                          onClick={() => assignSellerMutation.mutate()}
-                          disabled={
-                            !assignSellerId ||
-                            Object.values(assignSellerQtys).reduce((s, q) => s + q, 0) === 0 ||
-                            assignSellerMutation.isPending
-                          }
-                          className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-                        >
-                          {assignSellerMutation.isPending ? (
-                            <span className="flex items-center gap-2">
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Asignando...
-                            </span>
-                          ) : (
-                            `Asignar todo (${Object.values(assignSellerQtys).reduce((s, q) => s + q, 0)} uds.)`
-                          )}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </details>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </details>
 
               {/* Self-assign for admin */}
               <details className="bg-white/5 border border-blue-500/20 rounded-2xl overflow-hidden group">
@@ -817,7 +791,9 @@ export default function AdminDashboard() {
                     {allSales.map((sale: any) => (
                       <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
                         {sale.books?.cover_url && (
-                          <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                          <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                            <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                          </button>
                         )}
                         <div className="flex-1 min-w-0">
                           <span className="text-sm text-white/70 block truncate">{sale.books?.title || "Libro"}</span>
@@ -844,10 +820,9 @@ export default function AdminDashboard() {
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between text-xs text-white/40">
+                      </div>))}
+                    </div>
+                    <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between text-xs text-white/40">
                     <span>
                       Mostrando {Math.min(allSales.length, salesPerPage)} de {salesTotal} ventas
                     </span>
@@ -896,7 +871,9 @@ export default function AdminDashboard() {
                       {sales.map((sale: any) => (
                         <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
                           {sale.books?.cover_url && (
-                            <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                            <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                              <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                            </button>
                           )}
                           <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{sale.books?.title || "Libro"}</span>
                           <span className="text-[10px] text-white/30 shrink-0">
@@ -959,11 +936,13 @@ export default function AdminDashboard() {
                               const isReceived = !!item.received_at;
                               return (
                                 <div key={item.id} className="flex items-center justify-between text-sm">
-                                  <span className="flex items-center gap-2 min-w-0 flex-1">
-                                    {(item.books as any)?.cover_url && (
-                                      <img src={(item.books as any).cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 shrink-0" />
-                                    )}
-                                    <span className="text-white/70 truncate">{(item.books as any)?.title ?? "Libro"}</span>
+                                    <span className="flex items-center gap-2 min-w-0 flex-1">
+                                      {(item.books as any)?.cover_url && (
+                                        <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                                          <img src={(item.books as any).cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                                        </button>
+                                      )}
+                                      <span className="text-white/70 truncate">{(item.books as any)?.title ?? "Libro"}</span>
                                     <span className="text-white/50 shrink-0">x{item.quantity}</span>
                                   </span>
                                   <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
@@ -1091,7 +1070,9 @@ export default function AdminDashboard() {
           return (
             <div key={item.id} className="flex items-center gap-3">
               {item.books?.cover_url && (
-                <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
+                <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                  <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                </button>
               )}
               <span className="text-white/80 text-sm flex-1 min-w-0 truncate">
                 {item.books?.title ?? "Libro"}
@@ -1136,7 +1117,9 @@ export default function AdminDashboard() {
                 return (
                   <div key={item.id} className="flex items-center gap-3">
                     {item.books?.cover_url && (
-                      <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
+                      <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                        <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                      </button>
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-white/80 text-sm truncate">{item.books?.title ?? "Libro"}</p>
@@ -1160,6 +1143,10 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {previewBook && (
+        <BookPreviewModal book={previewBook} onClose={() => setPreviewBook(null)} />
       )}
     </ErrorBoundary>
   );
