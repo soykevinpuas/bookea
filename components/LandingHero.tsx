@@ -8,23 +8,14 @@ import {
   Smartphone,
   Star,
 } from "lucide-react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import FloatingBook3D from "@/components/FloatingBook3D";
-
-const fadeUp = {
-  initial: { opacity: 0, y: 24 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -12 },
-};
 
 export default function LandingHero({ covers }: { covers: string[] }) {
   const [mounted, setMounted] = useState(false);
-  const [heroReady, setHeroReady] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const t = setTimeout(() => setHeroReady(true), 100);
-    return () => clearTimeout(t);
   }, []);
 
   const featuresRef = useRef(null);
@@ -157,7 +148,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
         <div className="max-w-7xl mx-auto px-6 py-20 sm:py-28">
           <motion.div
             initial={false}
-            animate={stepsInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+            animate={stepsInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
@@ -191,7 +182,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
               <motion.div
                 key={step.num}
                 initial={false}
-                animate={stepsInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+                animate={stepsInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                 transition={{ delay: i * 0.12, duration: 0.4 }}
                 className="relative text-center md:text-left"
               >
@@ -214,7 +205,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
         <div className="max-w-7xl mx-auto px-6 py-20 sm:py-28">
           <motion.div
             initial={false}
-            animate={featuresInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+            animate={featuresInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
@@ -248,7 +239,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
               <motion.div
                 key={item.title}
                 initial={false}
-                animate={featuresInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+                animate={featuresInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                 transition={{ delay: i * 0.1, duration: 0.4 }}
                 className="group relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8 hover:bg-white/[0.06] transition-all duration-300"
               >
@@ -268,7 +259,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
         <div className="max-w-7xl mx-auto px-6 py-20 sm:py-28">
           <motion.div
             initial={false}
-            animate={testimonialsInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+            animate={testimonialsInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
@@ -302,7 +293,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
               <motion.div
                 key={t.name}
                 initial={false}
-                animate={testimonialsInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+                animate={testimonialsInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                 transition={{ delay: i * 0.12, duration: 0.4 }}
                 className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6"
               >
