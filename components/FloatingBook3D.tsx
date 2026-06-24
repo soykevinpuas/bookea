@@ -51,8 +51,9 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
     };
   }, [coverUrl]);
 
-  const imgAspect = texture?.image && texture.image.width && texture.image.height 
-    ? texture.image.width / texture.image.height 
+  const img = texture?.image as HTMLImageElement | undefined;
+  const imgAspect = img && img.width && img.height 
+    ? img.width / img.height 
     : 1.5;
 
   useFrame((_, delta) => {
