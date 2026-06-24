@@ -10,17 +10,21 @@ export default async function Home() {
     redirect("/dashboard");
   }
 
-  const admin = createAdminClient();
-  const { data: books } = await admin
-    .from("books")
-    .select("cover_url")
-    .eq("is_active", true)
-    .not("cover_url", "is", null)
-    .limit(18);
-
-  let covers = (books ?? [])
-    .map((b) => b.cover_url)
-    .filter((url): url is string => !!url);
+  let covers: string[] = [];
+  try {
+    const admin = createAdminClient();
+    const { data: books } = await admin
+      .from("books")
+      .select("cover_url")
+      .eq("is_active", true)
+      .not("cover_url", "is", null)
+      .limit(18);
+    covers = (books ?? [])
+      .map((b) => b.cover_url)
+      .filter((url): url is string => !!url);
+  } catch (e) {
+    // Fallback silencioso
+  }
 
   if (covers.length === 0) {
     covers = [

@@ -4,7 +4,6 @@ const CACHE_NAME = 'bookea-v4';
 const BOOKS_CACHE = 'bookea-books-v2';
 
 const PRECACHE = [
-  '/manifest.json',
   '/icon-192x192.png',
   '/icon-512x512.png',
   '/',
