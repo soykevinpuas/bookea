@@ -40,7 +40,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
       : { initial: false, animate: { opacity: 1, y: 0 }, transition: { delay: 0, duration: 0 } };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-gray-100 overflow-x-hidden font-sans selection:bg-amber-500/30 relative z-0">
+    <div className="min-h-screen bg-[#0a0a0a] text-gray-100 overflow-x-hidden font-sans selection:bg-purple-500/30 relative z-0">
 
       {/* Collage grid background */}
       {collageCovers.length > 0 && (
@@ -91,8 +91,8 @@ export default function LandingHero({ covers }: { covers: string[] }) {
         style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
 
       {/* Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-amber-600/8 blur-[150px] pointer-events-none -z-10" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-orange-600/8 blur-[150px] pointer-events-none -z-10" />
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/8 blur-[150px] pointer-events-none -z-10" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-fuchsia-600/8 blur-[150px] pointer-events-none -z-10" />
 
       {/* ─── HERO ─── */}
       <main className="max-w-7xl mx-auto px-6 pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pb-28 relative z-10 min-h-screen flex items-center">
@@ -100,28 +100,28 @@ export default function LandingHero({ covers }: { covers: string[] }) {
 
           <div>
             <motion.div {...fadeIn(0.1)}>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-950/50 border border-amber-800/40 text-amber-300 text-sm font-medium mb-6 backdrop-blur-sm">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-950/50 border border-purple-800/40 text-purple-300 text-sm font-medium mb-6 backdrop-blur-sm">
                 <Zap className="w-3.5 h-3.5" />
                 <span>Lectura ilimitada &mdash; $99 MXN/mes</span>
               </div>
             </motion.div>
 
             <motion.h1 {...fadeIn(0.2)} className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tighter mb-6 text-white leading-[1.05]">
-              Lee sin{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500">
-                l&iacute;mites
+              Tu biblioteca infinita en{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-400 to-purple-500">
+                Bookea
               </span>
               .
             </motion.h1>
 
             <motion.p {...fadeIn(0.3)} className="text-lg sm:text-xl text-gray-400 mb-10 max-w-xl leading-relaxed">
-              Acceso ilimitado a cientos de libros digitales. Lee en l&iacute;nea, descarga para offline y sincroniza tu progreso en todos tus dispositivos.
+              Acceso ilimitado a cientos de libros digitales. Lee en línea, descarga para offline y sincroniza tu progreso en todos tus dispositivos.
             </motion.p>
 
             <motion.div {...fadeIn(0.4)} className="flex flex-col sm:flex-row items-start gap-4">
               <Link
                 href="/subscribe"
-                className="group w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl font-bold text-lg transition-all duration-300 shadow-lg shadow-amber-700/20 hover:shadow-amber-600/40 hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                className="group w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white rounded-xl font-bold text-lg transition-all duration-300 shadow-lg shadow-purple-700/20 hover:shadow-purple-600/40 hover:-translate-y-0.5 flex items-center justify-center gap-2"
               >
                 <Zap className="w-5 h-5" />
                 Activar Premium
@@ -131,7 +131,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
                 className="group w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl font-semibold text-lg transition-all duration-300 flex items-center justify-center gap-2"
               >
                 <BookOpen className="w-5 h-5" />
-                Explorar Cat&aacute;logo
+                Explorar Catálogo
               </Link>
             </motion.div>
 
@@ -159,7 +159,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
-            <span className="text-xs font-bold text-amber-500 uppercase tracking-[0.2em] mb-4 block">C&oacute;mo funciona</span>
+            <span className="text-xs font-bold text-purple-500 uppercase tracking-[0.2em] mb-4 block">Cómo funciona</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
               Tres pasos para empezar a leer
             </h2>
@@ -170,20 +170,20 @@ export default function LandingHero({ covers }: { covers: string[] }) {
               {
                 num: "01",
                 icon: Zap,
-                title: "Activa tu membres&iacute;a",
-                desc: "Suscr&iacute;bete por $99 MXN al mes. Sin permanencia, cancela cuando quieras.",
+                title: "Activa tu membresía",
+                desc: "Suscríbete por $99 MXN al mes. Sin permanencia, cancela cuando quieras.",
               },
               {
                 num: "02",
                 icon: BookOpen,
                 title: "Elige tu libro",
-                desc: "Explora cientos de t&iacute;tulos en nuestro cat&aacute;logo y agrega tus favoritos a tu biblioteca.",
+                desc: "Explora cientos de títulos en nuestro catálogo y agrega tus favoritos a tu biblioteca.",
               },
               {
                 num: "03",
                 icon: Smartphone,
                 title: "Lee donde sea",
-                desc: "En l&iacute;nea o sin conexi&oacute;n. En tu celular, tablet o computadora. Tu progreso se sincroniza solo.",
+                desc: "En línea o sin conexión. En tu celular, tablet o computadora. Tu progreso se sincroniza solo.",
               },
             ].map((step, i) => (
               <motion.div
@@ -194,9 +194,9 @@ export default function LandingHero({ covers }: { covers: string[] }) {
                 className="relative text-center md:text-left"
               >
                 {i < 2 && (
-                  <div className="hidden md:block absolute top-6 left-[calc(50%+3rem)] w-[calc(100%-6rem)] h-px bg-gradient-to-r from-amber-500/30 to-transparent" />
+                  <div className="hidden md:block absolute top-6 left-[calc(50%+3rem)] w-[calc(100%-6rem)] h-px bg-gradient-to-r from-purple-500/30 to-transparent" />
                 )}
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm font-bold mb-5">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-bold mb-5">
                   {step.num}
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">{step.title}</h3>
@@ -216,9 +216,9 @@ export default function LandingHero({ covers }: { covers: string[] }) {
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
-            <span className="text-xs font-bold text-amber-500 uppercase tracking-[0.2em] mb-4 block">Caracter&iacute;sticas</span>
+            <span className="text-xs font-bold text-purple-500 uppercase tracking-[0.2em] mb-4 block">Características</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-              Todo lo que necesitas para leer m&aacute;s
+              Todo lo que necesitas para leer más
             </h2>
           </motion.div>
 
@@ -233,14 +233,14 @@ export default function LandingHero({ covers }: { covers: string[] }) {
               {
                 icon: Zap,
                 title: "Acceso Ilimitado",
-                desc: "Todo el cat&aacute;logo digital sin restricciones. Lee en l&iacute;nea o descarga para offline.",
-                color: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+                desc: "Todo el catálogo digital sin restricciones. Lee en línea o descarga para offline.",
+                color: "border-purple-500/20 bg-purple-500/10 text-purple-400",
               },
               {
                 icon: Smartphone,
-                title: "F&iacute;sicos a Domicilio",
-                desc: "Compra copias f&iacute;sicas con env&iacute;o a todo M&eacute;xico. Transacciones seguras con Stripe.",
-                color: "border-orange-500/20 bg-orange-500/10 text-orange-400",
+                title: "Físicos a Domicilio",
+                desc: "Compra copias físicas con envío a todo México. Transacciones seguras con Stripe.",
+                color: "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-400",
               },
             ].map((item, i) => (
               <motion.div
@@ -253,7 +253,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
                 <div className={`w-12 h-12 ${item.color} rounded-xl flex items-center justify-center mb-5 border`}>
                   <item.icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-3 group-hover:text-amber-300 transition-colors">{item.title}</h3>
+                <h3 className="text-lg font-bold text-white mb-3 group-hover:text-purple-300 transition-colors">{item.title}</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
               </motion.div>
             ))}
@@ -270,7 +270,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
-            <span className="text-xs font-bold text-amber-500 uppercase tracking-[0.2em] mb-4 block">Lectores</span>
+            <span className="text-xs font-bold text-purple-500 uppercase tracking-[0.2em] mb-4 block">Lectores</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
               Lo que dicen nuestros usuarios
             </h2>
@@ -279,21 +279,21 @@ export default function LandingHero({ covers }: { covers: string[] }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
-                name: "Sof&iacute;a R.",
+                name: "Sofía R.",
                 handle: "@sofireads",
-                text: "Desde que tengo Bookea leo el doble. Poder llevar todos mis libros en el celular me cambi&oacute; la vida.",
+                text: "Desde que tengo Bookea leo el doble. Poder llevar todos mis libros en el celular me cambió la vida.",
                 rating: 5,
               },
               {
                 name: "Carlos M.",
                 handle: "@carloslibros",
-                text: "Por lo que cuesta un caf&eacute; al mes tengo acceso a un cat&aacute;logo enorme. La mejor suscripci&oacute;n que he probado.",
+                text: "Por lo que cuesta un café al mes tengo acceso a un catálogo enorme. La mejor suscripción que he probado.",
                 rating: 5,
               },
               {
                 name: "Ana G.",
                 handle: "@anabooks",
-                text: "El lector es muy bueno y la sincronizaci&oacute;n funciona perfecto entre mi iPad y mi celular.",
+                text: "El lector es muy bueno y la sincronización funciona perfecto entre mi iPad y mi celular.",
                 rating: 5,
               },
             ].map((t, i) => (
@@ -306,12 +306,12 @@ export default function LandingHero({ covers }: { covers: string[] }) {
               >
                 <div className="flex gap-0.5 mb-4">
                   {Array.from({ length: t.rating }).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-amber-500 text-amber-500" />
+                    <Star key={j} className="w-4 h-4 fill-purple-500 text-purple-500" />
                   ))}
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6">&ldquo;{t.text}&rdquo;</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center text-white text-xs font-bold">
                     {t.name.charAt(0)}
                   </div>
                   <div>
@@ -334,15 +334,15 @@ export default function LandingHero({ covers }: { covers: string[] }) {
             </Link>
             <span className="text-gray-700/50 hidden sm:inline">|</span>
             <Link href="/terminos" className="text-gray-500 hover:text-gray-300 transition-colors">
-              T&eacute;rminos del Servicio
+              Términos del Servicio
             </Link>
             <span className="text-gray-700/50 hidden sm:inline">|</span>
             <Link href="/login" className="text-gray-500 hover:text-gray-300 transition-colors">
-              Iniciar Sesi&oacute;n
+              Iniciar Sesión
             </Link>
           </div>
           <p className="text-gray-600 text-sm">
-            &copy; {new Date().getFullYear()} Bookea. Hecho en M&eacute;xico.
+            &copy; {new Date().getFullYear()} Bookea. Hecho en México.
           </p>
         </div>
       </footer>

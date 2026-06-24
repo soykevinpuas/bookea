@@ -1,42 +1,28 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, Suspense } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { TextureLoader, Group, SRGBColorSpace } from "three";
+import { useTexture } from "@react-three/drei";
+import { Group, SRGBColorSpace, Texture } from "three";
+
+// Preload the fallback texture to avoid suspension issues
+const FALLBACK_URL = "https://picsum.photos/seed/fallback/400/600";
 
 function BookMesh({ coverUrl }: { coverUrl: string }) {
   const groupRef = useRef<Group>(null);
   const { pointer } = useThree();
-  const [texture, setTexture] = useState<any>(null);
-  const [texLoaded, setTexLoaded] = useState(false);
-  const [imgAspect, setImgAspect] = useState(1.5);
+  
+  // useTexture handles caching, loading, and StrictMode lifecycle perfectly
+  // We use an array so we can pass multiple, but here we just need one.
+  let texture: Texture | null = null;
+  try {
+    texture = useTexture(coverUrl || FALLBACK_URL);
+    texture.colorSpace = SRGBColorSpace;
+  } catch (e) {
+    console.warn("Failed to load texture, using fallback");
+  }
 
-  useEffect(() => {
-    if (!coverUrl) return;
-    setTexLoaded(false);
-    setTexture(null);
-    const loader = new TextureLoader();
-    loader.setCrossOrigin('Anonymous');
-    const tex = loader.load(
-      coverUrl,
-      (loaded) => {
-        loaded.colorSpace = SRGBColorSpace;
-        loaded.needsUpdate = true;
-        setTexture(loaded);
-        setTexLoaded(true);
-        const img = loaded.image as HTMLImageElement;
-        if (img?.width && img?.height) {
-          setImgAspect(img.width / img.height);
-        }
-      },
-      undefined,
-      () => {
-        console.warn("Failed to load cover image:", coverUrl);
-        setTexLoaded(false);
-      },
-    );
-    return () => { tex.dispose(); };
-  }, [coverUrl]);
+  const imgAspect = texture?.image ? texture.image.width / texture.image.height : 1.5;
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -47,13 +33,13 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
     groupRef.current.position.y = Math.sin(Date.now() * 0.001) * 0.15;
   });
 
-  const bookHeight = texLoaded ? 2.7 : 2.4;
+  const bookHeight = texture ? 2.7 : 2.4;
   const bookWidth = bookHeight * Math.min(imgAspect, 1.8);
   const bookDepth = 0.25;
-  const borderRadius = 0.08;
 
   return (
     <group ref={groupRef}>
+      {/* Lomo / Back / Pages */}
       <mesh position={[0, 0, -0.05]}>
         <boxGeometry args={[bookWidth + 0.04, bookHeight + 0.04, bookDepth + 0.02]} />
         <meshStandardMaterial color="#111" />
@@ -64,23 +50,23 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
         <meshStandardMaterial color="#1a1a1a" roughness={0.6} />
       </mesh>
 
-      {texLoaded && texture ? (
-        <mesh position={[0, 0, bookDepth / 2 + 0.001]}>
-          <planeGeometry args={[bookWidth, bookHeight]} />
+      {/* Front Cover */}
+      <mesh position={[0, 0, bookDepth / 2 + 0.001]}>
+        <planeGeometry args={[bookWidth, bookHeight]} />
+        {texture ? (
           <meshStandardMaterial map={texture} roughness={0.3} />
-        </mesh>
-      ) : (
-        <mesh position={[0, 0, bookDepth / 2 + 0.001]}>
-          <planeGeometry args={[bookWidth, bookHeight]} />
+        ) : (
           <meshStandardMaterial color="#8B7355" roughness={0.8} />
-        </mesh>
-      )}
+        )}
+      </mesh>
 
+      {/* Back Cover */}
       <mesh position={[0, 0, -bookDepth / 2 - 0.001]} rotation={[0, Math.PI, 0]}>
         <planeGeometry args={[bookWidth, bookHeight]} />
         <meshStandardMaterial color="#0d0d0d" />
       </mesh>
 
+      {/* Spines and Edges */}
       <mesh position={[bookWidth / 2 + 0.001, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
         <planeGeometry args={[bookDepth, bookHeight]} />
         <meshStandardMaterial color="#222" roughness={0.8} />
@@ -109,10 +95,12 @@ function Scene({ coverUrl }: { coverUrl: string }) {
     <>
       <ambientLight intensity={0.5} />
       <directionalLight position={[2, 4, 5]} intensity={1.2} />
-      <directionalLight position={[-2, -1, -3]} intensity={0.4} color="#4466ff" />
-      <pointLight position={[0, 2, 3]} intensity={0.3} color="#8888ff" />
+      <directionalLight position={[-2, -1, -3]} intensity={0.4} color="#a855f7" />
+      <pointLight position={[0, 2, 3]} intensity={0.3} color="#d946ef" />
       <hemisphereLight args={["#ffffff", "#444466", 0.4]} />
-      <BookMesh coverUrl={coverUrl} />
+      <Suspense fallback={null}>
+        <BookMesh coverUrl={coverUrl} />
+      </Suspense>
     </>
   );
 }
