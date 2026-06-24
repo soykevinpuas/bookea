@@ -4,6 +4,21 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-06-24-B] — Fix: Visibilidad Real de Portadas en Landing (CORS y Stacking Context)
+
+### Problema
+Las portadas seguían sin verse a pesar de los cambios en [2026-06-24-A]. El collage de fondo quedaba oculto por el fondo oscuro (`bg-[#0a0a0a]`) porque el contenedor principal no formaba un contexto de apilamiento y el gradiente superpuesto era demasiado opaco (`via-[#0a0a0a]/95`). Además, la textura 3D del libro fallaba al cargar portadas externas por restricciones de CORS.
+
+### Cambios
+1. **`components/LandingHero.tsx`** — Agregado `z-0` al contenedor principal (`min-h-screen`) para crear un *stacking context*, de forma que el collage en `-z-20` no quede detrás del `bg-[#0a0a0a]` del contenedor. Además, se redujo la opacidad del gradiente de `via-[#0a0a0a]/95` a `via-[#0a0a0a]/40` para dejar ver las portadas.
+2. **`components/FloatingBook3D.tsx`** — Agregado `loader.setCrossOrigin('Anonymous')` al `TextureLoader` de Three.js para permitir la carga correcta de imágenes alojadas en dominios externos (Supabase/Picsum) previniendo errores de CORS en el lienzo WebGL.
+
+### Archivos modificados
+- `components/LandingHero.tsx`
+- `components/FloatingBook3D.tsx`
+
+---
+
 ## [2026-06-24-A] — Fix: portadas visibles en landing page
 
 ### Problema

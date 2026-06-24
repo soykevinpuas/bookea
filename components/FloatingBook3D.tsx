@@ -16,6 +16,7 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
     setTexLoaded(false);
     setTexture(null);
     const loader = new TextureLoader();
+    loader.setCrossOrigin('Anonymous');
     const tex = loader.load(
       coverUrl,
       (loaded) => {
