@@ -1,7 +1,7 @@
 // 1.1 - Service Worker para Bookea PWA (Offline-First)
 // Versión 3: Compatible con Next.js + Vercel CDN
-const CACHE_NAME = 'bookea-v3';
-const BOOKS_CACHE = 'bookea-books';
+const CACHE_NAME = 'bookea-v4';
+const BOOKS_CACHE = 'bookea-books-v2';
 
 const PRECACHE = [
   '/manifest.json',
@@ -59,17 +59,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ─── ESTRATEGIA 2: Supabase Storage (portadas, archivos) - Cache First con auto-cache ───
+  // ─── ESTRATEGIA 2: Supabase Storage (portadas, archivos) - Network First con cache offline ───
   if (url.hostname.includes('supabase') && url.pathname.includes('/storage/')) {
     event.respondWith(
       caches.open(BOOKS_CACHE).then((cache) =>
-        cache.match(request).then((cached) => {
-          if (cached) return cached;
-          return fetch(request).then((res) => {
-            if (res.ok) cache.put(request, res.clone());
-            return res;
-          }).catch(() => new Response('', { status: 404 }));
-        })
+        fetch(request).then((res) => {
+          if (res.ok && (res.type === 'basic' || res.type === 'cors')) {
+            cache.put(request, res.clone());
+          }
+          return res;
+        }).catch(() =>
+          cache.match(request).then((cached) =>
+            cached || new Response('', { status: 404 })
+          )
+        )
       )
     );
     return;
