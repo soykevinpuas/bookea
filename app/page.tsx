@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/server";
+import { createClient, createAdminClient } from "@/lib/server";
 import LandingHero from "@/components/LandingHero";
 
 export default async function Home() {
@@ -10,16 +10,13 @@ export default async function Home() {
     redirect("/dashboard");
   }
 
-  const { data: books, error } = await supabase
+  const admin = createAdminClient();
+  const { data: books } = await admin
     .from("books")
     .select("cover_url")
     .eq("is_active", true)
     .not("cover_url", "is", null)
     .limit(18);
-
-  if (error) {
-    console.error("Error fetching book covers:", error.message);
-  }
 
   let covers = (books ?? [])
     .map((b) => b.cover_url)
