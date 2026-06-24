@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { TextureLoader, Group } from "three";
+import { TextureLoader, Group, SRGBColorSpace } from "three";
 
 function BookMesh({ coverUrl }: { coverUrl: string }) {
   const groupRef = useRef<Group>(null);
@@ -20,6 +20,8 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
     const tex = loader.load(
       coverUrl,
       (loaded) => {
+        loaded.colorSpace = SRGBColorSpace;
+        loaded.needsUpdate = true;
         setTexture(loaded);
         setTexLoaded(true);
         const img = loaded.image as HTMLImageElement;
@@ -65,7 +67,7 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
       {texLoaded && texture ? (
         <mesh position={[0, 0, bookDepth / 2 + 0.001]}>
           <planeGeometry args={[bookWidth, bookHeight]} />
-          <meshStandardMaterial map={texture} toneMapped={false} />
+          <meshStandardMaterial map={texture} roughness={0.3} />
         </mesh>
       ) : (
         <mesh position={[0, 0, bookDepth / 2 + 0.001]}>

@@ -4,6 +4,24 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-06-24-C] — Auditoría Profunda: Fixes de Seguridad en Vendedores y Animación Landing
+
+### Problema
+1. **Seguridad (Crítico):** Los vendedores tenían acceso RLS para modificar e insertar directamente en `seller_inventory` y `seller_sales`, evadiendo validaciones de negocio. Además, la función RPC `sell_book` sufría de *race conditions* por falta de `FOR UPDATE`.
+2. **Visual:** El collage de la landing page era estático y el libro 3D de la misma se renderizaba completamente negro debido al `toneMapped={false}` y a la falta de definición del espacio de color (`SRGBColorSpace`) para las texturas en Three.js >= r152.
+
+### Cambios
+1. **`047_audit_fixes_seller_security.sql`**: Se selló el sistema removiendo las políticas de `INSERT` y `UPDATE` de los clientes en tablas de vendedores. Ahora todo el flujo pasa por las Server Actions (que usan `adminDb`) y las RPCs. También se añadió bloqueo concurrente (`FOR UPDATE`) en la RPC `sell_book` al restar del inventario.
+2. **`components/FloatingBook3D.tsx`**: Eliminado `toneMapped={false}` del material, añadida `roughness={0.3}`, y configurada explícitamente `loaded.colorSpace = SRGBColorSpace` para que las texturas recuperen su color natural.
+3. **`components/LandingHero.tsx`**: Implementada animación con Framer Motion para el collage de portadas, dándole un movimiento de traslación diagonal en loop de espejo.
+
+### Archivos modificados
+- `supabase/migrations/047_audit_fixes_seller_security.sql`
+- `components/FloatingBook3D.tsx`
+- `components/LandingHero.tsx`
+
+---
+
 ## [2026-06-24-B] — Fix: Visibilidad Real de Portadas en Landing (CORS y Stacking Context)
 
 ### Problema

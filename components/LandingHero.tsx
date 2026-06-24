@@ -46,7 +46,11 @@ export default function LandingHero({ covers }: { covers: string[] }) {
       {collageCovers.length > 0 && (
         <div className="fixed inset-0 pointer-events-none -z-20 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#0a0a0a]/40 to-[#0a0a0a] z-10" />
-            <div className="grid grid-cols-4 gap-2 w-full h-full rotate-12 scale-125 opacity-[0.25]">
+            <motion.div 
+              animate={{ x: [0, -50], y: [0, -50] }}
+              transition={{ repeat: Infinity, repeatType: "mirror", duration: 25, ease: "linear" }}
+              className="grid grid-cols-4 gap-2 w-full h-full rotate-12 scale-[1.3] opacity-[0.25]"
+            >
             {collageCovers.map((url, i) => (
               <div
                 key={i}
@@ -75,7 +79,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
                 />
               </div>
             ))}
-          </div>
+            </motion.div>
         </div>
       )}
 
