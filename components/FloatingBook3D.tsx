@@ -1,28 +1,59 @@
 "use client";
 
-import { useRef, Suspense } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useTexture } from "@react-three/drei";
-import { Group, SRGBColorSpace, Texture } from "three";
+import { Group, SRGBColorSpace, Texture, TextureLoader } from "three";
 
-// Preload the fallback texture to avoid suspension issues
 const FALLBACK_URL = "https://picsum.photos/seed/fallback/400/600";
 
 function BookMesh({ coverUrl }: { coverUrl: string }) {
   const groupRef = useRef<Group>(null);
   const { pointer } = useThree();
-  
-  // useTexture handles caching, loading, and StrictMode lifecycle perfectly
-  // We use an array so we can pass multiple, but here we just need one.
-  let texture: Texture | null = null;
-  try {
-    texture = useTexture(coverUrl || FALLBACK_URL);
-    texture.colorSpace = SRGBColorSpace;
-  } catch (e) {
-    console.warn("Failed to load texture, using fallback");
-  }
+  const [texture, setTexture] = useState<Texture | null>(null);
 
-  const imgAspect = texture?.image ? texture.image.width / texture.image.height : 1.5;
+  useEffect(() => {
+    let active = true;
+    const urlToLoad = coverUrl || FALLBACK_URL;
+    
+    const loader = new TextureLoader();
+    loader.setCrossOrigin("anonymous");
+    
+    loader.load(
+      urlToLoad,
+      (tex) => {
+        if (!active) {
+          tex.dispose();
+          return;
+        }
+        tex.colorSpace = SRGBColorSpace;
+        tex.needsUpdate = true;
+        setTexture(tex);
+      },
+      undefined,
+      (err) => {
+        console.warn("Texture failed to load", urlToLoad);
+        if (urlToLoad !== FALLBACK_URL && active) {
+          loader.load(FALLBACK_URL, (fallbackTex) => {
+             if (!active) {
+               fallbackTex.dispose();
+               return;
+             }
+             fallbackTex.colorSpace = SRGBColorSpace;
+             fallbackTex.needsUpdate = true;
+             setTexture(fallbackTex);
+          });
+        }
+      }
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [coverUrl]);
+
+  const imgAspect = texture?.image && texture.image.width && texture.image.height 
+    ? texture.image.width / texture.image.height 
+    : 1.5;
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -98,9 +129,7 @@ function Scene({ coverUrl }: { coverUrl: string }) {
       <directionalLight position={[-2, -1, -3]} intensity={0.4} color="#a855f7" />
       <pointLight position={[0, 2, 3]} intensity={0.3} color="#d946ef" />
       <hemisphereLight args={["#ffffff", "#444466", 0.4]} />
-      <Suspense fallback={null}>
-        <BookMesh coverUrl={coverUrl} />
-      </Suspense>
+      <BookMesh coverUrl={coverUrl} />
     </>
   );
 }
