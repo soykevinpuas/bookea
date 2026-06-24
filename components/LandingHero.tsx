@@ -1,23 +1,32 @@
 "use client";
 
-import { useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { BookOpen, Zap, Smartphone, Star } from "lucide-react";
-import { motion, useInView } from "framer-motion";
+import {
+  BookOpen,
+  Zap,
+  Smartphone,
+  Star,
+} from "lucide-react";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import FloatingBook3D from "@/components/FloatingBook3D";
 
-const covers = [
-  "https://picsum.photos/seed/bookea1/400/600",
-  "https://picsum.photos/seed/bookea2/400/600",
-  "https://picsum.photos/seed/bookea3/400/600",
-];
-
 const fadeUp = {
-  initial: { opacity: 0, y: 30 },
+  initial: { opacity: 0, y: 24 },
   animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -12 },
 };
 
-export default function LandingHero() {
+export default function LandingHero({ covers }: { covers: string[] }) {
+  const [mounted, setMounted] = useState(false);
+  const [heroReady, setHeroReady] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const t = setTimeout(() => setHeroReady(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
   const featuresRef = useRef(null);
   const stepsRef = useRef(null);
   const testimonialsRef = useRef(null);
@@ -25,49 +34,81 @@ export default function LandingHero() {
   const stepsInView = useInView(stepsRef, { once: true, margin: "-80px" });
   const testimonialsInView = useInView(testimonialsRef, { once: true, margin: "-80px" });
 
-  const randomCover = covers[Math.floor(Math.random() * covers.length)];
+  const randomCover = covers.length > 0
+    ? covers[Math.floor(Math.random() * covers.length)]
+    : "";
+
+  const collageCovers = covers.slice(0, 8);
+
+  const fadeIn = (delay = 0) =>
+    mounted
+      ? { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.5 } }
+      : { initial: false, animate: { opacity: 1, y: 0 }, transition: { delay: 0, duration: 0 } };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 overflow-x-hidden font-sans selection:bg-amber-500/30 relative">
+
+      {/* Collage grid background */}
+      {collageCovers.length > 0 && (
+        <div className="fixed inset-0 pointer-events-none -z-20 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#0a0a0a]/95 to-[#0a0a0a] z-10" />
+          <div className="grid grid-cols-4 gap-2 w-full h-full rotate-12 scale-125 opacity-[0.08]">
+            {collageCovers.map((url, i) => (
+              <div
+                key={i}
+                className="relative overflow-hidden rounded-lg"
+                style={{ aspectRatio: "3/4" }}
+              >
+                <img
+                  src={url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+            {collageCovers.slice(0, 4).map((url, i) => (
+              <div
+                key={`r2-${i}`}
+                className="relative overflow-hidden rounded-lg"
+                style={{ aspectRatio: "3/4" }}
+              >
+                <img
+                  src={url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Grain overlay */}
       <div className="fixed inset-0 pointer-events-none -z-10 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")", backgroundRepeat: "repeat", backgroundSize: "256px 256px" }} />
 
       {/* Grid pattern */}
-      <div className="fixed inset-0 pointer-events-none -z-10 opacity-[0.04]"
+      <div className="fixed inset-0 pointer-events-none -z-10 opacity-[0.03]"
         style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
 
       {/* Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-amber-600/10 blur-[150px] pointer-events-none -z-10" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-orange-600/10 blur-[150px] pointer-events-none -z-10" />
-      <div className="absolute top-[40%] left-[50%] w-[30%] h-[30%] rounded-full bg-amber-500/5 blur-[120px] pointer-events-none -z-10" />
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-amber-600/8 blur-[150px] pointer-events-none -z-10" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-orange-600/8 blur-[150px] pointer-events-none -z-10" />
 
       {/* ─── HERO ─── */}
       <main className="max-w-7xl mx-auto px-6 pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pb-28 relative z-10 min-h-screen flex items-center">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center w-full">
 
-          {/* Hero text */}
-          <motion.div
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7, ease: "easeOut" }}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-950/50 border border-amber-800/40 text-amber-300 text-sm font-medium mb-6 backdrop-blur-sm"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Lectura ilimitada &mdash; $99 MXN/mes</span>
+          <div>
+            <motion.div {...fadeIn(0.1)}>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-950/50 border border-amber-800/40 text-amber-300 text-sm font-medium mb-6 backdrop-blur-sm">
+                <Zap className="w-3.5 h-3.5" />
+                <span>Lectura ilimitada &mdash; $99 MXN/mes</span>
+              </div>
             </motion.div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-              className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tighter mb-6 text-white leading-[1.05]"
-            >
+            <motion.h1 {...fadeIn(0.2)} className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tighter mb-6 text-white leading-[1.05]">
               Lee sin{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500">
                 l&iacute;mites
@@ -75,21 +116,11 @@ export default function LandingHero() {
               .
             </motion.h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45, duration: 0.6 }}
-              className="text-lg sm:text-xl text-gray-400 mb-10 max-w-xl leading-relaxed"
-            >
+            <motion.p {...fadeIn(0.3)} className="text-lg sm:text-xl text-gray-400 mb-10 max-w-xl leading-relaxed">
               Acceso ilimitado a cientos de libros digitales. Lee en l&iacute;nea, descarga para offline y sincroniza tu progreso en todos tus dispositivos.
             </motion.p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.6 }}
-              className="flex flex-col sm:flex-row items-start gap-4"
-            >
+            <motion.div {...fadeIn(0.4)} className="flex flex-col sm:flex-row items-start gap-4">
               <Link
                 href="/subscribe"
                 className="group w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl font-bold text-lg transition-all duration-300 shadow-lg shadow-amber-700/20 hover:shadow-amber-600/40 hover:-translate-y-0.5 flex items-center justify-center gap-2"
@@ -106,25 +137,17 @@ export default function LandingHero() {
               </Link>
             </motion.div>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8, duration: 0.5 }}
-              className="mt-8 text-sm text-gray-600 flex items-center gap-2"
-            >
+            <motion.p {...fadeIn(0.5)} className="mt-8 text-sm text-gray-600 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500/60" />
               Sin permanencia &mdash; cancela cuando quieras
             </motion.p>
-          </motion.div>
+          </div>
 
-          {/* Hero 3D Book */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.35, duration: 0.8, ease: "easeOut" }}
-            className="h-[320px] sm:h-[380px] lg:h-[480px] xl:h-[520px]"
+            {...fadeIn(0.25)}
+            className="h-[300px] sm:h-[360px] lg:h-[460px] xl:h-[500px]"
           >
-            <FloatingBook3D coverUrl={randomCover} />
+            {randomCover && <FloatingBook3D coverUrl={randomCover} />}
           </motion.div>
         </div>
       </main>
@@ -133,8 +156,8 @@ export default function LandingHero() {
       <section ref={stepsRef} className="border-t border-white/5 bg-white/[0.02]">
         <div className="max-w-7xl mx-auto px-6 py-20 sm:py-28">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={stepsInView ? { opacity: 1, y: 0 } : {}}
+            initial={false}
+            animate={stepsInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
@@ -150,13 +173,13 @@ export default function LandingHero() {
                 num: "01",
                 icon: Zap,
                 title: "Activa tu membres&iacute;a",
-                desc: "Suscr&iacute;bete por $99 MXN al mes. Sin permanencia, cancela cuando quieras desde tu perfil.",
+                desc: "Suscr&iacute;bete por $99 MXN al mes. Sin permanencia, cancela cuando quieras.",
               },
               {
                 num: "02",
                 icon: BookOpen,
                 title: "Elige tu libro",
-                desc: "Explora cientos de t&iacute;tulos en nuestro cat&aacute;logo y agrega tus favoritos a tu biblioteca digital.",
+                desc: "Explora cientos de t&iacute;tulos en nuestro cat&aacute;logo y agrega tus favoritos a tu biblioteca.",
               },
               {
                 num: "03",
@@ -167,9 +190,9 @@ export default function LandingHero() {
             ].map((step, i) => (
               <motion.div
                 key={step.num}
-                initial={{ opacity: 0, y: 30 }}
-                animate={stepsInView ? { opacity: 1, y: 0 } : {}}
-                transition={{ delay: i * 0.15, duration: 0.5 }}
+                initial={false}
+                animate={stepsInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.12, duration: 0.4 }}
                 className="relative text-center md:text-left"
               >
                 {i < 2 && (
@@ -190,8 +213,8 @@ export default function LandingHero() {
       <section ref={featuresRef} className="border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6 py-20 sm:py-28">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={featuresInView ? { opacity: 1, y: 0 } : {}}
+            initial={false}
+            animate={featuresInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
@@ -201,11 +224,7 @@ export default function LandingHero() {
             </h2>
           </motion.div>
 
-          <motion.div
-            initial="initial"
-            animate={featuresInView ? "animate" : "initial"}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6"
-          >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
                 icon: BookOpen,
@@ -228,9 +247,9 @@ export default function LandingHero() {
             ].map((item, i) => (
               <motion.div
                 key={item.title}
-                initial={{ opacity: 0, y: 30 }}
-                animate={featuresInView ? { opacity: 1, y: 0 } : {}}
-                transition={{ delay: i * 0.12, duration: 0.5 }}
+                initial={false}
+                animate={featuresInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1, duration: 0.4 }}
                 className="group relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8 hover:bg-white/[0.06] transition-all duration-300"
               >
                 <div className={`w-12 h-12 ${item.color} rounded-xl flex items-center justify-center mb-5 border`}>
@@ -240,7 +259,7 @@ export default function LandingHero() {
                 <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -248,8 +267,8 @@ export default function LandingHero() {
       <section ref={testimonialsRef} className="border-t border-white/5 bg-white/[0.02]">
         <div className="max-w-7xl mx-auto px-6 py-20 sm:py-28">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={testimonialsInView ? { opacity: 1, y: 0 } : {}}
+            initial={false}
+            animate={testimonialsInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
@@ -282,9 +301,9 @@ export default function LandingHero() {
             ].map((t, i) => (
               <motion.div
                 key={t.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={testimonialsInView ? { opacity: 1, y: 0 } : {}}
-                transition={{ delay: i * 0.12, duration: 0.5 }}
+                initial={false}
+                animate={testimonialsInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.12, duration: 0.4 }}
                 className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6"
               >
                 <div className="flex gap-0.5 mb-4">

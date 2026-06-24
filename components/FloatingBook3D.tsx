@@ -2,23 +2,31 @@
 
 import { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { TextureLoader, Group, type Texture } from "three";
-import { useTexture } from "@react-three/drei";
+import { TextureLoader, Group } from "three";
 
 function BookMesh({ coverUrl }: { coverUrl: string }) {
   const groupRef = useRef<Group>(null);
   const { pointer } = useThree();
-  const texture = useTexture(coverUrl);
+  const [texture, setTexture] = useState<any>(null);
   const [imgAspect, setImgAspect] = useState(1.5);
 
   useEffect(() => {
-    if (texture?.image) {
-      const img = texture.image as HTMLImageElement;
-      if (img?.width && img?.height) {
-        setImgAspect(img.width / img.height);
-      }
-    }
-  }, [texture]);
+    if (!coverUrl) return;
+    const loader = new TextureLoader();
+    const tex = loader.load(
+      coverUrl,
+      (loaded) => {
+        setTexture(loaded);
+        const img = loaded.image as HTMLImageElement;
+        if (img?.width && img?.height) {
+          setImgAspect(img.width / img.height);
+        }
+      },
+      undefined,
+      () => { /* error - texture stays null, fallback shows plain book */ },
+    );
+    return () => { tex.dispose(); };
+  }, [coverUrl]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -86,6 +94,8 @@ function Scene({ coverUrl }: { coverUrl: string }) {
 }
 
 export default function FloatingBook3D({ coverUrl, className = "" }: { coverUrl: string; className?: string }) {
+  if (!coverUrl) return null;
+
   return (
     <div className={`w-full h-full ${className}`}>
       <Canvas
