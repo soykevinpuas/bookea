@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import {
   BookOpen,
@@ -25,11 +25,14 @@ export default function LandingHero({ covers }: { covers: string[] }) {
   const stepsInView = useInView(stepsRef, { once: true, margin: "-80px" });
   const testimonialsInView = useInView(testimonialsRef, { once: true, margin: "-80px" });
 
-  const randomCover = covers.length > 0
-    ? covers[Math.floor(Math.random() * covers.length)]
-    : "";
+  const randomCover = useMemo(
+    () => covers.length > 0
+      ? covers[Math.floor(Math.random() * covers.length)]
+      : "",
+    [covers]
+  );
 
-  const collageCovers = covers.slice(0, 8);
+  const collageCovers = useMemo(() => covers.slice(0, 8), [covers]);
 
   const fadeIn = (delay = 0) =>
     mounted
@@ -43,7 +46,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
       {collageCovers.length > 0 && (
         <div className="fixed inset-0 pointer-events-none -z-20 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#0a0a0a]/95 to-[#0a0a0a] z-10" />
-          <div className="grid grid-cols-4 gap-2 w-full h-full rotate-12 scale-125 opacity-[0.08]">
+            <div className="grid grid-cols-4 gap-2 w-full h-full rotate-12 scale-125 opacity-[0.25]">
             {collageCovers.map((url, i) => (
               <div
                 key={i}

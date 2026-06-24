@@ -69,7 +69,7 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
       ) : (
         <mesh position={[0, 0, bookDepth / 2 + 0.001]}>
           <planeGeometry args={[bookWidth, bookHeight]} />
-          <meshStandardMaterial color="#2a2a2a" roughness={0.8} />
+          <meshStandardMaterial color="#8B7355" roughness={0.8} />
         </mesh>
       )}
 

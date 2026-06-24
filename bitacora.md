@@ -4,6 +4,28 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-06-24-A] — Fix: portadas visibles en landing page
+
+### Problema
+La landing page no mostraba las portadas de los libros. El collage de fondo tenía `opacity-[0.08]` (8%) haciéndolo invisible sobre fondo oscuro, y el libro 3D se veía oscuro porque `randomCover` se recalculaba en cada render (sin `useMemo`), causando que Three.js TextureLoader reiniciara la carga de textura constantemente.
+
+### Cambios
+1. **`components/LandingHero.tsx`** — `randomCover` y `collageCovers` envueltos en `useMemo` para que no cambien en cada re-render
+2. **`components/LandingHero.tsx`** — Opacidad del collage de `opacity-[0.08]` → `opacity-[0.25]` para que las portadas sean visibles como fondo
+3. **`components/FloatingBook3D.tsx`** — Color de fallback de portada cambiado de `#2a2a2a` (oscuro, invisible sobre fondo oscuro) a `#8B7355` (tono cuero visible)
+4. **`app/layout.tsx`** — Eliminado `manifest: "/manifest.json"` del metadata (causaba error CORS en previews de Vercel con Auth)
+5. **`public/sw.js`** — Quitado `/manifest.json` del precache + estrategia Network First para portadas + bump de caché a v4/v2
+6. **`app/page.tsx`** — Migrado a `createAdminClient()` para saltar RLS + try/catch para robustez
+
+### Archivos modificados
+- `components/LandingHero.tsx`
+- `components/FloatingBook3D.tsx`
+- `app/layout.tsx`
+- `public/sw.js`
+- `app/page.tsx`
+
+---
+
 ## [2026-06-06-F] — Fix: Header visible en Mi Tienda, sidebar cubierto por Header, barra fea eliminada
 
 ### Cambios
