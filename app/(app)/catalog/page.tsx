@@ -11,7 +11,7 @@ import { CatalogSkeleton, PrefetchLink } from "@/components/ui/LoadingStates";
 import { useMemo, useState, Suspense, useEffect } from "react";
 import { Book } from "@/types/book";
 import { useCartStore } from "@/stores/cart";
-import { ShoppingCart, Loader2, CheckCircle2, Search, LayoutGrid, List } from "lucide-react";
+import { ShoppingCart, Loader2, CheckCircle2, Search, LayoutGrid, List, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 // 3.1 - CatalogContent: Lógica interna del catálogo con React Query para velocidad SPA
@@ -179,6 +179,18 @@ function CatalogContent() {
                     </PrefetchLink>
                     <p className="text-[11px] text-gray-400 dark:text-zinc-500 line-clamp-1">{book.author}</p>
                     <div className="flex items-start gap-1.5 mt-auto pt-2">
+                      {subscription?.role === 'vendedor' ? (
+                        book.epub_url ? (
+                          <span className="text-[10px] font-semibold text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap">
+                            <Zap className="w-3 h-3 fill-green-400" /> Disponible
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-gray-500 bg-white/5 border border-white/10 px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap">
+                            <Zap className="w-3 h-3" /> Sin epub
+                          </span>
+                        )
+                      ) : (
+                        <>
                       {showDigital && book.price_digital > 0 && book.epub_url && (
                         ownedDigitalIds.has(book.id) ? (
                           <span className="text-[10px] font-semibold text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap">
@@ -215,6 +227,8 @@ function CatalogContent() {
                           </div>
                         )
                       )}
+                        </>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -235,6 +249,18 @@ function CatalogContent() {
                     </div>
                   </PrefetchLink>
                   <div className="flex items-start gap-2 shrink-0">
+                    {subscription?.role === 'vendedor' ? (
+                      book.epub_url ? (
+                        <span className="text-[10px] font-semibold text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-1.5 rounded-lg flex items-center gap-1 whitespace-nowrap">
+                          <Zap className="w-3 h-3 fill-green-400" /> Disponible
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-semibold text-gray-500 bg-white/5 border border-white/10 px-2 py-1.5 rounded-lg flex items-center gap-1 whitespace-nowrap">
+                          <Zap className="w-3 h-3" /> Sin epub
+                        </span>
+                      )
+                    ) : (
+                      <>
                     {showDigital && book.price_digital > 0 && book.epub_url && (
                       ownedDigitalIds.has(book.id) ? (
                         <span className="text-[10px] font-semibold text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-1.5 rounded-lg flex items-center gap-1 whitespace-nowrap">
@@ -270,6 +296,8 @@ function CatalogContent() {
                           <span className="text-[9px] text-gray-400 dark:text-zinc-500">Físico</span>
                         </div>
                       )
+                    )}
+                    </>
                     )}
                   </div>
                 </Card>

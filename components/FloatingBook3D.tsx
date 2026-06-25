@@ -118,7 +118,7 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
       const targetRotX = -pointer.y * 0.3;
       groupRef.current.rotation.y += (targetRotY - groupRef.current.rotation.y) * delta * 2;
       groupRef.current.rotation.x += (targetRotX - groupRef.current.rotation.x) * delta * 2;
-      groupRef.current.position.y = Math.sin(Date.now() * 0.001) * 0.15;
+      groupRef.current.position.y = Math.sin(Date.now() * 0.001) * 0.06;
     }
 
     // Smooth crossfade

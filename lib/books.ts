@@ -14,7 +14,8 @@ export async function getBooks(
     let query = supabase
       .from("books")
       .select("*")
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .or("epub_url.not.is,null,stock_physical.gt.0");
 
     if (filters?.search) {
       // Búsqueda simple en título o autor

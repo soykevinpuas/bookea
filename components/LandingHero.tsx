@@ -107,7 +107,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
 
             <motion.h1 {...fadeIn(0.2)} className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tighter mb-6 text-white leading-[1.05]">
               Tu biblioteca infinita en{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-400 to-purple-500 inline-flex">
+              <span className="inline-flex">
                 {"Bookea".split("").map((letter, i) => (
                   <motion.span
                     key={i}
@@ -118,7 +118,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
                       delay: i * 0.12,
                       ease: "easeInOut",
                     }}
-                    className="inline-block"
+                    className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-400 to-purple-500"
                     style={{ display: "inline-block" }}
                   >
                     {letter}
