@@ -21,23 +21,11 @@ export default async function Home() {
       .limit(50);
     covers = (books ?? [])
       .map((b) => b.cover_url)
-      .filter((url): url is string => !!url);
+      .filter((url): url is string => !!url)
+      .sort(() => Math.random() - 0.5);
   } catch (e) {
     // Fallback silencioso
   }
-
-  // Mezclar portadas reales con fallbacks para asegurar variedad
-  const fallbacks = [
-    "https://picsum.photos/seed/fallback1/400/600",
-    "https://picsum.photos/seed/fallback2/400/600",
-    "https://picsum.photos/seed/fallback3/400/600",
-    "https://picsum.photos/seed/fallback4/400/600",
-    "https://picsum.photos/seed/fallback5/400/600",
-    "https://picsum.photos/seed/fallback6/400/600",
-    "https://picsum.photos/seed/fallback7/400/600",
-    "https://picsum.photos/seed/fallback8/400/600",
-  ];
-  covers = [...covers, ...fallbacks].sort(() => Math.random() - 0.5);
 
   return <LandingHero covers={covers} />;
 }

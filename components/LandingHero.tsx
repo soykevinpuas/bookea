@@ -135,11 +135,22 @@ export default function LandingHero({ covers }: { covers: string[] }) {
             <motion.div {...fadeIn(0.4)} className="flex flex-col sm:flex-row items-start gap-4">
               <Link
                 href="/subscribe"
-                className="group w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white rounded-xl font-bold text-lg transition-all duration-300 shadow-lg shadow-purple-700/20 hover:shadow-purple-600/40 hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                className="group w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white rounded-xl font-bold text-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center gap-2 relative"
               >
-                <Zap className="w-5 h-5" />
-                Activar Premium
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <motion.div
+                  className="absolute inset-0 rounded-xl"
+                  animate={{ boxShadow: ["0 0 20px rgba(168,85,247,0.15)", "0 0 45px rgba(168,85,247,0.5)", "0 0 20px rgba(168,85,247,0.15)"] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <motion.span
+                  animate={{ scale: [1, 1.2, 1], rotate: [0, -8, 8, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="inline-flex relative"
+                >
+                  <Zap className="w-5 h-5" />
+                </motion.span>
+                <span className="relative">Activar Premium</span>
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative" />
               </Link>
               <Link
                 href="/catalogo"
@@ -151,12 +162,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
             </motion.div>
 
             <motion.div {...fadeIn(0.5)} className="mt-10 flex items-center gap-4 text-sm text-gray-500">
-              <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-white/10" />
-                ))}
-              </div>
-              <p>+10,000 lectores ya están dentro</p>
+              <p>Sin permanencia. Cancela cuando quieras.</p>
             </motion.div>
           </div>
 
@@ -306,20 +312,20 @@ export default function LandingHero({ covers }: { covers: string[] }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
-                name: "Sofía R.",
-                handle: "@sofireads",
+                name: "Sofía Rivera",
+                handle: "@sofia.rivera",
                 text: "Desde que tengo Bookea leo el doble. Poder llevar todos mis libros en el celular me cambió la vida.",
                 rating: 5,
               },
               {
-                name: "Carlos M.",
-                handle: "@carloslibros",
+                name: "Carlos Mendoza",
+                handle: "@carlos.mdz",
                 text: "Por lo que cuesta un café al mes tengo acceso a un catálogo enorme. La mejor suscripción que he probado.",
                 rating: 5,
               },
               {
-                name: "Ana G.",
-                handle: "@anabooks",
+                name: "Ana García",
+                handle: "@ana.garcia.lit",
                 text: "El lector es muy bueno y la sincronización funciona perfecto entre mi iPad y mi celular.",
                 rating: 5,
               },
@@ -338,9 +344,11 @@ export default function LandingHero({ covers }: { covers: string[] }) {
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6">&ldquo;{t.text}&rdquo;</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center text-white text-xs font-bold">
-                    {t.name.charAt(0)}
-                  </div>
+                  <img
+                    src={`https://api.dicebear.com/7.x/thumbs/svg?seed=${t.name.replace(/\s/g, '')}&size=36`}
+                    alt={t.name}
+                    className="w-9 h-9 rounded-full bg-purple-500/10"
+                  />
                   <div>
                     <p className="text-sm font-semibold text-white">{t.name}</p>
                     <p className="text-xs text-gray-500">{t.handle}</p>

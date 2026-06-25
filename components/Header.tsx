@@ -54,7 +54,7 @@ export function Header() {
     };
   }, []);
 
-  if (pathname?.startsWith("/reader") || pathname === "/") {
+  if (pathname?.startsWith("/reader") || pathname === "/" || pathname?.startsWith("/login") || pathname?.startsWith("/register")) {
     return null;
   }
 

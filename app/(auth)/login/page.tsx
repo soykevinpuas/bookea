@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { createClientClient } from '@/lib/supabase'
+import CoversBackground from '@/components/CoversBackground'
 
 // 2.1 - LoginPage: Componente de formulario para inicio de sesión de usuarios existentes
 export default function LoginPage() {
@@ -49,8 +50,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">
-      <div className="w-full max-w-md p-8 bg-white dark:bg-white/5 rounded-2xl shadow-lg border border-gray-100 dark:border-white/10 backdrop-blur-sm">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300 relative">
+      <CoversBackground />
+      <div className="w-full max-w-md p-8 bg-white/80 dark:bg-[#0a0a0a]/80 rounded-2xl shadow-lg border border-gray-100 dark:border-white/10 backdrop-blur-xl">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
             <h1 className="text-3xl font-black tracking-tighter text-gray-900 dark:text-white">
