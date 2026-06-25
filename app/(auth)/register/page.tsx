@@ -48,7 +48,7 @@ function RegisterContent() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300 relative">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 bg-gray-50/70 dark:bg-[#0a0a0a]/70 retro:bg-[#0d1117]/70 transition-colors duration-300 relative">
       <CoversBackground />
       <div className="w-full max-w-md p-8 bg-white/80 dark:bg-[#0a0a0a]/80 rounded-2xl shadow-lg border border-gray-100 dark:border-white/10 backdrop-blur-xl">
         <div className="text-center mb-8">

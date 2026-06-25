@@ -38,6 +38,34 @@ export default function SubscribePage() {
     );
   }
 
+  if (!userId) {
+    return (
+      <div className="min-h-screen bg-[#070708] text-white selection:bg-amber-500/30 flex items-center justify-center">
+        <div className="text-center max-w-md px-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-bold mb-8 uppercase tracking-widest">
+            <Zap className="w-3.5 h-3.5" />
+            <span>Membresía Premium</span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-4 text-white">
+            Inicia sesión para activar Premium
+          </h1>
+          <p className="text-white/50 mb-8">Crea tu cuenta o inicia sesión y accede a todo el catálogo digital sin límites.</p>
+          <Link
+            href="/login?redirect=/subscribe"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-lg rounded-2xl transition-all shadow-[0_0_40px_rgba(245,158,11,0.2)] hover:shadow-[0_0_60px_rgba(245,158,11,0.4)]"
+          >
+            Iniciar sesión
+            <ArrowRight className="w-5 h-5" />
+          </Link>
+          <p className="mt-4 text-sm text-white/30">
+            ¿No tienes cuenta?{' '}
+            <Link href="/register" className="text-amber-500 hover:underline">Regístrate</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const handleSubscribe = async () => {
     try {
       setLoading(true);

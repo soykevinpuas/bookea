@@ -56,6 +56,7 @@ export async function register(formData: FormData) {
       'Password should be at least 6 characters': 'La contraseña debe tener al menos 6 caracteres.',
       'Signups not allowed': 'Los registros están deshabilitados temporalmente.',
       'Email rate limit exceeded': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
+      'Database error saving new user': 'Error al crear usuario. Si el problema persiste, contacta a soporte (posible configuración de Supabase: verifica que "Enable public signups" esté activado en Authentication > Settings).',
     };
     const friendly = Object.entries(messages).find(([key]) => error.message?.includes(key))?.[1];
     redirect(`/register?error=${encodeURIComponent(friendly || error.message || 'Error desconocido')}`)
