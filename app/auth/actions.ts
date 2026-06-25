@@ -51,7 +51,14 @@ export async function register(formData: FormData) {
 
   if (error) {
     console.error('Error al registrar:', error)
-    redirect('/error')
+    const messages: Record<string, string> = {
+      'User already registered': 'Este correo ya está registrado. Inicia sesión.',
+      'Password should be at least 6 characters': 'La contraseña debe tener al menos 6 caracteres.',
+      'Signups not allowed': 'Los registros están deshabilitados temporalmente.',
+      'Email rate limit exceeded': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
+    };
+    const friendly = Object.entries(messages).find(([key]) => error.message?.includes(key))?.[1];
+    redirect(`/register?error=${encodeURIComponent(friendly || error.message || 'Error desconocido')}`)
   }
 
   // 2.3.1 - Tracking de analytics: nuevo registro

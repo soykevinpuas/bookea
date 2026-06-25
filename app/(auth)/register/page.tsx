@@ -5,11 +5,14 @@ import Link from 'next/link'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import CoversBackground from '@/components/CoversBackground'
+import { Eye, EyeOff } from 'lucide-react'
 
 function RegisterContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [referrerId, setReferrerId] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
@@ -18,6 +21,14 @@ function RegisterContent() {
     const ref = searchParams.get('ref');
     if (ref) {
       setReferrerId(ref);
+    }
+  }, [searchParams]);
+
+  // Mostrar error del servidor si viene en la URL
+  useEffect(() => {
+    const err = searchParams.get('error');
+    if (err) {
+      setError(err);
     }
   }, [searchParams]);
 
@@ -81,17 +92,26 @@ function RegisterContent() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="password">
               Contraseña
             </label>
-            <input 
-              id="password"
-              name="password" 
-              type="password" 
-              placeholder="••••••••" 
-              minLength={6}
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(''); }}
-              className="w-full p-3 bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-              required 
-            />
+            <div className="relative">
+              <input 
+                id="password"
+                name="password" 
+                type={showPassword ? "text" : "password"} 
+                placeholder="••••••••" 
+                minLength={6}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                className="w-full p-3 pr-12 bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                required 
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
             <p className="text-xs text-gray-500 mt-2">Mínimo 6 caracteres</p>
           </div>
 
@@ -100,19 +120,28 @@ function RegisterContent() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="confirmPassword">
               Confirmar contraseña
             </label>
-            <input 
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password" 
-              placeholder="••••••••" 
-              minLength={6}
-              value={confirmPassword}
-              onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
-              className={`w-full p-3 bg-gray-50 dark:bg-black/50 border rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${
-                error ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-white/10'
-              }`}
-              required 
-            />
+            <div className="relative">
+              <input 
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirm ? "text" : "password"} 
+                placeholder="••••••••" 
+                minLength={6}
+                value={confirmPassword}
+                onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                className={`w-full p-3 pr-12 bg-gray-50 dark:bg-black/50 border rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${
+                  error ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-white/10'
+                }`}
+                required 
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
+              >
+                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
             {error && (
               <p className="text-xs text-red-500 mt-2 font-medium">{error}</p>
             )}
