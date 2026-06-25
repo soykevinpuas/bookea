@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Group, SRGBColorSpace, Texture, TextureLoader } from "three";
+import { Group, SRGBColorSpace, Texture, TextureLoader, MeshBasicMaterial } from "three";
 
 const FALLBACK_URL = "https://picsum.photos/seed/fallback/400/600";
 
@@ -12,7 +12,7 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
   const [texture, setTexture] = useState<Texture | null>(null);
   const [prevTexture, setPrevTexture] = useState<Texture | null>(null);
   const currentTexRef = useRef<Texture | null>(null);
-  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const materialRef = useRef<MeshBasicMaterial>(null);
 
   useEffect(() => {
     let active = true;
