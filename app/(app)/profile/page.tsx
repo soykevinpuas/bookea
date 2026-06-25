@@ -468,15 +468,47 @@ export default function ProfilePage() {
                   Seguridad
                 </h3>
 
-                <button onClick={handlePasswordReset} disabled={passwordLoading}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-200 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl hover:bg-gray-300 dark:hover:bg-white/10 transition-all disabled:opacity-50">
-                  <div className="flex items-center gap-3">
+                <div className="p-5 bg-gray-200 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl space-y-4">
+                  <div className="flex items-center gap-3 mb-2">
                     <Key className="w-4 h-4 text-blue-500" />
                     <span className="text-sm font-semibold">Cambiar Contraseña</span>
                   </div>
-                  {passwordLoading ? <Loader2 className="w-4 h-4 animate-spin text-blue-500" /> : <span className="text-xs text-blue-500 font-medium">Enviar correo</span>}
-                </button>
-
+                  <input
+                    type="password"
+                    placeholder="Nueva contraseña (mínimo 6 caracteres)"
+                    className="w-full p-2.5 text-sm bg-white dark:bg-black/50 border border-gray-300 dark:border-white/20 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50"
+                    id="new-password-input"
+                  />
+                  <button 
+                    onClick={async () => {
+                      const input = document.getElementById("new-password-input") as HTMLInputElement;
+                      const newPassword = input.value;
+                      if (newPassword.length < 6) {
+                        toast.error("La contraseña debe tener al menos 6 caracteres");
+                        return;
+                      }
+                      setPasswordLoading(true);
+                      try {
+                        const supabase = createClientClient();
+                        const { error } = await supabase.auth.updateUser({ password: newPassword });
+                        if (error) {
+                          toast.error(error.message || "Error al actualizar contraseña");
+                        } else {
+                          toast.success("Contraseña actualizada con éxito");
+                          input.value = "";
+                        }
+                      } catch {
+                        toast.error("Error de conexión");
+                      } finally {
+                        setPasswordLoading(false);
+                      }
+                    }}
+                    disabled={passwordLoading}
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 text-sm"
+                  >
+                    {passwordLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Actualizar Contraseña"}
+                  </button>
+                </div>
                 {deleteStep === 0 ? (
                   <button onClick={() => setDeleteStep(1)}
                     className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-500/10 transition-all">
