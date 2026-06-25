@@ -21,10 +21,7 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
     loader.load(
       urlToLoad,
       (tex) => {
-        if (!active) {
-          tex.dispose();
-          return;
-        }
+        if (!active) return;
         tex.colorSpace = SRGBColorSpace;
         tex.needsUpdate = true;
         setTexture(tex);
@@ -34,10 +31,7 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
         console.warn("Texture failed to load", urlToLoad);
         if (urlToLoad !== FALLBACK_URL && active) {
           loader.load(FALLBACK_URL, (fallbackTex) => {
-             if (!active) {
-               fallbackTex.dispose();
-               return;
-             }
+             if (!active) return;
              fallbackTex.colorSpace = SRGBColorSpace;
              fallbackTex.needsUpdate = true;
              setTexture(fallbackTex);
@@ -86,7 +80,7 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
       <mesh position={[0, 0, bookDepth / 2 + 0.001]}>
         <planeGeometry args={[bookWidth, bookHeight]} />
         {texture ? (
-          <meshStandardMaterial map={texture} roughness={0.3} />
+          <meshBasicMaterial map={texture} />
         ) : (
           <meshStandardMaterial color="#8B7355" roughness={0.8} />
         )}
