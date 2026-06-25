@@ -10,6 +10,9 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
   const groupRef = useRef<Group>(null);
   const { pointer } = useThree();
   const [texture, setTexture] = useState<Texture | null>(null);
+  const [prevTexture, setPrevTexture] = useState<Texture | null>(null);
+  const currentTexRef = useRef<Texture | null>(null);
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
 
   useEffect(() => {
     let active = true;
@@ -24,7 +27,10 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
         if (!active) return;
         tex.colorSpace = SRGBColorSpace;
         tex.needsUpdate = true;
+        setPrevTexture(currentTexRef.current);
+        currentTexRef.current = tex;
         setTexture(tex);
+        if (materialRef.current) materialRef.current.opacity = 0;
       },
       undefined,
       (err) => {
@@ -34,7 +40,10 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
              if (!active) return;
              fallbackTex.colorSpace = SRGBColorSpace;
              fallbackTex.needsUpdate = true;
+             setPrevTexture(currentTexRef.current);
+             currentTexRef.current = fallbackTex;
              setTexture(fallbackTex);
+             if (materialRef.current) materialRef.current.opacity = 0;
           });
         }
       }
@@ -51,12 +60,18 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
     : 1.5;
 
   useFrame((_, delta) => {
-    if (!groupRef.current) return;
-    const targetRotY = pointer.x * 0.5;
-    const targetRotX = -pointer.y * 0.3;
-    groupRef.current.rotation.y += (targetRotY - groupRef.current.rotation.y) * delta * 2;
-    groupRef.current.rotation.x += (targetRotX - groupRef.current.rotation.x) * delta * 2;
-    groupRef.current.position.y = Math.sin(Date.now() * 0.001) * 0.15;
+    if (groupRef.current) {
+      const targetRotY = pointer.x * 0.5;
+      const targetRotX = -pointer.y * 0.3;
+      groupRef.current.rotation.y += (targetRotY - groupRef.current.rotation.y) * delta * 2;
+      groupRef.current.rotation.x += (targetRotX - groupRef.current.rotation.x) * delta * 2;
+      groupRef.current.position.y = Math.sin(Date.now() * 0.001) * 0.15;
+    }
+
+    // Smooth crossfade
+    if (materialRef.current && materialRef.current.opacity < 1) {
+      materialRef.current.opacity += delta * 2.5; // Fades in ~0.4s
+    }
   });
 
   const bookHeight = texture ? 2.7 : 2.4;
@@ -76,13 +91,21 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
         <meshStandardMaterial color="#1a1a1a" roughness={0.6} />
       </mesh>
 
-      {/* Front Cover */}
+      {/* Front Cover - Previous (Behind) */}
       <mesh position={[0, 0, bookDepth / 2 + 0.001]}>
         <planeGeometry args={[bookWidth, bookHeight]} />
-        {texture ? (
-          <meshBasicMaterial map={texture} />
+        {prevTexture ? (
+          <meshBasicMaterial map={prevTexture} />
         ) : (
           <meshStandardMaterial color="#8B7355" roughness={0.8} />
+        )}
+      </mesh>
+
+      {/* Front Cover - Current (Fading in) */}
+      <mesh position={[0, 0, bookDepth / 2 + 0.002]}>
+        <planeGeometry args={[bookWidth, bookHeight]} />
+        {texture && (
+          <meshBasicMaterial ref={materialRef} map={texture} transparent opacity={1} />
         )}
       </mesh>
 

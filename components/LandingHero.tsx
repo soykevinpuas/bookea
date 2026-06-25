@@ -25,19 +25,31 @@ export default function LandingHero({ covers }: { covers: string[] }) {
   const stepsInView = useInView(stepsRef, { once: true, margin: "-80px" });
   const testimonialsInView = useInView(testimonialsRef, { once: true, margin: "-80px" });
 
-  const randomCover = useMemo(
-    () => covers.length > 0
-      ? covers[Math.floor(Math.random() * covers.length)]
-      : "",
-    [covers]
-  );
+  useEffect(() => {
+    setIsClient(true);
+    if (covers.length > 0) {
+      setCurrentIndex(Math.floor(Math.random() * covers.length));
+    }
+  }, [covers]);
 
-  const collageCovers = useMemo(() => covers.slice(0, 8), [covers]);
+  const nextCover = useCallback(() => {
+    if (covers.length > 0) {
+      setCurrentIndex((prev) => {
+        let next = Math.floor(Math.random() * covers.length);
+        if (next === prev && covers.length > 1) {
+          next = (next + 1) % covers.length;
+        }
+        return next;
+      });
+    }
+  }, [covers]);
 
-  const fadeIn = (delay = 0) =>
-    mounted
-      ? { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.5 } }
-      : { initial: false, animate: { opacity: 1, y: 0 }, transition: { delay: 0, duration: 0 } };
+  useEffect(() => {
+    const timer = setInterval(nextCover, 3000);
+    return () => clearInterval(timer);
+  }, [nextCover, currentIndex]);
+
+  const collageCovers = [...covers, ...covers, ...covers].slice(0, 24);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 overflow-x-hidden font-sans selection:bg-purple-500/30 relative z-0">
@@ -54,26 +66,11 @@ export default function LandingHero({ covers }: { covers: string[] }) {
             {collageCovers.map((url, i) => (
               <div
                 key={i}
-                className="relative overflow-hidden rounded-lg"
-                style={{ aspectRatio: "3/4" }}
+                className="relative aspect-[2/3] rounded-md overflow-hidden bg-white/5 border border-white/5"
               >
                 <img
                   src={url}
-                  alt=""
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-            ))}
-            {collageCovers.slice(0, 4).map((url, i) => (
-              <div
-                key={`r2-${i}`}
-                className="relative overflow-hidden rounded-lg"
-                style={{ aspectRatio: "3/4" }}
-              >
-                <img
-                  src={url}
-                  alt=""
+                  alt="Book cover"
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
@@ -83,21 +80,19 @@ export default function LandingHero({ covers }: { covers: string[] }) {
         </div>
       )}
 
-      {/* Grain overlay */}
-      <div className="fixed inset-0 pointer-events-none -z-10 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")", backgroundRepeat: "repeat", backgroundSize: "256px 256px" }} />
-
-      {/* Grid pattern */}
-      <div className="fixed inset-0 pointer-events-none -z-10 opacity-[0.03]"
+      {/* Grid Pattern */}
+      <div 
+        className="fixed inset-0 pointer-events-none -z-10 opacity-20 mix-blend-overlay"
         style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
 
-      {/* Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/8 blur-[150px] pointer-events-none -z-10" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-fuchsia-600/8 blur-[150px] pointer-events-none -z-10" />
+      {/* Glows - changed to fixed to prevent scroll jank */}
+      <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/8 blur-[150px] pointer-events-none -z-10 will-change-transform" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-fuchsia-600/8 blur-[150px] pointer-events-none -z-10 will-change-transform" />
 
       {/* ─── HERO ─── */}
       <main className="max-w-7xl mx-auto px-6 pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pb-28 relative z-10 min-h-screen flex items-center">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center w-full">
-
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center w-full">
+          
           <div>
             <motion.div {...fadeIn(0.1)}>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-950/50 border border-purple-800/40 text-purple-300 text-sm font-medium mb-6 backdrop-blur-sm">
@@ -125,9 +120,10 @@ export default function LandingHero({ covers }: { covers: string[] }) {
               >
                 <Zap className="w-5 h-5" />
                 Activar Premium
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
-                href="/catalog"
+                href="/catalogo"
                 className="group w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl font-semibold text-lg transition-all duration-300 flex items-center justify-center gap-2"
               >
                 <BookOpen className="w-5 h-5" />
@@ -135,17 +131,29 @@ export default function LandingHero({ covers }: { covers: string[] }) {
               </Link>
             </motion.div>
 
-            <motion.p {...fadeIn(0.5)} className="mt-8 text-sm text-gray-600 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500/60" />
-              Sin permanencia &mdash; cancela cuando quieras
-            </motion.p>
+            <motion.div {...fadeIn(0.5)} className="mt-10 flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex -space-x-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-white/10" />
+                ))}
+              </div>
+              <p>+10,000 lectores ya están dentro</p>
+            </motion.div>
           </div>
 
           <motion.div
             {...fadeIn(0.25)}
-            className="h-[300px] sm:h-[360px] lg:h-[460px] xl:h-[500px]"
+            className="h-[300px] sm:h-[360px] lg:h-[460px] xl:h-[500px] relative group"
           >
-            {randomCover && <FloatingBook3D coverUrl={randomCover} />}
+            {isClient && covers.length > 0 && <FloatingBook3D coverUrl={covers[currentIndex]} />}
+            
+            <button
+              onClick={nextCover}
+              className="absolute bottom-4 right-4 bg-[#0a0a0a]/50 hover:bg-[#0a0a0a]/80 p-3 rounded-full backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover:opacity-100 shadow-lg z-20 text-white"
+              title="Siguiente portada"
+            >
+              <Dices className="w-6 h-6" />
+            </button>
           </motion.div>
         </div>
       </main>
