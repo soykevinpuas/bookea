@@ -1,10 +1,63 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Group, SRGBColorSpace, Texture, TextureLoader, MeshBasicMaterial } from "three";
+import { Group, SRGBColorSpace, Texture, TextureLoader, MeshBasicMaterial, BufferGeometry, Float32BufferAttribute, PointsMaterial, AdditiveBlending, Points } from "three";
 
 const FALLBACK_URL = "https://picsum.photos/seed/fallback/400/600";
+
+/* ─── Sparkle Particles ─── */
+function Sparkles({ count = 60 }: { count?: number }) {
+  const pointsRef = useRef<Points>(null);
+
+  const [positions, sizes] = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const siz = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 6;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 5;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 4;
+      siz[i] = Math.random() * 0.5 + 0.2;
+    }
+    return [pos, siz];
+  }, [count]);
+
+  const geometry = useMemo(() => {
+    const geo = new BufferGeometry();
+    geo.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    geo.setAttribute("size", new Float32BufferAttribute(sizes, 1));
+    return geo;
+  }, [positions, sizes]);
+
+  const material = useMemo(
+    () =>
+      new PointsMaterial({
+        color: "#c084fc",
+        size: 0.04,
+        transparent: true,
+        opacity: 0.7,
+        blending: AdditiveBlending,
+        depthWrite: false,
+        sizeAttenuation: true,
+      }),
+    []
+  );
+
+  useFrame((_, delta) => {
+    if (!pointsRef.current) return;
+    const posArr = pointsRef.current.geometry.attributes.position.array as Float32Array;
+    const time = Date.now() * 0.001;
+    for (let i = 0; i < count; i++) {
+      posArr[i * 3 + 1] += Math.sin(time + i * 0.5) * delta * 0.15;
+      posArr[i * 3] += Math.cos(time * 0.7 + i * 0.3) * delta * 0.08;
+    }
+    pointsRef.current.geometry.attributes.position.needsUpdate = true;
+    pointsRef.current.rotation.y += delta * 0.03;
+    material.opacity = 0.4 + Math.sin(time * 1.5) * 0.3;
+  });
+
+  return <points ref={pointsRef} geometry={geometry} material={material} />;
+}
 
 function BookMesh({ coverUrl }: { coverUrl: string }) {
   const groupRef = useRef<Group>(null);
@@ -148,6 +201,7 @@ function Scene({ coverUrl }: { coverUrl: string }) {
       <pointLight position={[0, 2, 3]} intensity={0.3} color="#d946ef" />
       <hemisphereLight args={["#ffffff", "#444466", 0.4]} />
       <BookMesh coverUrl={coverUrl} />
+      <Sparkles count={50} />
     </>
   );
 }
