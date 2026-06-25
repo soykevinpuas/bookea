@@ -5,7 +5,7 @@ import { createClientClient } from "@/lib/supabase";
 import { markAsSold, COST_PER_BOOK, ADMIN_COST_BOOK } from "@/lib/sellers";
 import { receiveStockItemAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { Store, Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Store, Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X, BookOpen, BookmarkCheck, BookMarked } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -14,7 +14,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import StockRequestItemsModal from "@/components/StockRequestItemsModal";
 import BookPreviewModal from "@/components/BookPreviewModal";
 
-type Section = "stock" | "vendidos" | "ingresos" | "solicitudes";
+type Section = "stock" | "vendidos" | "ingresos" | "solicitudes" | "catalogo";
 
 interface DashboardData {
   inventory: any[];
@@ -25,6 +25,7 @@ interface DashboardData {
 }
 
 const sections: { key: Section; label: string; icon: any }[] = [
+  { key: "catalogo", label: "Catálogo", icon: BookOpen },
   { key: "ingresos", label: "Ingresos", icon: BarChart3 },
   { key: "stock", label: "Stock", icon: Package },
   { key: "vendidos", label: "Vendidos", icon: TrendingUp },
@@ -71,7 +72,7 @@ export default function VendedorDashboard() {
 
   useEffect(() => {
     const seccion = searchParams?.get("seccion");
-    if (seccion === "solicitudes" || seccion === "stock" || seccion === "vendidos" || seccion === "ingresos") {
+    if (seccion === "catalogo" || seccion === "solicitudes" || seccion === "stock" || seccion === "vendidos" || seccion === "ingresos") {
       setActiveSection(seccion);
     }
   }, [searchParams]);
@@ -170,6 +171,20 @@ export default function VendedorDashboard() {
     }
     return map;
   }, [sales]);
+
+  const { data: catalogBooks = [] } = useQuery({
+    queryKey: ["vendedor-catalog"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("books")
+        .select("id, title, author, cover_url, epub_url, is_premium, description, category")
+        .not("epub_url", "is", null)
+        .eq("is_active", true)
+        .order("title");
+      return data || [];
+    },
+    staleTime: 60 * 1000,
+  });
 
   const handleSell = async (bookId: string, currentQty: number) => {
     const qty = saleQtys[bookId] || 1;
@@ -270,6 +285,70 @@ export default function VendedorDashboard() {
         </aside>
 
         <div className="flex-1 min-w-0">
+          {/* ── CATÁLOGO DIGITAL ── */}
+          {activeSection === "catalogo" && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold text-sm flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-amber-400" />
+                  Catálogo digital ({catalogBooks.length} libros)
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {catalogBooks.map((book: any) => (
+                  <div
+                    key={book.id}
+                    className="bg-white/5 border border-white/8 rounded-xl p-3 flex gap-3 hover:bg-white/[0.07] transition-colors"
+                  >
+                    {book.cover_url && (
+                      <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                        <img
+                          src={book.cover_url}
+                          alt=""
+                          className="w-12 h-[72px] rounded-lg object-cover bg-white/5 hover:ring-2 hover:ring-amber-500/50 transition-all"
+                        />
+                      </button>
+                    )}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between gap-1">
+                      <div>
+                        <div className="flex items-start gap-1">
+                          <p className="text-sm font-medium text-white/90 leading-tight line-clamp-2">{book.title}</p>
+                          {book.epub_url && (
+                            <span className="shrink-0 text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-full uppercase tracking-wider leading-none mt-0.5">
+                              EPUB
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-white/40 mt-0.5 truncate">{book.author}</p>
+                        {book.is_premium ? (
+                          <span className="inline-block text-[9px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded-full mt-1">
+                            Premium
+                          </span>
+                        ) : (
+                          <span className="inline-block text-[9px] font-semibold bg-green-500/10 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded-full mt-1">
+                            Gratuito
+                          </span>
+                        )}
+                      </div>
+                      <Link
+                        href={`/reader/${book.id}`}
+                        className="flex items-center justify-center gap-1.5 text-[11px] font-bold py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
+                      >
+                        <BookMarked className="w-3.5 h-3.5" />
+                        Abrir libro
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {catalogBooks.length === 0 && (
+                <div className="text-center py-16 text-white/30 text-sm">
+                  No hay libros digitales disponibles.
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── STOCK ── */}
           {activeSection === "stock" && (
             <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">

@@ -5,11 +5,12 @@ import { createClientClient } from "@/lib/supabase";
 import { getPhysicalBooks, getSellerInventory } from "@/lib/sellers";
 import { createStockRequestAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store, Package, ChevronLeft } from "lucide-react";
+import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store, Package, ChevronLeft, Info } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import BookPreviewModal from "@/components/BookPreviewModal";
 
 interface CartItem {
   book_id: string;
@@ -26,6 +27,7 @@ export default function NuevaSolicitudPage() {
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [notes, setNotes] = useState("");
+  const [previewBook, setPreviewBook] = useState<any>(null);
 
   const { data: books = [], isLoading: booksLoading } = useQuery({
     queryKey: ["physical-books"],
@@ -166,11 +168,13 @@ export default function NuevaSolicitudPage() {
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {book.cover_url && (
-                        <img
-                          src={book.cover_url}
-                          alt=""
-                          className="w-8 h-10 rounded object-cover bg-white/5"
-                        />
+                        <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                          <img
+                            src={book.cover_url}
+                            alt=""
+                            className="w-8 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-amber-500/50 transition-all"
+                          />
+                        </button>
                       )}
                       <div>
                         <p className="text-sm font-medium truncate">{book.title}</p>
@@ -281,6 +285,10 @@ export default function NuevaSolicitudPage() {
           </div>
         </div>
       </div>
+
+      {previewBook && (
+        <BookPreviewModal book={previewBook} onClose={() => setPreviewBook(null)} />
+      )}
     </div>
   );
 }
