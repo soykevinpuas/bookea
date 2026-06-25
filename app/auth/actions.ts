@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/server'
+import { createClient, createAdminClient } from '@/lib/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { sendWelcomeEmail } from '@/lib/email'
@@ -36,6 +36,7 @@ export async function login(formData: FormData) {
 
 export async function register(formData: FormData) {
   const supabase = await createClient()
+  const admin = createAdminClient()
 
   const data = {
     email: formData.get('email') as string,
@@ -44,7 +45,8 @@ export async function register(formData: FormData) {
 
   const referrerId = formData.get('referrer_id') as string | null
 
-  const { error, data: signupData } = await supabase.auth.signUp({
+  // Usar service role key para crear el usuario (bypass "public signups disabled")
+  const { error, data: signupData } = await admin.auth.signUp({
     email: data.email,
     password: data.password,
   })
@@ -56,7 +58,7 @@ export async function register(formData: FormData) {
       'Password should be at least 6 characters': 'La contraseña debe tener al menos 6 caracteres.',
       'Signups not allowed': 'Los registros están deshabilitados temporalmente.',
       'Email rate limit exceeded': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
-      'Database error saving new user': 'Error al crear usuario. Si el problema persiste, contacta a soporte (posible configuración de Supabase: verifica que "Enable public signups" esté activado en Authentication > Settings).',
+      'Database error saving new user': 'Error al crear usuario. Intenta de nuevo o contacta a soporte.',
     };
     const friendly = Object.entries(messages).find(([key]) => error.message?.includes(key))?.[1];
     redirect(`/register?error=${encodeURIComponent(friendly || error.message || 'Error desconocido')}`)
