@@ -69,7 +69,7 @@ export function useSubscription(userId: string | undefined) {
       return subscription;
     },
     enabled: !!userId,
-    staleTime: 30000,
+    staleTime: 5 * 60 * 1000,
     initialData: () => {
       if (typeof window !== "undefined") {
         const cached = localStorage.getItem("bookea-subscription-cache");

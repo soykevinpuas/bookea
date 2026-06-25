@@ -81,16 +81,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => listener?.subscription?.unsubscribe();
   }, [syncUser]);
 
-  // Re-check auth cada vez que la app vuelve a primer plano
+  // Re-check auth cada vez que la app vuelve a primer plano (solo lectura local)
   useEffect(() => {
     const handle = () => {
       if (document.visibilityState === "visible") {
-        syncUser();
+        supabase.current.auth.getSession().then(({ data }) => {
+          const sessionUser = data.session?.user;
+          if (sessionUser) {
+            const id = sessionUser.id;
+            const email = sessionUser.email || "";
+            localStorage.setItem(CACHE_KEY, id);
+            setState({ userId: id, email, isLoading: false, isReady: true });
+          }
+        }).catch(() => {});
       }
     };
     document.addEventListener("visibilitychange", handle);
     return () => document.removeEventListener("visibilitychange", handle);
-  }, [syncUser]);
+  }, []);
 
   return (
     <AuthContext.Provider value={state}>

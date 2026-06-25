@@ -82,6 +82,9 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
   addItem: async (bookId, type) => {
     ++mutateId
     set({ loading: true })
+    // Optimistic: add placeholder item instantly
+    const placeholder: CartItem = { id: `pending-${bookId}`, book_id: bookId, title: '...', author: '...', cover_url: null, type, price: 0, stock_physical: 0 }
+    set((s) => ({ items: [...s.items, placeholder] }))
     try {
       const res = await fetch('/api/cart', {
         method: 'POST',
@@ -95,6 +98,9 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
       }
       const data = await res.json()
       set({ items: data.items || [] })
+    } catch {
+      // Revert on failure
+      set((s) => ({ items: s.items.filter((i) => i.id !== `pending-${bookId}`) }))
     } finally {
       set({ loading: false })
     }
@@ -102,13 +108,18 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
 
   removeItem: async (itemId) => {
     ++mutateId
-    set((s) => ({ removingItems: new Set(s.removingItems).add(itemId) }))
+    const oldItems = get().items
+    set((s) => ({ removingItems: new Set(s.removingItems).add(itemId), items: s.items.filter((i) => i.id !== itemId) }))
     try {
       const res = await fetch(`/api/cart?id=${itemId}`, { method: 'DELETE' })
       if (res.ok) {
         const data = await res.json()
         set({ items: data.items || [] })
+      } else {
+        set({ items: oldItems })
       }
+    } catch {
+      set({ items: oldItems })
     } finally {
       set((s) => { const next = new Set(s.removingItems); next.delete(itemId); return { removingItems: next }; })
     }

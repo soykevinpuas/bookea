@@ -31,10 +31,22 @@ export function useCoins(userId: string | undefined) {
     mutationFn: async ({ bookId, coinType }: { bookId: string; coinType: CoinType }) => {
       return redeemCoinAction(bookId, coinType)
     },
-    onSuccess: (data) => {
-      if (data.success) {
-        queryClient.invalidateQueries({ queryKey: ['user-coins', userId] })
+    onMutate: async ({ coinType }) => {
+      await queryClient.cancelQueries({ queryKey: ['user-coins', userId] })
+      const previous = queryClient.getQueryData<CoinBalance>(['user-coins', userId])
+      queryClient.setQueryData(['user-coins', userId], (old: CoinBalance | undefined) => {
+        if (!old) return old
+        return { ...old, [coinType]: Math.max(0, (old[coinType] || 0) - 1) }
+      })
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['user-coins', userId], context.previous)
       }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-coins', userId] })
     },
   })
 

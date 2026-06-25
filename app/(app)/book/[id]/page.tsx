@@ -17,6 +17,7 @@ import ReviewForm from "@/components/community/ReviewForm";
 import ReviewList from "@/components/community/ReviewList";
 import { addToLibraryAction, removeFromLibraryAction } from "@/lib/actions/library";
 import { createClientClient } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
 import Book3D from "@/components/Book3D";
 import AccessBadge from "@/components/ui/AccessBadge";
 import BookLoading from "./loading";
@@ -53,6 +54,7 @@ function BookDetailContent() {
   // 3.5.5 - Consulta del libro por ID y verificación de acceso del usuario
   const { data: book, isLoading, error } = useBook(id);
   const { data: userBooks, refetch } = useUserBooks(userId);
+  const queryClient = useQueryClient();
 
   // 3.5.5.1 - Obtención del estado de suscripción del usuario
   const { data: subscription } = useSubscription(userId);
@@ -140,46 +142,58 @@ function BookDetailContent() {
   };
 
   const handleAddToLibrary = async () => {
-    if (!userId) {
-      toast.error("Debes iniciar sesión");
-      return;
-    }
+    if (!userId) return;
     setAddingToLib(true);
+    queryClient.setQueryData(["userBooks", userId], (old: any) => {
+      if (!old) return old;
+      return [{ ...book, id }, ...old];
+    });
     try {
       const accessType = subscription?.isActive ? 'subscription' : 'permanent';
       const result = await addToLibraryAction(id, accessType as any);
-      
       if (result.success) {
         toast.success("¡Libro añadido a tu biblioteca!");
-        refetch(); // Sincronizar cache de React Query
       } else {
+        queryClient.setQueryData(["userBooks", userId], (old: any) => {
+          if (!old) return old;
+          return old.filter((b: any) => b.id !== id);
+        });
         toast.error(result.error || "No se pudo añadir el libro");
       }
-    } catch (error: any) {
-      console.error("Error al añadir a biblioteca:", error);
-      // Mostrar el error completo para diagnóstico
-      toast.error(`Error del Servidor: ${error.message || "Desconocido"}. Revisa los logs de Vercel.`);
+    } catch {
+      queryClient.setQueryData(["userBooks", userId], (old: any) => {
+        if (!old) return old;
+        return old.filter((b: any) => b.id !== id);
+      });
+      toast.error("Error al conectar con el servidor");
     } finally {
-      // Pequeño delay para dejar que el cache se actualice y el botón no parpadee
-      setTimeout(() => setAddingToLib(false), 1000);
+      setAddingToLib(false);
+      refetch();
     }
   };
 
   const handleRemoveFromLibrary = async () => {
     if (!userId) return;
     setAddingToLib(true);
+    const oldData = queryClient.getQueryData(["userBooks", userId]);
+    queryClient.setQueryData(["userBooks", userId], (old: any) => {
+      if (!old) return old;
+      return old.filter((b: any) => b.id !== id);
+    });
     try {
       const result = await removeFromLibraryAction(id);
-      if (result.success) {
-        toast.info("Libro quitado de tu biblioteca");
-        refetch();
-      } else {
+      if (!result.success) {
+        queryClient.setQueryData(["userBooks", userId], oldData);
         toast.error(result.error || "Error al quitar el libro");
+      } else {
+        toast.info("Libro quitado de tu biblioteca");
       }
-    } catch (error) {
+    } catch {
+      queryClient.setQueryData(["userBooks", userId], oldData);
       toast.error("Error de red");
     } finally {
       setAddingToLib(false);
+      refetch();
     }
   };
 

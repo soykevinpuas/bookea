@@ -165,48 +165,60 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   };
 
   const handleAddToLibrary = async () => {
-    if (!userId) {
-      toast.error("Debes iniciar sesión");
-      return;
-    }
+    if (!userId) return;
     setIsLibraryProcessing(true);
+    queryClient.setQueryData(["userBooks", userId], (old: any) => {
+      if (!old) return old;
+      return [{ ...book, id: bookId }, ...old];
+    });
     try {
       const accessType = subscription?.isActive ? 'subscription' : 'permanent';
       const result = await addToLibraryAction(bookId, accessType as any);
       if (result.success) {
         toast.success(`"${bookTitle}" añadido a tu biblioteca`);
-        // React Query se actualizará vía Realtime o podemos invalidar aquí
-        queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
       } else {
+        queryClient.setQueryData(["userBooks", userId], (old: any) => {
+          if (!old) return old;
+          return old.filter((b: any) => b.id !== bookId);
+        });
         toast.error(result.error || "No se pudo añadir a la biblioteca");
       }
-    } catch (err) {
+    } catch {
+      queryClient.setQueryData(["userBooks", userId], (old: any) => {
+        if (!old) return old;
+        return old.filter((b: any) => b.id !== bookId);
+      });
       toast.error("Error al conectar con el servidor");
     } finally {
       setIsLibraryProcessing(false);
       setShowMenu(false);
+      queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
     }
   };
 
   const handleRemoveFromLibrary = async () => {
-    if (!userId) {
-      toast.error("Debes iniciar sesión");
-      return;
-    }
+    if (!userId) return;
     setIsLibraryProcessing(true);
+    const oldData = queryClient.getQueryData(["userBooks", userId]);
+    queryClient.setQueryData(["userBooks", userId], (old: any) => {
+      if (!old) return old;
+      return old.filter((b: any) => b.id !== bookId);
+    });
     try {
       const result = await removeFromLibraryAction(bookId);
-      if (result.success) {
-        toast.info(`"${bookTitle}" quitado de tu biblioteca`);
-        queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
-      } else {
+      if (!result.success) {
+        queryClient.setQueryData(["userBooks", userId], oldData);
         toast.error(result.error || "Error al quitar de la biblioteca");
+      } else {
+        toast.info(`"${bookTitle}" quitado de tu biblioteca`);
       }
-    } catch (err) {
+    } catch {
+      queryClient.setQueryData(["userBooks", userId], oldData);
       toast.error("Error del servidor");
     } finally {
       setIsLibraryProcessing(false);
       setShowMenu(false);
+      queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
     }
   };
 

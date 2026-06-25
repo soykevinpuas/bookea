@@ -33,13 +33,13 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Validar sesión con getUser() — refresca tokens expirados automáticamente
+  // Validar sesión con getSession() — lee cookies localmente, sin request de red
   let user = null
   try {
-    const { data } = await supabase.auth.getUser()
-    user = data.user ?? null
+    const { data } = await supabase.auth.getSession()
+    user = data.session?.user ?? null
   } catch {
-    // Si getUser() falla (red, Supabase caído), tratar como no autenticado
+    // Si getSession() falla, tratar como no autenticado
   }
 
   // Protección de rutas

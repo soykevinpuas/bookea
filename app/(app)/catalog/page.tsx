@@ -56,7 +56,7 @@ function CatalogContent() {
       params.set("view", viewMode);
       if (tab !== "todos") params.set("tab", tab);
       router.replace(`/catalog${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
-    }, 400);
+    }, 200);
     return () => clearTimeout(timer);
   }, [searchQuery, categoryFilter, viewMode, tab, mounted]);
 
