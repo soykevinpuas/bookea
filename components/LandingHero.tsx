@@ -1,22 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   BookOpen,
   Zap,
   Smartphone,
   Star,
+  ArrowRight,
+  Dices,
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 import FloatingBook3D from "@/components/FloatingBook3D";
 
 export default function LandingHero({ covers }: { covers: string[] }) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [isClient, setIsClient] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const featuresRef = useRef(null);
   const stepsRef = useRef(null);
@@ -48,6 +47,11 @@ export default function LandingHero({ covers }: { covers: string[] }) {
     const timer = setInterval(nextCover, 3000);
     return () => clearInterval(timer);
   }, [nextCover, currentIndex]);
+
+  const fadeIn = (delay = 0) =>
+    isClient
+      ? { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.5 } }
+      : { initial: false, animate: { opacity: 1, y: 0 }, transition: { delay: 0, duration: 0 } };
 
   const collageCovers = [...covers, ...covers, ...covers].slice(0, 24);
 
@@ -178,7 +182,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
         <div className="max-w-7xl mx-auto px-6 py-20 sm:py-28">
           <motion.div
             initial={false}
-            animate={stepsInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            animate={stepsInView || !isClient ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
@@ -212,7 +216,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
               <motion.div
                 key={step.num}
                 initial={false}
-                animate={stepsInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                animate={stepsInView || !isClient ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                 transition={{ delay: i * 0.12, duration: 0.4 }}
                 className="relative text-center md:text-left"
               >
@@ -235,7 +239,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
         <div className="max-w-7xl mx-auto px-6 py-20 sm:py-28">
           <motion.div
             initial={false}
-            animate={featuresInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            animate={featuresInView || !isClient ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
@@ -269,7 +273,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
               <motion.div
                 key={item.title}
                 initial={false}
-                animate={featuresInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                animate={featuresInView || !isClient ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                 transition={{ delay: i * 0.1, duration: 0.4 }}
                 className="group relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8 hover:bg-white/[0.06] transition-all duration-300"
               >
@@ -289,7 +293,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
         <div className="max-w-7xl mx-auto px-6 py-20 sm:py-28">
           <motion.div
             initial={false}
-            animate={testimonialsInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            animate={testimonialsInView || !isClient ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
@@ -323,7 +327,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
               <motion.div
                 key={t.name}
                 initial={false}
-                animate={testimonialsInView || !mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                animate={testimonialsInView || !isClient ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                 transition={{ delay: i * 0.12, duration: 0.4 }}
                 className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6"
               >
