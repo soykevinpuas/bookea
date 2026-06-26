@@ -31,9 +31,9 @@ export async function getBooks(
       } else {
         query = query.not("epub_url", "is", null);
       }
-    } else {
-      query = query.or("epub_url.not.is.null,stock_physical.gt.0");
     }
+    // Para usuarios sin adminId (free/subscriber), no filtrar por stock_physical
+    // ya que ahora stock_physical es la suma de admin_stock y podría ser 0.
 
     if (filters?.search) {
       // Búsqueda simple en título o autor
