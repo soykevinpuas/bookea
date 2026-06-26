@@ -62,14 +62,17 @@ function CatalogContent() {
 
   const { data: booksData, isLoading } = useBooks({ search: debouncedQuery, category: debouncedCategory });
 
+  const isVendedor = subscription?.role === 'vendedor';
+
   const filteredByTab = useMemo(() => {
     if (!booksData) return [];
+    if (isVendedor) return booksData;
     return booksData.filter((b: Book) => {
-      if (tab === 'digitales') return b.price_digital > 0;
+      if (tab === 'digitales') return !!b.epub_url;
       if (tab === 'fisicos') return b.price_physical > 0 && b.stock_physical > 0;
       return true;
     });
-  }, [booksData, tab]);
+  }, [booksData, tab, isVendedor]);
 
   const categories = ["Ficción", "No Ficción", "Novela", "Clásicos", "Misterio y Suspenso", "Fantasía", "Ciencia Ficción", "Romance", "Terror", "Autoayuda", "Negocios y Finanzas", "Historia", "Biografías", "Cuentos", "Poesía", "Otros"];
 
@@ -103,25 +106,27 @@ function CatalogContent() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Catálogo
             </h1>
-            <div className="flex gap-1 p-0.5 bg-gray-100 dark:bg-zinc-800/50 rounded-lg">
-              {[
-                { key: 'todos', label: 'Todos' },
-                { key: 'digitales', label: 'Digitales' },
-                { key: 'fisicos', label: 'Físicos' },
-              ].map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => setTab(t.key)}
-                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${
-                    tab === t.key
-                      ? 'bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            {!isVendedor && (
+              <div className="flex gap-1 p-0.5 bg-gray-100 dark:bg-zinc-800/50 rounded-lg">
+                {[
+                  { key: 'todos', label: 'Todos' },
+                  { key: 'digitales', label: 'Digitales' },
+                  { key: 'fisicos', label: 'Físicos' },
+                ].map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => setTab(t.key)}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${
+                      tab === t.key
+                        ? 'bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
