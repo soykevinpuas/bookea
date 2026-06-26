@@ -3,15 +3,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { getAdminSellers } from "@/lib/sellers";
+import { useUserId } from "@/hooks/useUser";
 import { Store, Users, Package, TrendingDown, Loader2, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminVendedoresPage() {
   const supabase = createClientClient();
+  const { userId } = useUserId();
 
   const { data: sellers = [], isLoading } = useQuery({
-    queryKey: ["admin-sellers"],
-    queryFn: () => getAdminSellers(supabase),
+    queryKey: ["admin-sellers", userId],
+    queryFn: () => getAdminSellers(supabase, userId || undefined),
+    enabled: !!userId,
   });
 
   return (

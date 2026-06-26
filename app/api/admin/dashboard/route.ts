@@ -39,8 +39,17 @@ export async function GET(request: Request) {
     const reqFrom = (requestsPage - 1) * requestsPerPage;
     const reqTo = reqFrom + requestsPerPage - 1;
 
+    const adminId = user.id;
+
+    const { data: adminSellers } = await adminClient
+      .from("users")
+      .select("id, email")
+      .eq("role", "vendedor")
+      .eq("assigned_admin_id", adminId);
+
+    const sellerIds = (adminSellers ?? []).map(s => s.id);
+
     const [
-      sellersResult,
       physicalBooksResult,
       pendingSalesResult,
       salesResult,
@@ -48,8 +57,6 @@ export async function GET(request: Request) {
       inventoryResult,
       salesMapResult,
     ] = await Promise.all([
-      adminClient.from("users").select("id, email").eq("role", "vendedor"),
-
       adminClient.from("books")
         .select("id, title, author, cover_url, price_physical, stock_physical")
         .eq("is_active", true)
@@ -58,27 +65,36 @@ export async function GET(request: Request) {
 
       adminClient.from("seller_sales")
         .select("*, books(id, title, author, cover_url, price_physical), seller:seller_id(id, email)")
+        .eq("admin_id", adminId)
         .is("paid_at", null)
         .order("sold_at", { ascending: false })
         .limit(500),
 
       adminClient.from("seller_sales")
         .select("*, books(id, title, author, cover_url), seller:seller_id(id, email)", { count: "exact", head: false })
+        .eq("admin_id", adminId)
         .order("sold_at", { ascending: false })
         .range(salesFrom, salesTo),
 
-      adminClient.from("stock_requests")
-        .select("*, items:stock_request_items(*, books(id, title, author, cover_url, price_physical)), seller:seller_id(id, email)", { count: "exact", head: false })
-        .order("created_at", { ascending: false })
-        .range(reqFrom, reqTo),
+      sellerIds.length > 0
+        ? adminClient.from("stock_requests")
+            .select("*, items:stock_request_items(*, books(id, title, author, cover_url, price_physical)), seller:seller_id(id, email)", { count: "exact", head: false })
+            .in("seller_id", sellerIds)
+            .order("created_at", { ascending: false })
+            .range(reqFrom, reqTo)
+        : { data: [], count: 0 },
 
-      adminClient.from("seller_inventory")
-        .select("*, books(id, title, cover_url, author)", { count: "exact", head: false })
-        .order("updated_at", { ascending: false })
-        .range(invFrom, invTo),
+      sellerIds.length > 0
+        ? adminClient.from("seller_inventory")
+            .select("*, books(id, title, cover_url, author)", { count: "exact", head: false })
+            .in("seller_id", sellerIds)
+            .order("updated_at", { ascending: false })
+            .range(invFrom, invTo)
+        : { data: [], count: 0 },
 
       adminClient.from("seller_sales")
         .select("seller_id, book_id, quantity")
+        .eq("admin_id", adminId)
         .not("book_id", "is", null)
         .gte("sold_at", new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString())
         .limit(1000),
@@ -91,8 +107,8 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      adminUserId: user.id,
-      sellers: sellersResult.data ?? [],
+      adminUserId: adminId,
+      sellers: adminSellers ?? [],
       physicalBooks: physicalBooksResult.data ?? [],
       pendingSales: pendingSalesResult.data ?? [],
       sales: {

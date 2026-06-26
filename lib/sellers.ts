@@ -217,12 +217,17 @@ export async function updateStockRequestStatus(
 
 // ─── Admin: Seller Management ───────────────────────────────
 
-export async function getAdminSellers(supabase: SupabaseClient) {
-  const { data: usersData, error: usersErr } = await supabase
+export async function getAdminSellers(supabase: SupabaseClient, adminId?: string) {
+  let query = supabase
     .from("users")
     .select("id, email, role, created_at")
-    .eq("role", "vendedor")
-    .order("created_at", { ascending: false });
+    .eq("role", "vendedor");
+
+  if (adminId) {
+    query = query.eq("assigned_admin_id", adminId);
+  }
+
+  const { data: usersData, error: usersErr } = await query.order("created_at", { ascending: false });
   if (usersErr) throw usersErr;
 
   const sellers = (usersData ?? []) as { id: string; email: string; role: string; created_at: string }[];
