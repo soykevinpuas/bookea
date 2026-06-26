@@ -99,7 +99,7 @@ export default function BuyPhysicalPage() {
     );
   }
 
-  const total = book.price_physical + 50;
+  const total = book.price_physical;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -125,7 +125,7 @@ export default function BuyPhysicalPage() {
             </div>
             <div className="flex justify-between text-sm">
               <span>Envío:</span>
-              <span>$50 MXN</span>
+              <span className="text-green-600 font-semibold">Gratis</span>
             </div>
             <div className="flex justify-between font-bold mt-2 pt-2 border-t">
               <span>Total:</span>

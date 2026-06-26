@@ -104,7 +104,7 @@ export async function verifySubscriptionAction(sessionId: string) {
                 name: shippingInfo?.name || '', address: shippingInfo?.address || '',
                 city: shippingInfo?.city || '', state: shippingInfo?.state || '',
                 zip: shippingInfo?.zip || '', phone: shippingInfo?.phone || '',
-                shipping_cost: 50, total: price + 50, stripe_payment_id: session.id,
+                shipping_cost: 0, total: price, stripe_payment_id: session.id,
               })
               try { await adminDb.rpc('decrement_stock', { p_book_id: item.book_id }) } catch {}
             }
@@ -168,7 +168,7 @@ export async function verifySubscriptionAction(sessionId: string) {
               name: shippingInfo?.name || '', address: shippingInfo?.address || '',
               city: shippingInfo?.city || '', state: shippingInfo?.state || '',
               zip: shippingInfo?.zip || '', phone: shippingInfo?.phone || '',
-              shipping_cost: 50, total: price + 50, stripe_payment_id: session.id,
+              shipping_cost: 0, total: price, stripe_payment_id: session.id,
             })
             try { await adminDb.rpc('decrement_stock', { p_book_id: bookId }) } catch {}
           }

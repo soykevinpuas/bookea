@@ -141,7 +141,7 @@ export default function AdminOrdersPage() {
                   <div className="flex flex-col items-end gap-3">
                     <div className="text-right">
                       <p className="font-bold text-white">${order.total} MXN</p>
-                      <p className="text-xs text-white/30">Envío: ${order.shipping_cost}</p>
+                      <p className="text-xs text-green-400 font-semibold">Envío gratis</p>
                     </div>
 
                     {order.status === "pending" && (

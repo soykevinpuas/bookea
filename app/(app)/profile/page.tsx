@@ -599,7 +599,7 @@ export default function ProfilePage() {
                             </div>
                             <div className="text-right shrink-0">
                               <p className="font-bold text-xs text-gray-900 dark:text-white">${order.total} MXN</p>
-                              <p className="text-[9px] text-gray-400 dark:text-white/30">Envío: ${order.shipping_cost}</p>
+                              <p className="text-[9px] text-green-600 dark:text-green-400 font-semibold">Envío gratis</p>
                             </div>
                           </div>
                         </div>

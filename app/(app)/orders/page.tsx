@@ -183,7 +183,7 @@ export default function OrdersPage() {
                     {/* Price */}
                     <div className="text-right shrink-0">
                       <p className="font-bold text-gray-900 dark:text-white">${order.total} MXN</p>
-                      <p className="text-[10px] text-gray-400 dark:text-white/30">Envío: ${order.shipping_cost}</p>
+                      <p className="text-[10px] text-green-600 dark:text-green-400 font-semibold">Envío gratis</p>
                     </div>
                   </div>
                 </div>

@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/server'
 import { getStripeClient } from '@/lib/stripe'
 
-const SHIPPING_COST = 50
-
 export async function POST(req: Request) {
   try {
     const supabase = await createClient()
@@ -49,17 +47,6 @@ export async function POST(req: Request) {
       })
 
       itemsMeta.push({ book_id: item.book_id, type: item.type, cart_item_id: item.id, quantity: item.quantity || 1 })
-    }
-
-    if (hasPhysical) {
-      lineItems.push({
-        price_data: {
-          currency: 'mxn',
-          product_data: { name: 'Costo de envío' },
-          unit_amount: SHIPPING_COST * 100,
-        },
-        quantity: 1,
-      })
     }
 
     const session = await stripe.checkout.sessions.create({

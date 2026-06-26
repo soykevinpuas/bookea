@@ -143,8 +143,8 @@ export async function POST(request: NextRequest) {
                 state: shippingInfo?.state || '',
                 zip: shippingInfo?.zip || '',
                 phone: shippingInfo?.phone || '',
-                shipping_cost: 50,
-                total: price + 50,
+                shipping_cost: 0,
+                total: price,
                 stripe_payment_id: session.id,
               });
               await supabase.rpc('decrement_stock', { p_book_id: item.book_id, p_quantity: item.quantity || 1 });
@@ -218,8 +218,8 @@ export async function POST(request: NextRequest) {
                 state: shippingInfo?.state || '',
                 zip: shippingInfo?.zip || '',
                 phone: shippingInfo?.phone || '',
-                shipping_cost: 50,
-                total: price + 50,
+                shipping_cost: 0,
+                total: price,
                 stripe_payment_id: session.id,
               });
 

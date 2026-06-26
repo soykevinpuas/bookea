@@ -99,8 +99,8 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
 
   const totalDigital = items.filter((i) => i.type === 'digital').reduce((a, i) => a + i.price, 0)
   const totalPhysical = items.filter((i) => i.type === 'physical').reduce((a, i) => a + i.price, 0)
-  const shippingCost = items.some((i) => i.type === 'physical') ? 50 : 0
-  const total = totalDigital + totalPhysical + shippingCost
+  const hasPhysical = items.some((i) => i.type === 'physical')
+  const total = totalDigital + totalPhysical
 
   const handleCheckout = async () => {
     if (items.length === 0) return
@@ -217,7 +217,7 @@ export default function CartPanel({ open, onClose }: CartPanelProps) {
             <div className="space-y-1 text-sm">
               {totalDigital > 0 && <div className="flex justify-between text-gray-500"><span>Digitales</span><span>${totalDigital} MXN</span></div>}
               {totalPhysical > 0 && <div className="flex justify-between text-gray-500"><span>Físicos</span><span>${totalPhysical} MXN</span></div>}
-              {shippingCost > 0 && <div className="flex justify-between text-gray-500"><span>Envío</span><span>${shippingCost} MXN</span></div>}
+              {hasPhysical && <div className="flex justify-between text-gray-500"><span>Envío</span><span className="text-green-600 font-semibold">Gratis</span></div>}
               <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray-200 dark:border-white/10">
                 <span>Total</span><span>${total} MXN</span>
               </div>
