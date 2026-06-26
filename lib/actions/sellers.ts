@@ -16,47 +16,18 @@ export async function createStockRequestAction(
   if (role !== "admin" && role !== "vendedor") throw new Error("No autorizado");
   if (sellerId !== user.id) throw new Error("No puedes crear solicitudes para otro vendedor");
 
-  let adminDb: ReturnType<typeof createAdminClient>;
-  try { adminDb = createAdminClient() } catch {
-    throw new Error("Error de configuración del servidor. La función requiere SUPABASE_SERVICE_ROLE_KEY.")
-  }
+  const p_items = items.map(i => ({ book_id: i.book_id, quantity: i.quantity }));
 
-  for (const item of items) {
-    if (item.quantity <= 0) throw new Error("La cantidad debe ser mayor a 0");
-    const { data: book, error: bookCheckErr } = await adminDb
-      .from("books")
-      .select("stock_physical, title")
-      .eq("id", item.book_id)
-      .single();
-    if (bookCheckErr) throw new Error(`Error al verificar stock de "${item.book_id}": ${bookCheckErr.message}`);
-    if (!book || book.stock_physical < item.quantity) {
-      throw new Error(`Stock insuficiente para "${book?.title || item.book_id}". Disponible: ${book?.stock_physical ?? 0}, solicitado: ${item.quantity}`);
-    }
-  }
+  const { data, error } = await supabase.rpc("create_stock_request", {
+    p_seller_id: sellerId,
+    p_notes: notes || null,
+    p_items: JSON.stringify(p_items),
+  });
 
-  const { data: request, error: reqErr } = await adminDb
-    .from("stock_requests")
-    .insert({
-      seller_id: sellerId,
-      notes: notes || null,
-      status: "pending",
-    })
-    .select()
-    .single();
+  if (error) throw new Error(error.message);
 
-  if (reqErr) throw new Error(reqErr.message);
-
-  const requestItems = items.map((item) => ({
-    request_id: request.id,
-    book_id: item.book_id,
-    quantity: item.quantity,
-  }));
-
-  const { error: itemsErr } = await adminDb
-    .from("stock_request_items")
-    .insert(requestItems);
-
-  if (itemsErr) throw new Error(itemsErr.message);
+  const result = (data as any) || {};
+  if (!result.success) throw new Error(result.error || "Error al crear solicitud");
 
   revalidatePath("/vendedor");
   revalidatePath("/admin");
