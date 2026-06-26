@@ -34,7 +34,8 @@ function CatalogContent() {
     },
     enabled: !!userId,
   });
-  const adminId = userRoleData?.role === 'admin' ? userId : (userRoleData?.role === 'vendedor' ? userRoleData?.assigned_admin_id : undefined);
+  // Solo admin filtra por su admin_stock; vendedor/free/subscriber ven catálogo completo
+  const adminId = userRoleData?.role === 'admin' ? userId : undefined;
   const { data: userBooks } = useUserBooks(userId || '');
   const ownedDigitalIds = useMemo(() => {
     if (!userBooks) return new Set<string>();
@@ -82,7 +83,9 @@ function CatalogContent() {
     return booksData.filter((b: Book) => {
       if (tab === 'digitales') return !!b.epub_url;
       if (tab === 'fisicos') return b.price_physical > 0 && b.stock_physical > 0;
-      return true;
+      // Todos: digitales siempre; físicos solo con stock (oculta solo-físico sin inventario)
+      if (b.epub_url) return true;
+      return b.price_physical > 0 && b.stock_physical > 0;
     });
   }, [booksData, tab, isVendedor]);
 

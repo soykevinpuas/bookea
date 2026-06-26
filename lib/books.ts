@@ -27,13 +27,15 @@ export async function getBooks(
       const adminBookIds = (adminStock ?? []).map(s => s.book_id);
 
       if (adminBookIds.length > 0) {
-        query = query.or(`epub_url.not.is.null,book_id.in.(${adminBookIds.join(',')})`);
+        // Columna en books es "id", no "book_id" (book_id solo existe en admin_stock)
+        query = query.or(`epub_url.not.is.null,id.in.(${adminBookIds.join(',')})`);
       } else {
         query = query.not("epub_url", "is", null);
       }
+    } else {
+      // Free/subscriber: digitales siempre; físicos solo si hay stock en almacén (suma admin_stock)
+      query = query.or("epub_url.not.is.null,stock_physical.gt.0");
     }
-    // Para usuarios sin adminId (free/subscriber), no filtrar por stock_physical
-    // ya que ahora stock_physical es la suma de admin_stock y podría ser 0.
 
     if (filters?.search) {
       // Búsqueda simple en título o autor

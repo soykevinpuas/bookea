@@ -14,7 +14,7 @@ const BOOK_QUERY_OPTIONS = {
 // 3.2 - useBooks: Hook para el catálogo general con persistencia y filtros
 export function useBooks(options?: { search?: string; category?: string; author?: string; adminId?: string }) {
   const supabase = createClientClient();
-  const cacheKey = `bookea-catalog-cache-${options?.adminId || 'public'}`;
+  const cacheKey = `bookea-catalog-cache-v2-${options?.adminId || 'public'}`;
   
   return useQuery({
     queryKey: ["books", options?.search, options?.category, options?.author, options?.adminId],
