@@ -6,6 +6,23 @@ import { redirect } from 'next/navigation'
 import { sendWelcomeEmail } from '@/lib/email'
 import { getStripeClient } from '@/lib/stripe'
 
+const ALLOWED_DOMAINS = [
+  'gmail.com',
+  'hotmail.com', 'outlook.com', 'live.com', 'msn.com',
+  'yahoo.com', 'yahoo.com.mx', 'yahoo.es', 'ymail.com',
+  'icloud.com', 'me.com',
+  'protonmail.com', 'proton.me',
+  'aol.com',
+  'mail.com',
+  'zoho.com',
+  'fastmail.com',
+  'tuta.com', 'tutanota.com',
+  'gmx.com',
+  'yandex.com',
+  'terra.com',
+  'outlook.es', 'hotmail.es',
+]
+
 // 2.3 - Auth Actions: Server Action para Registro
 export async function register(formData: FormData) {
   const supabase = await createClient()
@@ -13,13 +30,18 @@ export async function register(formData: FormData) {
   try { admin = createAdminClient() } catch { /* fallback al client normal */ }
 
   const data = {
-    email: formData.get('email') as string,
+    email: (formData.get('email') as string).trim().toLowerCase(),
     password: formData.get('password') as string,
     confirmPassword: formData.get('confirmPassword') as string,
   }
 
   if (data.password !== data.confirmPassword) {
     redirect('/register?error=Las contraseñas no coinciden')
+  }
+
+  const emailDomain = data.email.split('@')[1]
+  if (!emailDomain || !ALLOWED_DOMAINS.includes(emailDomain)) {
+    redirect('/register?error=Este dominio de correo no está permitido. Usa Gmail, Hotmail, Outlook, Yahoo, iCloud, ProtonMail u otros populares.')
   }
 
   const referrerId = formData.get('referrer_id') as string | null
@@ -91,6 +113,16 @@ export async function register(formData: FormData) {
     }
   }
 
+  // Auto-login después de registro exitoso
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: data.email,
+    password: data.password,
+  })
+
+  if (signInError) {
+    redirect('/login?message=Cuenta creada. Inicia sesión.')
+  }
+
   revalidatePath('/', 'layout')
-  redirect('/login?message=Cuenta creada. Inicia sesión.')
+  redirect('/dashboard')
 }
