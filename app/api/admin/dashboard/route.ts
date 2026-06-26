@@ -56,6 +56,7 @@ export async function GET(request: Request) {
       requestsResult,
       inventoryResult,
       salesMapResult,
+      adminStockResult,
     ] = await Promise.all([
       adminClient.from("books")
         .select("id, title, author, cover_url, price_physical, stock_physical")
@@ -98,6 +99,10 @@ export async function GET(request: Request) {
         .not("book_id", "is", null)
         .gte("sold_at", new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString())
         .limit(1000),
+
+      adminClient.from("admin_stock")
+        .select("book_id, quantity")
+        .eq("admin_id", adminId),
     ]);
 
     const salesMap: Record<string, number> = {};
@@ -110,6 +115,7 @@ export async function GET(request: Request) {
       adminUserId: adminId,
       sellers: adminSellers ?? [],
       physicalBooks: physicalBooksResult.data ?? [],
+      adminStock: adminStockResult.data ?? [],
       pendingSales: pendingSalesResult.data ?? [],
       sales: {
         data: salesResult.data ?? [],

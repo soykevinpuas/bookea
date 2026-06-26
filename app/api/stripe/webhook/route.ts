@@ -40,6 +40,18 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
 
+  // Idempotency: skip if already processed
+  const { data: existingEvent } = await supabase
+    .from('webhook_events')
+    .select('id')
+    .eq('id', event.id)
+    .maybeSingle();
+
+  if (existingEvent) {
+    console.log('[webhook] Evento ya procesado, saltando:', event.id);
+    return NextResponse.json({ received: true, idempotent: true });
+  }
+
   try {
     switch (event.type) {
       // ============================================
@@ -147,7 +159,9 @@ export async function POST(request: NextRequest) {
                 total: price,
                 stripe_payment_id: session.id,
               });
-              await supabase.rpc('decrement_stock', { p_book_id: item.book_id, p_quantity: item.quantity || 1 });
+              const { data: decResult } = await supabase.rpc('decrement_admin_stock', { p_book_id: item.book_id, p_quantity: item.quantity || 1 });
+              const dec = (decResult as any) || {};
+              if (!dec.success) console.error('Error decrementando stock en webhook:', dec.error);
             }
           }
 
@@ -230,7 +244,9 @@ export async function POST(request: NextRequest) {
 
               try {
                 const qty = parseInt(session.metadata?.quantity || '1');
-                await supabase.rpc('decrement_stock', { p_book_id: bookId, p_quantity: qty });
+                const { data: decResult } = await supabase.rpc('decrement_admin_stock', { p_book_id: bookId, p_quantity: qty });
+                const result = (decResult as any) || {};
+                if (!result.success) console.error('Error decrementando stock en webhook:', result.error);
               } catch (stockErr) {
                 console.error('Error decrementando stock en webhook:', stockErr);
               }
@@ -253,20 +269,32 @@ export async function POST(request: NextRequest) {
       // 7.2.3 - Suscripción cancelada: Revocar acceso
       // ============================================
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object;
-        
-        const { data: users, error: userSelectError } = await supabase
+        const subscription = event.data.object as any;
+        const subCustomerId = subscription.customer as string;
+        const subEmail = subscription.customer_email as string | undefined;
+
+        let userQuery = supabase
           .from('users')
           .select('id')
-          .eq('stripe_customer_id', subscription.customer)
-          .single();
+          .eq('stripe_customer_id', subCustomerId)
+          .maybeSingle();
 
-        if (userSelectError) {
-          console.error('Error encontrando usuario:', userSelectError);
-          return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
+        const { data: users } = await userQuery;
 
-        if (users) {
+        // Fallback: buscar por email si no se encontró por stripe_customer_id
+        if (!users && subEmail) {
+          const { data: userByEmail } = await supabase
+            .from('users')
+            .select('id')
+            .eq('email', subEmail)
+            .maybeSingle();
+          if (userByEmail) {
+            await supabase
+              .from('users')
+              .update({ role: 'free', subscription_ends_at: null, stripe_customer_id: subCustomerId })
+              .eq('id', userByEmail.id);
+          }
+        } else if (users) {
           await supabase
             .from('users')
             .update({ role: 'free', subscription_ends_at: null })
@@ -276,7 +304,35 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      // 7.2.4 - Pago fallido: Solo logging
+      // 7.2.4 - Suscripción actualizada: Extender/renovar período
+      case 'customer.subscription.updated': {
+        const sub = event.data.object as any;
+        const customerId = sub.customer as string;
+        const status = sub.status;
+        const periodEnd = sub.current_period_end as number;
+
+        if (status === 'active' || status === 'trialing') {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, subscription_ends_at')
+            .eq('stripe_customer_id', customerId)
+            .maybeSingle();
+
+          if (users) {
+            const endsAt = new Date(periodEnd * 1000).toISOString();
+            const existingEnd = users.subscription_ends_at ? new Date(users.subscription_ends_at) : null;
+            if (!existingEnd || existingEnd < new Date(periodEnd * 1000)) {
+              await supabase
+                .from('users')
+                .update({ role: 'subscriber', subscription_ends_at: endsAt })
+                .eq('id', users.id);
+            }
+          }
+        }
+        break;
+      }
+
+      // 7.2.5 - Pago fallido: Solo logging
       case 'invoice.payment_failed': {
         console.warn('Pago fallido:', event.data.object.id);
         break;
@@ -284,6 +340,16 @@ export async function POST(request: NextRequest) {
 
       default:
         console.log(`Tipo de evento no manejado: ${event.type}`);
+    }
+
+    // Record idempotency (fire-and-forget, non-blocking)
+    try {
+      await supabase.from('webhook_events').upsert({
+        id: event.id,
+        event_type: event.type,
+      }, { onConflict: 'id', ignoreDuplicates: true });
+    } catch (e) {
+      console.error('[webhook] Error guardando idempotencia:', e);
     }
 
     return NextResponse.json({ received: true });

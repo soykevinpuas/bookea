@@ -84,6 +84,7 @@ export default function AdminDashboard() {
     pendingSales: any[];
     physicalBooks: any[];
     salesMap: Record<string, number>;
+    adminStock: { book_id: string; quantity: number }[];
   }
 
   const [salesPage, setSalesPage] = useState(1);
@@ -117,6 +118,12 @@ export default function AdminDashboard() {
   const physicalBooks = dash?.physicalBooks ?? [];
   const salesMap = dash?.salesMap ?? {};
   const adminUserId = dash?.adminUserId ?? "";
+  const adminStock = dash?.adminStock ?? [];
+  const adminStockMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of adminStock) m.set(s.book_id, s.quantity);
+    return m;
+  }, [adminStock]);
 
   useEffect(() => {
     const channel = supabase
@@ -556,8 +563,9 @@ export default function AdminDashboard() {
                           )
                           .map((book: any) => {
                             const qty = assignSellerQtys[book.id] || 0;
-                            const lowStock = book.stock_physical > 0 && book.stock_physical <= 3;
-                            const outOfStock = !book.stock_physical || book.stock_physical <= 0;
+                            const myStock = adminStockMap.get(book.id) || 0;
+                            const lowStock = myStock > 0 && myStock <= 3;
+                            const outOfStock = myStock <= 0;
                             return (
                               <div
                                 key={book.id}
@@ -574,7 +582,7 @@ export default function AdminDashboard() {
                                   <p className="text-sm font-medium truncate">{book.title}</p>
                                   <p className="text-xs text-white/40 truncate">{book.author}</p>
                                   <p className={`text-xs ${outOfStock ? "text-red-400" : lowStock ? "text-amber-400 font-medium" : "text-white/30"}`}>
-                                    {outOfStock ? "Agotado" : `Stock: ${book.stock_physical} ${lowStock ? "⚠️" : ""}`}
+                                    {outOfStock ? "Agotado" : `Stock: ${myStock} ${lowStock ? "⚠️" : ""}`}
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
@@ -600,10 +608,10 @@ export default function AdminDashboard() {
                                         onClick={() =>
                                           setAssignSellerQtys((prev) => ({
                                             ...prev,
-                                            [book.id]: Math.min(book.stock_physical, (prev[book.id] || 0) + 1),
+                                            [book.id]: Math.min(myStock, (prev[book.id] || 0) + 1),
                                           }))
                                         }
-                                        disabled={qty >= book.stock_physical}
+                                        disabled={qty >= myStock}
                                         className="p-1 bg-white/5 hover:bg-green-500/20 rounded-lg transition-colors disabled:opacity-20 disabled:pointer-events-none"
                                       >
                                         <Plus className="w-3.5 h-3.5" />
@@ -653,11 +661,12 @@ export default function AdminDashboard() {
                   </div>
                       <div className="space-y-2 max-h-48 overflow-y-auto mb-3">
                     {filteredSelfBooks.map((book: any) => {
-                      const outOfStock = !book.stock_physical || book.stock_physical <= 0;
+                      const myStock = adminStockMap.get(book.id) || 0;
+                      const outOfStock = myStock <= 0;
                       return (
                       <button
                         key={book.id}
-                        onClick={() => { if (!outOfStock) { setAssignSelfBookId(book.id); setAssignSelfQty(1); } }}
+                        onClick={() => { if (!outOfStock) { setAssignSelfBookId(book.id); setAssignSelfQty(Math.min(1, myStock)); } }}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
                           outOfStock
                             ? "text-red-400/50 cursor-not-allowed"
@@ -671,7 +680,7 @@ export default function AdminDashboard() {
                         )}
                         <div className="flex-1 min-w-0 text-left">
                           <p className="text-sm font-medium truncate">{book.title}</p>
-                          <p className="text-xs text-white/30 truncate">{outOfStock ? "Agotado" : `Stock: ${book.stock_physical}`}</p>
+                          <p className="text-xs text-white/30 truncate">{outOfStock ? "Agotado" : `Stock: ${myStock}`}</p>
                         </div>
                       </button>
                       );
@@ -690,7 +699,7 @@ export default function AdminDashboard() {
                       </button>
                       <span className="w-8 text-center font-medium">{assignSelfQty}</span>
                       <button
-                        onClick={() => setAssignSelfQty(assignSelfQty + 1)}
+                        onClick={() => setAssignSelfQty(prev => Math.min(prev + 1, adminStockMap.get(assignSelfBookId) || 1))}
                         className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
                       >
                         <Plus className="w-3.5 h-3.5" />

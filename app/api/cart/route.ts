@@ -20,7 +20,7 @@ export async function GET() {
     title: item.books?.title || '',
     author: item.books?.author || '',
     cover_url: item.books?.cover_url || null,
-    price: item.type === 'digital' ? item.books?.price_digital || 29 : item.books?.price_physical || 349,
+    price: item.type === 'digital' ? item.books?.price_digital || 29 : item.books?.price_physical || 299,
     stock_physical: item.books?.stock_physical || 0,
   }))
 
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     title: item.books?.title || '',
     author: item.books?.author || '',
     cover_url: item.books?.cover_url || null,
-    price: item.type === 'digital' ? item.books?.price_digital || 29 : item.books?.price_physical || 349,
+    price: item.type === 'digital' ? item.books?.price_digital || 29 : item.books?.price_physical || 299,
     stock_physical: item.books?.stock_physical || 0,
   }))
 
@@ -95,7 +95,7 @@ export async function DELETE(req: Request) {
     title: item.books?.title || '',
     author: item.books?.author || '',
     cover_url: item.books?.cover_url || null,
-    price: item.type === 'digital' ? item.books?.price_digital || 29 : item.books?.price_physical || 349,
+    price: item.type === 'digital' ? item.books?.price_digital || 29 : item.books?.price_physical || 299,
     stock_physical: item.books?.stock_physical || 0,
   }))
 

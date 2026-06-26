@@ -24,17 +24,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Book ID requerido' }, { status: 400 });
     }
 
-    // 7.3.3 - Verificar que el libro existe y es gratuito (precio = $0)
+    // 7.3.3 - Verificar que el libro existe y es gratuito (no premium)
     const { data: book, error: bookError } = await supabase
       .from('books')
-      .select('price_digital')
+      .select('is_premium, price_digital')
       .eq('id', bookId)
       .single();
 
     if (bookError || !book) {
       return NextResponse.json({ error: 'Libro no encontrado en la base de datos' }, { status: 404 });
-    } else if (book.price_digital > 0) {
-      return NextResponse.json({ error: 'Este libro no es gratuito.' }, { status: 403 });
+    } else if (book.is_premium) {
+      return NextResponse.json({ error: 'Este libro es Premium y no puede reclamarse gratis.' }, { status: 403 });
     }
 
     // 7.3.4 - Verificar si el usuario ya tiene acceso

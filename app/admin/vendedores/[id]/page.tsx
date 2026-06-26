@@ -30,6 +30,14 @@ export default function AdminSellerDetailPage() {
   const supabase = createClientClient();
   const queryClient = useQueryClient();
 
+  const { data: adminSession } = useQuery({
+    queryKey: ["admin-session"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      return user;
+    },
+  });
+
   const [showAssign, setShowAssign] = useState(false);
   const [modalItems, setModalItems] = useState<any[] | null>(null);
   const [showAllInventory, setShowAllInventory] = useState(false);
@@ -47,8 +55,9 @@ export default function AdminSellerDetailPage() {
   });
 
   const { data: physicalBooks = [] } = useQuery({
-    queryKey: ["physical-books"],
-    queryFn: () => getPhysicalBooks(supabase),
+    queryKey: ["physical-books", adminSession?.id],
+    queryFn: () => getPhysicalBooks(supabase, adminSession?.id),
+    enabled: !!adminSession?.id,
   });
 
   const assignMutation = useMutation({

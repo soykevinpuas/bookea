@@ -199,13 +199,21 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
 }
 
 const ACCESS_CACHE_KEY = 'bookea-access-cache';
+const ACCESS_CACHE_TTL = 5 * 60 * 1000;
 
 function getCachedAccess(bookId: string): boolean | null {
   try {
     const raw = typeof window !== 'undefined' ? localStorage.getItem(ACCESS_CACHE_KEY) : null;
     if (!raw) return null;
     const cache = JSON.parse(raw);
-    return cache[bookId]?.hasAccess ?? null;
+    const entry = cache[bookId];
+    if (!entry) return null;
+    if (Date.now() - entry.cachedAt > ACCESS_CACHE_TTL) {
+      delete cache[bookId];
+      localStorage.setItem(ACCESS_CACHE_KEY, JSON.stringify(cache));
+      return null;
+    }
+    return entry.hasAccess ?? null;
   } catch {
     return null;
   }

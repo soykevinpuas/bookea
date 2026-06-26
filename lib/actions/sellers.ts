@@ -114,46 +114,13 @@ export async function deleteSaleAction(saleId: string) {
   const { data: roleData } = await supabase.rpc("get_my_role");
   if (roleData !== "admin") throw new Error("No autorizado");
 
-  // Hacemos la lógica directa con el admin client (bypass RLS) en vez de
-  // la RPC, porque auth.uid() puede fallar en Server Actions según el
-  // contexto. El server action ya validó que el usuario es admin.
-  const adminDb = createAdminClient();
+  const { data, error } = await supabase.rpc("delete_sale_and_restore_stock", {
+    p_sale_id: saleId,
+  });
 
-  // Obtener venta
-  const { data: sale, error: saleErr } = await adminDb
-    .from("seller_sales")
-    .select("seller_id, book_id, quantity")
-    .eq("id", saleId)
-    .single();
-
-  if (saleErr || !sale) throw new Error(saleErr?.message || "Venta no encontrada");
-
-  // Eliminar venta
-  const { error: delErr } = await adminDb
-    .from("seller_sales")
-    .delete()
-    .eq("id", saleId);
-
-  if (delErr) throw new Error(delErr.message);
-
-  // Restaurar stock al vendedor
-  const { data: existingInv } = await adminDb
-    .from("seller_inventory")
-    .select("id, quantity")
-    .eq("seller_id", sale.seller_id)
-    .eq("book_id", sale.book_id)
-    .maybeSingle();
-
-  if (existingInv) {
-    await adminDb
-      .from("seller_inventory")
-      .update({ quantity: existingInv.quantity + sale.quantity, updated_at: new Date().toISOString() })
-      .eq("id", existingInv.id);
-  } else {
-    await adminDb
-      .from("seller_inventory")
-      .insert({ seller_id: sale.seller_id, book_id: sale.book_id, quantity: sale.quantity });
-  }
+  if (error) throw new Error(error.message);
+  const result = (data as any) || {};
+  if (!result.success) throw new Error(result.error || "Error al eliminar venta");
 
   revalidatePath("/admin");
   revalidatePath("/admin/vendedores");
@@ -165,42 +132,14 @@ export async function removeSellerInventoryAction(sellerId: string, bookId: stri
   const { data: role } = await supabase.rpc("get_my_role");
   if (role !== "admin") throw new Error("No autorizado");
 
-  const adminDb = createAdminClient();
+  const { data, error } = await supabase.rpc("remove_seller_stock", {
+    p_seller_id: sellerId,
+    p_book_id: bookId,
+  });
 
-  // Obtener inventario actual
-  const { data: inv, error: invErr } = await adminDb
-    .from("seller_inventory")
-    .select("id, quantity")
-    .eq("seller_id", sellerId)
-    .eq("book_id", bookId)
-    .maybeSingle();
-
-  if (invErr) throw new Error(invErr.message);
-  if (!inv) throw new Error("No hay inventario asignado");
-
-  const removedQty = inv.quantity;
-
-  // Eliminar registro de inventario del vendedor
-  const { error: delErr } = await adminDb
-    .from("seller_inventory")
-    .delete()
-    .eq("id", inv.id);
-
-  if (delErr) throw new Error(delErr.message);
-
-  // Devolver stock al almacén general
-  const { data: book } = await adminDb
-    .from("books")
-    .select("stock_physical")
-    .eq("id", bookId)
-    .single();
-
-  if (book) {
-    await adminDb
-      .from("books")
-      .update({ stock_physical: book.stock_physical + removedQty })
-      .eq("id", bookId);
-  }
+  if (error) throw new Error(error.message);
+  const result = (data as any) || {};
+  if (!result.success) throw new Error(result.error || "Error al remover stock");
 
   revalidatePath("/admin");
 }

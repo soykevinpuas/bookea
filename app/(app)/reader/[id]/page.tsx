@@ -434,8 +434,14 @@ export default function ReaderPage() {
 
   // 4.2.5 - Inicialización Central del Motor epub.js y configuración DOM
   useEffect(() => {
-    // 4.1.9.1 - SOPORTE OFFLINE: Permitir inicializar sin userId si estamos offline
-    const canInit = book?.epub_url && viewerRef.current && (userId || !navigator.onLine);
+    // If offline and no userId, deny access (cannot verify permissions)
+    if (!userId) {
+      setError("Debes iniciar sesión para leer este libro.");
+      setIsLoading(false);
+      return;
+    }
+
+    const canInit = book?.epub_url && viewerRef.current;
     if (!canInit) return;
 
     // 4.2.4b - Timeout de seguridad para el cargador

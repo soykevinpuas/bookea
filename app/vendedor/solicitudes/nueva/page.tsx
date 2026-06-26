@@ -29,9 +29,21 @@ export default function NuevaSolicitudPage() {
   const [notes, setNotes] = useState("");
   const [previewBook, setPreviewBook] = useState<any>(null);
 
+  const { data: userRole } = useQuery({
+    queryKey: ["user-role", userId],
+    queryFn: async () => {
+      const { data } = await supabase.from("users").select("role, assigned_admin_id").eq("id", userId).single();
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  const sellerAdminId = userRole?.role === 'admin' ? userId : userRole?.assigned_admin_id;
+
   const { data: books = [], isLoading: booksLoading } = useQuery({
-    queryKey: ["physical-books"],
-    queryFn: () => getPhysicalBooks(supabase),
+    queryKey: ["physical-books", sellerAdminId],
+    queryFn: () => getPhysicalBooks(supabase, sellerAdminId || undefined),
+    enabled: !!sellerAdminId,
   });
 
   const { data: inventory = [] } = useQuery({
