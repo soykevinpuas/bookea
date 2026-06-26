@@ -47,7 +47,7 @@ export async function GET(request: Request) {
       .eq("role", "vendedor")
       .eq("assigned_admin_id", adminId);
 
-    const sellerIds = (adminSellers ?? []).map(s => s.id);
+    const sellerIds = [adminId, ...(adminSellers ?? []).map(s => s.id)];
 
     const [
       physicalBooksResult,
