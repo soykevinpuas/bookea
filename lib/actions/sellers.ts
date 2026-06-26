@@ -16,7 +16,10 @@ export async function createStockRequestAction(
   if (role !== "admin" && role !== "vendedor") throw new Error("No autorizado");
   if (sellerId !== user.id) throw new Error("No puedes crear solicitudes para otro vendedor");
 
-  const adminDb = createAdminClient();
+  let adminDb: ReturnType<typeof createAdminClient>;
+  try { adminDb = createAdminClient() } catch {
+    throw new Error("Error de configuración del servidor. La función requiere SUPABASE_SERVICE_ROLE_KEY.")
+  }
 
   for (const item of items) {
     if (item.quantity <= 0) throw new Error("La cantidad debe ser mayor a 0");
