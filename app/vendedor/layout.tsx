@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createClientClient } from "@/lib/supabase";
-import { useCallback, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect } from "react";
 import {
   ChevronRight,
   LogOut,
@@ -13,7 +11,10 @@ import {
   X,
 } from "lucide-react";
 import { useUserId } from "@/hooks/useUser";
+import { useAuth } from "@/lib/auth-provider";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useMobileMenu } from "@/stores/menu";
+import { createClientClient } from "@/lib/supabase";
 
 const navItems = [
   { href: "/vendedor", label: "Mi Tienda", icon: Store, exact: true },
@@ -27,29 +28,19 @@ export default function VendedorLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { userId } = useUserId();
+  const { email } = useAuth();
+  const { data: subscription, isFetched } = useSubscription(userId);
   const { open: isMobileMenuOpen, setOpen: setMobileMenuOpen } = useMobileMenu();
-  const supabase = useMemo(() => createClientClient(), []);
-
-  const { data: user, isFetched } = useQuery({
-    queryKey: ["my-role"],
-    queryFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return null;
-      const { data: roleData } = await supabase.rpc("get_my_role");
-      return { email: userData.user.email, role: roleData as string };
-    },
-    staleTime: 1000 * 60 * 5,
-    retry: 3,
-  });
+  const role = subscription?.role;
 
   useEffect(() => {
     if (!isFetched) return;
-    if (!user) {
+    if (!userId) {
       router.push("/login");
-    } else if (user.role !== "vendedor" && user.role !== "admin") {
+    } else if (role !== "vendedor" && role !== "admin") {
       router.push("/dashboard");
     }
-  }, [user, isFetched, router]);
+  }, [role, isFetched, userId, router]);
 
   const handleLogout = useCallback(async () => {
     const s = createClientClient();
@@ -85,7 +76,7 @@ export default function VendedorLayout({
         <div className="px-6 py-8 border-b border-gray-200 dark:border-white/5 hidden md:block">
           <Link href="/vendedor" className="flex items-center gap-2">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shadow-lg ${
-              user?.role === "admin"
+              role === "admin"
                 ? "bg-blue-600 shadow-blue-500/20"
                 : "bg-amber-600 shadow-amber-500/20"
             }`}>
@@ -94,9 +85,9 @@ export default function VendedorLayout({
             <div>
               <p className="font-bold text-lg leading-tight tracking-tight text-gray-900 dark:text-white">Bookea</p>
               <p className={`text-[10px] font-bold tracking-widest uppercase ${
-                user?.role === "admin" ? "text-blue-400" : "text-amber-400"
+                role === "admin" ? "text-blue-400" : "text-amber-400"
               }`}>
-                {user?.role === "admin" ? "Admin-Vendedor" : "Vendedor"}
+                {role === "admin" ? "Admin-Vendedor" : "Vendedor"}
               </p>
             </div>
           </Link>
@@ -141,7 +132,7 @@ export default function VendedorLayout({
 
           <div className="mt-4 px-4 py-3 bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/5 overflow-hidden">
             <p className="text-[10px] text-gray-400 dark:text-white/20 font-bold uppercase tracking-wider mb-1">Sesión Activa</p>
-            <p className="text-[11px] text-gray-600 dark:text-white/60 truncate">{user?.email}</p>
+            <p className="text-[11px] text-gray-600 dark:text-white/60 truncate">{email}</p>
           </div>
         </div>
       </aside>

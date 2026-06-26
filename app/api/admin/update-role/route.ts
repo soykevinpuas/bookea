@@ -32,11 +32,16 @@ export async function POST(request: NextRequest) {
     // 4. Usar adminClient (service_role) para bypassear RLS completamente
     const adminDb = createAdminClient();
 
+    const updatePayload: { role: string; assigned_admin_id?: string } = { role: newRole };
+    if (newRole === 'vendedor') {
+      updatePayload.assigned_admin_id = user.id;
+    }
+
     const { data: updateResult, error: updateError } = await adminDb
       .from('users')
-      .update({ role: newRole })
+      .update(updatePayload)
       .eq('id', targetUserId)
-      .select('id, email, role')
+      .select('id, email, role, assigned_admin_id')
       .single();
 
     if (updateError) {
