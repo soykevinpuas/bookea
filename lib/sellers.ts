@@ -224,7 +224,7 @@ export async function getAdminSellers(supabase: SupabaseClient, adminId?: string
     .eq("role", "vendedor");
 
   if (adminId) {
-    query = query.eq("assigned_admin_id", adminId);
+    query = query.or(`assigned_admin_id.eq.${adminId},assigned_admin_id.is.null`);
   }
 
   const { data: usersData, error: usersErr } = await query.order("created_at", { ascending: false });
