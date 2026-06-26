@@ -1,15 +1,15 @@
 "use client";
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useState } from 'react'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { createClientClient } from '@/lib/supabase'
 import CoversBackground from '@/components/CoversBackground'
 
-// 2.1 - LoginPage: Componente de formulario para inicio de sesión de usuarios existentes
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -36,6 +36,12 @@ export default function LoginPage() {
       }
       setIsLoading(false)
       return
+    }
+
+    const redirectTo = searchParams.get('redirect')
+    if (redirectTo) {
+      router.push(redirectTo);
+      return;
     }
 
     const { data: roleData } = await supabase.rpc("get_my_role");
@@ -143,5 +149,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

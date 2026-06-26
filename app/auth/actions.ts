@@ -6,50 +6,32 @@ import { redirect } from 'next/navigation'
 import { sendWelcomeEmail } from '@/lib/email'
 import { getStripeClient } from '@/lib/stripe'
 
-// 2.3 - Auth Actions: Endpoints del servidor (Server Actions) para Login y Registro
-export async function login(formData: FormData) {
-  const supabase = await createClient()
-
-  const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  }
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email: data.email,
-    password: data.password,
-  })
-
-  if (error) {
-    if (error.message?.includes('Email not confirmed')) {
-      redirect('/login?error=Correo no confirmado. Revisa tu bandeja de entrada.')
-    }
-    if (error.message?.includes('Invalid login credentials')) {
-      redirect('/login?error=Correo o contraseña incorrectos')
-    }
-    redirect(`/login?error=${encodeURIComponent(error.message)}`)
-  }
-
-  revalidatePath('/', 'layout')
-  redirect('/dashboard')
-}
-
+// 2.3 - Auth Actions: Server Action para Registro
 export async function register(formData: FormData) {
   const supabase = await createClient()
-  const admin = createAdminClient()
+  let admin: ReturnType<typeof createAdminClient> | null = null
+  try { admin = createAdminClient() } catch { /* fallback al client normal */ }
 
   const data = {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
+    confirmPassword: formData.get('confirmPassword') as string,
+  }
+
+  if (data.password !== data.confirmPassword) {
+    redirect('/register?error=Las contraseñas no coinciden')
   }
 
   const referrerId = formData.get('referrer_id') as string | null
 
-  // Usar service role key para crear el usuario (bypass "public signups disabled")
-  const { error, data: signupData } = await admin.auth.signUp({
-    email: data.email,
-    password: data.password,
-  })
+  const doSignUp = async () => {
+    if (admin) {
+      return await admin.auth.signUp({ email: data.email, password: data.password })
+    }
+    return await supabase.auth.signUp({ email: data.email, password: data.password })
+  }
+
+  const { error, data: signupData } = await doSignUp()
 
   if (error) {
     console.error('Error al registrar:', error)
@@ -58,7 +40,7 @@ export async function register(formData: FormData) {
       'Password should be at least 6 characters': 'La contraseña debe tener al menos 6 caracteres.',
       'Signups not allowed': 'Los registros están deshabilitados temporalmente.',
       'Email rate limit exceeded': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
-      'Database error saving new user': 'Error al crear usuario. Intenta de nuevo o contacta a soporte.',
+      'Database error saving new user': 'Error al crear usuario. Corre el siguiente SQL en Supabase Dashboard > SQL Editor:\n\nCREATE OR REPLACE FUNCTION public.handle_new_user()\nRETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = \'\' AS $$\nBEGIN\n    INSERT INTO public.users (id, email, role) VALUES (NEW.id, NEW.email, \'free\');\n    INSERT INTO public.profiles (user_id, id) VALUES (NEW.id, NEW.id);\n    RETURN NEW;\nEND;\n$$;',
     };
     const friendly = Object.entries(messages).find(([key]) => error.message?.includes(key))?.[1];
     redirect(`/register?error=${encodeURIComponent(friendly || error.message || 'Error desconocido')}`)
