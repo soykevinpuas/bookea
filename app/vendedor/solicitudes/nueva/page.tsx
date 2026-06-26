@@ -32,8 +32,8 @@ export default function NuevaSolicitudPage() {
   const { data: userRole } = useQuery({
     queryKey: ["user-role", userId],
     queryFn: async () => {
-      const { data } = await supabase.from("users").select("role, assigned_admin_id").eq("id", userId).single();
-      return data;
+      const { data } = await supabase.from("users").select("role, assigned_admin_id").eq("id", userId).maybeSingle();
+      return data || { role: 'free', assigned_admin_id: null };
     },
     enabled: !!userId,
   });
@@ -43,7 +43,7 @@ export default function NuevaSolicitudPage() {
   const { data: books = [], isLoading: booksLoading } = useQuery({
     queryKey: ["physical-books", sellerAdminId],
     queryFn: () => getPhysicalBooks(supabase, sellerAdminId || undefined),
-    enabled: !!sellerAdminId,
+    enabled: !!userId,
   });
 
   const { data: inventory = [] } = useQuery({
