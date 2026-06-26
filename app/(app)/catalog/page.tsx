@@ -3,6 +3,8 @@
 import { useBooks, useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useQuery } from "@tanstack/react-query";
+import { createClientClient } from "@/lib/supabase";
 import Book3D from "@/components/Book3D";
 import CatalogBookCard from "@/components/CatalogBookCard";
 import Card from "@/components/ui/Card";
@@ -23,6 +25,16 @@ function CatalogContent() {
   const isInCart = (bookId: string, type: string) => cartItems.some(i => i.book_id === bookId && i.type === type);
   const { userId } = useUserId();
   const { data: subscription } = useSubscription(userId);
+  const { data: userRoleData } = useQuery({
+    queryKey: ["user-role", userId],
+    queryFn: async () => {
+      const supabase = createClientClient();
+      const { data } = await supabase.from("users").select("role, assigned_admin_id").eq("id", userId).single();
+      return data;
+    },
+    enabled: !!userId,
+  });
+  const adminId = userRoleData?.role === 'admin' ? userId : (userRoleData?.role === 'vendedor' ? userRoleData?.assigned_admin_id : undefined);
   const { data: userBooks } = useUserBooks(userId || '');
   const ownedDigitalIds = useMemo(() => {
     if (!userBooks) return new Set<string>();
@@ -60,7 +72,7 @@ function CatalogContent() {
     return () => clearTimeout(timer);
   }, [searchQuery, categoryFilter, viewMode, tab, mounted]);
 
-  const { data: booksData, isLoading } = useBooks({ search: debouncedQuery, category: debouncedCategory });
+  const { data: booksData, isLoading } = useBooks({ search: debouncedQuery, category: debouncedCategory, adminId });
 
   const isVendedor = subscription?.role === 'vendedor';
 

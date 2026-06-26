@@ -12,11 +12,11 @@ const BOOK_QUERY_OPTIONS = {
 };
 
 // 3.2 - useBooks: Hook para el catálogo general con persistencia y filtros
-export function useBooks(options?: { search?: string; category?: string; author?: string }) {
+export function useBooks(options?: { search?: string; category?: string; author?: string; adminId?: string }) {
   const supabase = createClientClient();
   
   return useQuery({
-    queryKey: ["books", options?.search, options?.category, options?.author],
+    queryKey: ["books", options?.search, options?.category, options?.author, options?.adminId],
     queryFn: async () => {
       const data = await getBooks(supabase, options);
       // Persistir el catálogo base para carga instantánea futura

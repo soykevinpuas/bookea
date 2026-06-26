@@ -295,14 +295,31 @@ export async function getAdminSellerDetail(
   };
 }
 
-export async function getPhysicalBooks(supabase: SupabaseClient) {
-  const { data } = await supabase
+export async function getPhysicalBooks(supabase: SupabaseClient, adminId?: string) {
+  let query = supabase
     .from("books")
     .select("id, title, author, cover_url, price_physical, stock_physical")
     .eq("is_active", true)
-    .gt("price_physical", 0)
-    .gt("stock_physical", 0)
-    .order("title", { ascending: true });
+    .gt("price_physical", 0);
+
+  if (adminId) {
+    const { data: adminStock } = await supabase
+      .from("admin_stock")
+      .select("book_id")
+      .eq("admin_id", adminId)
+      .gt("quantity", 0);
+
+    const bookIds = (adminStock ?? []).map(s => s.book_id);
+    if (bookIds.length > 0) {
+      query = query.in("id", bookIds);
+    } else {
+      query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+    }
+  } else {
+    query = query.gt("stock_physical", 0);
+  }
+
+  const { data } = await query.order("title", { ascending: true });
 
   return data ?? [];
 }

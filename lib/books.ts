@@ -8,14 +8,32 @@ const isValidUUID = (id: string) => UUID_REGEX.test(id);
 // 3.3 - Configuración y Utilerías de Acceso a Supabase para la Entidad Books
 export async function getBooks(
   supabase: SupabaseClient, 
-  filters?: { search?: string; category?: string; author?: string }
+  filters?: { search?: string; category?: string; author?: string; adminId?: string }
 ): Promise<Book[]> {
   try {
     let query = supabase
       .from("books")
       .select("*")
-      .eq("is_active", true)
-      .or("epub_url.not.is.null,stock_physical.gt.0");
+      .eq("is_active", true);
+
+    // Si se especifica adminId, filtrar por admin_stock en vez de stock_physical global
+    if (filters?.adminId) {
+      const { data: adminStock } = await supabase
+        .from("admin_stock")
+        .select("book_id")
+        .eq("admin_id", filters.adminId)
+        .gt("quantity", 0);
+
+      const adminBookIds = (adminStock ?? []).map(s => s.book_id);
+
+      if (adminBookIds.length > 0) {
+        query = query.or(`epub_url.not.is.null,book_id.in.(${adminBookIds.join(',')})`);
+      } else {
+        query = query.not("epub_url", "is", null);
+      }
+    } else {
+      query = query.or("epub_url.not.is.null,stock_physical.gt.0");
+    }
 
     if (filters?.search) {
       // Búsqueda simple en título o autor
