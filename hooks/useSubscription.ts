@@ -18,6 +18,8 @@ const DEFAULT_FREE: SubscriptionData = {
 };
 
 export function useSubscription(userId: string | undefined) {
+  const cacheKey = `bookea-subscription-cache-${userId || 'anon'}`;
+
   const query = useQuery({
     queryKey: ["user-subscription", userId],
     queryFn: async (): Promise<SubscriptionData | null> => {
@@ -28,10 +30,9 @@ export function useSubscription(userId: string | undefined) {
         .from("users")
         .select("role, subscription_ends_at")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        console.error("[useSubscription] Error fetching role:", error.message);
+      if (error || !data) {
         return DEFAULT_FREE;
       }
 
@@ -63,7 +64,7 @@ export function useSubscription(userId: string | undefined) {
       };
 
       if (typeof window !== "undefined") {
-        localStorage.setItem("bookea-subscription-cache", JSON.stringify(subscription));
+        localStorage.setItem(cacheKey, JSON.stringify(subscription));
       }
 
       return subscription;
@@ -72,7 +73,7 @@ export function useSubscription(userId: string | undefined) {
     staleTime: 5 * 60 * 1000,
     initialData: () => {
       if (typeof window !== "undefined") {
-        const cached = localStorage.getItem("bookea-subscription-cache");
+        const cached = localStorage.getItem(cacheKey);
         if (cached) {
           try { return JSON.parse(cached) as SubscriptionData; } catch (e) {}
         }

@@ -29,8 +29,8 @@ function CatalogContent() {
     queryKey: ["user-role", userId],
     queryFn: async () => {
       const supabase = createClientClient();
-      const { data } = await supabase.from("users").select("role, assigned_admin_id").eq("id", userId).single();
-      return data;
+      const { data } = await supabase.from("users").select("role, assigned_admin_id").eq("id", userId).maybeSingle();
+      return data || { role: 'free', assigned_admin_id: null };
     },
     enabled: !!userId,
   });

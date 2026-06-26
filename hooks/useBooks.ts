@@ -14,23 +14,22 @@ const BOOK_QUERY_OPTIONS = {
 // 3.2 - useBooks: Hook para el catálogo general con persistencia y filtros
 export function useBooks(options?: { search?: string; category?: string; author?: string; adminId?: string }) {
   const supabase = createClientClient();
+  const cacheKey = `bookea-catalog-cache-${options?.adminId || 'public'}`;
   
   return useQuery({
     queryKey: ["books", options?.search, options?.category, options?.author, options?.adminId],
     queryFn: async () => {
       const data = await getBooks(supabase, options);
-      // Persistir el catálogo base para carga instantánea futura
       const noCategoryFilter = !options?.category || options?.category === 'all';
       if (data && !options?.search && noCategoryFilter && !options?.author && typeof window !== 'undefined') {
-        localStorage.setItem('bookea-catalog-cache', JSON.stringify(data));
+        localStorage.setItem(cacheKey, JSON.stringify(data));
       }
       return data;
     },
     initialData: () => {
-      // Carga instantánea desde el caché si no hay filtros activos
       const noCategoryFilter = !options?.category || options?.category === 'all';
       if (typeof window !== 'undefined' && !options?.search && noCategoryFilter && !options?.author) {
-        const cached = localStorage.getItem('bookea-catalog-cache');
+        const cached = localStorage.getItem(cacheKey);
         if (cached) {
           try { return JSON.parse(cached); } catch (e) { return undefined; }
         }
