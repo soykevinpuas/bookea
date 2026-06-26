@@ -371,10 +371,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
             <Link href="/terminos" className="text-gray-500 hover:text-gray-300 transition-colors">
               Términos del Servicio
             </Link>
-            <span className="text-gray-700/50 hidden sm:inline">|</span>
-            <Link href="/login" className="text-gray-500 hover:text-gray-300 transition-colors">
-              Iniciar Sesión
-            </Link>
+
           </div>
           <p className="text-gray-600 text-sm">
             &copy; {new Date().getFullYear()} Bookea. Hecho en México.
