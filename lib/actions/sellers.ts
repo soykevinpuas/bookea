@@ -21,7 +21,7 @@ export async function createStockRequestAction(
   const { data, error } = await supabase.rpc("create_stock_request", {
     p_seller_id: sellerId,
     p_notes: notes || null,
-    p_items: JSON.stringify(p_items),
+    p_items,
   });
 
   if (error) throw new Error(error.message);
@@ -74,6 +74,9 @@ export async function receiveStockItemAction(itemId: string, requestId: string) 
 export async function deleteStockRequestAction(requestId: string) {
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
   const { data: roleData } = await supabase.rpc("get_my_role");
   if (roleData !== "admin") throw new Error("No autorizado");
 
@@ -81,11 +84,12 @@ export async function deleteStockRequestAction(requestId: string) {
 
   const { data: request, error: reqCheck } = await adminDb
     .from("stock_requests")
-    .select("status")
+    .select("status, admin_id")
     .eq("id", requestId)
     .single();
 
   if (reqCheck) throw new Error("Solicitud no encontrada");
+  if (request.admin_id !== user.id) throw new Error("Esta solicitud pertenece a otro administrador");
   if (request.status === "delivered" || request.status === "cancelled") {
     throw new Error("No se puede eliminar una solicitud entregada o cancelada");
   }

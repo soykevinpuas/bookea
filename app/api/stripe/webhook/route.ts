@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/server';
+import { addToLibrary } from '@/lib/books';
 
 // ============================================
 // 7.2 - Stripe Webhook: Endpoint para recibir eventos de Stripe
@@ -13,6 +14,13 @@ import { createAdminClient } from '@/lib/server';
 // ============================================
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+async function getStripeSubscriptionEnd(subscriptionId: string | null | undefined) {
+  if (!subscriptionId) return null;
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const periodEnd = (subscription as any).current_period_end as number | undefined;
+  return periodEnd ? new Date(periodEnd * 1000) : null;
+}
 
 export async function POST(request: NextRequest) {
   if (!webhookSecret) {
@@ -68,6 +76,11 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'No userId in metadata' }, { status: 400 });
         }
 
+        if (session.mode === 'payment' && session.payment_status !== 'paid') {
+          console.warn('[webhook] Checkout de pago completado sin payment_status=paid, saltando grants:', session.id);
+          break;
+        }
+
         // 7.2.2.1 - Procesar suscripción mensual
         if (session.mode === 'subscription') {
           // Leer fecha actual de expiración para extender desde ahí
@@ -77,11 +90,16 @@ export async function POST(request: NextRequest) {
             .eq('id', userId)
             .single();
 
+          const subscriptionId =
+            typeof session.subscription === 'string'
+              ? session.subscription
+              : (session.subscription as { id?: string } | null)?.id;
+          const stripeEndsAt = await getStripeSubscriptionEnd(subscriptionId);
           const now = new Date();
           const existingEnd = userRow?.subscription_ends_at ? new Date(userRow.subscription_ends_at) : null;
-          const baseDate = existingEnd && existingEnd > now ? existingEnd : now;
-          const endsAt = new Date(baseDate);
-          endsAt.setDate(endsAt.getDate() + 30);
+          const fallbackEnd = new Date(existingEnd && existingEnd > now ? existingEnd : now);
+          fallbackEnd.setDate(fallbackEnd.getDate() + 30);
+          const endsAt = stripeEndsAt || fallbackEnd;
 
           // Idempotencia: si ya expira en >= la nueva fecha, saltar
           if (existingEnd && existingEnd >= endsAt) {
@@ -118,20 +136,9 @@ export async function POST(request: NextRequest) {
 
           for (const item of items) {
             if (item.type === 'digital') {
-              const { data: existing } = await supabase
-                .from('user_books')
-                .select('*')
-                .eq('user_id', userId)
-                .eq('book_id', item.book_id)
-                .maybeSingle();
-              if (!existing) {
-                await supabase.from('user_books').insert({
-                  user_id: userId,
-                  book_id: item.book_id,
-                  access_type: 'permanent',
-                });
-              }
+              await addToLibrary(supabase, userId, item.book_id, 'permanent');
             } else if (item.type === 'physical') {
+              const quantity = item.quantity || 1;
               const { data: existingOrder } = await supabase
                 .from('orders_physical')
                 .select('id')
@@ -156,10 +163,10 @@ export async function POST(request: NextRequest) {
                 zip: shippingInfo?.zip || '',
                 phone: shippingInfo?.phone || '',
                 shipping_cost: 0,
-                total: price,
+                total: price * quantity,
                 stripe_payment_id: session.id,
               });
-              const { data: decResult } = await supabase.rpc('decrement_admin_stock', { p_book_id: item.book_id, p_quantity: item.quantity || 1 });
+              const { data: decResult } = await supabase.rpc('decrement_admin_stock', { p_book_id: item.book_id, p_quantity: quantity });
               const dec = (decResult as any) || {};
               if (!dec.success) console.error('Error decrementando stock en webhook:', dec.error);
             }
@@ -174,24 +181,10 @@ export async function POST(request: NextRequest) {
 
           // Para digital o bundle, concedemos el acceso permanente al libro digital
           if (purchaseType === 'digital_permanent' || purchaseType === 'bundle') {
-            const { data: existingAccess } = await supabase
-              .from('user_books')
-              .select('*')
-              .eq('user_id', userId)
-              .eq('book_id', bookId)
-              .maybeSingle();
-
-            if (!existingAccess) {
-              const { error: insertAccessError } = await supabase.from('user_books').insert({
-                user_id: userId,
-                book_id: bookId,
-                access_type: 'permanent',
-              });
-
-              if (insertAccessError) {
-                console.error('Error insertando acceso:', insertAccessError);
-                return NextResponse.json({ error: 'Database insert failed' }, { status: 500 });
-              }
+            const result = await addToLibrary(supabase, userId, bookId, 'permanent');
+            if (result && 'error' in result) {
+              console.error('Error concediendo acceso permanente:', result.error);
+              return NextResponse.json({ error: 'Database insert failed' }, { status: 500 });
             }
           }
 

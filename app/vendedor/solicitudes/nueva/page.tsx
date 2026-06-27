@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { getPhysicalBooks, getSellerInventory } from "@/lib/sellers";
+import { getSellerInventory } from "@/lib/sellers";
 import { createStockRequestAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
 import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store, Package, ChevronLeft, Info } from "lucide-react";
@@ -29,22 +29,22 @@ export default function NuevaSolicitudPage() {
   const [notes, setNotes] = useState("");
   const [previewBook, setPreviewBook] = useState<any>(null);
 
-  const { data: userRole } = useQuery({
-    queryKey: ["user-role", userId],
+  const { data: requestableData, isLoading: booksLoading } = useQuery({
+    queryKey: ["requestable-books", userId],
     queryFn: async () => {
-      const { data } = await supabase.from("users").select("role, assigned_admin_id").eq("id", userId).maybeSingle();
-      return data || { role: 'free', assigned_admin_id: null };
+      const res = await fetch("/api/vendedor/requestable-books", { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudieron cargar los libros");
+      return json as {
+        books: any[];
+        reason: "ok" | "no_admin" | "no_stock";
+      };
     },
     enabled: !!userId,
   });
 
-  const sellerAdminId = userRole?.role === 'admin' ? userId : userRole?.assigned_admin_id;
-
-  const { data: books = [], isLoading: booksLoading } = useQuery({
-    queryKey: ["physical-books", sellerAdminId],
-    queryFn: () => getPhysicalBooks(supabase, sellerAdminId || undefined),
-    enabled: !!userId,
-  });
+  const books = requestableData?.books ?? [];
+  const availabilityReason = requestableData?.reason;
 
   const { data: inventory = [] } = useQuery({
     queryKey: ["seller-inventory", userId],
@@ -161,11 +161,23 @@ export default function NuevaSolicitudPage() {
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-white/20" />
             </div>
+          ) : availabilityReason === "no_admin" ? (
+            <div className="text-center py-20 text-white/30">
+              <Info className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p>Este vendedor demo todavía no está asignado a un administrador.</p>
+              <p className="text-sm text-white/20 mt-1">
+                Asígnale stock desde Admin &gt; Stock para vincularlo y habilitar solicitudes.
+              </p>
+            </div>
           ) : filteredBooks.length === 0 ? (
             <div className="text-center py-20 text-white/30">
               <Store className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p>No hay libros físicos disponibles.</p>
-              <p className="text-sm text-white/20 mt-1">Solo se muestran libros con stock disponible.</p>
+              <p className="text-sm text-white/20 mt-1">
+                {availabilityReason === "no_stock"
+                  ? "Tu administrador no tiene stock disponible para solicitar en este momento."
+                  : "No encontramos libros que coincidan con tu búsqueda."}
+              </p>
             </div>
           ) : (
             <div className="space-y-2">

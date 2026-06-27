@@ -3,6 +3,10 @@ import { Highlight } from "@/types/reading";
 
 const HIGHLIGHTS_KEY = "bookea-offline-highlights";
 
+function getScopedBookKey(bookId: string, userId?: string | null): string {
+  return userId ? `${userId}:${bookId}` : bookId;
+}
+
 function generateId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID()
@@ -16,13 +20,16 @@ function generateId(): string {
 /**
  * 4.3.1 - Obtener subrayados locales
  */
-export function getLocalHighlights(bookId: string): Highlight[] {
+export function getLocalHighlights(bookId: string, userId?: string | null): Highlight[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(HIGHLIGHTS_KEY);
     if (!raw) return [];
     const all = JSON.parse(raw);
-    return all[bookId] || [];
+    const scoped = all[getScopedBookKey(bookId, userId)];
+    if (scoped) return scoped;
+    const legacy = all[bookId] || [];
+    return userId ? legacy.filter((h: Highlight) => h.user_id === userId) : legacy;
   } catch {
     return [];
   }
@@ -36,10 +43,11 @@ export function saveLocalHighlight(bookId: string, highlight: Highlight) {
   try {
     const raw = localStorage.getItem(HIGHLIGHTS_KEY);
     const all = raw ? JSON.parse(raw) : {};
-    if (!all[bookId]) all[bookId] = [];
+    const key = getScopedBookKey(bookId, highlight.user_id);
+    if (!all[key]) all[key] = [];
     
     // Evitar duplicados
-    const current = all[bookId] as any[];
+    const current = all[key] as any[];
     const exists = current.findIndex(h => h.id === highlight.id);
     if (exists >= 0) {
       current[exists] = { ...current[exists], ...highlight, synced: false };
@@ -59,7 +67,7 @@ export async function getHighlights(
   bookId: string,
   userId: string
 ): Promise<Highlight[]> {
-  const local = getLocalHighlights(bookId);
+  const local = getLocalHighlights(bookId, userId);
   if (typeof window !== 'undefined' && !navigator.onLine) {
     return local;
   }
@@ -79,7 +87,8 @@ export async function getHighlights(
     if (data && typeof window !== 'undefined') {
       const raw = localStorage.getItem(HIGHLIGHTS_KEY);
       const all = raw ? JSON.parse(raw) : {};
-      const localUnsynced = (all[bookId] || []).filter((h: any) => h.synced === false);
+      const key = getScopedBookKey(bookId, userId);
+      const localUnsynced = (all[key] || []).filter((h: any) => h.synced === false);
       
       // Combinar: Servidor (prioridad si hay colisión por ID) + Locales no sincronizados
       const remoteIds = new Set(data.map(h => h.id));
@@ -90,7 +99,7 @@ export async function getHighlights(
         ...filteredLocal
       ];
 
-      all[bookId] = merged;
+      all[key] = merged;
       localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(all));
       return merged;
     }
@@ -156,8 +165,9 @@ export async function saveHighlight(
     if (data) {
       const raw = localStorage.getItem(HIGHLIGHTS_KEY);
       const all = raw ? JSON.parse(raw) : {};
-      all[bookId] = (all[bookId] || []).filter((h: any) => h.id !== tempId);
-      all[bookId].unshift({ ...data, synced: true });
+      const key = getScopedBookKey(bookId, userId);
+      all[key] = (all[key] || []).filter((h: any) => h.id !== tempId);
+      all[key].unshift({ ...data, synced: true });
       localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(all));
     }
 

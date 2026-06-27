@@ -28,11 +28,12 @@ export async function POST(req: Request) {
 
     for (const item of cartItems) {
       const book = item.books as any
+      const quantity = item.quantity || 1
       const price = item.type === 'digital' ? (book.price_digital || 29) : (book.price_physical || 299)
 
       if (item.type === 'physical') {
         hasPhysical = true
-        if (!book.stock_physical || book.stock_physical <= 0) {
+        if (!book.stock_physical || book.stock_physical < quantity) {
           return NextResponse.json({ error: `"${book.title}" físico agotado` }, { status: 400 })
         }
       }
@@ -41,12 +42,12 @@ export async function POST(req: Request) {
         price_data: {
           currency: 'mxn',
           product_data: { name: `${book.title} - ${item.type === 'digital' ? 'Digital' : 'Físico'}` },
-          unit_amount: price * 100,
+          unit_amount: Math.round(Number(price) * 100),
         },
-        quantity: item.quantity || 1,
+        quantity,
       })
 
-      itemsMeta.push({ book_id: item.book_id, type: item.type, cart_item_id: item.id, quantity: item.quantity || 1 })
+      itemsMeta.push({ book_id: item.book_id, type: item.type, cart_item_id: item.id, quantity })
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
         shipping: hasPhysical && shipping ? JSON.stringify(shipping) : '',
       },
       success_url: `${baseUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/cart?payment=cancelled`,
+      cancel_url: `${baseUrl}/catalog?payment=cancelled`,
     })
 
     return NextResponse.json({ url: session.url })

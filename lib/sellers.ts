@@ -296,6 +296,7 @@ export async function getAdminSellerDetail(
 }
 
 export async function getPhysicalBooks(supabase: SupabaseClient, adminId?: string) {
+  const adminStockByBook = new Map<string, number>();
   let query = supabase
     .from("books")
     .select("id, title, author, cover_url, price_physical, stock_physical")
@@ -305,10 +306,11 @@ export async function getPhysicalBooks(supabase: SupabaseClient, adminId?: strin
   if (adminId) {
     const { data: adminStock } = await supabase
       .from("admin_stock")
-      .select("book_id")
+      .select("book_id, quantity")
       .eq("admin_id", adminId)
       .gt("quantity", 0);
 
+    (adminStock ?? []).forEach(s => adminStockByBook.set(s.book_id, s.quantity));
     const bookIds = (adminStock ?? []).map(s => s.book_id);
     if (bookIds.length > 0) {
       query = query.in("id", bookIds);
@@ -321,7 +323,12 @@ export async function getPhysicalBooks(supabase: SupabaseClient, adminId?: strin
 
   const { data } = await query.order("title", { ascending: true });
 
-  return data ?? [];
+  if (!adminId) return data ?? [];
+
+  return (data ?? []).map(book => ({
+    ...book,
+    stock_physical: adminStockByBook.get(book.id) ?? 0,
+  }));
 }
 
 // ─── Payment Tracking ────────────────────────────────────────

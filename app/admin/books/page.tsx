@@ -136,11 +136,13 @@ export default function AdminBooksPage() {
   const adjustStockMutation = useMutation({
     mutationFn: async ({ id, delta }: { id: string; delta: number }) => {
       const supabase = createClientClient();
-      const book = books.find((b) => b.id === id);
-      if (!book) throw new Error("Libro no encontrado");
-      const newStock = Math.max(0, book.stock_physical + delta);
-      const { error } = await supabase.from("books").update({ stock_physical: newStock }).eq("id", id);
+      const { data, error } = await supabase.rpc("adjust_admin_stock", {
+        p_book_id: id,
+        p_delta: delta,
+      });
       if (error) throw error;
+      const result = (data as any) || {};
+      if (!result.success) throw new Error(result.error || "Error al ajustar stock");
     },
     onMutate: ({ id }) => {
       setStockLoading((prev) => new Set(prev).add(id));
@@ -274,7 +276,6 @@ export default function AdminBooksPage() {
         price_digital: Number(editingBook.price_digital),
         price_physical: Number(editingBook.price_physical),
         price_bundle: editingBook.price_bundle ? Number(editingBook.price_bundle) : null,
-        stock_physical: Number(editingBook.stock_physical),
         is_active: editingBook.is_active,
         is_premium: editingBook.is_premium,
       };
@@ -284,8 +285,18 @@ export default function AdminBooksPage() {
         if (error) throw error;
         toast.success("Libro actualizado con éxito");
       } else {
-        const { error } = await supabase.from("books").insert(payload);
+        const { data: createdBook, error } = await supabase.from("books").insert(payload).select("id").single();
         if (error) throw error;
+        const initialStock = Number(editingBook.stock_physical || 0);
+        if (createdBook?.id && initialStock > 0) {
+          const { data: stockResult, error: stockError } = await supabase.rpc("adjust_admin_stock", {
+            p_book_id: createdBook.id,
+            p_delta: initialStock,
+          });
+          if (stockError) throw stockError;
+          const result = (stockResult as any) || {};
+          if (!result.success) throw new Error(result.error || "No se pudo asignar stock inicial");
+        }
         toast.success("Libro creado con éxito");
       }
 

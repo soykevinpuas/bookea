@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/server';
+import { createAdminClient, createClient } from '@/lib/server';
 
 // ============================================
 // 7.3 - Claim Free Book API: Endpoint para reclamar libros gratuitos
@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     // 7.3.1 - Verificar autenticación del usuario
     const supabase = await createClient();
+    const adminDb = createAdminClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 7.3.3 - Verificar que el libro existe y es gratuito (no premium)
-    const { data: book, error: bookError } = await supabase
+    const { data: book, error: bookError } = await adminDb
       .from('books')
       .select('is_premium, price_digital')
       .eq('id', bookId)
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 7.3.4 - Verificar si el usuario ya tiene acceso
-    const { data: existingAccess } = await supabase
+    const { data: existingAccess } = await adminDb
       .from('user_books')
       .select('id')
       .eq('user_id', user.id)
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // 7.3.5 - Insertar acceso permanente al libro
     // La constraint UNIQUE en la BD actúa como backup contra race conditions
-    const { error: insertError } = await supabase
+    const { error: insertError } = await adminDb
       .from('user_books')
       .insert({
         user_id: user.id,

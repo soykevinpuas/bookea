@@ -1,7 +1,7 @@
 // lib/downloads.ts - Gestión de caché de libros descargados para modo offline
 import { Book } from "@/types/book";
 
-const BOOKS_CACHE = 'bookea-books';
+export const BOOKS_CACHE = 'bookea-books-v3';
 const METADATA_KEY = 'bookea-offline-metadata';
 
 /** 

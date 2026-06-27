@@ -124,6 +124,14 @@ export default function AdminDashboard() {
     for (const s of adminStock) m.set(s.book_id, s.quantity);
     return m;
   }, [adminStock]);
+  const assignSellerEntries = useMemo(
+    () => Object.entries(assignSellerQtys).filter(([, qty]) => qty > 0),
+    [assignSellerQtys]
+  );
+  const assignSellerUnits = useMemo(
+    () => assignSellerEntries.reduce((sum, [, qty]) => sum + qty, 0),
+    [assignSellerEntries]
+  );
 
   useEffect(() => {
     const channel = supabase
@@ -221,14 +229,16 @@ export default function AdminDashboard() {
   const assignSellerMutation = useMutation({
     mutationFn: async () => {
       if (!assignSellerId) throw new Error("Selecciona un vendedor");
-      const entries = Object.entries(assignSellerQtys).filter(([, qty]) => qty > 0);
+      const entries = assignSellerEntries;
       if (entries.length === 0) throw new Error("No hay cantidades asignadas");
       const items = entries.map(([bookId, qty]) => ({ book_id: bookId, quantity: qty }));
-      const { error } = await supabase.rpc("assign_stock_batch", {
+      const { data, error } = await supabase.rpc("assign_stock_batch", {
         p_seller_id: assignSellerId,
         p_items: items,
       });
       if (error) throw new Error(error.message);
+      const result = (data as any) || {};
+      if (!result.success) throw new Error(result.error || "Error al asignar stock");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
@@ -530,12 +540,17 @@ export default function AdminDashboard() {
                   {/* Seller selector */}
                   <select
                     value={assignSellerId}
-                    onChange={(e) => setAssignSellerId(e.target.value)}
+                    onChange={(e) => {
+                      setAssignSellerId(e.target.value);
+                      setAssignSellerQtys({});
+                    }}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50"
                   >
                     <option value="">Seleccionar vendedor...</option>
                     {allSellers.map((s: any) => (
-                      <option key={s.id} value={s.id}>{s.email}</option>
+                      <option key={s.id} value={s.id}>
+                        {s.email}{!s.assigned_admin_id ? " (demo/sin asignar)" : ""}
+                      </option>
                     ))}
                   </select>
 
@@ -625,7 +640,8 @@ export default function AdminDashboard() {
                                           [book.id]: 1,
                                         }))
                                       }
-                                      className="text-xs font-medium px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
+                                      disabled={outOfStock}
+                                      className="text-xs font-medium px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
                                     >
                                       + Asignar
                                     </button>
@@ -634,6 +650,28 @@ export default function AdminDashboard() {
                               </div>
                                 );
                               })}
+                            </div>
+                            <div className="sticky bottom-0 -mx-1 pt-3 bg-[#0a0a0a]/95 backdrop-blur border-t border-amber-500/10">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-amber-500/5 border border-amber-500/15 p-3">
+                                <div>
+                                  <p className="text-sm font-semibold text-white">
+                                    {assignSellerEntries.length > 0
+                                      ? `${assignSellerUnits} unidades seleccionadas`
+                                      : "Selecciona cantidades para asignar"}
+                                  </p>
+                                  <p className="text-xs text-white/40">
+                                    El stock se moverá de tu almacén al vendedor seleccionado.
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => assignSellerMutation.mutate()}
+                                  disabled={!assignSellerId || assignSellerEntries.length === 0 || assignSellerMutation.isPending}
+                                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                  {assignSellerMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                                  {assignSellerMutation.isPending ? "Asignando..." : "Asignar stock"}
+                                </button>
+                              </div>
                             </div>
                           </>
                         )}

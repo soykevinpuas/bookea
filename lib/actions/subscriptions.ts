@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/server'
 import { getStripeClient } from '@/lib/stripe'
 import { revalidatePath } from 'next/cache'
+import { addToLibrary } from '@/lib/books'
 
 /**
  * Verifica el ESTADO de un pago después de redirect desde Stripe Checkout.
@@ -46,8 +47,19 @@ export async function verifySubscriptionAction(sessionId: string) {
 
       // Fallback si webhook no ha procesado
       if (session.payment_status === 'paid') {
-        const endsAt = new Date()
-        endsAt.setDate(endsAt.getDate() + 30)
+        const subscriptionId =
+          typeof session.subscription === 'string'
+            ? session.subscription
+            : (session.subscription as { id?: string } | null)?.id
+        let endsAt = new Date()
+        if (subscriptionId) {
+          const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId)
+          const periodEnd = (stripeSubscription as any).current_period_end as number | undefined
+          if (periodEnd) endsAt = new Date(periodEnd * 1000)
+          else endsAt.setDate(endsAt.getDate() + 30)
+        } else {
+          endsAt.setDate(endsAt.getDate() + 30)
+        }
         await adminDb.from('users').update({
           role: userData?.role === 'admin' ? 'admin' : userData?.role === 'vendedor' ? 'vendedor' : 'subscriber',
           subscription_ends_at: endsAt.toISOString(),
@@ -67,23 +79,14 @@ export async function verifySubscriptionAction(sessionId: string) {
 
       // Compra de carrito (múltiples items)
       if (itemsStr) {
-        const items: { book_id: string; type: string; cart_item_id: string }[] = JSON.parse(itemsStr)
+        const items: { book_id: string; type: string; cart_item_id: string; quantity?: number }[] = JSON.parse(itemsStr)
 
         // Procesar cada item (idempotente — verifica existencia primero)
         for (const item of items) {
           if (item.type === 'digital') {
-            const { data: existing } = await adminDb
-              .from('user_books')
-              .select('id')
-              .eq('user_id', userId)
-              .eq('book_id', item.book_id)
-              .maybeSingle()
-            if (!existing) {
-              await adminDb.from('user_books').insert({
-                user_id: userId, book_id: item.book_id, access_type: 'permanent',
-              })
-            }
+            await addToLibrary(adminDb, userId, item.book_id, 'permanent')
           } else if (item.type === 'physical') {
+            const quantity = item.quantity || 1
             const shippingStr = session.metadata?.shipping
             let shippingInfo: Record<string, string> | null = null
             if (shippingStr) try { shippingInfo = JSON.parse(shippingStr) } catch {}
@@ -91,6 +94,7 @@ export async function verifySubscriptionAction(sessionId: string) {
               .from('orders_physical')
               .select('id')
               .eq('stripe_payment_id', session.id)
+              .eq('book_id', item.book_id)
               .maybeSingle()
             if (!existing) {
               const { data: bookPrice } = await adminDb
@@ -104,9 +108,9 @@ export async function verifySubscriptionAction(sessionId: string) {
                 name: shippingInfo?.name || '', address: shippingInfo?.address || '',
                 city: shippingInfo?.city || '', state: shippingInfo?.state || '',
                 zip: shippingInfo?.zip || '', phone: shippingInfo?.phone || '',
-                shipping_cost: 0, total: price, stripe_payment_id: session.id,
+                shipping_cost: 0, total: price * quantity, stripe_payment_id: session.id,
               })
-              try { await adminDb.rpc('decrement_admin_stock', { p_book_id: item.book_id, p_quantity: 1 }) } catch {}
+              try { await adminDb.rpc('decrement_admin_stock', { p_book_id: item.book_id, p_quantity: quantity }) } catch {}
             }
           }
         }
@@ -135,15 +139,7 @@ export async function verifySubscriptionAction(sessionId: string) {
         const purchaseType = session.metadata?.purchaseType || 'digital_permanent'
 
         if (purchaseType === 'digital_permanent' || purchaseType === 'bundle') {
-          const { data: existing } = await adminDb
-            .from('user_books').select('id')
-            .eq('user_id', userId).eq('book_id', bookId)
-            .maybeSingle()
-          if (!existing) {
-            await adminDb.from('user_books').insert({
-              user_id: userId, book_id: bookId, access_type: 'permanent',
-            })
-          }
+          await addToLibrary(adminDb, userId, bookId, 'permanent')
         }
 
         if (purchaseType === 'physical' || purchaseType === 'bundle') {

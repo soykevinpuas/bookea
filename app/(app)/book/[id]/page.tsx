@@ -21,6 +21,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Book3D from "@/components/Book3D";
 import AccessBadge from "@/components/ui/AccessBadge";
 import BookLoading from "./loading";
+import { downloadBook, isBookDownloaded } from "@/lib/downloads";
 
 function DescriptionText({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -63,7 +64,9 @@ function BookDetailContent() {
   const hasPremiumAccess = subscription?.isActive || subscription?.role === 'admin';
   const ownedBook = userBooks?.find((b: any) => b.id.toLowerCase() === id.toLowerCase());
   const hasPermanentAccess = ownedBook?.access_type === 'permanent' || ownedBook?.access_type === 'gift';
-  const canRead = !isPremiumBook || hasPremiumAccess || hasPermanentAccess;
+  const coinExpiresAt = ownedBook?.expires_at ? new Date(ownedBook.expires_at) : null;
+  const hasCoinAccess = ownedBook?.access_type === 'coin_redemption' && !!coinExpiresAt && coinExpiresAt > new Date();
+  const canRead = !isPremiumBook || hasPremiumAccess || hasPermanentAccess || hasCoinAccess;
 
   // 3.5.4 - Efecto para detectar retorno de pago exitoso desde Stripe
   useEffect(() => {
@@ -100,7 +103,6 @@ function BookDetailContent() {
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [addingToLib, setAddingToLib] = useState(false);
-  const supabase = createClientClient();
 
   const isInLibrary = userBooks?.some((b: any) => b.id.toLowerCase() === id.toLowerCase());
   const isCurrentlyInLibrary = !!isInLibrary; // Booleano estable
@@ -108,12 +110,7 @@ function BookDetailContent() {
   useEffect(() => {
     // Verificar si el libro está en el caché al cargar
     if (book?.epub_url && typeof caches !== 'undefined') {
-      const url = book.epub_url;
-      caches.open('bookea-books').then((cache: any) => {
-        cache.match(url).then((match: any) => {
-          if (match) setIsDownloaded(true);
-        });
-      });
+      isBookDownloaded(book.epub_url).then(setIsDownloaded);
     }
   }, [book?.epub_url]);
 
@@ -129,10 +126,13 @@ function BookDetailContent() {
     
     setIsDownloading(true);
     try {
-      const cache = await caches.open('bookea-books');
-      await cache.add(book.epub_url as string);
-      setIsDownloaded(true);
-      toast.success("¡Libro descargado para lectura offline!");
+      const success = await downloadBook(book);
+      if (success) {
+        setIsDownloaded(true);
+        toast.success("¡Libro descargado para lectura offline!");
+      } else {
+        toast.error("Error al descargar el libro para modo offline");
+      }
     } catch (err) {
       console.error("Download error:", err);
       toast.error("Error al descargar el libro para modo offline");

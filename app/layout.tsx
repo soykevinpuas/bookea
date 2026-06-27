@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/lib/providers";
 import { AuthProvider } from "@/lib/auth-provider";
@@ -12,22 +11,18 @@ import BottomNavWrapper from "@/components/BottomNavWrapper";
 
 
 // 1.5 - Configuración de fuentes y Metadata global
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "Bookea",
   description: "Tu biblioteca premium de E-books",
+  manifest: "/manifest.json",
   icons: {
     icon: "/icon.png",
     apple: "/icon-192x192.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Bookea",
   },
   formatDetection: {
     telephone: false,
@@ -38,8 +33,6 @@ export const viewport = {
   themeColor: "#0a0a0a",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
 };
 
@@ -54,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <head>
         {/* Evitar el flash del splash screen en navegación secundaria */}
         <script
@@ -74,7 +67,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 transition-colors duration-300 dark:bg-[#0a0a0a] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-gray-100 retro:text-white navy:text-[#e8eaf6] flex flex-col`}
+        className="antialiased min-h-screen bg-gray-50 transition-colors duration-300 dark:bg-[#0a0a0a] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-gray-100 retro:text-white navy:text-[#e8eaf6] flex flex-col"
       >
         {/* 1.7 - Splash Screen HTML puro: visible instantáneamente sin esperar a React */}
         <div id="bookea-splash">
@@ -120,5 +113,4 @@ export default function RootLayout({
     </html>
   );
 }
-
 

@@ -3,6 +3,10 @@ import { Bookmark } from "@/types/bookmark";
 
 const BOOKMARKS_KEY = "bookea-offline-bookmarks";
 
+function getScopedBookKey(bookId: string, userId?: string | null): string {
+  return userId ? `${userId}:${bookId}` : bookId;
+}
+
 function generateId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID()
@@ -13,13 +17,16 @@ function generateId(): string {
   );
 }
 
-export function getLocalBookmarks(bookId: string): Bookmark[] {
+export function getLocalBookmarks(bookId: string, userId?: string | null): Bookmark[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(BOOKMARKS_KEY);
     if (!raw) return [];
     const all = JSON.parse(raw);
-    return all[bookId] || [];
+    const scoped = all[getScopedBookKey(bookId, userId)];
+    if (scoped) return scoped;
+    const legacy = all[bookId] || [];
+    return userId ? legacy.filter((b: Bookmark) => b.user_id === userId) : legacy;
   } catch {
     return [];
   }
@@ -30,12 +37,13 @@ export function saveLocalBookmark(bookId: string, bookmark: Bookmark) {
   try {
     const raw = localStorage.getItem(BOOKMARKS_KEY);
     const all = raw ? JSON.parse(raw) : {};
-    if (!all[bookId]) all[bookId] = [];
-    const existing = all[bookId].findIndex((b: Bookmark) => b.id === bookmark.id);
+    const key = getScopedBookKey(bookId, bookmark.user_id);
+    if (!all[key]) all[key] = [];
+    const existing = all[key].findIndex((b: Bookmark) => b.id === bookmark.id);
     if (existing >= 0) {
-      all[bookId][existing] = { ...bookmark, synced: false };
+      all[key][existing] = { ...bookmark, synced: false };
     } else {
-      all[bookId].push({ ...bookmark, synced: false });
+      all[key].push({ ...bookmark, synced: false });
     }
     localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(all));
   } catch (err) {
@@ -43,14 +51,15 @@ export function saveLocalBookmark(bookId: string, bookmark: Bookmark) {
   }
 }
 
-export function removeLocalBookmark(bookId: string, bookmarkId: string) {
+export function removeLocalBookmark(bookId: string, bookmarkId: string, userId?: string | null) {
   if (typeof window === 'undefined') return;
   try {
     const raw = localStorage.getItem(BOOKMARKS_KEY);
     if (!raw) return;
     const all = JSON.parse(raw);
-    if (all[bookId]) {
-      all[bookId] = all[bookId].filter((b: Bookmark) => b.id !== bookmarkId);
+    const key = getScopedBookKey(bookId, userId);
+    if (all[key]) {
+      all[key] = all[key].filter((b: Bookmark) => b.id !== bookmarkId);
       localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(all));
     }
   } catch {}
@@ -60,7 +69,7 @@ export async function getBookmarks(
   bookId: string,
   userId: string
 ): Promise<Bookmark[]> {
-  const local = getLocalBookmarks(bookId);
+  const local = getLocalBookmarks(bookId, userId);
   if (typeof window !== 'undefined' && !navigator.onLine) {
     return local;
   }
@@ -79,12 +88,13 @@ export async function getBookmarks(
     if (data && typeof window !== 'undefined') {
       const raw = localStorage.getItem(BOOKMARKS_KEY);
       const all = raw ? JSON.parse(raw) : {};
-      const localUnsynced = (all[bookId] || []).filter((b: { synced?: boolean }) => b.synced === false);
+      const key = getScopedBookKey(bookId, userId);
+      const localUnsynced = (all[key] || []).filter((b: { synced?: boolean }) => b.synced === false);
       const remoteIds = new Set(data.map(b => b.id));
       const remoteCfi = new Set(data.map(b => b.cfi));
       const filteredLocal = localUnsynced.filter((b: Bookmark) => !remoteIds.has(b.id) && !remoteCfi.has(b.cfi));
       const merged = [...data.map(b => ({ ...b, synced: true })), ...filteredLocal];
-      all[bookId] = merged;
+      all[key] = merged;
       localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(all));
       return merged;
     }
@@ -143,8 +153,9 @@ export async function saveBookmark(
     if (data) {
       const raw = localStorage.getItem(BOOKMARKS_KEY);
       const all = raw ? JSON.parse(raw) : {};
-      all[bookId] = (all[bookId] || []).filter((b: Bookmark) => b.id !== newBookmark.id);
-      all[bookId].push({ ...data, synced: true });
+      const key = getScopedBookKey(bookId, userId);
+      all[key] = (all[key] || []).filter((b: Bookmark) => b.id !== newBookmark.id);
+      all[key].push({ ...data, synced: true });
       localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(all));
     }
 
@@ -159,10 +170,12 @@ export async function deleteBookmark(bookmarkId: string, bookId: string): Promis
     const raw = localStorage.getItem(BOOKMARKS_KEY);
     if (raw) {
       const all = JSON.parse(raw);
-      if (all[bookId]) {
-        all[bookId] = all[bookId].filter((b: Bookmark) => b.id !== bookmarkId);
-        localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(all));
+      for (const key in all) {
+        if (key === bookId || key.endsWith(`:${bookId}`)) {
+          all[key] = all[key].filter((b: Bookmark) => b.id !== bookmarkId);
+        }
       }
+      localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(all));
     }
   }
 

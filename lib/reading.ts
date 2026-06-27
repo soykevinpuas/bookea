@@ -3,16 +3,24 @@ import { ReadingProgress } from "@/types/reading";
 
 const PROGRESS_KEY = "bookea-offline-progress";
 
+function getScopedBookKey(bookId: string, userId?: string | null): string {
+  return userId ? `${userId}:${bookId}` : bookId;
+}
+
 /**
  * 4.1.5 - Obtener progreso de lectura local (localStorage)
  */
-export function getLocalProgress(bookId: string): ReadingProgress | null {
+export function getLocalProgress(bookId: string, userId?: string | null): ReadingProgress | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(PROGRESS_KEY);
     if (!raw) return null;
     const all = JSON.parse(raw);
-    return all[bookId] || null;
+    const scoped = all[getScopedBookKey(bookId, userId)];
+    if (scoped) return scoped;
+    const legacy = all[bookId];
+    if (legacy && (!userId || legacy.user_id === userId)) return legacy;
+    return null;
   } catch {
     return null;
   }
@@ -26,8 +34,9 @@ export function saveLocalProgress(bookId: string, progress: Partial<ReadingProgr
   try {
     const raw = localStorage.getItem(PROGRESS_KEY);
     const all = raw ? JSON.parse(raw) : {};
-    all[bookId] = {
-      ...all[bookId],
+    const key = getScopedBookKey(bookId, progress.user_id);
+    all[key] = {
+      ...all[key],
       ...progress,
       updated_at: new Date().toISOString(),
       synced: false // Marca para el motor de sincronización
@@ -44,7 +53,7 @@ export async function getReadingProgress(
   userId: string
 ): Promise<ReadingProgress | null> {
   // 1. Siempre checar lo local primero (es lo más rápido y posiblemente más fresco)
-  const local = getLocalProgress(bookId);
+  const local = getLocalProgress(bookId, userId);
 
   // 2. Si estamos offline, lo local es nuestra única verdad
   if (typeof window !== 'undefined' && !navigator.onLine) {
@@ -130,7 +139,7 @@ export async function saveReadingProgress(
 
     if (!error) {
       // Marcar como sincronizado localmente
-      const local = getLocalProgress(bookId);
+      const local = getLocalProgress(bookId, userId);
       if (local) {
         saveLocalProgress(bookId, { ...local, synced: true } as any);
       }
@@ -139,4 +148,3 @@ export async function saveReadingProgress(
     // Fallo silencioso en red: ya guardamos localmente arriba
   }
 }
-

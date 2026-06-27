@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     // 7.1.5 - Obtener precio DESDE LA BASE DE DATOS para prevenir manipulación (anti-spoofing)
     const { data: book, error: bookError } = await supabase
       .from('books')
-      .select('title, price_digital, price_physical, price_bundle')
+      .select('title, price_digital, price_physical, price_bundle, stock_physical')
       .eq('id', bookId)
       .single();
 
@@ -80,13 +80,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Tipo de compra inválido' }, { status: 400 });
     }
 
+    if ((type === 'physical' || type === 'bundle') && (!book.stock_physical || book.stock_physical <= 0)) {
+      return NextResponse.json({ error: 'Libro físico agotado' }, { status: 400 });
+    }
+
     // 7.1.7 - Crear datos del precio (Stripe requiere centavos)
     const priceData = {
       currency: 'mxn',
       product_data: {
         name: `${book.title} - ${descriptionType}`,
       },
-      unit_amount: exactPrice * 100, // Importante: Stripe procesa en centavos
+      unit_amount: Math.round(Number(exactPrice) * 100), // Stripe procesa en centavos enteros
     };
 
     // 7.1.8 - Crear sesión de checkout de Stripe

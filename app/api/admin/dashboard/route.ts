@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
     const { data: adminSellers } = await adminClient
       .from("users")
-      .select("id, email")
+      .select("id, email, assigned_admin_id")
       .eq("role", "vendedor")
       .or(`assigned_admin_id.eq.${adminId},assigned_admin_id.is.null`);
 

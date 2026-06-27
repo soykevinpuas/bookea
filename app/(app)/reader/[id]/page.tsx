@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
 import { DashboardSkeleton } from "@/components/ui/LoadingStates";
 import { createClientClient } from "@/lib/supabase";
-import { addToLibrary, hasBookAccess } from "@/lib/books";
+import { hasBookAccess } from "@/lib/books";
 import { addToLibraryAction } from "@/lib/actions/library";
 import type { EpubContents } from "@/types/epub";
 import { recordReadingSession, canCountStreakDay } from "@/lib/streaks";
@@ -466,10 +466,11 @@ export default function ReaderPage() {
             return;
           }
 
-          // 4.2.5.0.1 - AUTO-ADD: Si tiene acceso (ej. admin o premium), asegurar que esté en su biblioteca
-          // Esto garantiza que aparezca en el Dashboard de inmediato al abrirlo.
-          const accessType = subscription?.isActive ? 'subscription' : 'permanent';
-          await addToLibraryAction(bookId, accessType);
+          // 4.2.5.0.1 - AUTO-ADD seguro: gratis como permanente; premium solo como suscripcion activa.
+          const accessType = book.is_premium === false ? 'permanent' : subscription?.isActive ? 'subscription' : null;
+          if (accessType) {
+            await addToLibraryAction(bookId, accessType);
+          }
         }
 
         const epubUrl = book.epub_url as string;
@@ -728,8 +729,8 @@ export default function ReaderPage() {
           console.warn("⚠️ Reader: Timeout o error cargando metadatos. Usando respaldo local.");
           const { getLocalProgress } = await import("@/lib/reading");
           const { getLocalHighlights } = await import("@/lib/highlights");
-          savedProgress = getLocalProgress(bookId);
-          savedHighlights = getLocalHighlights(bookId);
+          savedProgress = getLocalProgress(bookId, userId);
+          savedHighlights = getLocalHighlights(bookId, userId);
         }
         
         setHighlights(savedHighlights);
@@ -1109,14 +1110,15 @@ export default function ReaderPage() {
       }
     };
 
-    document.addEventListener('visibilitychange', () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') flushPosition();
-    });
+    };
 
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', flushPosition);
 
     return () => {
-      document.removeEventListener('visibilitychange', flushPosition);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', flushPosition);
     };
   }, [bookId, userId]);

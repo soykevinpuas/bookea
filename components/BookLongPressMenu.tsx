@@ -7,8 +7,6 @@ import { isBookDownloaded, downloadBook, removeBookDownload } from "@/lib/downlo
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserId } from "@/hooks/useUser";
-import { createClientClient } from "@/lib/supabase";
-import { removeFromLibrary, addToLibrary } from "@/lib/books";
 import { addToLibraryAction, removeFromLibraryAction } from "@/lib/actions/library";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUserBooks } from "@/hooks/useBooks";
@@ -34,7 +32,6 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   const menuRef = useRef<HTMLDivElement>(null);
   const { userId } = useUserId();
   const queryClient = useQueryClient();
-  const supabase = createClientClient();
 
   // Obtener estado de biblioteca y suscripción
   const { data: userBooks } = useUserBooks(userId || "");

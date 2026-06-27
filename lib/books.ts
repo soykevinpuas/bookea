@@ -101,6 +101,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
       .from("user_books")
       .select(`
         access_type,
+        expires_at,
         book_id,
         books(*)
       `)
@@ -126,7 +127,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
     });
 
     const books = userBooksData
-      .map((item: { access_type: string; book_id: string; books: Book | Book[] }) => {
+      .map((item: { access_type: string; expires_at?: string | null; book_id: string; books: Book | Book[] }) => {
         const bookData = item.books;
         const book = Array.isArray(bookData) ? bookData[0] : bookData;
         
@@ -143,7 +144,8 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
           const rawLocal = typeof window !== 'undefined' ? localStorage.getItem("bookea-offline-progress") : null;
           if (rawLocal) {
             const allLocal = JSON.parse(rawLocal);
-            local = allLocal[book.id];
+            local = allLocal[`${userId}:${book.id}`] || allLocal[book.id];
+            if (local?.user_id && local.user_id !== userId) local = null;
           }
         } catch (e) {}
         
@@ -168,6 +170,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
           last_read_at: finalLastRead,
           percent_complete: finalPercent,
           access_type: item.access_type,
+          expires_at: item.expires_at ?? null,
           isOfflineReady
         };
       })
@@ -203,15 +206,20 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
 const ACCESS_CACHE_KEY = 'bookea-access-cache';
 const ACCESS_CACHE_TTL = 5 * 60 * 1000;
 
-function getCachedAccess(bookId: string): boolean | null {
+function getAccessCacheKey(userId: string, bookId: string): string {
+  return `${userId}:${bookId}`;
+}
+
+function getCachedAccess(userId: string, bookId: string): boolean | null {
   try {
     const raw = typeof window !== 'undefined' ? localStorage.getItem(ACCESS_CACHE_KEY) : null;
     if (!raw) return null;
     const cache = JSON.parse(raw);
-    const entry = cache[bookId];
+    const cacheKey = getAccessCacheKey(userId, bookId);
+    const entry = cache[cacheKey];
     if (!entry) return null;
     if (Date.now() - entry.cachedAt > ACCESS_CACHE_TTL) {
-      delete cache[bookId];
+      delete cache[cacheKey];
       localStorage.setItem(ACCESS_CACHE_KEY, JSON.stringify(cache));
       return null;
     }
@@ -221,12 +229,12 @@ function getCachedAccess(bookId: string): boolean | null {
   }
 }
 
-function setCachedAccess(bookId: string, hasAccess: boolean): void {
+function setCachedAccess(userId: string, bookId: string, hasAccess: boolean): void {
   try {
     if (typeof window === 'undefined') return;
     const raw = localStorage.getItem(ACCESS_CACHE_KEY);
     const cache = raw ? JSON.parse(raw) : {};
-    cache[bookId] = { hasAccess, cachedAt: Date.now() };
+    cache[getAccessCacheKey(userId, bookId)] = { hasAccess, cachedAt: Date.now() };
     localStorage.setItem(ACCESS_CACHE_KEY, JSON.stringify(cache));
   } catch {
     // localStorage may be full or unavailable
@@ -246,7 +254,7 @@ const { data: userData, error: userError } = await supabase
 
 if (userError || !userData) {
   console.error('[hasBookAccess] Error al consultar usuario:', userError?.message);
-  const cached = getCachedAccess(bookId);
+  const cached = getCachedAccess(userId, bookId);
   if (cached !== null) return cached;
   return false;
 }
@@ -267,7 +275,7 @@ if (userError || !userData) {
       .single();
 
     if (!book || bookError) {
-      const cached = getCachedAccess(bookId);
+      const cached = getCachedAccess(userId, bookId);
       if (cached !== null) return cached;
       console.warn(`[hasBookAccess] Error obteniendo libro ${bookId}:`, bookError);
       return false;
@@ -276,14 +284,14 @@ if (userError || !userData) {
     // --- REGLA DE ORO DE LIBROS GRATIS ---
     // Si el libro NO es premium, cualquier usuario (incluso gratis) puede leerlo.
     if (!book.is_premium) {
-      setCachedAccess(bookId, true);
+      setCachedAccess(userId, bookId, true);
       return true;
     }
 
     // --- REGLA DE LIBROS PREMIUM ---
     // Si el usuario es Premium activo y el libro es Premium, permitir acceso
     if (isPremiumActive && book.is_premium) {
-      setCachedAccess(bookId, true);
+      setCachedAccess(userId, bookId, true);
       return true;
     }
     
@@ -297,27 +305,27 @@ if (userError || !userData) {
 
     if (userBook) {
       if (userBook.access_type === 'permanent' || userBook.access_type === 'gift') {
-        setCachedAccess(bookId, true);
+        setCachedAccess(userId, bookId, true);
         return true;
       }
       if (userBook.access_type === 'subscription' && isPremiumActive) {
-        setCachedAccess(bookId, true);
+        setCachedAccess(userId, bookId, true);
         return true;
       }
       if (userBook.access_type === 'coin_redemption') {
         const expiresAt = userBook.expires_at ? new Date(userBook.expires_at) : null;
         if (expiresAt && expiresAt > now) {
-          setCachedAccess(bookId, true);
+          setCachedAccess(userId, bookId, true);
           return true;
         }
       }
     }
 
-    setCachedAccess(bookId, false);
+    setCachedAccess(userId, bookId, false);
     console.warn(`[hasBookAccess] Acceso DENEGADO: ${book.title}. UserRole=${userData.role}, isPremiumActive=${isPremiumActive}`);
     return false;
   } catch (error) {
-    const cached = getCachedAccess(bookId);
+    const cached = getCachedAccess(userId, bookId);
     if (cached !== null) return cached;
     console.error("Error checking book access:", error);
     return false;
@@ -326,16 +334,43 @@ if (userError || !userData) {
 
 /**
  * 3.3.4 - Agregar un libro a la biblioteca del usuario.
- * Versión ultra-robusta que verifica existencia antes de insertar.
+ * Verifica existencia antes de insertar y nunca degrada accesos fuertes
+ * (compras permanentes, regalos o canjes vigentes).
  */
-export async function addToLibrary(supabase: SupabaseClient, userId: string, bookId: string, accessType: 'subscription' | 'permanent' = 'subscription') {
+export type LibraryAccessType = 'subscription' | 'permanent' | 'gift' | 'coin_redemption';
+
+const ACCESS_STRENGTH: Record<LibraryAccessType, number> = {
+  subscription: 1,
+  coin_redemption: 2,
+  permanent: 3,
+  gift: 3,
+};
+
+function shouldUpdateLibraryAccess(
+  existing: { access_type: LibraryAccessType; expires_at?: string | null },
+  requestedAccessType: LibraryAccessType
+) {
+  const now = new Date();
+  const existingExpiresAt = existing.expires_at ? new Date(existing.expires_at) : null;
+  const existingIsExpiredCoin =
+    existing.access_type === 'coin_redemption' &&
+    (!existingExpiresAt || existingExpiresAt <= now);
+
+  if (!existingIsExpiredCoin && ACCESS_STRENGTH[existing.access_type] >= ACCESS_STRENGTH[requestedAccessType]) {
+    return false;
+  }
+
+  return true;
+}
+
+export async function addToLibrary(supabase: SupabaseClient, userId: string, bookId: string, accessType: LibraryAccessType = 'subscription') {
   if (!userId || !bookId) return null;
 
   try {
     // 1. Verificar si ya existe para evitar errores de duplicidad/constraint
     const { data: existing, error: checkError } = await supabase
       .from("user_books")
-      .select("id")
+      .select("id, access_type, expires_at")
       .eq("user_id", userId)
       .eq("book_id", bookId)
       .maybeSingle();
@@ -347,10 +382,12 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
 
     let record;
     if (existing) {
-      // Si existe, actualizar el access_type por si acaso
+      if (!shouldUpdateLibraryAccess(existing as { access_type: LibraryAccessType; expires_at?: string | null }, accessType)) {
+        record = existing;
+      } else {
       const { data, error: updateError } = await supabase
         .from("user_books")
-        .update({ access_type: accessType })
+        .update({ access_type: accessType, expires_at: null })
         .eq("id", existing.id)
         .select()
         .single();
@@ -360,6 +397,7 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
         throw new Error(`Update failed: ${updateError.message}`);
       }
       record = data;
+      }
     } else {
       // Si no existe, insertar
       const { data, error: insertError } = await supabase
@@ -410,21 +448,41 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
  * 3.3.5 - Quitar un libro de la biblioteca personal.
  */
 export async function removeFromLibrary(supabase: SupabaseClient, userId: string, bookId: string) {
-  if (!userId || !bookId) return false;
+  if (!userId || !bookId) return { success: false, error: "Datos incompletos" };
 
   try {
+    const { data: entry, error: entryError } = await supabase
+      .from("user_books")
+      .select("id, access_type, books(is_premium, price_digital)")
+      .eq("user_id", userId)
+      .eq("book_id", bookId)
+      .maybeSingle();
+
+    if (entryError) throw entryError;
+    if (!entry) return { success: true };
+
+    const bookData = Array.isArray(entry.books) ? entry.books[0] : entry.books;
+    const isFreePermanent =
+      entry.access_type === "permanent" &&
+      bookData?.is_premium === false &&
+      Number(bookData?.price_digital || 0) <= 0;
+
+    if (entry.access_type !== "subscription" && !isFreePermanent) {
+      return {
+        success: false,
+        error: "Este acceso es una compra, regalo o canje activo y no se puede eliminar desde la biblioteca.",
+      };
+    }
+
     const { error } = await supabase
       .from("user_books")
       .delete()
-      .eq("user_id", userId)
-      .eq("book_id", bookId);
+      .eq("id", entry.id);
 
     if (error) throw error;
-    return true;
+    return { success: true };
   } catch (error) {
     console.error("Error removing book from library:", error);
-    return false;
+    return { success: false, error: "Error al quitar el libro de la biblioteca" };
   }
 }
-
-
