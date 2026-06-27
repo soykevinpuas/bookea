@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { Users, ShieldCheck, Shield, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Users, ShieldCheck, Shield, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface AppUser {

@@ -1,6 +1,4 @@
 import { createClientClient } from "@/lib/supabase";
-import { getLocalProgress, saveLocalProgress } from "./reading";
-
 const PROGRESS_KEY = "bookea-offline-progress";
 const HIGHLIGHTS_KEY = "bookea-offline-highlights";
 
@@ -41,7 +39,7 @@ export async function syncOfflineProgress() {
       const allHighlights = JSON.parse(rawH);
       for (const bookId in allHighlights) {
         const highlights = allHighlights[bookId] as any[];
-        for (let h of highlights) {
+        for (const h of highlights) {
           if (!h.synced && h.user_id) {
             // Nota: Usamos upsert para manejar actualizaciones de color/nota offline
             const { error } = await supabase.from("highlights").upsert({
@@ -68,7 +66,7 @@ export async function syncOfflineProgress() {
       const allBookmarks = JSON.parse(rawB);
       for (const bookId in allBookmarks) {
         const bookmarks = allBookmarks[bookId] as any[];
-        for (let b of bookmarks) {
+        for (const b of bookmarks) {
           if (!b.synced && b.user_id) {
             const { error } = await supabase.from("bookmarks").upsert({
               id: b.id,

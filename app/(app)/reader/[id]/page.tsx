@@ -13,7 +13,7 @@ import { Bookmark as BookmarkType } from "@/types/bookmark";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
 import { getBookmarks, saveBookmark, deleteBookmark } from "@/lib/bookmarks";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, Bookmark, BookmarkCheck, FileText, X, Trash2, Check, PenSquare, Sparkles, GripHorizontal, Settings2, Navigation } from "lucide-react";
+import { Loader2, ArrowLeft, Bookmark, BookmarkCheck, FileText, X, Trash2, Check, PenSquare, Sparkles, Settings2, Navigation } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -52,7 +52,7 @@ export default function ReaderPage() {
         if (screen?.orientation?.unlock) {
           screen.orientation.unlock();
         }
-      } catch (err) {}
+      } catch {}
     };
   }, []);
 
@@ -240,16 +240,6 @@ export default function ReaderPage() {
 
   // 4.2.2.2 - Validador de contraste entre texto y fondo
   const handleSetTextColor = (color: string) => {
-    // Definir colores de fondo por tema
-    const bgMap: Record<string, string> = {
-      light: "#ffffff",
-      dark: "#0a0a0a",
-      retro: "#0d1117",
-      navy: "#0a0f1e"
-    };
-
-    const currentBg = bgMap[theme || "light"];
-    
     // Validación estricta para modo Claro (Día)
     if (theme === "light" && color !== "#000000") {
       toast.info("El modo claro solo acepta color negro en el texto para garantizar la lectura");
@@ -445,7 +435,7 @@ export default function ReaderPage() {
     if (!canInit) return;
 
     // 4.2.4b - Timeout de seguridad para el cargador
-    let loadingTimeout: NodeJS.Timeout | null = setTimeout(() => {
+    const loadingTimeout: NodeJS.Timeout | null = setTimeout(() => {
       setIsLoading(false);
       setError("El libro está tardando demasiado en cargar. Por favor, reintenta o verifica tu conexión.");
     }, 15000);
@@ -686,20 +676,6 @@ export default function ReaderPage() {
 
         updateTheme();
         
-        // Aplicar fuente via CSS variable (más confiable que rendition.themes.font() en scroll mode)
-        const applyFont = (family: string) => {
-          let fontStack = "Inter, -apple-system, sans-serif";
-          if (family === "serif") fontStack = "Georgia, 'Times New Roman', serif";
-          if (family === "mono") fontStack = "'Courier New', Courier, monospace";
-          if (family === "baskerville") fontStack = "'Libre Baskerville', serif";
-          if (family === "dyslexic") fontStack = "'OpenDyslexic', 'Comic Sans MS', sans-serif";
-          if (family === "lora") fontStack = "'Lora', serif";
-          if (family === "nunito") fontStack = "'Nunito', sans-serif";
-          
-          rendition.themes.override("font-family", fontStack);
-          rendition.themes.override("--bookea-font-family", fontStack);
-        };
-        
         rendition.themes.fontSize(`${sizeRef.current}px`);
         renditionRef.current = rendition;
 
@@ -725,7 +701,7 @@ export default function ReaderPage() {
           
           savedProgress = results[0];
           savedHighlights = results[1];
-        } catch (err) {
+        } catch {
           console.warn("⚠️ Reader: Timeout o error cargando metadatos. Usando respaldo local.");
           const { getLocalProgress } = await import("@/lib/reading");
           const { getLocalHighlights } = await import("@/lib/highlights");
@@ -745,10 +721,10 @@ export default function ReaderPage() {
         const renderHighlights = () => {
           highlightsRef.current.forEach((h: any) => {
              try {
-                rendition.annotations.highlight(h.cfi_start, { id: h.id }, (e: Event) => {
+                rendition.annotations.highlight(h.cfi_start, { id: h.id }, () => {
                   handleHighlightClick(h);
                 }, undefined, { "fill": h.color, "fill-opacity": "0.3", "mix-blend-mode": "normal" });
-             } catch (err) {
+             } catch {
                console.warn("No se pudo renderizar el highlight", h.id);
              }
           });
@@ -762,7 +738,7 @@ export default function ReaderPage() {
               if (sectionSpineKey && getSpineKey(b.cfi) !== sectionSpineKey) return;
               // Indicador visual mínimo: un punto diminuto casi invisible
               rendition.annotations.highlight(b.cfi, { id: `bookmark-${b.id}` }, () => {}, undefined, { "fill": "#FFB300", "fill-opacity": "0.03", "mix-blend-mode": "normal" });
-            } catch (err) {
+            } catch {
               console.warn("No se pudo renderizar el marcador", b.id);
             }
           });
@@ -1010,16 +986,6 @@ export default function ReaderPage() {
           setTimeout(generateLocations, 500);
         }
 
-        // 4.2.7.1 - Manejo de resize para actualizar el rendition al cambiar orientación o tamaño de ventana
-        const handleResize = () => {
-          if (renditionRef.current) {
-            const viewer = viewerRef.current;
-            if (viewer) {
-              renditionRef.current.resize(viewer.clientWidth, viewer.clientHeight);
-            }
-          }
-        };
-        
         bookInstance.on("openFailed", (err: unknown) => {
           console.error("EPUB Open Failed:", err);
           if (loadingTimeout) clearTimeout(loadingTimeout);
@@ -1233,17 +1199,6 @@ export default function ReaderPage() {
     document.documentElement.setAttribute("data-reader-color", "true");
   }, [textColor, mounted, theme]);
 
-  // 4.2.9.1 - Controladores de paginación explícitos (Adelante/Atrás) operados mediante los botones HUD
-  const handlePrev = () => {
-    renditionRef.current?.prev().catch((err: any) => console.warn("EPUB prev error:", err));
-    resetControlsTimeout();
-  };
-
-  const handleNext = () => {
-    renditionRef.current?.next().catch((err: any) => console.warn("EPUB next error:", err));
-    resetControlsTimeout();
-  };
-
   // 4.2.9.2 - Funciones de CRUD para Highlights desde UI
   const handleCreateHighlight = async (color: string) => {
     if (!activeSelection || !bookId || !userId) return;
@@ -1264,7 +1219,7 @@ export default function ReaderPage() {
           document.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
 const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
         contents?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
-        } catch (err) {}
+        } catch {}
         
         // Plamar el color nuevo
         renditionRef.current?.annotations.highlight(activeSelection.cfiRange, { id: activeSelection.isExistingId }, () => {
@@ -1335,7 +1290,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         document.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
         const contentsArray = renditionRef.current?.getContents() as unknown as EpubContents[];
         contentsArray?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
-      } catch (err) {}
+      } catch {}
 
       toast.info("Subrayado eliminado");
     } else {
@@ -1909,7 +1864,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
                 <p className="text-sm text-gray-800 dark:text-gray-200 retro:text-gray-200 navy:text-gray-200 italic mb-2 line-clamp-4 leading-relaxed pr-6 cursor-pointer" onClick={() => {
                   renditionRef.current?.display(h.cfi_start);
                 }}>
-                  "{h.text}"
+                  &quot;{h.text}&quot;
                 </p>
                 
                 {editingNote?.id === h.id ? (

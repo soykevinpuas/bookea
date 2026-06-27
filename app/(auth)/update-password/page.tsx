@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Loader2, CheckCircle2 } from 'lucide-react'
 import { createClientClient } from '@/lib/supabase'
 import CoversBackground from '@/components/CoversBackground'
 

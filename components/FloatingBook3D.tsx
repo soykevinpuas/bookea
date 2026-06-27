@@ -86,7 +86,7 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
         if (materialRef.current) materialRef.current.opacity = 0;
       },
       undefined,
-      (err) => {
+      () => {
         console.warn("Texture failed to load", urlToLoad);
         if (urlToLoad !== FALLBACK_URL && active) {
           loader.load(FALLBACK_URL, (fallbackTex) => {

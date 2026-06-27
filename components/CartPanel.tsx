@@ -13,7 +13,7 @@ interface CartPanelProps {
 
 export default function CartPanel({ open, onClose }: CartPanelProps) {
   const { userId } = useUserId()
-  const { items, loading, removingItems, fetchCart, addItem, removeItem, shipping, setShipping } = useCartStore()
+  const { items, loading, removingItems, fetchCart, removeItem, shipping, setShipping } = useCartStore()
   const [checkingOut, setCheckingOut] = useState(false)
   const [showShipping, setShowShipping] = useState(false)
   const [error, setError] = useState('')

@@ -16,10 +16,9 @@ export function Skeleton({ className = "" }: SkeletonProps) {
 
 interface PageTransitionProps {
   children: React.ReactNode;
-  isLoading?: boolean;
 }
 
-export function PageTransition({ children, isLoading }: PageTransitionProps) {
+export function PageTransition({ children }: PageTransitionProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -75,9 +74,7 @@ export function BookCardSkeleton({ variant = "grid" }: BookCardSkeletonProps) {
   );
 }
 
-interface DashboardSkeletonProps {}
-
-export function DashboardSkeleton({}: DashboardSkeletonProps) {
+export function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
       {/* Header stats */}
@@ -214,7 +211,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getBook, getUserBooks, getBooks } from "@/lib/books";
+import { getBook, getBooks } from "@/lib/books";
 import { createClientClient } from "@/lib/supabase";
 
 interface PrefetchLinkProps {

@@ -25,13 +25,6 @@ export function StreakBadge({ streak, variant = 'full' }: StreakBadgeProps) {
     return 'bg-orange-400/10 border-orange-400/20'
   }
 
-  const getFireEmoji = () => {
-    if (streak >= 30) return '🔥'
-    if (streak >= 10) return '🔥'
-    if (streak >= 5) return '🔥'
-    return '🔥'
-  }
-
   if (variant === 'compact') {
     return (
       <span className={`flex items-center gap-0.5 text-xs font-bold ${getColorClasses()}`}>

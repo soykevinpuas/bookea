@@ -4,11 +4,6 @@ import { createClient } from '@/lib/server'
 import { revalidatePath } from 'next/cache'
 import { CoinType, CoinSource, ANTI_ABUSE_LIMITS } from '@/types/coins'
 
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return 'Error desconocido'
-}
-
 export async function getUserCoinsAction() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

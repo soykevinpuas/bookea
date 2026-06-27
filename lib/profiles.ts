@@ -25,7 +25,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem(`profile-${userId}`, JSON.stringify(data));
-    } catch (e) {}
+    } catch {}
   }
 
   return data as Profile | null;

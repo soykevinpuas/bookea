@@ -12,8 +12,6 @@ import {
   Plus,
   Minus,
   Truck,
-  Clock,
-  AlertTriangle,
   Search,
   X,
 } from "lucide-react";

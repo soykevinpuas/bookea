@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { useUserId } from "@/hooks/useUser";
-import { Package, Truck, CheckCircle2, Clock, Loader2, ExternalLink } from "lucide-react";
+import { Package, Truck, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 interface Order {

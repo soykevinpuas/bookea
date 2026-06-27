@@ -7,7 +7,6 @@ import { parseAvatarConfig } from "@/lib/avatars-v2";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Calendar, Trash2, Loader2, Sparkles } from "lucide-react";
 import { useUserId } from "@/hooks/useUser";
-import { toast } from "sonner";
 
 /**
  * 6.9 - ReviewList: Visualización premium de la comunidad y sus opiniones

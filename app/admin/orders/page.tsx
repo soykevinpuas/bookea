@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { Package, CheckCircle2, Truck, Clock, Loader2, ExternalLink } from "lucide-react";
+import { Package, CheckCircle2, Truck, Clock, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 interface Order {
@@ -29,8 +29,6 @@ const STATUS_LABELS: Record<Order["status"], { label: string; color: string }> =
   delivered: { label: "Entregado", color: "bg-green-500/10 text-green-400 border border-green-500/20" },
   cancelled: { label: "Cancelado", color: "bg-red-500/10 text-red-400 border border-red-500/20" },
 };
-
-const STATUS_FLOW: Order["status"][] = ["pending", "shipped", "delivered", "cancelled"];
 
 export default function AdminOrdersPage() {
   const queryClient = useQueryClient();
@@ -101,7 +99,6 @@ export default function AdminOrdersPage() {
         <div className="space-y-3">
           {orders.map((order) => {
             const statusInfo = STATUS_LABELS[order.status];
-            const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1];
 
             return (
               <div

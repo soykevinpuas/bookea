@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { updateStockRequestStatus, COST_PER_BOOK, ADMIN_COST_BOOK, markSalesAsPaid, assignStock, revertAssignStock } from "@/lib/sellers";
+import { updateStockRequestStatus, COST_PER_BOOK, ADMIN_COST_BOOK, markSalesAsPaid, assignStock } from "@/lib/sellers";
 import { deleteStockRequestAction, deleteSaleAction, removeSellerInventoryAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo, useEffect } from "react";
@@ -11,8 +11,8 @@ import Link from "next/link";
 import {
   BarChart3, Package, TrendingUp, ShoppingCart,
   Store, ChevronLeft, ChevronRight,
-  Calendar, Truck, Check, Clock, Trash2, DollarSign,
-  Plus, Minus, Search, Loader2, Shield, AlertTriangle, X,
+  Calendar, Check, Clock, Trash2, DollarSign,
+  Plus, Minus, Search, Loader2, Shield, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from "recharts";
@@ -88,7 +88,7 @@ export default function AdminDashboard() {
   }
 
   const [salesPage, setSalesPage] = useState(1);
-  const [inventoryPage, setInventoryPage] = useState(1);
+  const [inventoryPage] = useState(1);
   const [requestsPage, setRequestsPage] = useState(1);
 
   const { data: dash, isLoading } = useQuery<DashboardData>({
@@ -512,7 +512,7 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                   <div className="divide-y divide-amber-500/5">
-                    {pendingBySeller.map(([sellerId, { email, total, sales }]) => (
+                    {pendingBySeller.map(([sellerId, { email, total }]) => (
                       <div key={sellerId} className="px-5 py-3 flex items-center justify-between">
                         <span className="text-sm text-white/70">{email}</span>
                         <span className="text-sm font-bold text-amber-400">${total.toLocaleString("es-MX")}</span>
@@ -1024,7 +1024,7 @@ export default function AdminDashboard() {
                               </button>
                             )}
                           </div>
-                          {req.notes && <p className="text-xs text-white/30 mt-2 italic">"{req.notes}"</p>}
+                          {req.notes && <p className="text-xs text-white/30 mt-2 italic">&quot;{req.notes}&quot;</p>}
                           {req.tracking_number && (
                             <p className="text-xs text-blue-400 mt-2 flex items-center gap-1">
                               <Package className="w-3 h-3" /> Guía: {req.tracking_number}

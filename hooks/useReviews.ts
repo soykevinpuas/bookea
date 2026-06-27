@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getBookReviews, saveReview, deleteReview, Review } from "@/lib/reviews";
+import { getBookReviews, saveReview, deleteReview } from "@/lib/reviews";
 import { useEffect } from "react";
 import { createClientClient } from "@/lib/supabase";
 
@@ -58,7 +58,7 @@ export function useReviews(bookId: string) {
           table: 'reviews',
           filter: `book_id=eq.${bookId}`
         },
-        (payload: any) => {
+        () => {
           // React Query invalidará y refrescará los datos automáticamente
           queryClient.invalidateQueries({ queryKey: ["reviews", bookId] });
         }

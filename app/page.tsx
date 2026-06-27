@@ -34,7 +34,7 @@ export default async function Home() {
       .map((b) => b.cover_url)
       .filter((url): url is string => !!url)
       .sort(() => Math.random() - 0.5);
-  } catch (e) {
+  } catch {
     // Fallback silencioso
   }
   covers = covers.length > 0 ? covers : FALLBACK_COVERS;

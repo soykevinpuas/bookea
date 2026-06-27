@@ -55,14 +55,12 @@ function CatalogContent() {
 
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [debouncedCategory, setDebouncedCategory] = useState(categoryFilter);
-  const [debouncedView, setDebouncedView] = useState(viewMode);
 
   useEffect(() => {
-    if (!mounted) { setDebouncedQuery(searchQuery); setDebouncedCategory(categoryFilter); setDebouncedView(viewMode); return; }
+    if (!mounted) { setDebouncedQuery(searchQuery); setDebouncedCategory(categoryFilter); return; }
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
       setDebouncedCategory(categoryFilter);
-      setDebouncedView(viewMode);
       const params = new URLSearchParams();
       if (searchQuery) params.set("search", searchQuery);
       if (categoryFilter && categoryFilter !== "all") params.set("category", categoryFilter);

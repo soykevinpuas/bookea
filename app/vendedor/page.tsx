@@ -5,11 +5,11 @@ import { createClientClient } from "@/lib/supabase";
 import { markAsSold, COST_PER_BOOK, ADMIN_COST_BOOK } from "@/lib/sellers";
 import { receiveStockItemAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { Store, Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from "recharts";
 import StockRequestItemsModal from "@/components/StockRequestItemsModal";
 import BookPreviewModal from "@/components/BookPreviewModal";
@@ -63,7 +63,6 @@ export default function VendedorDashboard() {
   const supabase = createClientClient();
   const queryClient = useQueryClient();
   const { userId } = useUserId();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<Section>("ingresos");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
@@ -128,9 +127,6 @@ export default function VendedorDashboard() {
     : requests.filter((r: any) => r.status === solicitudFilter);
 
   const effectiveCost = isAdmin ? ADMIN_COST_BOOK : COST_PER_BOOK;
-  const totalRevenue = sales.reduce((s: number, i: any) => s + i.sale_price * i.quantity, 0);
-  const totalProfit = totalRevenue - sales.reduce((s: number, i: any) => s + i.quantity * effectiveCost, 0);
-
   const chartData = useMemo(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
@@ -207,10 +203,10 @@ export default function VendedorDashboard() {
     }
   };
 
-  const handleReceive = async (itemId: string, requestId: string) => {
+  const handleReceive = async (itemId: string) => {
     setReceiving(itemId);
     try {
-      await receiveStockItemAction(itemId, requestId);
+      await receiveStockItemAction(itemId);
       toast.success("Libro recibido");
       queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
       queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
@@ -548,7 +544,7 @@ export default function VendedorDashboard() {
 
                                   {!isReceived && req.status === "delivered" && (
                                     <button
-                                      onClick={() => handleReceive(item.id, req.id)}
+                                      onClick={() => handleReceive(item.id)}
                                       disabled={receiving === item.id}
                                       className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-green-600 hover:bg-green-500 text-white transition-all disabled:opacity-50 shrink-0"
                                     >
@@ -599,7 +595,7 @@ export default function VendedorDashboard() {
                           </div>
 
                           {req.notes && (
-                            <p className="text-[10px] text-white/20 italic mt-1">"{req.notes}"</p>
+                            <p className="text-[10px] text-white/20 italic mt-1">&quot;{req.notes}&quot;</p>
                           )}
                           {req.tracking_number && (
                             <p className="text-[10px] text-blue-400 mt-1">Guía: {req.tracking_number}</p>

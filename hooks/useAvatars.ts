@@ -26,7 +26,7 @@ export function useProfile(userId: string | undefined) {
       try {
         const cached = localStorage.getItem(`profile-${userId}`);
         if (cached) return JSON.parse(cached) as Profile;
-      } catch (e) {}
+      } catch {}
       return undefined;
     },
   });

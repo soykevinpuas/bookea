@@ -81,7 +81,7 @@ export async function getBook(supabase: SupabaseClient, id: string): Promise<Boo
       return getCachedBookMetadata(id);
     }
     return (data as Book) || null;
-  } catch (error) {
+  } catch {
     // FALLBACK OFFLINE: En caso de error de red (fetch fallido)
     return getCachedBookMetadata(id);
   }
@@ -135,8 +135,8 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
 
         const progressEntry = progressMap.get(book.id);
         
-        let serverPercent = progressEntry?.percent_complete || 0;
-        let lastRead = progressEntry?.last_read_at || null;
+        const serverPercent = progressEntry?.percent_complete || 0;
+        const lastRead = progressEntry?.last_read_at || null;
 
         // 3.4.1.9 - PRIORIDAD OFFLINE
         let local = null;
@@ -147,7 +147,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
             local = allLocal[`${userId}:${book.id}`] || allLocal[book.id];
             if (local?.user_id && local.user_id !== userId) local = null;
           }
-        } catch (e) {}
+        } catch {}
         
         let finalPercent = serverPercent;
         let finalLastRead = lastRead;
@@ -198,7 +198,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
     }
 
     return result as Book[];
-  } catch (error) {
+  } catch {
     return getAllCachedBooks();
   }
 }

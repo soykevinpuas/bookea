@@ -86,7 +86,7 @@ export function useSubscription(userId: string | undefined) {
       if (typeof window !== "undefined") {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          try { return JSON.parse(cached) as SubscriptionData; } catch (e) {}
+          try { return JSON.parse(cached) as SubscriptionData; } catch {}
         }
       }
       return undefined;

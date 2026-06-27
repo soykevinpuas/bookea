@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { ThemeToggle } from "./ThemeToggle";
@@ -20,7 +20,6 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
 
   const pathname = usePathname();
-  const router = useRouter();
 
   const { data: subscription } = useSubscription(userId);
   const { open: menuOpen, setOpen: setMenuOpen } = useMobileMenu();

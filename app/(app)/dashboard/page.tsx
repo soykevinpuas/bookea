@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect, Suspense } from "react";
 import { useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
-import { useProfile } from "@/hooks/useAvatars";
 import Book3D from "@/components/Book3D";
 import BookLongPressMenu from "@/components/BookLongPressMenu";
 import ProgressCircle from "@/components/ProgressCircle";
@@ -140,7 +139,6 @@ function DashboardContent() {
   }, []);
 
   const { data: allBooks, isLoading } = useUserBooks(userId);
-  const { profile } = useProfile(userId);
 
   const displayBooks = useMemo(() => {
     return allBooks || [];

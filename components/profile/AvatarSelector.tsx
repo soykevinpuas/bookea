@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Check, Loader2, Info } from "lucide-react";
 import { AnimalEngine, AvatarStyleType, generateRandomSeed } from "@/components/avatars/AnimalEngine";
 import { useState, useEffect, useRef } from "react";
@@ -222,4 +221,3 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
     </div>
   );
 }
-

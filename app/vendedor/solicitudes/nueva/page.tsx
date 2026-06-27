@@ -5,7 +5,7 @@ import { createClientClient } from "@/lib/supabase";
 import { getSellerInventory } from "@/lib/sellers";
 import { createStockRequestAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store, Package, ChevronLeft, Info } from "lucide-react";
+import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store, ChevronLeft, Info } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";

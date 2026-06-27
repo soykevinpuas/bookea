@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
         const subCustomerId = subscription.customer as string;
         const subEmail = subscription.customer_email as string | undefined;
 
-        let userQuery = supabase
+        const userQuery = supabase
           .from('users')
           .select('id')
           .eq('stripe_customer_id', subCustomerId)

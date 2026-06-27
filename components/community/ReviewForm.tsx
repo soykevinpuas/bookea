@@ -6,7 +6,7 @@ import { useProfile } from "@/hooks/useAvatars";
 import { useReviews } from "@/hooks/useReviews";
 import StarRating from "./StarRating";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, MessageSquarePlus, Sparkles } from "lucide-react";
+import { Send, Loader2, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 import { parseAvatarConfig } from "@/lib/avatars-v2";

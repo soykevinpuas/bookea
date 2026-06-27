@@ -34,7 +34,7 @@ export async function createStockRequestAction(
   revalidatePath("/admin/vendedores");
 }
 
-export async function receiveStockItemAction(itemId: string, requestId: string) {
+export async function receiveStockItemAction(itemId: string) {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();

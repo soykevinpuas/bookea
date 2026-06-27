@@ -31,7 +31,7 @@ export function useBooks(options?: { search?: string; category?: string; author?
       if (typeof window !== 'undefined' && !options?.search && noCategoryFilter && !options?.author) {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          try { return JSON.parse(cached); } catch (e) { return undefined; }
+          try { return JSON.parse(cached); } catch { return undefined; }
         }
       }
       return undefined;
@@ -71,7 +71,7 @@ export function useUserBooks(userId: string, options?: { search?: string; catego
         if (cached) {
           try {
             return JSON.parse(cached);
-          } catch (e) {
+          } catch {
             return undefined;
           }
         }
@@ -115,4 +115,3 @@ export function useUserBooks(userId: string, options?: { search?: string; catego
 
   return query;
 }
-

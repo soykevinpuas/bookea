@@ -64,7 +64,7 @@ export default function ProfilePage() {
     isUpdatingAvatar
   } = useProfile(userId);
   const { data: subscription, isLoading: subLoading } = useSubscription(userId);
-  const { data: profileData, isLoading: profileDataLoading } = useProfileData(userId);
+  const { data: profileData } = useProfileData(userId);
 
   const referralLink = profileData?.referralLink || '';
   const referralCount = profileData?.referralCount || 0;
@@ -127,27 +127,6 @@ export default function ProfilePage() {
       toast.success("Nombre actualizado");
     } catch {
       toast.error("Error al actualizar nombre");
-    }
-  };
-
-  const handlePasswordReset = async () => {
-    setPasswordLoading(true);
-    try {
-      const supabase = createClientClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) { toast.error("No se encontró tu correo"); setPasswordLoading(false); return; }
-      const response = await fetch("/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user.email }),
-      });
-      const data = await response.json();
-      if (data.success) toast.success("Correo de restablecimiento enviado");
-      else toast.error(data.error || "Error al enviar correo");
-    } catch {
-      toast.error("Error de conexión");
-    } finally {
-      setPasswordLoading(false);
     }
   };
 

@@ -4,7 +4,7 @@ import { useBook } from "@/hooks/useBooks";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function BuyPhysicalPage() {
   const params = useParams();

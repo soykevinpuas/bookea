@@ -50,8 +50,6 @@ function BookDetailContent() {
   const { userId } = useUserId();
   
   // 3.5.3 - Estado local para manejar estados de carga en operaciones asíncronas
-  const [loading, setLoading] = useState<string | null>(null);
-
   // 3.5.5 - Consulta del libro por ID y verificación de acceso del usuario
   const { data: book, isLoading, error } = useBook(id);
   const { data: userBooks, refetch } = useUserBooks(userId);

@@ -263,8 +263,6 @@ export default function AdminBooksPage() {
         if (updateAuthorError) throw updateAuthorError;
       }
 
-      const slug = editingBook.slug || editingBook.title.toLowerCase().replace(/ /g, "-").replace(/[^\w-]/g, "");
-      
       const payload: Record<string, any> = {
         title: editingBook.title,
         author: editingBook.author,

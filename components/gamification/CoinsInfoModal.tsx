@@ -80,7 +80,7 @@ export default function CoinsInfoModal({ isOpen, onClose }: CoinsInfoModalProps)
 
           <div className="bg-blue-50 dark:bg-blue-500/5 border border-blue-200 dark:border-blue-500/20 rounded-xl p-4 text-sm text-blue-700 dark:text-blue-300 leading-relaxed space-y-1">
             <p>
-              <strong>Canjear:</strong> En la página del libro, usa el botón <strong>"Desbloquear con monedas"</strong>.
+              <strong>Canjear:</strong> En la página del libro, usa el botón <strong>&quot;Desbloquear con monedas&quot;</strong>.
             </p>
             <p>
               Límite: <strong>{ANTI_ABUSE_LIMITS.max_total_redemptions_per_month} canjes por mes</strong>, máximo 1 por libro.

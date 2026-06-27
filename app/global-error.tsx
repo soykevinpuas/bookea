@@ -19,7 +19,7 @@ export default function GlobalError({
     // debemos desregistrar el Service Worker para romper el bucle infinito de errores.
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (let registration of registrations) {
+        for (const registration of registrations) {
           registration.unregister();
         }
       });

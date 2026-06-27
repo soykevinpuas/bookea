@@ -102,7 +102,7 @@ export function CoinRedemptionModal({
           ) : (
             <>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Elige una moneda para desbloquear <span className="font-semibold text-gray-900 dark:text-white">"{bookTitle}"</span>
+                Elige una moneda para desbloquear <span className="font-semibold text-gray-900 dark:text-white">&quot;{bookTitle}&quot;</span>
               </p>
 
               {alreadyHasAccess && (

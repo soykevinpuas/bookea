@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { getAdminSellers } from "@/lib/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { Store, Users, Package, TrendingDown, Loader2, ChevronRight } from "lucide-react";
+import { Store, Loader2, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminVendedoresPage() {

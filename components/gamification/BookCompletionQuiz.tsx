@@ -163,7 +163,7 @@ export function BookCompletionQuiz({ isOpen, onClose, onComplete, bookTitle, boo
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">¡Felicidades!</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      Completaste <span className="font-semibold">"{bookTitle}"</span>. Has ganado una <span className="text-amber-600 dark:text-amber-400 font-semibold">moneda de bronce</span> 🪙
+                      Completaste <span className="font-semibold">&quot;{bookTitle}&quot;</span>. Has ganado una <span className="text-amber-600 dark:text-amber-400 font-semibold">moneda de bronce</span> 🪙
                     </p>
                   </div>
                   <button
