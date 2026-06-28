@@ -98,9 +98,10 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
       }
       const data = await res.json()
       set({ items: data.items || [] })
-    } catch {
+    } catch (err) {
       // Revert on failure
       set((s) => ({ items: s.items.filter((i) => i.id !== `pending-${bookId}`) }))
+      throw err
     } finally {
       set({ loading: false })
     }

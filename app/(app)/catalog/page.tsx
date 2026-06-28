@@ -43,7 +43,7 @@ function CatalogContent() {
     return new Set(userBooks.filter((b: any) => b.access_type === 'permanent').map((b: any) => b.id));
   }, [userBooks]);
 
-  const showDigital = !subscription || subscription.role === 'free' || subscription.role === 'admin';
+  const showDigital = !subscription || (!subscription.isActive && subscription.role !== 'vendedor' && subscription.role !== 'admin');
   const showPhysical = !subscription || subscription.role !== 'vendedor';
 
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");

@@ -7,6 +7,7 @@ import { User, CreditCard, Shield, Zap, Loader2, BookOpen, Gift, BookOpenCheck, 
 import { toast } from "sonner";
 import Link from "next/link";
 import { useUserId } from "@/hooks/useUser";
+import { useAuth } from "@/lib/auth-provider";
 import { useUserBooks } from "@/hooks/useBooks";
 import { useProfile } from "@/hooks/useAvatars";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -55,6 +56,7 @@ const sections: { key: Section; icon: typeof User; label: string }[] = [
 
 export default function ProfilePage() {
   const { userId, isLoading: authLoading } = useUserId();
+  const { email: userEmail } = useAuth();
   const {
     profile,
     isLoading: profileLoading,
@@ -86,15 +88,6 @@ export default function ProfilePage() {
   const [purchasedBooks, setPurchasedBooks] = useState<any[]>([]);
   const [purchasedLoading, setPurchasedLoading] = useState(false);
   const [purchasedOpen, setPurchasedOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
-
-  useEffect(() => {
-    if (!userId) return;
-    const supabase = createClientClient();
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.email) setUserEmail(data.user.email);
-    });
-  }, [userId]);
 
   const parsedAvatar = useMemo(() =>
     profile?.avatar_url ? parseAvatarConfig(profile.avatar_url) : null,

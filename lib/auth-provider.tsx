@@ -12,6 +12,7 @@ interface AuthState {
 
 const CACHE_KEY = "bookea-auth-id";
 const EMAIL_CACHE_KEY = "bookea-auth-email";
+const AUTH_RECOVERY_GRACE_MS = 10000;
 type SessionUser = { id: string; email?: string | null } | null | undefined;
 
 const AuthContext = createContext<AuthState>({
@@ -39,39 +40,114 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   });
   const supabase = useRef(createClientClient());
+  const recoveryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearRecoveryTimer = useCallback(() => {
+    if (recoveryTimer.current) {
+      clearTimeout(recoveryTimer.current);
+      recoveryTimer.current = null;
+    }
+  }, []);
+
+  const clearAuthState = useCallback(() => {
+    clearRecoveryTimer();
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(EMAIL_CACHE_KEY);
+    setState({ userId: "", email: "", isLoading: false, isReady: true });
+  }, [clearRecoveryTimer]);
+
+  const keepLastKnownAuth = useCallback(() => {
+    setState((prev) => ({ ...prev, isLoading: false, isReady: true }));
+  }, []);
 
   const applySessionUser = useCallback((sessionUser: SessionUser) => {
     if (sessionUser) {
+      clearRecoveryTimer();
       const id = sessionUser.id;
       const email = sessionUser.email || "";
       localStorage.setItem(CACHE_KEY, id);
       localStorage.setItem(EMAIL_CACHE_KEY, email);
       setState({ userId: id, email, isLoading: false, isReady: true });
     } else {
-      localStorage.removeItem(CACHE_KEY);
-      localStorage.removeItem(EMAIL_CACHE_KEY);
-      setState({ userId: "", email: "", isLoading: false, isReady: true });
+      clearAuthState();
     }
-  }, []);
+  }, [clearAuthState, clearRecoveryTimer]);
+
+  const confirmMissingSession = useCallback(async () => {
+    recoveryTimer.current = null;
+
+    try {
+      const { data: sessionData } = await supabase.current.auth.getSession();
+      if (sessionData.session?.user) {
+        applySessionUser(sessionData.session.user);
+        return;
+      }
+
+      const { data: userData, error } = await supabase.current.auth.getUser();
+      if (userData.user) {
+        applySessionUser(userData.user);
+        return;
+      }
+
+      if (error && typeof navigator !== "undefined" && !navigator.onLine) {
+        keepLastKnownAuth();
+        return;
+      }
+
+      clearAuthState();
+    } catch {
+      keepLastKnownAuth();
+    }
+  }, [applySessionUser, clearAuthState, keepLastKnownAuth]);
+
+  const handleMissingSession = useCallback(() => {
+    const cachedUserId = localStorage.getItem(CACHE_KEY);
+    if (!cachedUserId) {
+      clearAuthState();
+      return;
+    }
+
+    keepLastKnownAuth();
+
+    if (!recoveryTimer.current) {
+      recoveryTimer.current = setTimeout(() => {
+        confirmMissingSession();
+      }, AUTH_RECOVERY_GRACE_MS);
+    }
+  }, [clearAuthState, confirmMissingSession, keepLastKnownAuth]);
 
   const loadInitialSession = useCallback(async () => {
     try {
       const { data } = await supabase.current.auth.getSession();
-      applySessionUser(data.session?.user);
+      if (data.session?.user) {
+        applySessionUser(data.session.user);
+      } else {
+        handleMissingSession();
+      }
     } catch {
-      applySessionUser(null);
+      keepLastKnownAuth();
     }
-  }, [applySessionUser]);
+  }, [applySessionUser, handleMissingSession, keepLastKnownAuth]);
 
   const syncUser = useCallback(async () => {
     try {
-      const { data } = await supabase.current.auth.getUser();
-      applySessionUser(data.user);
+      const { data, error } = await supabase.current.auth.getUser();
+      if (data.user) {
+        applySessionUser(data.user);
+        return;
+      }
+
+      if (error && typeof navigator !== "undefined" && !navigator.onLine) {
+        keepLastKnownAuth();
+        return;
+      }
+
+      handleMissingSession();
     } catch {
       // Network error — keep last known state
-      setState((prev) => ({ ...prev, isLoading: false }));
+      keepLastKnownAuth();
     }
-  }, [applySessionUser]);
+  }, [applySessionUser, handleMissingSession, keepLastKnownAuth]);
 
   useEffect(() => {
     // Fast path: getSession() lee cookies localmente, SIN request de red
@@ -82,38 +158,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Slow path: getUser() verifica con el server (refresca token si expiró)
     syncUser();
 
-    const { data: listener } = supabase.current.auth.onAuthStateChange((event) => {
+    const { data: listener } = supabase.current.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
-        localStorage.removeItem(CACHE_KEY);
-        localStorage.removeItem(EMAIL_CACHE_KEY);
-        setState({ userId: "", email: "", isLoading: false, isReady: true });
-      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        syncUser();
+        clearAuthState();
+      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        if (session?.user) {
+          applySessionUser(session.user);
+        } else {
+          syncUser();
+        }
+      } else if (event === "INITIAL_SESSION") {
+        if (session?.user) {
+          applySessionUser(session.user);
+        } else {
+          handleMissingSession();
+        }
       }
     });
 
-    return () => listener?.subscription?.unsubscribe();
-  }, [loadInitialSession, syncUser]);
+    return () => {
+      listener?.subscription?.unsubscribe();
+      clearRecoveryTimer();
+    };
+  }, [applySessionUser, clearAuthState, clearRecoveryTimer, handleMissingSession, loadInitialSession, syncUser]);
 
   // Re-check auth cada vez que la app vuelve a primer plano (solo lectura local)
   useEffect(() => {
     const handle = () => {
       if (document.visibilityState === "visible") {
-        supabase.current.auth.getSession().then(({ data }) => {
-          const sessionUser = data.session?.user;
-          if (sessionUser) {
-            const id = sessionUser.id;
-            const email = sessionUser.email || "";
-            localStorage.setItem(CACHE_KEY, id);
-            localStorage.setItem(EMAIL_CACHE_KEY, email);
-            setState({ userId: id, email, isLoading: false, isReady: true });
-          }
-        }).catch(() => {});
+        loadInitialSession();
+        syncUser();
       }
     };
     document.addEventListener("visibilitychange", handle);
     return () => document.removeEventListener("visibilitychange", handle);
-  }, []);
+  }, [loadInitialSession, syncUser]);
+
+  useEffect(() => {
+    window.addEventListener("online", syncUser);
+    return () => window.removeEventListener("online", syncUser);
+  }, [syncUser]);
 
   return (
     <AuthContext.Provider value={state}>

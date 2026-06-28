@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Zap, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2, BookmarkPlus, BookmarkCheck, ChevronDown, ChevronUp } from "lucide-react";
+import { Zap, Loader2, MessageSquare, Star, Sparkles, Download, CheckCircle2, BookmarkPlus, BookmarkCheck, ChevronDown, ChevronUp, ShoppingCart } from "lucide-react";
 import ReviewForm from "@/components/community/ReviewForm";
 import ReviewList from "@/components/community/ReviewList";
 import { addToLibraryAction, removeFromLibraryAction } from "@/lib/actions/library";
@@ -22,6 +22,7 @@ import Book3D from "@/components/Book3D";
 import AccessBadge from "@/components/ui/AccessBadge";
 import BookLoading from "./loading";
 import { downloadBook, isBookDownloaded } from "@/lib/downloads";
+import { useCartStore } from "@/stores/cart";
 
 function DescriptionText({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -57,6 +58,9 @@ function BookDetailContent() {
 
   // 3.5.5.1 - Obtención del estado de suscripción del usuario
   const { data: subscription } = useSubscription(userId);
+  const addCartItem = useCartStore((s) => s.addItem);
+  const cartItems = useCartStore((s) => s.items);
+  const setCartOpen = useCartStore((s) => s.setOpen);
   // 3.5.6 - Determinación del tipo de acceso
   const isPremiumBook = book?.is_premium !== false;
   const hasPremiumAccess = subscription?.isActive || subscription?.role === 'admin';
@@ -65,6 +69,14 @@ function BookDetailContent() {
   const coinExpiresAt = ownedBook?.expires_at ? new Date(ownedBook.expires_at) : null;
   const hasCoinAccess = ownedBook?.access_type === 'coin_redemption' && !!coinExpiresAt && coinExpiresAt > new Date();
   const canRead = !isPremiumBook || hasPremiumAccess || hasPermanentAccess || hasCoinAccess;
+  const canPurchaseDigital = !!book?.epub_url
+    && (book.price_digital || 0) > 0
+    && !hasPermanentAccess
+    && !hasCoinAccess
+    && !subscription?.isActive
+    && subscription?.role !== 'vendedor'
+    && subscription?.role !== 'admin';
+  const digitalInCart = cartItems.some((item) => item.book_id === id && item.type === 'digital');
 
   // 3.5.4 - Efecto para detectar retorno de pago exitoso desde Stripe
   useEffect(() => {
@@ -101,6 +113,7 @@ function BookDetailContent() {
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [addingToLib, setAddingToLib] = useState(false);
+  const [addingDigital, setAddingDigital] = useState(false);
 
   const isInLibrary = userBooks?.some((b: any) => b.id.toLowerCase() === id.toLowerCase());
   const isCurrentlyInLibrary = !!isInLibrary; // Booleano estable
@@ -112,8 +125,24 @@ function BookDetailContent() {
     }
   }, [book?.epub_url]);
 
-  // 3.5.7 - Los handlers de compra individual (handleBuy, handleClaimFree) han sido deprecados
-  // en favor del modelo de suscripción mensual gestionado en /subscribe
+  const handleAddDigitalToCart = async () => {
+    if (!book) return;
+    if (!userId) {
+      router.push(`/login?next=/book/${book.id}`);
+      return;
+    }
+
+    setAddingDigital(true);
+    try {
+      await addCartItem(book.id, 'digital');
+      setCartOpen(true);
+      toast.success(`${book.title} agregado en digital`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo agregar al carrito");
+    } finally {
+      setAddingDigital(false);
+    }
+  };
 
   // 3.5.8.1 - Handler para descarga offline
   const handleDownload = async () => {
@@ -374,16 +403,50 @@ function BookDetailContent() {
                         </div>
                       </div>
                       
-                      <Link 
-                        href="/subscribe"
-                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
-                      >
-                        Activar Premium
-                      </Link>
-                    </div>
+	                      <Link
+	                        href="/subscribe"
+	                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
+	                      >
+	                        Activar Premium
+	                      </Link>
+	                    </div>
 
-                  </div>
-                )}
+	                    {canPurchaseDigital && (
+	                      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl gap-4">
+	                        <div>
+	                          <span className="block text-xs font-bold text-blue-500 uppercase tracking-widest mb-0.5">
+	                            Compra digital permanente
+	                          </span>
+	                          <span className="text-2xl font-black text-gray-900 dark:text-white">
+	                            ${book.price_digital} MXN
+	                          </span>
+	                          <p className="text-xs text-gray-500 dark:text-white/40 mt-1">
+	                            Agrega este libro a tu biblioteca sin suscripción.
+	                          </p>
+	                        </div>
+	                        {digitalInCart ? (
+	                          <button
+	                            onClick={() => setCartOpen(true)}
+	                            className="px-8 py-3 bg-blue-500/10 text-blue-500 font-bold rounded-xl hover:bg-blue-500/15 transition-all border border-blue-500/20 flex items-center justify-center gap-2"
+	                          >
+	                            <ShoppingCart className="w-4 h-4" />
+	                            Ver carrito
+	                          </button>
+	                        ) : (
+	                          <button
+	                            onClick={handleAddDigitalToCart}
+	                            disabled={addingDigital}
+	                            className="px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-sm disabled:opacity-60 flex items-center justify-center gap-2"
+	                          >
+	                            {addingDigital ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
+	                            {addingDigital ? "Agregando..." : "Comprar digital"}
+	                          </button>
+	                        )}
+	                      </div>
+	                    )}
+
+	                  </div>
+	                )}
 
                 {/* 3.5.10.2.3.3 - Estado: Libro físico disponible en inventario */}
                 {subscription?.role !== 'vendedor' && book.stock_physical > 0 && (

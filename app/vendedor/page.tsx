@@ -1,30 +1,54 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { markAsSold, COST_PER_BOOK, ADMIN_COST_BOOK } from "@/lib/sellers";
-import { receiveStockItemAction } from "@/lib/actions/sellers";
+import { createStockRequestAction, receiveStockItemAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X, Search, Store, Info, Send, type LucideIcon } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
-import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from "recharts";
 import StockRequestItemsModal from "@/components/StockRequestItemsModal";
 import BookPreviewModal from "@/components/BookPreviewModal";
+import type { SellerInventory, SellerSale, StockRequest } from "@/types/seller";
 
 type Section = "stock" | "vendidos" | "ingresos" | "solicitudes";
 
 interface DashboardData {
-  inventory: any[];
-  sales: any[];
-  requests: any[];
+  inventory: SellerInventory[];
+  sales: SellerSale[];
+  requests: StockRequest[];
   pendingPayment: number;
   role: string;
 }
 
-const sections: { key: Section; label: string; icon: any }[] = [
+type StockTab = "inventory" | "available";
+
+interface RequestCartItem {
+  book_id: string;
+  title: string;
+  quantity: number;
+  max_stock: number;
+}
+
+interface RequestableBook {
+  id: string;
+  title: string;
+  author: string;
+  cover_url: string | null;
+  price_physical: number | null;
+  stock_physical: number;
+}
+
+interface RequestableBooksResponse {
+  books: RequestableBook[];
+  reason: "ok" | "no_admin" | "no_stock";
+}
+
+const sections: { key: Section; label: string; icon: LucideIcon }[] = [
   { key: "ingresos", label: "Ingresos", icon: BarChart3 },
   { key: "stock", label: "Stock", icon: Package },
   { key: "vendidos", label: "Vendidos", icon: TrendingUp },
@@ -65,6 +89,7 @@ export default function VendedorDashboard() {
   const { userId } = useUserId();
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<Section>("ingresos");
+  const [stockTab, setStockTab] = useState<StockTab>("inventory");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [previewBook, setPreviewBook] = useState<any>(null);
 
@@ -104,6 +129,9 @@ export default function VendedorDashboard() {
   const [receiving, setReceiving] = useState<string | null>(null);
   const [modalItems, setModalItems] = useState<any[] | null>(null);
   const [solicitudFilter, setSolicitudFilter] = useState("all");
+  const [requestSearch, setRequestSearch] = useState("");
+  const [requestCart, setRequestCart] = useState<RequestCartItem[]>([]);
+  const [requestNotes, setRequestNotes] = useState("");
 
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["vendedor-dashboard"],
@@ -115,16 +143,28 @@ export default function VendedorDashboard() {
     staleTime: 0,
   });
 
-  const inventory = useMemo(() => data?.inventory ?? ([] as any[]), [data?.inventory]);
-  const sales = useMemo(() => data?.sales ?? ([] as any[]), [data?.sales]);
-  const requests = useMemo(() => data?.requests ?? ([] as any[]), [data?.requests]);
+  const { data: requestableData, isLoading: requestableLoading } = useQuery<RequestableBooksResponse>({
+    queryKey: ["requestable-books", userId],
+    queryFn: async () => {
+      const res = await fetch("/api/vendedor/requestable-books", { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudieron cargar los libros");
+      return json as RequestableBooksResponse;
+    },
+    enabled: !!userId && activeSection === "stock",
+    staleTime: 0,
+  });
+
+  const inventory = useMemo(() => data?.inventory ?? [], [data?.inventory]);
+  const sales = useMemo(() => data?.sales ?? [], [data?.sales]);
+  const requests = useMemo(() => data?.requests ?? [], [data?.requests]);
   const userRole = data?.role as string | undefined;
   const isAdmin = userRole === "admin";
   const pendingPayment = isAdmin ? 0 : (data?.pendingPayment ?? 0);
 
   const filteredRequests = solicitudFilter === "all"
     ? requests
-    : requests.filter((r: any) => r.status === solicitudFilter);
+    : requests.filter((r) => r.status === solicitudFilter);
 
   const effectiveCost = isAdmin ? ADMIN_COST_BOOK : COST_PER_BOOK;
   const chartData = useMemo(() => {
@@ -155,9 +195,27 @@ export default function VendedorDashboard() {
   const totalChartProfit = chartData.reduce((s, d) => s + d.ganancia, 0);
   const totalChartCost = chartData.reduce((s, d) => s + d.ahorro, 0);
 
-  const activeInventory = inventory.filter((i: any) => i.quantity > 0);
+  const activeInventory = inventory.filter((i) => i.quantity > 0);
 
-  const inventoryByBookId = new Map(inventory.map((i: any) => [i.book_id, i.quantity]));
+  const inventoryByBookId = new Map(inventory.map((i) => [i.book_id, i.quantity]));
+  const requestableBooks = useMemo(
+    () => (requestableData?.books ?? []).filter((book) => book.stock_physical >= 1),
+    [requestableData?.books]
+  );
+  const filteredRequestableBooks = useMemo(() => {
+    const term = requestSearch.trim().toLowerCase();
+    if (!term) return requestableBooks;
+
+    return requestableBooks.filter((book) =>
+      book.title?.toLowerCase().includes(term) ||
+      book.author?.toLowerCase().includes(term)
+    );
+  }, [requestSearch, requestableBooks]);
+  const requestBooksMap = useMemo(
+    () => new Map(requestableBooks.map((book) => [book.id, book])),
+    [requestableBooks]
+  );
+  const requestCartTotal = requestCart.reduce((sum, item) => sum + item.quantity, 0);
 
   const soldByBook = useMemo(() => {
     const map = new Map<string, number>();
@@ -166,6 +224,72 @@ export default function VendedorDashboard() {
     }
     return map;
   }, [sales]);
+
+  const addToRequestCart = (book: RequestableBook) => {
+    setRequestCart((prev) => {
+      const existing = prev.find((item) => item.book_id === book.id);
+      if (existing) {
+        return prev.map((item) =>
+          item.book_id === book.id
+            ? { ...item, quantity: Math.min(item.max_stock, item.quantity + 1) }
+            : item
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          book_id: book.id,
+          title: book.title,
+          quantity: 1,
+          max_stock: book.stock_physical,
+        },
+      ];
+    });
+  };
+
+  const updateRequestQty = (bookId: string, delta: number) => {
+    setRequestCart((prev) =>
+      prev.map((item) => {
+        if (item.book_id !== bookId) return item;
+        const book = requestBooksMap.get(bookId);
+        const maxAllowed = book?.stock_physical ?? item.max_stock;
+        return {
+          ...item,
+          max_stock: maxAllowed,
+          quantity: Math.max(1, Math.min(maxAllowed, item.quantity + delta)),
+        };
+      })
+    );
+  };
+
+  const removeFromRequestCart = (bookId: string) => {
+    setRequestCart((prev) => prev.filter((item) => item.book_id !== bookId));
+  };
+
+  const createRequestMutation = useMutation({
+    mutationFn: async () => {
+      if (!userId) throw new Error("No autenticado");
+      const items = requestCart.map((item) => ({
+        book_id: item.book_id,
+        quantity: item.quantity,
+      }));
+
+      return createStockRequestAction(userId, items, requestNotes || undefined);
+    },
+    onSuccess: () => {
+      setRequestCart([]);
+      setRequestNotes("");
+      toast.success("Solicitud creada correctamente");
+      queryClient.invalidateQueries({ queryKey: ["requestable-books", userId] });
+      queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
+      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Error al crear solicitud");
+    },
+  });
 
   const handleSell = async (bookId: string, currentQty: number) => {
     const qty = saleQtys[bookId] || 1;
@@ -182,7 +306,7 @@ export default function VendedorDashboard() {
       return {
         ...old,
         sales: [{ ...saleData }, ...old.sales],
-        inventory: old.inventory.map((i: any) => i.book_id === bookId ? { ...i, quantity: i.quantity - qty } : i),
+        inventory: old.inventory.map((i) => i.book_id === bookId ? { ...i, quantity: i.quantity - qty } : i),
         pendingPayment: old.pendingPayment + price * qty,
       };
     });
@@ -191,9 +315,9 @@ export default function VendedorDashboard() {
       toast.success(`Vendido${qty > 1 ? `s ${qty}` : ""} por $${(price * qty).toLocaleString("es-MX")}`);
       setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
       setSalePrices(prev => { const copy = { ...prev }; delete copy[bookId]; return copy; });
-    } catch (e: any) {
+    } catch (e) {
       queryClient.setQueryData<DashboardData>(["vendedor-dashboard"], prevDashboard);
-      toast.error(e.message || "Error al registrar venta");
+      toast.error(e instanceof Error ? e.message : "Error al registrar venta");
     } finally {
       queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
       queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
@@ -211,8 +335,8 @@ export default function VendedorDashboard() {
       queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
       queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
       queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
-    } catch (e: any) {
-      toast.error(e.message || "Error al recibir");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al recibir");
     } finally {
       setReceiving(null);
     }
@@ -268,76 +392,303 @@ export default function VendedorDashboard() {
         <div className="flex-1 min-w-0">
           {/* ── STOCK ── */}
           {activeSection === "stock" && (
-            <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
-              <div className="px-5 py-3 border-b border-white/8 flex items-center justify-between">
-                <h2 className="font-semibold text-sm flex items-center gap-2">
-                  <Package className="w-4 h-4 text-amber-400" />
-                  En inventario ({activeInventory.length} títulos)
-                </h2>
-              </div>
-              {activeInventory.length === 0 ? (
-                <div className="text-center py-12 text-white/30 text-sm">
-                  No tienes libros en inventario.
+            <div className="space-y-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1">
+                  <button
+                    onClick={() => setStockTab("inventory")}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+                      stockTab === "inventory"
+                        ? "bg-amber-600 text-white"
+                        : "text-white/45 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Package className="w-3.5 h-3.5" />
+                    Mi inventario
+                  </button>
+                  <button
+                    onClick={() => setStockTab("available")}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+                      stockTab === "available"
+                        ? "bg-amber-600 text-white"
+                        : "text-white/45 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Store className="w-3.5 h-3.5" />
+                    Disponibles
+                  </button>
                 </div>
-              ) : (
-                <div className="divide-y divide-white/5">
-                  {activeInventory.map((item) => {
-                    const book = item.books;
-                    const price = salePrices[item.book_id] || 0;
-                    const qty = saleQtys[item.book_id] || 1;
-                    const isSelling = selling === item.book_id;
-                    return (
-                      <div key={item.id} className="px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {book?.cover_url && (
-                            <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                              <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
-                            </button>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-white/90 break-words">{book?.title || "Libro"}</p>
-                            <p className="text-[10px] text-white/30">Costo: ${effectiveCost.toLocaleString("es-MX")} · {item.quantity} uds.{isAdmin ? " (eres administrador)" : ""}</p>
+
+                {stockTab === "available" && (
+                  <div className="text-xs font-semibold text-white/40">
+                    {requestableBooks.length} físicos con stock
+                  </div>
+                )}
+              </div>
+
+              {stockTab === "inventory" && (
+                <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
+                  <div className="px-5 py-3 border-b border-white/8 flex items-center justify-between">
+                    <h2 className="font-semibold text-sm flex items-center gap-2">
+                      <Package className="w-4 h-4 text-amber-400" />
+                      En inventario ({activeInventory.length} títulos)
+                    </h2>
+                  </div>
+                  {activeInventory.length === 0 ? (
+                    <div className="text-center py-12 text-white/30 text-sm">
+                      No tienes libros en inventario.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-white/5">
+                      {activeInventory.map((item) => {
+                        const book = item.books;
+                        const price = salePrices[item.book_id] || 0;
+                        const qty = saleQtys[item.book_id] || 1;
+                        const isSelling = selling === item.book_id;
+                        return (
+                          <div key={item.id} className="px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              {book?.cover_url && (
+                                <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                                  <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                                </button>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-white/90 break-words">{book?.title || "Libro"}</p>
+                                <p className="text-[10px] text-white/30">Costo: ${effectiveCost.toLocaleString("es-MX")} · {item.quantity} uds.{isAdmin ? " (eres administrador)" : ""}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap sm:shrink-0 ml-10 sm:ml-0">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => setSaleQtys(prev => ({ ...prev, [item.book_id]: Math.max(1, (prev[item.book_id] || 1) - 1) }))}
+                                  className="p-1 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <span className="w-6 text-center text-xs font-bold">{qty}</span>
+                                <button
+                                  onClick={() => setSaleQtys(prev => ({ ...prev, [item.book_id]: Math.min(item.quantity, (prev[item.book_id] || 1) + 1) }))}
+                                  className="p-1 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-white/40">$</span>
+                                <input
+                                  type="number"
+                                  value={price || ""}
+                                  onChange={(e) => setSalePrices(prev => ({ ...prev, [item.book_id]: Number(e.target.value) || 0 }))}
+                                  className="w-16 bg-white/5 border border-white/10 rounded-lg px-1.5 py-1 text-xs text-white outline-none focus:border-amber-500/50 transition-colors placeholder:text-white/20"
+                                  placeholder="precio"
+                                  min={1}
+                                />
+                              </div>
+                              <button
+                                onClick={() => handleSell(item.book_id, item.quantity)}
+                                disabled={isSelling}
+                                className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-all disabled:opacity-50"
+                              >
+                                {isSelling ? <Loader2 className="w-3 h-3 animate-spin" /> : <DollarSign className="w-3 h-3" />}
+                                Vender
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap sm:shrink-0 ml-10 sm:ml-0">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => setSaleQtys(prev => ({ ...prev, [item.book_id]: Math.max(1, (prev[item.book_id] || 1) - 1) }))}
-                              className="p-1 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-6 text-center text-xs font-bold">{qty}</span>
-                            <button
-                              onClick={() => setSaleQtys(prev => ({ ...prev, [item.book_id]: Math.min(item.quantity, (prev[item.book_id] || 1) + 1) }))}
-                              className="p-1 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-white/40">$</span>
-                            <input
-                              type="number"
-                              value={price || ""}
-                              onChange={(e) => setSalePrices(prev => ({ ...prev, [item.book_id]: Number(e.target.value) || 0 }))}
-                              className="w-16 bg-white/5 border border-white/10 rounded-lg px-1.5 py-1 text-xs text-white outline-none focus:border-amber-500/50 transition-colors placeholder:text-white/20"
-                              placeholder="precio"
-                              min={1}
-                            />
-                          </div>
-                          <button
-                            onClick={() => handleSell(item.book_id, item.quantity)}
-                            disabled={isSelling}
-                            className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-all disabled:opacity-50"
-                          >
-                            {isSelling ? <Loader2 className="w-3 h-3 animate-spin" /> : <DollarSign className="w-3 h-3" />}
-                            Vender
-                          </button>
-                        </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {stockTab === "available" && (
+                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5">
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <input
+                        value={requestSearch}
+                        onChange={(e) => setRequestSearch(e.target.value)}
+                        placeholder="Buscar físico disponible..."
+                        className="w-full pl-9 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 outline-none focus:border-amber-500/50 transition-colors text-sm"
+                      />
+                    </div>
+
+                    {requestableLoading ? (
+                      <div className="flex items-center justify-center py-20 bg-white/5 border border-white/8 rounded-2xl">
+                        <Loader2 className="w-8 h-8 animate-spin text-white/20" />
                       </div>
-                    );
-                  })}
+                    ) : requestableData?.reason === "no_admin" ? (
+                      <div className="text-center py-20 text-white/30 bg-white/5 border border-white/8 rounded-2xl">
+                        <Info className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p>Este vendedor no está asignado a un administrador.</p>
+                      </div>
+                    ) : filteredRequestableBooks.length === 0 ? (
+                      <div className="text-center py-20 text-white/30 bg-white/5 border border-white/8 rounded-2xl">
+                        <Store className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p>
+                          {requestableData?.reason === "no_stock"
+                            ? "No hay stock físico disponible."
+                            : "No encontramos libros disponibles."}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3">
+                        {filteredRequestableBooks.map((book) => {
+                          const inCart = requestCart.find((item) => item.book_id === book.id);
+                          const ownedQty = inventoryByBookId.get(book.id) || 0;
+                          return (
+                            <div
+                              key={book.id}
+                              className={`border rounded-2xl bg-white/5 p-3 transition-all ${
+                                inCart ? "border-amber-500/35 bg-amber-500/8" : "border-white/8 hover:border-white/15"
+                              }`}
+                            >
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() => setPreviewBook(book)}
+                                  className="h-28 w-20 shrink-0 overflow-hidden rounded-xl bg-white/5 border border-white/8"
+                                >
+                                  {book.cover_url ? (
+                                    <Image
+                                      src={book.cover_url}
+                                      alt=""
+                                      width={80}
+                                      height={112}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="h-full w-full flex items-center justify-center text-white/20">
+                                      <Package className="w-6 h-6" />
+                                    </div>
+                                  )}
+                                </button>
+
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-bold text-white/90 leading-snug line-clamp-2">{book.title}</p>
+                                  <p className="text-xs text-white/40 mt-1 truncate">{book.author}</p>
+                                  <div className="mt-3 flex flex-wrap gap-1.5">
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                                      {book.stock_physical} disp.
+                                    </span>
+                                    {ownedQty > 0 && (
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 text-white/40 border border-white/10">
+                                        Tienes {ownedQty}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 flex items-center justify-between gap-2">
+                                {inCart ? (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => updateRequestQty(book.id, -1)}
+                                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                                    >
+                                      <Minus className="w-3.5 h-3.5" />
+                                    </button>
+                                    <span className="w-8 text-center text-sm font-black text-white">{inCart.quantity}</span>
+                                    <button
+                                      onClick={() => updateRequestQty(book.id, 1)}
+                                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
+                                      disabled={inCart.quantity >= inCart.max_stock}
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-white/30">
+                                    ${Number(book.price_physical || 0).toLocaleString("es-MX")}
+                                  </span>
+                                )}
+
+                                {inCart ? (
+                                  <button
+                                    onClick={() => removeFromRequestCart(book.id)}
+                                    className="flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 transition-colors"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                    Quitar
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => addToRequestCart(book)}
+                                    className="flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-colors"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    Solicitar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white/5 border border-white/8 rounded-2xl p-5 h-fit xl:sticky xl:top-24">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                      <ShoppingCart className="w-4 h-4 text-amber-400" />
+                      Solicitud ({requestCartTotal})
+                    </h3>
+
+                    {requestCart.length === 0 ? (
+                      <p className="text-sm text-white/30">Selecciona libros disponibles.</p>
+                    ) : (
+                      <div className="space-y-2 mb-4">
+                        {requestCart.map((item) => (
+                          <div key={item.book_id} className="flex items-center gap-2 text-sm">
+                            <span className="text-white/70 truncate flex-1">{item.title}</span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => updateRequestQty(item.book_id, -1)}
+                                className="p-0.5 hover:bg-white/10 rounded"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-5 text-center font-medium text-xs">{item.quantity}</span>
+                              <button
+                                onClick={() => updateRequestQty(item.book_id, 1)}
+                                disabled={item.quantity >= item.max_stock}
+                                className="p-0.5 hover:bg-white/10 rounded disabled:opacity-35 disabled:cursor-not-allowed"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <textarea
+                      value={requestNotes}
+                      onChange={(e) => setRequestNotes(e.target.value)}
+                      placeholder="Notas opcionales..."
+                      className="w-full text-xs px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-amber-500/50 transition-colors mb-4 resize-none h-20"
+                    />
+
+                    <button
+                      onClick={() => createRequestMutation.mutate()}
+                      disabled={requestCart.length === 0 || createRequestMutation.isPending}
+                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition-colors disabled:opacity-50 text-sm flex items-center justify-center gap-2"
+                    >
+                      {createRequestMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          Enviar solicitud
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -462,9 +813,12 @@ export default function VendedorDashboard() {
           {activeSection === "solicitudes" && (
             <div className="space-y-5">
               {!isAdmin && (
-                <Link
-                  href="/vendedor/solicitudes/nueva"
-                  className="flex items-center justify-between bg-amber-600 hover:bg-amber-500 rounded-2xl px-5 py-4 transition-colors group"
+                <button
+                  onClick={() => {
+                    setActiveSection("stock");
+                    setStockTab("available");
+                  }}
+                  className="w-full flex items-center justify-between bg-amber-600 hover:bg-amber-500 rounded-2xl px-5 py-4 transition-colors group text-left"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
@@ -476,7 +830,7 @@ export default function VendedorDashboard() {
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-white/40 group-hover:text-white/60 transition-colors" />
-                </Link>
+                </button>
               )}
 
               {/* Status filter tabs */}

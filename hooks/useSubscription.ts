@@ -10,6 +10,21 @@ export interface SubscriptionData {
   daysRemaining: number | null;
 }
 
+function readCachedSubscription(cacheKey: string): SubscriptionData | undefined {
+  if (typeof window === "undefined") return undefined;
+
+  const cached = localStorage.getItem(cacheKey);
+  if (!cached) return undefined;
+
+  try {
+    const parsed = JSON.parse(cached) as SubscriptionData;
+    if (!parsed?.role) return undefined;
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
 function buildSubscriptionData(data: {
   role: string;
   subscription_ends_at: string | null;
@@ -60,11 +75,7 @@ export function useSubscription(userId: string | undefined) {
         .maybeSingle();
 
       if (error || !data) {
-        const cached = typeof window !== "undefined" ? localStorage.getItem(cacheKey) : null;
-        if (cached) {
-          try { return JSON.parse(cached) as SubscriptionData; } catch {}
-        }
-        return null;
+        return readCachedSubscription(cacheKey) ?? null;
       }
 
       const subscription = buildSubscriptionData(data);
@@ -78,15 +89,8 @@ export function useSubscription(userId: string | undefined) {
     enabled: !!userId,
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
-    initialData: () => {
-      if (typeof window !== "undefined") {
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          try { return JSON.parse(cached) as SubscriptionData; } catch {}
-        }
-      }
-      return undefined;
-    },
+    initialData: () => readCachedSubscription(cacheKey),
+    placeholderData: (previousData) => previousData,
   });
 
   // Escuchar cambios de rol/suscripción hechos desde el panel admin en tiempo real

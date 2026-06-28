@@ -21,12 +21,30 @@ import PanelOnboarding from "@/components/ui/PanelOnboarding";
 import AccessBadge from "@/components/ui/AccessBadge";
 import { useIsClient } from "@/hooks/useIsClient";
 
+type PaymentVerificationResult =
+  | { success: true; type: "subscription" }
+  | { success: true; type: "payment"; items?: string[] }
+  | { success: false; pending?: boolean; error?: string };
+
+const paymentVerificationInFlight = new Set<string>();
+const PAYMENT_VERIFIED_KEY_PREFIX = "bookea-payment-verified-";
+
+function clearPaymentParams() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("payment");
+  url.searchParams.delete("session_id");
+  const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState({}, "", nextUrl);
+}
+
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
 // Componente interno con toda la lógica del Dashboard
 function DashboardContent() {
   const { userId } = useUserId();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const stripeSessionId = searchParams.get("session_id");
+  const paymentStatus = searchParams.get("payment");
   
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -42,89 +60,98 @@ function DashboardContent() {
 
   // Detectar éxito de pago y verificar (polling hasta que el webhook procese)
   useEffect(() => {
-    const sessionId = searchParams.get('session_id');
-    const paymentStatus = searchParams.get('payment');
+    if (paymentStatus !== "success" || !stripeSessionId) return;
 
-    if (paymentStatus === 'success' && sessionId) {
-      let attempts = 0;
-      const maxAttempts = 15;
-      let toastId: string | number = "";
-
-      const poll = async () => {
-        if (attempts === 0) {
-          toastId = toast.loading("Procesando tu pago...");
-        }
-
-        try {
-          const result: any = await verifySubscriptionAction(sessionId);
-
-            if (result.success) {
-            if (result.type === 'subscription') {
-              toast.success("¡Bienvenido a Bookea Premium!", {
-                id: toastId,
-                description: "Tu suscripción se ha activado correctamente. Ya puedes disfrutar de todo el catálogo.",
-                icon: <Sparkles className="w-5 h-5 text-amber-500" />,
-                duration: 8000,
-                action: {
-                  label: "Ir a mi biblioteca",
-                  onClick: () => router.push("/dashboard"),
-                },
-              });
-            } else if (result.type === 'payment' && result.items) {
-              const hasPhysical = result.items.some((i: string) => i.includes('Físico'));
-              toast.success("¡Compra completada!", {
-                id: toastId,
-                description: result.items.join(", "),
-                duration: 6000,
-                action: {
-                  label: hasPhysical ? "Ver mis órdenes" : "Ir a mi biblioteca",
-                  onClick: () => router.push(hasPhysical ? "/orders" : "/dashboard"),
-                },
-              });
-            }
-            useCartStore.getState().clearCart();
-            queryClient.invalidateQueries({ queryKey: ['userBooks', userId] });
-            setTimeout(() => {
-              window.history.replaceState({}, '', window.location.pathname);
-            }, 2000);
-            return;
-          }
-
-          if (result.pending && attempts < maxAttempts) {
-            attempts++;
-            toast.loading("Sincronizando pago...", { id: toastId });
-            setTimeout(poll, 2000);
-            return;
-          }
-
-          toast.error("Hubo un problema al sincronizar", {
-            id: toastId,
-            description: "Intenta recargar la página o contacta a soporte.",
-            duration: 10000,
-            action: {
-              label: "Reintentar",
-              onClick: () => {
-                window.location.reload();
-              },
-            },
-          });
-        } catch {
-          toast.error("Error de conexión", {
-            id: toastId,
-            duration: 10000,
-            action: {
-              label: "Reintentar",
-              onClick: () => {
-                window.location.reload();
-              },
-            },
-          });
-        }
-      };
-
-      poll();
+    const verifiedKey = `${PAYMENT_VERIFIED_KEY_PREFIX}${stripeSessionId}`;
+    if (sessionStorage.getItem(verifiedKey)) {
+      clearPaymentParams();
+      return;
     }
-  }, [searchParams, queryClient, router, userId]);
+
+    if (!userId || paymentVerificationInFlight.has(stripeSessionId)) return;
+
+    paymentVerificationInFlight.add(stripeSessionId);
+
+    let attempts = 0;
+    const maxAttempts = 15;
+    const toastId = `stripe-payment-${stripeSessionId}`;
+
+    const retryPaymentSync = () => {
+      paymentVerificationInFlight.delete(stripeSessionId);
+      window.location.reload();
+    };
+
+    const poll = async () => {
+      if (attempts === 0) {
+        toast.loading("Procesando tu pago...", { id: toastId });
+      }
+
+      try {
+        const result = await verifySubscriptionAction(stripeSessionId) as PaymentVerificationResult;
+
+        if (result.success) {
+          if (result.type === "subscription") {
+            toast.success("¡Bienvenido a Bookea Premium!", {
+              id: toastId,
+              description: "Tu suscripción se ha activado correctamente. Ya puedes disfrutar de todo el catálogo.",
+              icon: <Sparkles className="w-5 h-5 text-amber-500" />,
+              duration: 8000,
+              action: {
+                label: "Ir a mi biblioteca",
+                onClick: () => router.push("/dashboard"),
+              },
+            });
+          } else if (result.type === "payment" && result.items) {
+            const hasPhysical = result.items.some((i) => i.includes("Físico"));
+            toast.success("¡Compra completada!", {
+              id: toastId,
+              description: result.items.join(", "),
+              duration: 6000,
+              action: {
+                label: hasPhysical ? "Ver mis órdenes" : "Ir a mi biblioteca",
+                onClick: () => router.push(hasPhysical ? "/orders" : "/dashboard"),
+              },
+            });
+          }
+
+          useCartStore.getState().clearCart();
+          queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
+          sessionStorage.setItem(verifiedKey, "1");
+          paymentVerificationInFlight.delete(stripeSessionId);
+          clearPaymentParams();
+          return;
+        }
+
+        if (result.pending && attempts < maxAttempts) {
+          attempts++;
+          toast.loading("Sincronizando pago...", { id: toastId });
+          setTimeout(poll, 2000);
+          return;
+        }
+
+        toast.error("Hubo un problema al sincronizar", {
+          id: toastId,
+          description: "Intenta recargar la página o contacta a soporte.",
+          duration: 10000,
+          action: {
+            label: "Reintentar",
+            onClick: retryPaymentSync,
+          },
+        });
+      } catch {
+        toast.error("Error de conexión", {
+          id: toastId,
+          duration: 10000,
+          action: {
+            label: "Reintentar",
+            onClick: retryPaymentSync,
+          },
+        });
+      }
+    };
+
+    poll();
+  }, [paymentStatus, queryClient, router, stripeSessionId, userId]);
 
   // 3.4.1 - Detección de estado de conexión
   useEffect(() => {

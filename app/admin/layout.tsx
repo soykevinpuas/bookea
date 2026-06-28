@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { useAuth } from "@/lib/auth-provider";
+import { useSubscription } from "@/hooks/useSubscription";
 import {
   BookOpen,
   Shield,
@@ -35,36 +37,26 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<{ email?: string; role?: string } | null>(null);
   const { open: isMobileMenuOpen, setOpen: setMobileMenuOpen } = useMobileMenu();
-  const supabase = useMemo(() => createClientClient(), []);
+  const { userId, email, isLoading: authLoading } = useAuth();
+  const { data: subscription, isFetched } = useSubscription(userId);
+  const role = subscription?.role;
+  const roleKnown = !!subscription;
 
   useEffect(() => {
-
-    const checkAdmin = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        router.push("/login");
-        return;
-      }
-
-      const authUser = userData.user;
-      const { data: roleData, error: rpcError } = await supabase.rpc("get_my_role");
-
-      if (rpcError || (roleData as string) !== "admin") {
-        if (roleData === "vendedor") {
-          router.push("/vendedor");
-        } else {
-          router.push("/dashboard");
-        }
-        return;
-      }
-
-      setUser({ email: authUser.email, role: roleData as string });
-    };
-
-    checkAdmin();
-  }, [router, supabase]);
+    if (authLoading) return;
+    if (!userId) {
+      router.push("/login");
+      return;
+    }
+    if (!isFetched && !roleKnown) return;
+    if (!roleKnown) return;
+    if (role === "vendedor") {
+      router.push("/vendedor");
+    } else if (role !== "admin") {
+      router.push("/dashboard");
+    }
+  }, [authLoading, isFetched, role, roleKnown, router, userId]);
 
   const handleLogout = async () => {
     const supabase = createClientClient();
@@ -160,7 +152,7 @@ export default function AdminLayout({
 
           <div className="mt-4 px-4 py-3 bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/5 overflow-hidden">
             <p className="text-[10px] text-gray-400 dark:text-white/20 font-bold uppercase tracking-wider mb-1">Sesión Activa</p>
-            <p className="text-[11px] text-gray-600 dark:text-white/60 truncate">{user?.email}</p>
+            <p className="text-[11px] text-gray-600 dark:text-white/60 truncate">{email}</p>
           </div>
         </div>
       </aside>
