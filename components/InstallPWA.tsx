@@ -15,18 +15,15 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function InstallPWA({ variant = "button" }: InstallPWAProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS] = useState(() => (
+    typeof navigator === "undefined" ? false : /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+  ));
+  const [isInstalled, setIsInstalled] = useState(() => (
+    typeof window !== "undefined" && window.matchMedia('(display-mode: standalone)').matches
+  ));
   const [showIOSHint, setShowIOSHint] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-      return;
-    }
-
-    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream);
-
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);

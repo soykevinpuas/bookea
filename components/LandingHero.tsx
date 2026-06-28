@@ -12,9 +12,10 @@ import {
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 import FloatingBook3D from "@/components/FloatingBook3D";
+import { useIsClient } from "@/hooks/useIsClient";
 
 export default function LandingHero({ covers }: { covers: string[] }) {
-  const [isClient, setIsClient] = useState(false);
+  const isClient = useIsClient();
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const featuresRef = useRef(null);
@@ -23,13 +24,6 @@ export default function LandingHero({ covers }: { covers: string[] }) {
   const featuresInView = useInView(featuresRef, { once: true, margin: "-80px" });
   const stepsInView = useInView(stepsRef, { once: true, margin: "-80px" });
   const testimonialsInView = useInView(testimonialsRef, { once: true, margin: "-80px" });
-
-  useEffect(() => {
-    setIsClient(true);
-    if (covers.length > 0) {
-      setCurrentIndex(Math.floor(Math.random() * covers.length));
-    }
-  }, [covers]);
 
   const nextCover = useCallback(() => {
     if (covers.length > 0) {

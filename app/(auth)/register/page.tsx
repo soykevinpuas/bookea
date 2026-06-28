@@ -2,7 +2,7 @@
 
 import { register } from '@/app/auth/actions'
 import Link from 'next/link'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import CoversBackground from '@/components/CoversBackground'
 import { Eye, EyeOff } from 'lucide-react'
@@ -10,40 +10,25 @@ import { Eye, EyeOff } from 'lucide-react'
 function RegisterContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [clientError, setClientError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [referrerId, setReferrerId] = useState<string | null>(null);
   const searchParams = useSearchParams();
-
-  // 2.2.0 - Detectar parámetro de referido ?ref= en URL
-  useEffect(() => {
-    const ref = searchParams.get('ref');
-    if (ref) {
-      setReferrerId(ref);
-    }
-  }, [searchParams]);
-
-  // Mostrar error del servidor si viene en la URL
-  useEffect(() => {
-    const err = searchParams.get('error');
-    if (err) {
-      setError(err);
-    }
-  }, [searchParams]);
+  const referrerId = searchParams.get('ref');
+  const error = clientError || searchParams.get('error') || '';
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     if (password !== confirmPassword) {
       e.preventDefault();
-      setError('Las contraseñas no coinciden');
+      setClientError('Las contraseñas no coinciden');
       return;
     }
     if (password.length < 6) {
       e.preventDefault();
-      setError('La contraseña debe tener al menos 6 caracteres');
+      setClientError('La contraseña debe tener al menos 6 caracteres');
       return;
     }
-    setError('');
+    setClientError('');
     // Si todo coincide, el form se envía normalmente al Server Action
   };
 
@@ -100,7 +85,7 @@ function RegisterContent() {
                 placeholder="••••••••" 
                 minLength={6}
                 value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                onChange={(e) => { setPassword(e.target.value); setClientError(''); }}
                 className="w-full p-3 pr-12 bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                 required 
               />
@@ -128,7 +113,7 @@ function RegisterContent() {
                 placeholder="••••••••" 
                 minLength={6}
                 value={confirmPassword}
-                onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                onChange={(e) => { setConfirmPassword(e.target.value); setClientError(''); }}
                 className={`w-full p-3 pr-12 bg-gray-50 dark:bg-black/50 border rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${
                   error ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-white/10'
                 }`}

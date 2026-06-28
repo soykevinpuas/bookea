@@ -1,8 +1,8 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import { Moon, Sun, Terminal, Anchor } from "lucide-react";
+import { useIsClient } from "@/hooks/useIsClient";
 
 // ============================================
 // 6.2 - ThemeToggle: Botón para alternar entre todos los temas disponibles
@@ -10,12 +10,8 @@ import { Moon, Sun, Terminal, Anchor } from "lucide-react";
 // ============================================
 
 export function ThemeToggle() {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
   const { theme, setTheme } = useTheme();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   if (!mounted) {
     return <div className="w-9 h-9" />;

@@ -56,13 +56,16 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
   
   useEffect(() => {
     if (!isInitialized.current && currentAvatarConfig) {
-      const config = parseAvatarConfig(currentAvatarConfig);
-      setSelectedType((config.type as AvatarStyleType) || "avataaars");
-      setSelectedColor(config.color || "b6e3f4");
-      if (config.seed && config.seed !== "") {
-        setSeed(config.seed);
-      }
-      isInitialized.current = true;
+      queueMicrotask(() => {
+        if (isInitialized.current) return;
+        const config = parseAvatarConfig(currentAvatarConfig);
+        setSelectedType((config.type as AvatarStyleType) || "avataaars");
+        setSelectedColor(config.color || "b6e3f4");
+        if (config.seed && config.seed !== "") {
+          setSeed(config.seed);
+        }
+        isInitialized.current = true;
+      });
     }
   }, [currentAvatarConfig]);
 

@@ -64,7 +64,7 @@ export default function AdminLayout({
     };
 
     checkAdmin();
-  }, [router]);
+  }, [router, supabase]);
 
   const handleLogout = async () => {
     const supabase = createClientClient();

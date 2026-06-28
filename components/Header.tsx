@@ -9,6 +9,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/lib/auth-provider";
 import { Menu, WifiOff } from "lucide-react";
 import { useMobileMenu } from "@/stores/menu";
+import { useIsClient } from "@/hooks/useIsClient";
 
 const UserMenu = dynamic(() => import("./UserMenu").then(m => m.UserMenu), {
   loading: () => <div className="w-20 h-8 bg-gray-200 dark:bg-white/10 rounded-full animate-pulse" />,
@@ -17,7 +18,7 @@ const UserMenu = dynamic(() => import("./UserMenu").then(m => m.UserMenu), {
 export function Header() {
   const { userId, email } = useAuth();
   const [isOnline, setIsOnline] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
 
   const pathname = usePathname();
 
@@ -25,10 +26,6 @@ export function Header() {
   const { open: menuOpen, setOpen: setMenuOpen } = useMobileMenu();
 
   const isAdmin = pathname?.startsWith("/admin");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (menuOpen) {
@@ -43,8 +40,8 @@ export function Header() {
   }, [pathname, setMenuOpen]);
 
   useEffect(() => {
-    setIsOnline(navigator.onLine);
     const handleStatus = () => setIsOnline(navigator.onLine);
+    queueMicrotask(handleStatus);
     window.addEventListener('online', handleStatus);
     window.addEventListener('offline', handleStatus);
     return () => {
@@ -75,7 +72,7 @@ export function Header() {
           >
             <span className={mounted && subscription?.isActive ? "text-amber-500" : "text-blue-600 dark:text-blue-500"}>B</span>ookea
           </Link>
-          {!isOnline && (
+          {mounted && !isOnline && (
             <span className="flex items-center gap-1 text-[10px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">
               <WifiOff className="w-3 h-3" />
               <span className="hidden sm:inline">Offline</span>
@@ -86,7 +83,7 @@ export function Header() {
         <nav className="flex items-center gap-3">
           <ThemeToggle />
 
-          {userId && <UserMenu email={email} userId={userId} />}
+          {mounted && userId && <UserMenu email={email} userId={userId} />}
         </nav>
       </div>
     </header>

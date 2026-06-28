@@ -1,27 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Compass, User, Library, Loader2, Store, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { PrefetchLink } from "@/components/ui/LoadingStates";
 import { useUserId } from "@/hooks/useUser";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useIsClient } from "@/hooks/useIsClient";
 
 export function BottomNav() {
   const pathname = usePathname();
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
   const { userId } = useUserId();
   const { data: subscription } = useSubscription(userId);
-
-  useEffect(() => {
-    setNavigatingTo(null);
-  }, [pathname]);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const isReader = pathname?.includes("/reader/");
   const isAuth = pathname?.includes("/login") || pathname?.includes("/register");
@@ -80,7 +73,7 @@ export function BottomNav() {
     <div className="fixed bottom-0 left-0 right-0 z-[60]">
       <div className="bg-white/70 dark:bg-black/80 retro:bg-[#0d1117]/90 navy:bg-[#0a0f1e]/90 backdrop-blur-xl border-t border-black/5 dark:border-white/10 retro:border-[#3fb950]/30 navy:border-[#7986cb]/30 flex items-center justify-around py-3 px-2 pb-[max(env(safe-area-inset-bottom,12px),16px)]">
         {navItems.map((item) => {
-          const loading = navigatingTo === item.href;
+          const loading = navigatingTo === item.href && pathname !== item.href;
           return (
             <PrefetchLink
               key={item.href}

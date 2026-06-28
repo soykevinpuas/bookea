@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useUserId } from "@/hooks/useUser";
 import { useProfile } from "@/hooks/useAvatars";
+import { useIsClient } from "@/hooks/useIsClient";
 
 import { useCartStore } from "@/stores/cart";
 import { AnimalEngine } from "./avatars/AnimalEngine";
@@ -15,13 +16,11 @@ import { parseAvatarConfig } from "@/lib/avatars-v2";
 
 export function UserMenu({ email, userId: propUserId }: { email?: string; userId?: string }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
   const [loggingOut, setLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClientClient();
-
-  useEffect(() => { setMounted(true); }, []);
 
   const { userId } = useUserId();
   const resolvedUserId = propUserId || userId;

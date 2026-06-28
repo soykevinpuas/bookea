@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, LayoutGrid, List, SlidersHorizontal, X, User, Grid3X3 } from "lucide-react";
-import { useState, useEffect, useTransition } from "react";
+import { useCallback, useState, useEffect, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ============================================
@@ -38,7 +38,7 @@ export function SearchFilters({
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // 6.3.2 - Función para sincronizar filtros con la URL
-  const updateFilters = (updates: Record<string, string>) => {
+  const updateFilters = useCallback((updates: Record<string, string>) => {
     const params = new URLSearchParams(searchParams?.toString());
     Object.entries(updates).forEach(([key, value]) => {
       // Limpiar parámetros vacíos o "all"
@@ -53,7 +53,7 @@ export function SearchFilters({
     startTransition(() => {
       router.push(`/catalog?${params.toString()}`);
     });
-  };
+  }, [router, searchParams, startTransition]);
 
   // 6.3.3 - Debounce de búsqueda (500ms) para evitar demasiadas actualizaciones
   useEffect(() => {
@@ -63,7 +63,7 @@ export function SearchFilters({
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [search, author]);
+  }, [search, author, initialAuthor, initialSearch, updateFilters]);
 
   // ============================================
   // 6.3.4 - Renderizado de la barra de filtros

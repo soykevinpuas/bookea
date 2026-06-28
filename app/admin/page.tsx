@@ -106,19 +106,19 @@ export default function AdminDashboard() {
     staleTime: 30000,
   });
 
-  const allSales = dash?.sales?.data ?? [];
+  const allSales = useMemo(() => dash?.sales?.data ?? [], [dash?.sales?.data]);
   const salesTotal = dash?.sales?.total ?? 0;
   const salesPerPage = dash?.sales?.perPage ?? 100;
-  const allInventory = dash?.inventory?.data ?? [];
-  const allSellers = dash?.sellers ?? [];
-  const requests = dash?.requests?.data ?? [];
+  const allInventory = useMemo(() => dash?.inventory?.data ?? [], [dash?.inventory?.data]);
+  const allSellers = useMemo(() => dash?.sellers ?? [], [dash?.sellers]);
+  const requests = useMemo(() => dash?.requests?.data ?? [], [dash?.requests?.data]);
   const requestsTotal = dash?.requests?.total ?? 0;
   const requestsPerPage = dash?.requests?.perPage ?? 50;
-  const pendingSales = dash?.pendingSales ?? [];
-  const physicalBooks = dash?.physicalBooks ?? [];
+  const pendingSales = useMemo(() => dash?.pendingSales ?? [], [dash?.pendingSales]);
+  const physicalBooks = useMemo(() => dash?.physicalBooks ?? [], [dash?.physicalBooks]);
   const salesMap = dash?.salesMap ?? {};
   const adminUserId = dash?.adminUserId ?? "";
-  const adminStock = dash?.adminStock ?? [];
+  const adminStock = useMemo(() => dash?.adminStock ?? [], [dash?.adminStock]);
   const adminStockMap = useMemo(() => {
     const m = new Map<string, number>();
     for (const s of adminStock) m.set(s.book_id, s.quantity);

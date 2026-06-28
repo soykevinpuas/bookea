@@ -19,6 +19,7 @@ import { useCartStore } from "@/stores/cart";
 import { DashboardSkeleton } from "@/components/ui/LoadingStates";
 import PanelOnboarding from "@/components/ui/PanelOnboarding";
 import AccessBadge from "@/components/ui/AccessBadge";
+import { useIsClient } from "@/hooks/useIsClient";
 
 // 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
 // Componente interno con toda la lógica del Dashboard
@@ -30,7 +31,7 @@ function DashboardContent() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [isOnline, setIsOnline] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
 
   const queryClient = useQueryClient();
 
@@ -41,7 +42,6 @@ function DashboardContent() {
 
   // Detectar éxito de pago y verificar (polling hasta que el webhook procese)
   useEffect(() => {
-    setMounted(true);
     const sessionId = searchParams.get('session_id');
     const paymentStatus = searchParams.get('payment');
 
@@ -124,12 +124,12 @@ function DashboardContent() {
 
       poll();
     }
-  }, [searchParams]);
+  }, [searchParams, queryClient, router, userId]);
 
   // 3.4.1 - Detección de estado de conexión
   useEffect(() => {
-    setIsOnline(navigator.onLine);
     const handleStatus = () => setIsOnline(navigator.onLine);
+    queueMicrotask(handleStatus);
     window.addEventListener('online', handleStatus);
     window.addEventListener('offline', handleStatus);
     return () => {
@@ -138,11 +138,13 @@ function DashboardContent() {
     };
   }, []);
 
-  const { data: allBooks, isLoading } = useUserBooks(userId);
+  const effectiveUserId = mounted ? userId : "";
+  const { data: allBooks, isLoading } = useUserBooks(effectiveUserId);
 
   const displayBooks = useMemo(() => {
+    if (!mounted) return [];
     return allBooks || [];
-  }, [allBooks]);
+  }, [allBooks, mounted]);
 
   const recentBook = useMemo(() => {
     if (!displayBooks || displayBooks.length === 0) return null;

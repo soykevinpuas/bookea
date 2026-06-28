@@ -115,9 +115,9 @@ export default function VendedorDashboard() {
     staleTime: 0,
   });
 
-  const inventory = data?.inventory ?? ([] as any[]);
-  const sales = data?.sales ?? ([] as any[]);
-  const requests = data?.requests ?? ([] as any[]);
+  const inventory = useMemo(() => data?.inventory ?? ([] as any[]), [data?.inventory]);
+  const sales = useMemo(() => data?.sales ?? ([] as any[]), [data?.sales]);
+  const requests = useMemo(() => data?.requests ?? ([] as any[]), [data?.requests]);
   const userRole = data?.role as string | undefined;
   const isAdmin = userRole === "admin";
   const pendingPayment = isAdmin ? 0 : (data?.pendingPayment ?? 0);

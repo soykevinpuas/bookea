@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useUserId } from "@/hooks/useUser";
 import { useProfile } from "@/hooks/useAvatars";
 import { useReviews } from "@/hooks/useReviews";
@@ -19,47 +19,34 @@ interface ReviewFormProps {
   bookId: string;
 }
 
+interface UserReview {
+  content?: string | null;
+  id?: string;
+  rating?: number | null;
+  user_id: string;
+}
+
+interface ReviewEditorProps {
+  contentInitial: string;
+  existingReview: boolean;
+  isSaving: boolean;
+  profile?: { avatar_url?: string | null; name?: string | null } | null;
+  ratingInitial: number;
+  reviews: UserReview[];
+  saveReview: (review: { userId: string; rating: number; content: string }) => Promise<unknown>;
+  userId: string;
+}
+
 export default function ReviewForm({ bookId }: ReviewFormProps) {
   const { userId, isLoading: authLoading } = useUserId();
   const { profile } = useProfile(userId);
   const { reviews, saveReview, isSaving } = useReviews(bookId);
+  const userReviews = reviews as UserReview[];
 
-  const [rating, setRating] = useState(0);
-  const [content, setContent] = useState("");
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // 6.8.1 - Buscar si el usuario ya tiene una reseña para precargar
-  useEffect(() => {
-    const existing = reviews.find((r: any) => r.user_id === userId);
-    if (existing) {
-      setRating(existing.rating);
-      setContent(existing.content);
-    }
-  }, [reviews, userId]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId) {
-      toast.error("Debes iniciar sesión para comentar");
-      return;
-    }
-    if (rating === 0) {
-      toast.error("Por favor selecciona una calificación");
-      return;
-    }
-    if (!content.trim()) {
-      toast.error("Escribe un comentario");
-      return;
-    }
-
-    try {
-      await saveReview({ userId, rating, content });
-      toast.success("¡Reseña guardada con éxito!");
-      setIsExpanded(false);
-    } catch {
-      toast.error("Error al guardar la reseña");
-    }
-  };
+  const existingReview = useMemo(
+    () => userReviews.find((r) => r.user_id === userId),
+    [userReviews, userId]
+  );
 
   if (authLoading) return null;
 
@@ -82,6 +69,55 @@ export default function ReviewForm({ bookId }: ReviewFormProps) {
   }
 
   // 6.8.2 - UI del Formulario para usuario autenticado
+  return (
+    <ReviewEditor
+      key={existingReview?.id ?? "new-review"}
+      contentInitial={existingReview?.content ?? ""}
+      existingReview={!!existingReview}
+      isSaving={isSaving}
+      profile={profile}
+      ratingInitial={existingReview?.rating ?? 0}
+      reviews={userReviews}
+      saveReview={saveReview}
+      userId={userId}
+    />
+  );
+}
+
+function ReviewEditor({
+  contentInitial,
+  existingReview,
+  isSaving,
+  profile,
+  ratingInitial,
+  reviews,
+  saveReview,
+  userId,
+}: ReviewEditorProps) {
+  const [rating, setRating] = useState(ratingInitial);
+  const [content, setContent] = useState(contentInitial);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0) {
+      toast.error("Por favor selecciona una calificación");
+      return;
+    }
+    if (!content.trim()) {
+      toast.error("Escribe un comentario");
+      return;
+    }
+
+    try {
+      await saveReview({ userId, rating, content });
+      toast.success("¡Reseña guardada con éxito!");
+      setIsExpanded(false);
+    } catch {
+      toast.error("Error al guardar la reseña");
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-3xl p-6 shadow-sm overflow-hidden relative group">
       {/* Background glow */}
@@ -139,7 +175,7 @@ export default function ReviewForm({ bookId }: ReviewFormProps) {
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      {reviews.some((r: any) => r.user_id === userId) ? "Actualizar Reseña" : "Publicar Reseña"}
+                      {existingReview || reviews.some((r) => r.user_id === userId) ? "Actualizar Reseña" : "Publicar Reseña"}
                     </>
                   )}
                 </button>

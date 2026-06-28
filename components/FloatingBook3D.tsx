@@ -7,17 +7,23 @@ import { Group, SRGBColorSpace, Texture, TextureLoader, MeshBasicMaterial, Buffe
 const FALLBACK_URL = "https://picsum.photos/seed/fallback/400/600";
 
 /* ─── Sparkle Particles ─── */
+const seededUnit = (index: number, salt: number) => {
+  const value = Math.sin(index * 12.9898 + salt * 78.233) * 43758.5453;
+  return value - Math.floor(value);
+};
+
 function Sparkles({ count = 60 }: { count?: number }) {
   const pointsRef = useRef<Points>(null);
+  const materialRef = useRef<PointsMaterial>(null);
 
   const [positions, sizes] = useMemo(() => {
     const pos = new Float32Array(count * 3);
     const siz = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 6;
-      pos[i * 3 + 1] = (Math.random() - 0.5) * 5;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 4;
-      siz[i] = Math.random() * 0.5 + 0.2;
+      pos[i * 3] = (seededUnit(i, 1) - 0.5) * 6;
+      pos[i * 3 + 1] = (seededUnit(i, 2) - 0.5) * 5;
+      pos[i * 3 + 2] = (seededUnit(i, 3) - 0.5) * 4;
+      siz[i] = seededUnit(i, 4) * 0.5 + 0.2;
     }
     return [pos, siz];
   }, [count]);
@@ -29,20 +35,6 @@ function Sparkles({ count = 60 }: { count?: number }) {
     return geo;
   }, [positions, sizes]);
 
-  const material = useMemo(
-    () =>
-      new PointsMaterial({
-        color: "#c084fc",
-        size: 0.04,
-        transparent: true,
-        opacity: 0.7,
-        blending: AdditiveBlending,
-        depthWrite: false,
-        sizeAttenuation: true,
-      }),
-    []
-  );
-
   useFrame((_, delta) => {
     if (!pointsRef.current) return;
     const posArr = pointsRef.current.geometry.attributes.position.array as Float32Array;
@@ -53,10 +45,25 @@ function Sparkles({ count = 60 }: { count?: number }) {
     }
     pointsRef.current.geometry.attributes.position.needsUpdate = true;
     pointsRef.current.rotation.y += delta * 0.03;
-    material.opacity = 0.4 + Math.sin(time * 1.5) * 0.3;
+    if (materialRef.current) {
+      materialRef.current.opacity = 0.4 + Math.sin(time * 1.5) * 0.3;
+    }
   });
 
-  return <points ref={pointsRef} geometry={geometry} material={material} />;
+  return (
+    <points ref={pointsRef} geometry={geometry}>
+      <pointsMaterial
+        ref={materialRef}
+        color="#c084fc"
+        size={0.04}
+        transparent
+        opacity={0.7}
+        blending={AdditiveBlending}
+        depthWrite={false}
+        sizeAttenuation
+      />
+    </points>
+  );
 }
 
 function BookMesh({ coverUrl }: { coverUrl: string }) {

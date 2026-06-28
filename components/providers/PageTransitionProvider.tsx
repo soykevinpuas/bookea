@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 /**
@@ -9,25 +9,12 @@ import { usePathname } from "next/navigation";
  */
 export function PageTransitionProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [displayedPath, setDisplayedPath] = useState(pathname);
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  useEffect(() => {
-    if (pathname !== displayedPath) {
-      setIsAnimating(true);
-      const timer = setTimeout(() => {
-        setDisplayedPath(pathname);
-        setIsAnimating(false);
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [pathname, displayedPath]);
 
   return (
-    <div 
+    <div
+      key={pathname}
       className={`
-        transition-all duration-200 ease-out
-        ${isAnimating ? 'opacity-80' : 'opacity-100'}
+        animate-in fade-in duration-200 ease-out
       `}
     >
       {children}

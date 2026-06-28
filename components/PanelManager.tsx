@@ -18,7 +18,7 @@ export default function PanelManager() {
   const isReader = pathname?.startsWith('/reader/')
 
   const closeCart = useCallback(() => setCartOpen(false), [setCartOpen])
-  const closeLibrary = useCallback(() => setLibraryOpen(false), [])
+  const closeLibrary = useCallback(() => setLibraryOpen(false), [setLibraryOpen])
 
   useEdgeSwipe({
     onSwipeFromRight: () => {

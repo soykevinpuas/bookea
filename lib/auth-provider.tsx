@@ -12,6 +12,7 @@ interface AuthState {
 
 const CACHE_KEY = "bookea-auth-id";
 const EMAIL_CACHE_KEY = "bookea-auth-email";
+type SessionUser = { id: string; email?: string | null } | null | undefined;
 
 const AuthContext = createContext<AuthState>({
   userId: "",
@@ -39,42 +40,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const supabase = useRef(createClientClient());
 
+  const applySessionUser = useCallback((sessionUser: SessionUser) => {
+    if (sessionUser) {
+      const id = sessionUser.id;
+      const email = sessionUser.email || "";
+      localStorage.setItem(CACHE_KEY, id);
+      localStorage.setItem(EMAIL_CACHE_KEY, email);
+      setState({ userId: id, email, isLoading: false, isReady: true });
+    } else {
+      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(EMAIL_CACHE_KEY);
+      setState({ userId: "", email: "", isLoading: false, isReady: true });
+    }
+  }, []);
+
+  const loadInitialSession = useCallback(async () => {
+    try {
+      const { data } = await supabase.current.auth.getSession();
+      applySessionUser(data.session?.user);
+    } catch {
+      applySessionUser(null);
+    }
+  }, [applySessionUser]);
+
   const syncUser = useCallback(async () => {
     try {
       const { data } = await supabase.current.auth.getUser();
-      const id = data.user?.id || "";
-      const email = data.user?.email || "";
-      if (id) {
-        localStorage.setItem(CACHE_KEY, id);
-        localStorage.setItem(EMAIL_CACHE_KEY, email);
-      } else {
-        localStorage.removeItem(CACHE_KEY);
-        localStorage.removeItem(EMAIL_CACHE_KEY);
-      }
-      setState({ userId: id, email, isLoading: false, isReady: true });
+      applySessionUser(data.user);
     } catch {
       // Network error — keep last known state
       setState((prev) => ({ ...prev, isLoading: false }));
     }
-  }, []);
+  }, [applySessionUser]);
 
   useEffect(() => {
     // Fast path: getSession() lee cookies localmente, SIN request de red
-    supabase.current.auth.getSession().then(({ data }) => {
-      const sessionUser = data.session?.user;
-      if (sessionUser) {
-        const id = sessionUser.id;
-        const email = sessionUser.email || "";
-        localStorage.setItem(CACHE_KEY, id);
-        localStorage.setItem(EMAIL_CACHE_KEY, email);
-        setState({ userId: id, email, isLoading: false, isReady: true });
-      } else {
-        localStorage.removeItem(CACHE_KEY);
-        localStorage.removeItem(EMAIL_CACHE_KEY);
-        setState({ userId: "", email: "", isLoading: false, isReady: true });
-      }
-    }).catch(() => {
-      setState({ userId: "", email: "", isLoading: false, isReady: true });
+    queueMicrotask(() => {
+      loadInitialSession();
     });
 
     // Slow path: getUser() verifica con el server (refresca token si expiró)
@@ -91,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => listener?.subscription?.unsubscribe();
-  }, [syncUser]);
+  }, [loadInitialSession, syncUser]);
 
   // Re-check auth cada vez que la app vuelve a primer plano (solo lectura local)
   useEffect(() => {

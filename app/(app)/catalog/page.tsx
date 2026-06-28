@@ -11,6 +11,7 @@ import Card from "@/components/ui/Card";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CatalogSkeleton, PrefetchLink } from "@/components/ui/LoadingStates";
 import { useMemo, useState, Suspense, useEffect } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import { Book } from "@/types/book";
 import { useCartStore } from "@/stores/cart";
 import { ShoppingCart, Loader2, CheckCircle2, Search, LayoutGrid, List, Zap } from "lucide-react";
@@ -49,9 +50,7 @@ function CatalogContent() {
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get("category") || "all");
   const [viewMode, setViewMode] = useState(searchParams.get("view") as "grid" | "list" || "list");
   const [tab, setTab] = useState(searchParams.get("tab") || "todos");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => { setMounted(true); }, []);
+  const mounted = useIsClient();
 
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [debouncedCategory, setDebouncedCategory] = useState(categoryFilter);
@@ -69,7 +68,7 @@ function CatalogContent() {
       router.replace(`/catalog${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
     }, 200);
     return () => clearTimeout(timer);
-  }, [searchQuery, categoryFilter, viewMode, tab, mounted]);
+  }, [searchQuery, categoryFilter, viewMode, tab, mounted, router]);
 
   const { data: booksData, isLoading } = useBooks({ search: debouncedQuery, category: debouncedCategory, adminId });
 

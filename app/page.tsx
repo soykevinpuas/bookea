@@ -33,7 +33,7 @@ export default async function Home() {
     covers = (books ?? [])
       .map((b) => b.cover_url)
       .filter((url): url is string => !!url)
-      .sort(() => Math.random() - 0.5);
+      .slice(0, 12);
   } catch {
     // Fallback silencioso
   }

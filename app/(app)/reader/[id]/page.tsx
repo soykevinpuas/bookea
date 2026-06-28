@@ -117,7 +117,7 @@ export default function ReaderPage() {
         updateStreak().catch(() => {});
       }
     };
-  }, [userId, bookId]);
+  }, [userId, bookId, updateStreak]);
 
   const [fontSize, setFontSize] = useState(18);
   const [fontFamily, setFontFamily] = useState<string>("sans");
@@ -189,6 +189,8 @@ export default function ReaderPage() {
   const alignRef = useRef<"left" | "center" | "right" | "justify">(textAlign);
   const colorRef = useRef<string>(textColor);
   const progressRef = useRef<number>(progress);
+  const showControlsRef = useRef(showControls);
+  showControlsRef.current = showControls;
 
   useEffect(() => {
     progressRef.current = progress;
@@ -588,7 +590,7 @@ export default function ReaderPage() {
               }
               
               // Lógica de Diccionario: Si el HUD está oculto, intentamos definir palabra
-              if (!showControls) {
+              if (!showControlsRef.current) {
                 const target = e.target as HTMLElement;
                 // Evitar disparar si se hace clic en imágenes o elementos interactivos
                 if (target.tagName === 'IMG' || target.tagName === 'A') return;
@@ -1020,7 +1022,7 @@ export default function ReaderPage() {
       bookRef.current = null;
       hasRestoredPosition.current = false;
     };
-  }, [book?.epub_url, bookId, userId]);
+  }, [book?.epub_url, book?.is_premium, bookId, subscription?.isActive, userId]);
 
   // Prevenir gestos de navegación del navegador (swipe-back/forward)
   useEffect(() => {
