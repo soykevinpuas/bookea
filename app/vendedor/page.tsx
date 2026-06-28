@@ -5,7 +5,7 @@ import { createClientClient } from "@/lib/supabase";
 import { markAsSold, COST_PER_BOOK, ADMIN_COST_BOOK } from "@/lib/sellers";
 import { createStockRequestAction, receiveStockItemAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
-import { Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X, Search, Store, Info, Send, type LucideIcon } from "lucide-react";
+import { Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X, Search, Store, Info, Send, LayoutGrid, List, type LucideIcon } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -26,6 +26,7 @@ interface DashboardData {
 }
 
 type StockTab = "inventory" | "available";
+type RequestViewMode = "grid" | "list";
 
 interface RequestCartItem {
   book_id: string;
@@ -90,6 +91,7 @@ export default function VendedorDashboard() {
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<Section>("ingresos");
   const [stockTab, setStockTab] = useState<StockTab>("inventory");
+  const [requestViewMode, setRequestViewMode] = useState<RequestViewMode>("grid");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [previewBook, setPreviewBook] = useState<any>(null);
 
@@ -394,27 +396,27 @@ export default function VendedorDashboard() {
           {activeSection === "stock" && (
             <div className="space-y-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1">
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
                   <button
                     onClick={() => setStockTab("inventory")}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-all ${
                       stockTab === "inventory"
-                        ? "bg-amber-600 text-white"
-                        : "text-white/45 hover:text-white hover:bg-white/5"
+                        ? "bg-amber-600/20 text-amber-400 border border-amber-500/20"
+                        : "text-white/40 hover:text-white/60 border border-transparent"
                     }`}
                   >
-                    <Package className="w-3.5 h-3.5" />
+                    <Package className="w-3.5 h-3.5 shrink-0" />
                     Mi inventario
                   </button>
                   <button
                     onClick={() => setStockTab("available")}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-all ${
                       stockTab === "available"
-                        ? "bg-amber-600 text-white"
-                        : "text-white/45 hover:text-white hover:bg-white/5"
+                        ? "bg-amber-600/20 text-amber-400 border border-amber-500/20"
+                        : "text-white/40 hover:text-white/60 border border-transparent"
                     }`}
                   >
-                    <Store className="w-3.5 h-3.5" />
+                    <Store className="w-3.5 h-3.5 shrink-0" />
                     Disponibles
                   </button>
                 </div>
@@ -505,14 +507,44 @@ export default function VendedorDashboard() {
               {stockTab === "available" && (
                 <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5">
                   <div className="space-y-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                      <input
-                        value={requestSearch}
-                        onChange={(e) => setRequestSearch(e.target.value)}
-                        placeholder="Buscar físico disponible..."
-                        className="w-full pl-9 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 outline-none focus:border-amber-500/50 transition-colors text-sm"
-                      />
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                        <input
+                          value={requestSearch}
+                          onChange={(e) => setRequestSearch(e.target.value)}
+                          placeholder="Buscar físico disponible..."
+                          className="w-full pl-9 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 outline-none focus:border-amber-500/50 transition-colors text-sm"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1 self-start rounded-full border border-white/10 bg-white/5 p-1">
+                        <button
+                          type="button"
+                          title="Vista de tarjetas"
+                          aria-label="Vista de tarjetas"
+                          onClick={() => setRequestViewMode("grid")}
+                          className={`p-1.5 rounded-full transition-all ${
+                            requestViewMode === "grid"
+                              ? "bg-amber-600/20 text-amber-400"
+                              : "text-white/40 hover:text-white/70"
+                          }`}
+                        >
+                          <LayoutGrid className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Vista de lista"
+                          aria-label="Vista de lista"
+                          onClick={() => setRequestViewMode("list")}
+                          className={`p-1.5 rounded-full transition-all ${
+                            requestViewMode === "list"
+                              ? "bg-amber-600/20 text-amber-400"
+                              : "text-white/40 hover:text-white/70"
+                          }`}
+                        >
+                          <List className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {requestableLoading ? (
@@ -533,7 +565,7 @@ export default function VendedorDashboard() {
                             : "No encontramos libros disponibles."}
                         </p>
                       </div>
-                    ) : (
+                    ) : requestViewMode === "grid" ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3">
                         {filteredRequestableBooks.map((book) => {
                           const inCart = requestCart.find((item) => item.book_id === book.id);
@@ -582,6 +614,99 @@ export default function VendedorDashboard() {
                               </div>
 
                               <div className="mt-3 flex items-center justify-between gap-2">
+                                {inCart ? (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => updateRequestQty(book.id, -1)}
+                                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                                    >
+                                      <Minus className="w-3.5 h-3.5" />
+                                    </button>
+                                    <span className="w-8 text-center text-sm font-black text-white">{inCart.quantity}</span>
+                                    <button
+                                      onClick={() => updateRequestQty(book.id, 1)}
+                                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
+                                      disabled={inCart.quantity >= inCart.max_stock}
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-white/30">
+                                    ${Number(book.price_physical || 0).toLocaleString("es-MX")}
+                                  </span>
+                                )}
+
+                                {inCart ? (
+                                  <button
+                                    onClick={() => removeFromRequestCart(book.id)}
+                                    className="flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 transition-colors"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                    Quitar
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => addToRequestCart(book)}
+                                    className="flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-colors"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    Solicitar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/5 divide-y divide-white/5">
+                        {filteredRequestableBooks.map((book) => {
+                          const inCart = requestCart.find((item) => item.book_id === book.id);
+                          const ownedQty = inventoryByBookId.get(book.id) || 0;
+                          return (
+                            <div
+                              key={book.id}
+                              className={`p-3 flex flex-col gap-3 sm:flex-row sm:items-center transition-all ${
+                                inCart ? "bg-amber-500/8" : "hover:bg-white/[0.03]"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <button
+                                  onClick={() => setPreviewBook(book)}
+                                  className="h-14 w-10 shrink-0 overflow-hidden rounded-lg bg-white/5 border border-white/8"
+                                >
+                                  {book.cover_url ? (
+                                    <Image
+                                      src={book.cover_url}
+                                      alt=""
+                                      width={40}
+                                      height={56}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="h-full w-full flex items-center justify-center text-white/20">
+                                      <Package className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                </button>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-bold text-white/90 truncate">{book.title}</p>
+                                  <p className="text-xs text-white/40 truncate">{book.author}</p>
+                                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                                      {book.stock_physical} disp.
+                                    </span>
+                                    {ownedQty > 0 && (
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 text-white/40 border border-white/10">
+                                        Tienes {ownedQty}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between gap-3 sm:justify-end sm:shrink-0">
                                 {inCart ? (
                                   <div className="flex items-center gap-1">
                                     <button
