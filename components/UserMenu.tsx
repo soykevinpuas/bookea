@@ -25,7 +25,7 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
 
   const { userId } = useUserId();
   const resolvedUserId = propUserId || userId;
-  const { data: subscription } = useSubscription(resolvedUserId);
+  const { data: subscription, isLoading: roleLoading } = useSubscription(resolvedUserId);
   const { profile } = useProfile(resolvedUserId);
   const cartItems = useCartStore((s) => s.items);
   const toggleCart = useCartStore((s) => s.toggleCart);
@@ -50,7 +50,10 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
     router.refresh();
   };
 
-  const isPremium = subscription?.isActive;
+  const role = subscription?.role;
+  const roleKnown = !!subscription;
+  const isPremium = !!subscription?.isActive;
+  const showPremiumLink = roleKnown && !isPremium && role !== "vendedor" && role !== "admin";
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -85,12 +88,15 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
               {isPremium && (
                 <span className="text-[10px] font-bold text-amber-500">Premium</span>
               )}
-              {subscription?.role === 'vendedor' && (
+              {roleLoading && !roleKnown && (
+                <span className="text-[10px] font-bold text-gray-400 dark:text-white/30">Verificando rol...</span>
+              )}
+              {role === 'vendedor' && (
                 <Link href="/vendedor" onClick={() => setIsOpen(false)} className="text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:underline">
                   Vendedor
                 </Link>
               )}
-              {subscription?.role === 'admin' && (
+              {role === 'admin' && (
                 <Link href="/admin" onClick={() => setIsOpen(false)} className="text-[10px] font-bold text-purple-600 dark:text-purple-400 hover:underline">
                   Admin
                 </Link>
@@ -101,7 +107,7 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
           {/* Navigation */}
           <div className="p-2 space-y-0.5">
             <MenuItem href="/catalog" icon={<BookOpen className="w-4 h-4" />} label="Catálogo" onClick={() => setIsOpen(false)} />
-            {(subscription?.role === 'vendedor' || subscription?.role === 'admin') && mounted && (
+            {(role === 'vendedor' || role === 'admin') && mounted && (
               <MenuItem href="/vendedor" icon={<Store className="w-4 h-4" />} label="Tienda" onClick={() => setIsOpen(false)} />
             )}
             <MenuItem href="/orders" icon={<Package className="w-4 h-4" />} label="Mis Órdenes" onClick={() => setIsOpen(false)} />
@@ -127,9 +133,9 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
           </div>
 
           {/* Subscription / Role links */}
-          {(subscription?.role === 'vendedor' || subscription?.role === 'admin' || !isPremium) && (
+          {(role === 'vendedor' || role === 'admin' || showPremiumLink) && (
             <div className="border-t border-gray-100 dark:border-white/5 p-2 space-y-0.5">
-              {!isPremium && (
+              {showPremiumLink && (
                 <MenuItem
                   href="/subscribe"
                   icon={<Zap className="w-4 h-4 fill-current text-blue-500" />}
@@ -138,7 +144,7 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
                   onClick={() => setIsOpen(false)}
                 />
               )}
-              {subscription?.role === 'vendedor' && (
+              {role === 'vendedor' && (
                 <MenuItem
                   href="/vendedor"
                   icon={<Shield className="w-4 h-4 text-amber-500" />}
@@ -147,7 +153,7 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
                   onClick={() => setIsOpen(false)}
                 />
               )}
-              {subscription?.role === 'admin' && (
+              {role === 'admin' && (
                 <MenuItem
                   href="/admin"
                   icon={<Shield className="w-4 h-4 text-purple-500" />}

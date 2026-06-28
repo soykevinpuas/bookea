@@ -11,6 +11,7 @@ interface AuthState {
 }
 
 const CACHE_KEY = "bookea-auth-id";
+const EMAIL_CACHE_KEY = "bookea-auth-email";
 
 const AuthContext = createContext<AuthState>({
   userId: "",
@@ -24,11 +25,17 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    userId: "",
-    email: "",
-    isLoading: true,
-    isReady: false,
+  const [state, setState] = useState<AuthState>(() => {
+    if (typeof window === "undefined") {
+      return { userId: "", email: "", isLoading: true, isReady: false };
+    }
+
+    return {
+      userId: localStorage.getItem(CACHE_KEY) || "",
+      email: localStorage.getItem(EMAIL_CACHE_KEY) || "",
+      isLoading: true,
+      isReady: false,
+    };
   });
   const supabase = useRef(createClientClient());
 
@@ -39,8 +46,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const email = data.user?.email || "";
       if (id) {
         localStorage.setItem(CACHE_KEY, id);
+        localStorage.setItem(EMAIL_CACHE_KEY, email);
       } else {
         localStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(EMAIL_CACHE_KEY);
       }
       setState({ userId: id, email, isLoading: false, isReady: true });
     } catch {
@@ -57,9 +66,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const id = sessionUser.id;
         const email = sessionUser.email || "";
         localStorage.setItem(CACHE_KEY, id);
+        localStorage.setItem(EMAIL_CACHE_KEY, email);
         setState({ userId: id, email, isLoading: false, isReady: true });
       } else {
         localStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(EMAIL_CACHE_KEY);
         setState({ userId: "", email: "", isLoading: false, isReady: true });
       }
     }).catch(() => {
@@ -72,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: listener } = supabase.current.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
         localStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(EMAIL_CACHE_KEY);
         setState({ userId: "", email: "", isLoading: false, isReady: true });
       } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         syncUser();
@@ -91,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const id = sessionUser.id;
             const email = sessionUser.email || "";
             localStorage.setItem(CACHE_KEY, id);
+            localStorage.setItem(EMAIL_CACHE_KEY, email);
             setState({ userId: id, email, isLoading: false, isReady: true });
           }
         }).catch(() => {});

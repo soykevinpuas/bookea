@@ -313,9 +313,10 @@ export default function AdminDashboard() {
 
   const sellerLookup = useMemo(() => {
     const map = new Map<string, string>();
+    if (adminUserId) map.set(adminUserId, "Tú");
     for (const s of allSellers) map.set(s.id, s.email);
     return map;
-  }, [allSellers]);
+  }, [allSellers, adminUserId]);
 
   const inventoryBySeller = useMemo(() => {
     try {
@@ -746,8 +747,9 @@ export default function AdminDashboard() {
                     <button
                       onClick={() => assignSelfMutation.mutate()}
                       disabled={!assignSelfBookId || assignSelfMutation.isPending}
-                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                     >
+                      {assignSelfMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       {assignSelfMutation.isPending ? "Asignando..." : "Asignarme"}
                     </button>
                   </div>
@@ -770,27 +772,30 @@ export default function AdminDashboard() {
                       <span className="text-[10px] text-white/40">{items.reduce((s, i) => s + i.quantity, 0)} uds.</span>
                     </div>
                     <div className="divide-y divide-white/5">
-                      {items.slice(0, 3).map((item: any) => (
-                        <div key={item.id} className="px-5 py-3 flex items-center gap-3">
-                          {item.books?.cover_url && (
-                            <img src={item.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
-                          )}
-                          <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{item.books?.title || "Libro"}</span>
-                          <span className="text-xs text-white/40 hidden sm:inline">{item.books?.author}</span>
-                          <span className="text-sm font-bold text-white shrink-0">{item.quantity} uds.</span>
-                          <button
-                            onClick={() => {
-                              if (window.confirm("¿Remover este stock del vendedor? El inventario regresará al almacén general.")) {
-                                removeInventory.mutate({ sellerId, bookId: item.book_id });
-                              }
-                            }}
-                            disabled={pendingOps.has(`del-inv-${sellerId}-${item.book_id}`)}
-                            className="p-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50 shrink-0"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
+                      {items.slice(0, 3).map((item: any) => {
+                        const isRemoving = pendingOps.has(`del-inv-${sellerId}-${item.book_id}`);
+                        return (
+                          <div key={item.id} className="px-5 py-3 flex items-center gap-3">
+                            {item.books?.cover_url && (
+                              <img src={item.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                            )}
+                            <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{item.books?.title || "Libro"}</span>
+                            <span className="text-xs text-white/40 hidden sm:inline">{item.books?.author}</span>
+                            <span className="text-sm font-bold text-white shrink-0">{item.quantity} uds.</span>
+                            <button
+                              onClick={() => {
+                                if (window.confirm("¿Remover este stock del vendedor? El inventario regresará al almacén general.")) {
+                                  removeInventory.mutate({ sellerId, bookId: item.book_id });
+                                }
+                              }}
+                              disabled={isRemoving}
+                              className="p-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50 shrink-0"
+                            >
+                              {isRemoving ? <Loader2 className="w-3.5 h-3.5 animate-spin text-red-400" /> : <Trash2 className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        );
+                      })}
                       {items.length > 3 && (
                         <button
                           onClick={() => setStockModalSeller({ sellerId, email, items })}
@@ -838,39 +843,43 @@ export default function AdminDashboard() {
               ) : (
                 <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
                   <div className="divide-y divide-white/5">
-                    {allSales.map((sale: any) => (
-                      <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
-                        {sale.books?.cover_url && (
-                          <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                            <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
-                          </button>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm text-white/70 block truncate">{sale.books?.title || "Libro"}</span>
-                          <span className="text-[10px] text-white/30 block truncate">
-                            {(sale as any).seller?.email ?? "Desconocido"}
-                            {(sale as any).profile?.name ? ` · ${(sale as any).profile.name}` : ""}
+                    {allSales.map((sale: any) => {
+                      const isDeletingSale = pendingOps.has(`del-sale-${sale.id}`);
+                      return (
+                        <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
+                          {sale.books?.cover_url && (
+                            <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                              <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                            </button>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm text-white/70 block truncate">{sale.books?.title || "Libro"}</span>
+                            <span className="text-[10px] text-white/30 block truncate">
+                              {sellerLookup.get(sale.seller_id) || (sale as any).seller?.email || "Desconocido"}
+                              {(sale as any).profile?.name ? ` · ${(sale as any).profile.name}` : ""}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-white/30 shrink-0">
+                            {new Date(sale.sold_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
                           </span>
+                          <span className="text-sm font-bold text-white shrink-0">x{sale.quantity}</span>
+                          <span className="text-xs font-bold text-green-400 shrink-0">
+                            ${((sale.sale_price || 0) * (sale.quantity || 0)).toLocaleString("es-MX")}
+                          </span>
+                          <button
+                            onClick={() => {
+                              if (window.confirm("¿Eliminar esta venta permanentemente? El stock se revertirá al vendedor.")) {
+                                deleteSale.mutate(sale.id);
+                              }
+                            }}
+                            disabled={isDeletingSale}
+                            className="p-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50 shrink-0"
+                          >
+                            {isDeletingSale ? <Loader2 className="w-3.5 h-3.5 animate-spin text-red-400" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
                         </div>
-                        <span className="text-[10px] text-white/30 shrink-0">
-                          {new Date(sale.sold_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
-                        </span>
-                        <span className="text-sm font-bold text-white shrink-0">x{sale.quantity}</span>
-                        <span className="text-xs font-bold text-green-400 shrink-0">
-                          ${((sale.sale_price || 0) * (sale.quantity || 0)).toLocaleString("es-MX")}
-                        </span>
-                        <button
-                          onClick={() => {
-                            if (window.confirm("¿Eliminar esta venta permanentemente? El stock se revertirá al vendedor.")) {
-                              deleteSale.mutate(sale.id);
-                            }
-                          }}
-                          disabled={pendingOps.has(`del-sale-${sale.id}`)}
-                          className="p-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50 shrink-0"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>))}
+                      );
+                    })}
                     </div>
                     <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between text-xs text-white/40">
                     <span>
@@ -942,6 +951,7 @@ export default function AdminDashboard() {
                         disabled={markPaid.isPending}
                         className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50"
                       >
+                        {markPaid.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                         {markPaid.isPending ? "Procesando..." : "Marcar todo como Pagado"}
                       </button>
                     </div>
@@ -963,6 +973,8 @@ export default function AdminDashboard() {
             <>
               {requests.map((req) => {
                   const statusInfo = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending;
+                  const isStatusPending = pendingOps.has(`status-${req.id}`);
+                  const isDeletePending = pendingOps.has(`del-req-${req.id}`);
                   return (
                     <div key={req.id} className="bg-white/5 border border-white/8 rounded-2xl p-5">
                       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -977,7 +989,7 @@ export default function AdminDashboard() {
                           </div>
                           <p className="text-sm text-white/50 mb-2">
                             <span className="text-white/70 font-medium">Vendedor:</span>{" "}
-                            {(req.seller as any)?.email ?? "Desconocido"}
+                            {sellerLookup.get(req.seller_id) || (req.seller as any)?.email || "Desconocido"}
                           </p>
                           <div className="space-y-0.5">
                             {(req.items ?? []).slice(0, 3).map((item: any) => {
@@ -1042,20 +1054,19 @@ export default function AdminDashboard() {
                               />
                               <button
                                 onClick={() => updateStatus.mutate({ id: req.id, status: "delivered", tracking_number: trackingInputs[req.id]?.trim() || undefined })}
-                                disabled={pendingOps.has(`status-${req.id}`)}
+                                disabled={isStatusPending}
                                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50"
                               >
-                                <Check className="w-3.5 h-3.5" /> Marcar como Entregado
+                                {isStatusPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                {isStatusPending ? "Actualizando..." : "Marcar como Entregado"}
                               </button>
                               <button
-                                onClick={() => {
-                                  setPendingOps(prev => new Set(prev).add(`status-${req.id}`));
-                                  updateStatus.mutate({ id: req.id, status: "cancelled" });
-                                }}
-                                disabled={pendingOps.has(`status-${req.id}`)}
+                                onClick={() => updateStatus.mutate({ id: req.id, status: "cancelled" })}
+                                disabled={isStatusPending}
                                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 rounded-lg transition-colors border border-white/10"
                               >
-                                <Clock className="w-3.5 h-3.5" /> Cancelar
+                                {isStatusPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
+                                {isStatusPending ? "Cancelando..." : "Cancelar"}
                               </button>
                             </div>
                           )}
@@ -1066,10 +1077,11 @@ export default function AdminDashboard() {
                                   deleteRequest.mutate(req.id);
                                 }
                               }}
-                              disabled={pendingOps.has(`del-req-${req.id}`)}
+                              disabled={isDeletePending}
                               className="flex items-center justify-center gap-1.5 text-xs font-medium w-full px-3 py-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50"
                             >
-                              <Trash2 className="w-3 h-3" /> Eliminar
+                              {isDeletePending ? <Loader2 className="w-3 h-3 animate-spin text-red-400" /> : <Trash2 className="w-3 h-3" />}
+                              {isDeletePending ? "Eliminando..." : "Eliminar"}
                             </button>
                           </div>
                         </div>
@@ -1164,6 +1176,7 @@ export default function AdminDashboard() {
             <div className="overflow-y-auto p-5 space-y-3">
               {stockModalSeller.items.map((item: any) => {
                 const { sellerId } = stockModalSeller;
+                const isRemoving = pendingOps.has(`del-inv-${sellerId}-${item.book_id}`);
                 return (
                   <div key={item.id} className="flex items-center gap-3">
                     {item.books?.cover_url && (
@@ -1182,10 +1195,10 @@ export default function AdminDashboard() {
                           removeInventory.mutate({ sellerId, bookId: item.book_id });
                         }
                       }}
-                      disabled={pendingOps.has(`del-inv-${sellerId}-${item.book_id}`)}
+                      disabled={isRemoving}
                       className="p-1.5 bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors border border-white/10 disabled:opacity-50 shrink-0"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      {isRemoving ? <Loader2 className="w-3.5 h-3.5 animate-spin text-red-400" /> : <Trash2 className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 );

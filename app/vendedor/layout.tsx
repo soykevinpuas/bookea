@@ -27,20 +27,25 @@ export default function VendedorLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { userId } = useUserId();
+  const { userId, isLoading: authLoading } = useUserId();
   const { email } = useAuth();
   const { data: subscription, isFetched } = useSubscription(userId);
   const { open: isMobileMenuOpen, setOpen: setMobileMenuOpen } = useMobileMenu();
   const role = subscription?.role;
+  const roleKnown = !!subscription;
+  const hasSellerAccess = role === "vendedor" || role === "admin";
 
   useEffect(() => {
-    if (!isFetched) return;
+    if (authLoading) return;
     if (!userId) {
       router.push("/login");
-    } else if (role !== "vendedor" && role !== "admin") {
+      return;
+    }
+    if (!isFetched && !roleKnown) return;
+    if (roleKnown && !hasSellerAccess) {
       router.push("/dashboard");
     }
-  }, [role, isFetched, userId, router]);
+  }, [authLoading, hasSellerAccess, isFetched, roleKnown, userId, router]);
 
   const handleLogout = useCallback(async () => {
     const s = createClientClient();

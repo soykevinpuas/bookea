@@ -10,14 +10,6 @@ export interface SubscriptionData {
   daysRemaining: number | null;
 }
 
-const DEFAULT_FREE: SubscriptionData = {
-  role: 'free',
-  subscription_ends_at: null,
-  isActive: false,
-  isExpired: false,
-  daysRemaining: null,
-};
-
 function buildSubscriptionData(data: {
   role: string;
   subscription_ends_at: string | null;
@@ -68,7 +60,11 @@ export function useSubscription(userId: string | undefined) {
         .maybeSingle();
 
       if (error || !data) {
-        return DEFAULT_FREE;
+        const cached = typeof window !== "undefined" ? localStorage.getItem(cacheKey) : null;
+        if (cached) {
+          try { return JSON.parse(cached) as SubscriptionData; } catch {}
+        }
+        return null;
       }
 
       const subscription = buildSubscriptionData(data);

@@ -83,6 +83,7 @@ export default function AdminSellerDetailPage() {
     },
     onError: (err) => toast.error(err.message),
   });
+  const revertingBookId = revertMutation.isPending ? revertMutation.variables?.bookId : null;
 
   const salesMap = useMemo(() => {
     try {
@@ -234,8 +235,9 @@ export default function AdminSellerDetailPage() {
               <button
                 onClick={() => assignMutation.mutate()}
                 disabled={!assignBookId || assignMutation.isPending}
-                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
               >
+                {assignMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 {assignMutation.isPending ? "Asignando..." : "Asignar"}
               </button>
               <button
@@ -252,44 +254,47 @@ export default function AdminSellerDetailPage() {
           <p className="text-white/30 text-sm">Sin stock asignado.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {inventory.slice(0, 3).map((item) => (
-              <div
-                key={item.id}
-                className="bg-white/5 border border-white/8 rounded-2xl p-4"
-              >
-                <div className="flex gap-3">
-                  {item.books?.cover_url && (
-                    <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                      <img
-                        src={item.books.cover_url}
-                        alt=""
-                        className="w-12 h-16 rounded-lg object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all"
-                      />
+            {inventory.slice(0, 3).map((item) => {
+              const isReverting = revertingBookId === item.book_id;
+              return (
+                <div
+                  key={item.id}
+                  className="bg-white/5 border border-white/8 rounded-2xl p-4"
+                >
+                  <div className="flex gap-3">
+                    {item.books?.cover_url && (
+                      <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                        <img
+                          src={item.books.cover_url}
+                          alt=""
+                          className="w-12 h-16 rounded-lg object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all"
+                        />
+                      </button>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{item.books?.title}</p>
+                      <p className="text-xs text-white/40 truncate">{item.books?.author}</p>
+                      <p className="text-lg font-bold text-white mt-1">
+                        {item.quantity}{" "}
+                        <span className="text-sm font-normal text-white/40">uds.</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-white/5">
+                    <button
+                      onClick={() =>
+                        revertMutation.mutate({ bookId: item.book_id, qty: 1 })
+                      }
+                      disabled={revertMutation.isPending || item.quantity <= 0}
+                      className="flex items-center gap-1 text-xs px-2 py-1 bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 rounded-lg transition-colors disabled:opacity-30"
+                    >
+                      {isReverting ? <Loader2 className="w-3 h-3 animate-spin text-red-400" /> : <Minus className="w-3 h-3" />}
+                      {isReverting ? "Quitando..." : "Quitar 1"}
                     </button>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{item.books?.title}</p>
-                    <p className="text-xs text-white/40 truncate">{item.books?.author}</p>
-                    <p className="text-lg font-bold text-white mt-1">
-                      {item.quantity}{" "}
-                      <span className="text-sm font-normal text-white/40">uds.</span>
-                    </p>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-3 pt-3 border-t border-white/5">
-                  <button
-                    onClick={() =>
-                      revertMutation.mutate({ bookId: item.book_id, qty: 1 })
-                    }
-                    disabled={revertMutation.isPending || item.quantity <= 0}
-                    className="flex items-center gap-1 text-xs px-2 py-1 bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 rounded-lg transition-colors disabled:opacity-30"
-                  >
-                    <Minus className="w-3 h-3" />
-                    Quitar 1
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         {inventory.length > 3 && (
