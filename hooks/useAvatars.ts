@@ -11,6 +11,13 @@ import type { Profile } from "@/lib/profiles";
 export function useProfile(userId: string | undefined) {
   const queryClient = useQueryClient();
 
+  const cacheProfile = (profile: Profile | null | undefined) => {
+    if (!userId || typeof window === "undefined") return;
+    try {
+      localStorage.setItem(`profile-${userId}`, JSON.stringify(profile ?? null));
+    } catch {}
+  };
+
   // 6.3.1 - Consulta del perfil actual
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
@@ -33,10 +40,44 @@ export function useProfile(userId: string | undefined) {
 
   // 6.3.2 - Mutación para actualizar el avatar
   const avatarMutation = useMutation({
-    mutationFn: (avatarConfig: string) => updateProfileAvatar(userId!, avatarConfig),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+    mutationFn: async (avatarConfig: string) => {
+      const success = await updateProfileAvatar(userId!, avatarConfig);
+      if (!success) throw new Error("No se pudo guardar el avatar");
+      return avatarConfig;
+    },
+    onMutate: async (avatarConfig: string) => {
+      await queryClient.cancelQueries({ queryKey: ["profile", userId] });
+      const previousProfile = queryClient.getQueryData<Profile | null>(["profile", userId]);
+      const optimisticProfile: Profile = {
+        id: previousProfile?.id || "",
+        user_id: previousProfile?.user_id || userId!,
+        name: previousProfile?.name || null,
+        avatar_url: avatarConfig,
+        bio: previousProfile?.bio || null,
+        reading_streak: previousProfile?.reading_streak || 0,
+        total_books_read: previousProfile?.total_books_read || 0,
+      };
+
+      queryClient.setQueryData(["profile", userId], optimisticProfile);
+      cacheProfile(optimisticProfile);
+
+      return { previousProfile };
+    },
+    onError: (_error, _avatarConfig, context) => {
+      queryClient.setQueryData(["profile", userId], context?.previousProfile);
+      cacheProfile(context?.previousProfile);
+    },
+    onSuccess: (avatarConfig: string) => {
+      const currentProfile = queryClient.getQueryData<Profile | null>(["profile", userId]);
+      if (currentProfile) {
+        const syncedProfile = { ...currentProfile, avatar_url: avatarConfig };
+        queryClient.setQueryData(["profile", userId], syncedProfile);
+        cacheProfile(syncedProfile);
+      }
       queryClient.invalidateQueries({ queryKey: ["reviews"] });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile", userId] });
     },
   });
 

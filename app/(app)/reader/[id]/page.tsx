@@ -13,7 +13,7 @@ import { Bookmark as BookmarkType } from "@/types/bookmark";
 import { getHighlights, saveHighlight, deleteHighlight, updateHighlightNote, updateHighlightColor } from "@/lib/highlights";
 import { getBookmarks, saveBookmark, deleteBookmark } from "@/lib/bookmarks";
 import ePub, { Book, Rendition } from "epubjs";
-import { Loader2, ArrowLeft, Bookmark, BookmarkCheck, FileText, X, Trash2, Check, PenSquare, Sparkles, Settings2, Navigation } from "lucide-react";
+import { Loader2, ArrowLeft, Bookmark, BookmarkCheck, FileText, X, Trash2, Check, PenSquare, BookOpen, Settings2, Navigation } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -30,6 +30,50 @@ import { recordReadingSession, canCountStreakDay } from "@/lib/streaks";
 const getSpineKey = (cfi: string) => {
   const m = cfi.match(/^([^!]+)!/);
   return m ? m[1] : cfi;
+};
+
+const HIGHLIGHT_FILL_OPACITY = "0.18";
+const BOOKMARK_FILL_OPACITY = "0.03";
+
+const getCfiAnnotationSelector = (cfi: string) => {
+  const safeCfi = cfi.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return `g[data-epubcfi="${safeCfi}"], mark[data-epubcfi="${safeCfi}"]`;
+};
+
+const clampScrollTop = (container: HTMLElement, value: number) => {
+  const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+  return Math.max(0, Math.min(value, maxScroll));
+};
+
+const getStoredScrollTop = (scrollTop: number | null | undefined, container: HTMLElement) => {
+  if (!scrollTop) return 0;
+  return scrollTop < 0
+    ? (Math.abs(scrollTop) / 1000) * container.scrollHeight
+    : scrollTop;
+};
+
+const getRelativeScrollMarker = (container?: HTMLElement | null) => {
+  if (!container) return 0;
+  const permille = Math.round((container.scrollTop / Math.max(1, container.scrollHeight)) * 1000);
+  return permille > 0 ? -permille : 0;
+};
+
+const waitForAnimationFrames = (frames = 1) =>
+  new Promise<void>((resolve) => {
+    const tick = () => {
+      frames -= 1;
+      if (frames <= 0) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+
+const normalizeDictionaryTerm = (value: string) => {
+  const match = value.replace(/\s+/g, " ").trim().match(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{3,}/);
+  return match?.[0] || "";
 };
 
 export default function ReaderPage() {
@@ -177,8 +221,8 @@ export default function ReaderPage() {
   bookmarksRef.current = bookmarks;
   highlightsRef.current = highlights;
 
-  // 4.2.2.6 - Estado para Diccionario Inteligente
-  const [dictionaryData, setDictionaryData] = useState<{ word: string; definition: string; context: string } | null>(null);
+  // 4.2.2.6 - Estado para Diccionario
+  const [dictionaryData, setDictionaryData] = useState<{ word: string; definition: string; context: string; source?: string; sourceUrl?: string } | null>(null);
   const [isDictionaryLoading, setIsDictionaryLoading] = useState(false);
   const [dictionaryError, setDictionaryError] = useState<string | null>(null);
   const [dictionaryPos, setDictionaryPos] = useState<{ x: number; y: number } | null>(null);
@@ -205,7 +249,121 @@ export default function ReaderPage() {
     { name: "Rosa", value: "#f472b6" },
   ];
 
+  const getCurrentCfi = () => {
+    let cfi = lastCfiRef.current;
+    try {
+      const currentLocation = renditionRef.current?.currentLocation() as any;
+      if (currentLocation?.start?.cfi) {
+        cfi = currentLocation.start.cfi;
+      } else if (currentLocation?.cfi) {
+        cfi = currentLocation.cfi;
+      }
+    } catch {}
+    return cfi;
+  };
+
+  const syncProgressForCfi = (cfi: string) => {
+    try {
+      const bookInstance = bookRef.current;
+      if (bookInstance?.locations && typeof bookInstance.locations.length === "function" && bookInstance.locations.length() > 0) {
+        const pct = bookInstance.locations.percentageFromCfi(cfi);
+        if (Number.isFinite(pct)) {
+          const pctVal = Math.max(0, Math.min(1, pct)) * 100;
+          setProgress(pctVal);
+          progressRef.current = pctVal;
+        }
+      }
+      lastCfiRef.current = cfi;
+      setCurrentSpineKey(getSpineKey(cfi));
+    } catch {
+      lastCfiRef.current = cfi;
+      setCurrentSpineKey(getSpineKey(cfi));
+    }
+  };
+
+  const removeRenderedAnnotationNodes = (cfi: string) => {
+    try {
+      const selector = getCfiAnnotationSelector(cfi);
+      document.querySelectorAll(selector).forEach((node) => node.remove());
+      const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
+      contents?.forEach((content: any) => {
+        content.document?.querySelectorAll(selector).forEach((node: Element) => node.remove());
+      });
+    } catch {}
+  };
+
+  const centerCfiInViewport = (cfi: string, fallbackScrollTop?: number | null) => {
+    const mgr = (renditionRef.current as any)?.manager;
+    const container = mgr?.container as HTMLElement | undefined;
+    if (!container) return false;
+
+    try {
+      const contents = renditionRef.current?.getContents() as unknown as EpubContents[] | undefined;
+      const didCenter = contents?.some((content: any) => {
+        try {
+          const range = content.range(cfi);
+          const iframe = content.iframe || (content as any).iframe;
+          if (!range || !iframe) return false;
+
+          const rangeRect = range.getBoundingClientRect();
+          if (!rangeRect || rangeRect.top < 0) return false;
+
+          const iframeRect = iframe.getBoundingClientRect();
+          const containerRect = container.getBoundingClientRect();
+          const targetTop = container.scrollTop + (iframeRect.top - containerRect.top) + rangeRect.top;
+          const targetCenter = targetTop - (container.clientHeight / 2) + (Math.min(rangeRect.height || 0, container.clientHeight * 0.25) / 2);
+          container.scrollTop = clampScrollTop(container, targetCenter);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+
+      if (didCenter) return true;
+    } catch (err) {
+      console.warn("[Reader] No se pudo centrar CFI por rango", err);
+    }
+
+    if (fallbackScrollTop) {
+      const savedTop = getStoredScrollTop(fallbackScrollTop, container);
+      container.scrollTop = clampScrollTop(container, savedTop - container.clientHeight * 0.45);
+      return true;
+    }
+
+    return false;
+  };
+
+  const navigateToCfi = async (cfi: string, fallbackScrollTop?: number | null) => {
+    if (!renditionRef.current) return;
+
+    setIsNavigating(true);
+    isNavigatingToBookmark.current = true;
+    setCurrentSpineKey(getSpineKey(cfi));
+
+    try {
+      await renditionRef.current.display(cfi);
+      await waitForAnimationFrames(3);
+      centerCfiInViewport(cfi, fallbackScrollTop);
+      await waitForAnimationFrames(1);
+      syncProgressForCfi(cfi);
+      setShowNotesPanel(false);
+    } catch (err) {
+      console.warn("Error navegando a CFI:", err);
+    } finally {
+      isNavigatingToBookmark.current = false;
+      setIsNavigating(false);
+    }
+  };
+
   const handleFetchDefinition = async (word: string, context: string) => {
+    const term = normalizeDictionaryTerm(word);
+    if (!term) {
+      setIsDictionaryLoading(false);
+      setDictionaryData(null);
+      setDictionaryError("Selecciona una palabra para buscarla en el diccionario");
+      return;
+    }
+
     setIsDictionaryLoading(true);
     setDictionaryData(null);
     setDictionaryError(null);
@@ -217,20 +375,26 @@ export default function ReaderPage() {
       const response = await fetch('/api/dictionary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word, context }),
+        body: JSON.stringify({ word: term, context }),
         signal: controller.signal,
       });
       const data = await response.json();
       if (data.definition) {
-        setDictionaryData({ word, definition: data.definition, context });
+        setDictionaryData({
+          word: data.word || term,
+          definition: data.definition,
+          context,
+          source: data.source,
+          sourceUrl: data.sourceUrl,
+        });
         setDictionaryError(null);
       } else {
-        const msg = data.details ? `${data.error}: ${data.details}` : (data.error || 'No se pudo obtener la definición');
+        const msg = data.error || 'No se pudo obtener la definición';
         setDictionaryError(msg);
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
-        setDictionaryError('La definición tardó demasiado');
+        setDictionaryError('La búsqueda tardó demasiado');
       } else {
         setDictionaryError('Error de conexión');
       }
@@ -618,11 +782,9 @@ export default function ReaderPage() {
 
                 if (textNode?.nodeType === 3 && typeof offset === 'number') {
                   const fullText = textNode.textContent || "";
-                  // Encontrar límites de la palabra
-                  const start = fullText.lastIndexOf(" ", offset) + 1;
-                  let end = fullText.indexOf(" ", offset);
-                  if (end === -1) end = fullText.length;
-                  const word = fullText.substring(start, end).replace(/[.,!?;:()]/g, "").trim();
+                  const before = fullText.slice(0, offset).match(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+$/)?.[0] || "";
+                  const after = fullText.slice(offset).match(/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+/)?.[0] || "";
+                  const word = normalizeDictionaryTerm(`${before}${after}`);
 
                   if (word.length > 2) {
                     // Obtener contexto (oración aproximada)
@@ -720,26 +882,36 @@ export default function ReaderPage() {
         } catch {}
 
         // Registrar función visual para cada highlight
-        const renderHighlights = () => {
+        const renderHighlights = (section?: any) => {
+          const sectionSpineKey = section ? getSpineKey(section.cfiBase) : null;
           highlightsRef.current.forEach((h: any) => {
-             try {
-                rendition.annotations.highlight(h.cfi_start, { id: h.id }, () => {
-                  handleHighlightClick(h);
-                }, undefined, { "fill": h.color, "fill-opacity": "0.3", "mix-blend-mode": "normal" });
-             } catch {
-               console.warn("No se pudo renderizar el highlight", h.id);
-             }
+            try {
+              if (sectionSpineKey && getSpineKey(h.cfi_start) !== sectionSpineKey) return;
+              try {
+                rendition.annotations.remove(h.cfi_start, "highlight");
+              } catch {}
+              removeRenderedAnnotationNodes(h.cfi_start);
+              rendition.annotations.highlight(h.cfi_start, { id: h.id }, () => {
+                handleHighlightClick(h);
+              }, undefined, { "fill": h.color, "fill-opacity": HIGHLIGHT_FILL_OPACITY, "mix-blend-mode": "normal" });
+            } catch {
+              console.warn("No se pudo renderizar el highlight", h.id);
+            }
           });
         };
 
         // Registrar marcadores visuales en el texto
         const renderBookmarks = (section?: any) => {
-            const sectionSpineKey = section ? getSpineKey(section.cfiBase) : null;
-            bookmarksRef.current.forEach((b: BookmarkType) => {
+          const sectionSpineKey = section ? getSpineKey(section.cfiBase) : null;
+          bookmarksRef.current.forEach((b: BookmarkType) => {
             try {
               if (sectionSpineKey && getSpineKey(b.cfi) !== sectionSpineKey) return;
+              try {
+                rendition.annotations.remove(b.cfi, "highlight");
+              } catch {}
+              removeRenderedAnnotationNodes(b.cfi);
               // Indicador visual mínimo: un punto diminuto casi invisible
-              rendition.annotations.highlight(b.cfi, { id: `bookmark-${b.id}` }, () => {}, undefined, { "fill": "#FFB300", "fill-opacity": "0.03", "mix-blend-mode": "normal" });
+              rendition.annotations.highlight(b.cfi, { id: `bookmark-${b.id}` }, () => {}, undefined, { "fill": "#FFB300", "fill-opacity": BOOKMARK_FILL_OPACITY, "mix-blend-mode": "normal" });
             } catch {
               console.warn("No se pudo renderizar el marcador", b.id);
             }
@@ -787,11 +959,11 @@ export default function ReaderPage() {
           // que EpubJS hace después del evento rendered.
           if (isNavigatingToBookmark.current) {
             requestAnimationFrame(() => {
-              renderHighlights();
+              renderHighlights(_section);
               renderBookmarks(_section);
             });
           } else {
-            renderHighlights();
+            renderHighlights(_section);
             renderBookmarks(_section);
           }
 
@@ -802,14 +974,8 @@ export default function ReaderPage() {
             if (mgr?.container) {
               const saved = pendingScrollRestore.current;
               pendingScrollRestore.current = null;
-              let targetScroll: number;
-              if (saved < 0) {
-                targetScroll = (Math.abs(saved) / 1000) * mgr.container.scrollHeight;
-              } else {
-                targetScroll = saved;
-              }
-              const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
-              mgr.container.scrollTop = Math.min(targetScroll, maxScroll);
+              const targetScroll = getStoredScrollTop(saved, mgr.container);
+              mgr.container.scrollTop = clampScrollTop(mgr.container, targetScroll);
             }
           }
         });
@@ -830,9 +996,7 @@ export default function ReaderPage() {
             // 4.2.5.6 - Scroll tracking continuo para guardar posición exacta
             mgr.container.addEventListener('scroll', () => {
               scrollTopRef.current = mgr.container.scrollTop;
-              scrollPermilleRef.current = mgr.container.scrollHeight > 0
-                ? Math.round((mgr.container.scrollTop / mgr.container.scrollHeight) * 1000)
-                : 0;
+              scrollPermilleRef.current = getRelativeScrollMarker(mgr.container);
             }, { passive: true });
           }
           // Desactivar el trimming que causa los saltos al hacer scroll hacia arriba
@@ -852,10 +1016,11 @@ export default function ReaderPage() {
         // para no perder el progreso si el usuario cierra el libro sin cambiar de capítulo
         saveIntervalRef.current = setInterval(() => {
           if (isNavigatingToBookmark.current) return;
-          const cfi = lastCfiRef.current;
+          const cfi = getCurrentCfi();
           const pct = progressRef.current;
           const scroll = scrollPermilleRef.current;
           if (cfi && userId) {
+            lastCfiRef.current = cfi;
             saveReadingProgress(bookId, userId, cfi, pct, scroll);
           }
         }, 10000);
@@ -906,14 +1071,8 @@ export default function ReaderPage() {
             if (mgr?.container && pendingScrollRestore.current) {
               const saved = pendingScrollRestore.current;
               pendingScrollRestore.current = null;
-              let targetScroll: number;
-              if (saved < 0) {
-                targetScroll = (Math.abs(saved) / 1000) * mgr.container.scrollHeight;
-              } else {
-                targetScroll = saved;
-              }
-              const maxScroll = Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight);
-              mgr.container.scrollTop = Math.min(targetScroll, maxScroll);
+              const targetScroll = getStoredScrollTop(saved, mgr.container);
+              mgr.container.scrollTop = clampScrollTop(mgr.container, targetScroll);
             }
           });
         }
@@ -951,9 +1110,7 @@ export default function ReaderPage() {
           const mgr = (rendition as any)?.manager;
           if (mgr?.container) {
             scrollTopRef.current = mgr.container.scrollTop;
-            scrollPermilleRef.current = mgr.container.scrollHeight > 0
-              ? -Math.round((mgr.container.scrollTop / mgr.container.scrollHeight) * 1000)
-              : 0;
+            scrollPermilleRef.current = getRelativeScrollMarker(mgr.container);
           }
 
           // Debounce del guardado: espera 1.5s de quietud antes de guardar en Supabase
@@ -1012,8 +1169,10 @@ export default function ReaderPage() {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (saveDebounceRef.current) {
         clearTimeout(saveDebounceRef.current);
-        if (lastCfiRef.current && userId) {
-          saveReadingProgress(bookId, userId, lastCfiRef.current, progressRef.current, scrollPermilleRef.current);
+        const cfi = getCurrentCfi();
+        if (cfi && userId) {
+          lastCfiRef.current = cfi;
+          saveReadingProgress(bookId, userId, cfi, progressRef.current, scrollPermilleRef.current);
         }
       }
       renditionRef.current?.clear();
@@ -1070,10 +1229,11 @@ export default function ReaderPage() {
     if (!userId) return;
 
     const flushPosition = () => {
-      const cfi = lastCfiRef.current;
+      const cfi = getCurrentCfi();
       const pct = progressRef.current;
       const scroll = scrollPermilleRef.current;
       if (cfi) {
+        lastCfiRef.current = cfi;
         saveReadingProgress(bookId, userId, cfi, pct, scroll);
       }
     };
@@ -1215,20 +1375,20 @@ export default function ReaderPage() {
         // Limpiar registro viejo en epubjs PRIMERO para evitar que se queje de nodos huerfanos
         renditionRef.current?.annotations.remove(activeSelection.cfiRange, "highlight");
         
-        // Exorcismo visual manual para borrar cualquier trazo testarudo que epub.js haya fallado en remover
+        // Limpieza visual manual por si epub.js deja nodos antiguos en el iframe.
         try {
-          const DOMTargets = `g[data-epubcfi="${activeSelection.cfiRange}"], mark[data-epubcfi="${activeSelection.cfiRange}"]`;
+          const DOMTargets = getCfiAnnotationSelector(activeSelection.cfiRange);
           document.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
-const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
-        contents?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
+          const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
+          contents?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
         } catch {}
         
-        // Plamar el color nuevo
+        // Pintar el color nuevo
         renditionRef.current?.annotations.highlight(activeSelection.cfiRange, { id: activeSelection.isExistingId }, () => {
           // El objeto actualizado no lo tenemos aquí directo, así que pasamos un mock parcial 
           const target = highlights.find((h: any) => h.id === activeSelection.isExistingId);
           if (target) handleHighlightClick({...target, color});
-        }, undefined, { "fill": color, "fill-opacity": "0.3", "mix-blend-mode": "normal" });
+        }, undefined, { "fill": color, "fill-opacity": HIGHLIGHT_FILL_OPACITY, "mix-blend-mode": "normal" });
         
       } else {
         toast.error("Error al actualizar color");
@@ -1251,7 +1411,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         // Dibujar estéticamente el oficial
         renditionRef.current?.annotations.highlight(newHighlight.cfi_start, { id: newHighlight.id }, () => {
           handleHighlightClick(newHighlight);
-        }, undefined, { "fill": color, "fill-opacity": "0.3", "mix-blend-mode": "normal" });
+        }, undefined, { "fill": color, "fill-opacity": HIGHLIGHT_FILL_OPACITY, "mix-blend-mode": "normal" });
       } else {
         toast.error("Error al guardar subrayado");
       }
@@ -1286,9 +1446,9 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       setHighlights(prev => prev.filter((h: any) => h.id !== id));
       renditionRef.current?.annotations.remove(cfi, "highlight");
       
-      // Exorcismo visual: Destrucción manual del nodo en el DOM en caso de que el bug de epubjs evite soltar la capa
+      // Limpieza visual manual por si epub.js deja nodos antiguos en el iframe.
       try {
-        const DOMTargets = `g[data-epubcfi="${cfi}"], mark[data-epubcfi="${cfi}"]`;
+        const DOMTargets = getCfiAnnotationSelector(cfi);
         document.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
         const contentsArray = renditionRef.current?.getContents() as unknown as EpubContents[];
         contentsArray?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
@@ -1345,7 +1505,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
   };
 
   const handleToggleBookmark = async () => {
-    if (!bookId || !userId || !renditionRef.current || !lastCfiRef.current) return;
+    if (!bookId || !userId || !renditionRef.current) return;
 
     // Si ya hay un marcador visible en esta pantalla, eliminarlo
     const existing = bookmarks.find(b => isBookmarkVisible(b));
@@ -1355,29 +1515,18 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
     }
 
     const mgr = (renditionRef.current as any)?.manager;
-    const container = mgr?.container;
+    const container = mgr?.container as HTMLElement | undefined;
 
     // Guardar scroll como permille (‰) del scrollHeight total para ser
     // independiente de cambios de layout (tamaño de fuente, ventana, etc)
-    const scrollPermille = container
-      ? Math.round((container.scrollTop / Math.max(1, container.scrollHeight)) * 1000)
-      : 0;
-    // Valor negativo indica formato relativo (permille), positivo = absoluto (compatibilidad legacy)
-    const scroll = scrollPermille > 0 ? -scrollPermille : 0;
+    const scroll = getRelativeScrollMarker(container);
 
     // Obtener CFI exacto de la posición actual del viewport
     // currentLocation().start.cfi es el CFI character-level en el borde superior
     // visible del viewport, no spine-level. Usar este CFI directamente asegura
     // que display() navegue al mismo nodo DOM exacto.
-    let preciseCfi = lastCfiRef.current;
-    try {
-      const currentLoc: any = renditionRef.current?.currentLocation();
-      if (currentLoc?.start?.cfi) {
-        preciseCfi = currentLoc.start.cfi;
-      } else if (currentLoc?.cfi) {
-        preciseCfi = currentLoc.cfi;
-      }
-    } catch {}
+    const preciseCfi = getCurrentCfi();
+    if (!preciseCfi) return;
 
     let preview = "";
     try {
@@ -1409,99 +1558,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
   };
 
   const handleGoToBookmark = async (b: BookmarkType) => {
-    if (!renditionRef.current) return;
-    setIsNavigating(true);
-    try {
-      isNavigatingToBookmark.current = true;
-      setCurrentSpineKey(getSpineKey(b.cfi));
-
-      // display() carga la sección que contiene el marcador
-      await renditionRef.current.display(b.cfi);
-
-      // Esperar a que el DOM sea estable para encontrar la posición exacta
-      // del CFI en píxeles. Usamos tres rAF para evitar que relocated
-      // pise el progreso después del scroll event:
-      //   rAF #1: rendered's deferred highlights/bookmarks corren
-      //   rAF #2: DOM estable, seteamos scrollTop
-      //          (scroll event → relocated → skip porque flag=true)
-      //   rAF #3: flag sigue true, actualizamos progreso y limpiamos
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const mgr = (renditionRef.current as any)?.manager;
-          let scrollSet = false;
-
-          // Encontrar la posición exacta del CFI usando el Range nativo del DOM
-          try {
-            const contents = renditionRef.current?.getContents() as unknown as EpubContents[] | undefined;
-            contents?.some((c: any) => {
-              try {
-                const range = c.range(b.cfi);
-                if (range) {
-                  const rangeRect = range.getBoundingClientRect();
-                  const iframe = c.iframe || (c as any).iframe;
-                  if (iframe && mgr?.container && rangeRect.top > 0) {
-                    const iframeRect = iframe.getBoundingClientRect();
-                    const containerRect = mgr.container.getBoundingClientRect();
-                    const targetScroll = mgr.container.scrollTop +
-                      (iframeRect.top - containerRect.top) + rangeRect.top;
-                    mgr.container.scrollTop = Math.min(
-                      targetScroll,
-                      Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight)
-                    );
-                    scrollSet = true;
-                  }
-                  return true; // found it, stop iteration
-                }
-              } catch {}
-              return false;
-            });
-          } catch (e) {
-            console.warn("[Bookmark] getRange falló", e);
-          }
-
-          // Fallback: restaurar desde permille si getRange no funcionó
-          if (!scrollSet && mgr?.container && b.scroll_top) {
-            let targetScroll = 0;
-            if (b.scroll_top < 0) {
-              targetScroll = (Math.abs(b.scroll_top) / 1000) * mgr.container.scrollHeight;
-            } else if (b.scroll_top > 0) {
-              targetScroll = b.scroll_top;
-            }
-            mgr.container.scrollTop = Math.min(
-              targetScroll,
-              Math.max(0, mgr.container.scrollHeight - mgr.container.clientHeight)
-            );
-          }
-
-          // Tercer rAF: el scroll event ya disparó, relocated fue ignorado
-          // (isNavigatingToBookmark sigue true). Ahora podemos actualizar
-          // progreso y limpiar el flag sin que relocated pise.
-          requestAnimationFrame(() => {
-            try {
-              const book = bookRef.current;
-              if (book?.locations && typeof book.locations.length === 'function' && book.locations.length() > 0) {
-                const pct = book.locations.percentageFromCfi(b.cfi);
-                if (pct > 0) {
-                  const pctVal = Math.max(0, Math.min(1, pct)) * 100;
-                  setProgress(pctVal);
-                  progressRef.current = pctVal;
-                }
-              }
-              lastCfiRef.current = b.cfi;
-            } catch {}
-
-            isNavigatingToBookmark.current = false;
-            setIsNavigating(false);
-          });
-        });
-      });
-
-      setShowNotesPanel(false);
-    } catch (err) {
-      console.warn("Error navegando a marcador:", err);
-      isNavigatingToBookmark.current = false;
-      setIsNavigating(false);
-    }
+    await navigateToCfi(b.cfi, b.scroll_top);
   };
 
   const handleDeleteBookmark = async (b: BookmarkType) => {
@@ -1511,7 +1568,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
       setMenuBookmark(null);
       try {
         renditionRef.current?.annotations.remove(b.cfi, "highlight");
-        const DOMTargets = `g[data-epubcfi="${b.cfi}"], mark[data-epubcfi="${b.cfi}"]`;
+        const DOMTargets = getCfiAnnotationSelector(b.cfi);
         document.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
         const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
         contents?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
@@ -1776,17 +1833,17 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
           </span>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Botón IA */}
+            {/* Botón Diccionario */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setDictionaryPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                handleFetchDefinition(activeSelection.text, "");
+                handleFetchDefinition(activeSelection.text, activeSelection.text);
               }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-500/10 to-fuchsia-500/10 text-purple-600 dark:text-purple-400 hover:from-purple-500/20 hover:to-fuchsia-500/20 transition-all border border-purple-500/20 group/ai text-sm font-semibold"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-all border border-blue-500/20 group/dict text-sm font-semibold"
             >
-              <Sparkles className="w-4 h-4 group-hover/ai:animate-pulse shrink-0" />
-              <span>Def. IA</span>
+              <BookOpen className="w-4 h-4 shrink-0" />
+              <span>Diccionario</span>
             </button>
 
             <div className="w-px h-5 bg-gray-200 dark:bg-white/10 shrink-0"></div>
@@ -1863,9 +1920,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
               <div key={h.id} className="bg-white dark:bg-[#1a1a1a] retro:bg-[#161b22] navy:bg-[#111827] border border-gray-100 dark:border-white/10 retro:border-[#3fb950]/20 navy:border-[#7986cb]/20 rounded-xl p-4 shadow-sm relative group">
                 <div className="absolute left-0 top-4 bottom-4 w-1 rounded-r-md" style={{ backgroundColor: h.color }}></div>
                 
-                <p className="text-sm text-gray-800 dark:text-gray-200 retro:text-gray-200 navy:text-gray-200 italic mb-2 line-clamp-4 leading-relaxed pr-6 cursor-pointer" onClick={() => {
-                  renditionRef.current?.display(h.cfi_start);
-                }}>
+                <p className="text-sm text-gray-800 dark:text-gray-200 retro:text-gray-200 navy:text-gray-200 italic mb-2 line-clamp-4 leading-relaxed pr-6 cursor-pointer" onClick={() => navigateToCfi(h.cfi_start)}>
                   &quot;{h.text}&quot;
                 </p>
                 
@@ -1948,7 +2003,7 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
         </div>
       </div>
 
-      {/* 4.2.18 - Tooltip de Diccionario Inteligente */}
+      {/* 4.2.18 - Tooltip de Diccionario */}
       {dictionaryPos && (isDictionaryLoading || dictionaryData || dictionaryError) && (
         <div 
           className="fixed z-[80] pointer-events-none"
@@ -1962,23 +2017,19 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
             {isDictionaryLoading ? (
               <div className="flex items-center gap-2 py-2 px-4">
                 <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                <span className="text-xs font-medium opacity-70">Definiendo...</span>
+                <span className="text-xs font-medium opacity-70">Buscando...</span>
               </div>
             ) : dictionaryError ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-xs font-black uppercase tracking-widest text-red-400">
-                    {dictionaryError?.startsWith('La definición tardó')
+                    {dictionaryError?.startsWith('La búsqueda tardó')
                       ? 'Tiempo de espera'
-                      : dictionaryError?.includes('missing_env_var') || dictionaryError?.includes('no está configurada')
-                        ? 'No configurado'
-                        : dictionaryError?.includes('429') || dictionaryError?.includes('quota') || dictionaryError?.includes('Quota')
-                          ? 'Cuota excedida'
-                          : dictionaryError?.includes('API key') || dictionaryError?.includes('PERMISSION_DENIED') || dictionaryError?.includes('billing') || dictionaryError?.includes('not available in your country')
-                            ? 'Error de Google API'
-                            : dictionaryError?.includes('Retry')
-                              ? 'Espera unos segundos'
-                              : 'Sin conexión'}
+                      : dictionaryError?.includes('No encontré')
+                        ? 'Sin resultado'
+                        : dictionaryError?.includes('conexión')
+                          ? 'Sin conexión'
+                          : 'Diccionario'}
                   </span>
                   <button onClick={() => setDictionaryPos(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md transition-colors">
                     <X className="w-3 h-3" />
@@ -2001,6 +2052,16 @@ const contents = renditionRef.current?.getContents() as unknown as EpubContents[
                 <p className="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300 font-medium">
                   {dictionaryData.definition}
                 </p>
+                {dictionaryData.sourceUrl && (
+                  <a
+                    href={dictionaryData.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    Ver en {dictionaryData.source || "diccionario"}
+                  </a>
+                )}
               </div>
             )}
           </div>

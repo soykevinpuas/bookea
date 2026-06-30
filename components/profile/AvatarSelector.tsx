@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, Loader2, Info } from "lucide-react";
-import { AnimalEngine, AvatarStyleType, generateRandomSeed } from "@/components/avatars/AnimalEngine";
+import { Check, Loader2, Info, Shuffle } from "lucide-react";
+import { AnimalEngine, AvatarStyleType, AVATAR_COLORS, generateRandomSeed } from "@/components/avatars/AnimalEngine";
 import { useState, useEffect, useRef } from "react";
 import { parseAvatarConfig, stringifyAvatarConfig } from "@/lib/avatars-v2";
 
@@ -22,8 +22,26 @@ const STYLES: { id: AvatarStyleType; name: string }[] = [
   { id: "lorelei", name: "Artístico" },
 ];
 
+const DEFAULT_AVATAR_COLOR = "b6e3f4";
+
+const normalizeHexColor = (value: string | null | undefined, fallback = DEFAULT_AVATAR_COLOR) => {
+  const color = (value || "").replace("#", "").trim().toLowerCase();
+  return /^[0-9a-f]{6}$/.test(color) ? color : fallback;
+};
+
+const getRandomAvatarColor = (currentColor?: string) => {
+  const colors = AVATAR_COLORS.filter((color) => color !== currentColor);
+  const pool = colors.length > 0 ? colors : AVATAR_COLORS;
+  return pool[Math.floor(Math.random() * pool.length)] || DEFAULT_AVATAR_COLOR;
+};
+
+const hasSavedAvatar = (config?: string | null) => !!config && config.startsWith("v2:");
+
 export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdating }: AvatarSelectorProps) {
   const initialConfig = parseAvatarConfig(currentAvatarConfig);
+  const initialColor = hasSavedAvatar(currentAvatarConfig)
+    ? normalizeHexColor(initialConfig.color)
+    : getRandomAvatarColor();
   
   // Inicializar semilla: leer del config o caché, NUNCA generar una nueva automáticamente
   const [seed, setSeed] = useState<string>(() => {
@@ -48,22 +66,47 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
   });
   
   const [selectedType, setSelectedType] = useState<AvatarStyleType>(initialConfig.type as AvatarStyleType || "avataaars");
-  const [selectedColor, setSelectedColor] = useState<string>(initialConfig.color || "b6e3f4");
+  const [selectedColor, setSelectedColor] = useState<string>(initialColor);
+  const [colorText, setColorText] = useState<string>(initialColor);
   const [isShuffling, setIsShuffling] = useState(false);
+  const draftConfigRef = useRef({ type: selectedType, color: selectedColor, seed });
 
   // Sincronizar con props externas SOLO en el primer montaje
   const isInitialized = useRef(false);
+
+  const persistDraft = (config: { type: AvatarStyleType; color: string; seed: string }) => {
+    const normalizedConfig = { ...config, color: normalizeHexColor(config.color) };
+    draftConfigRef.current = normalizedConfig;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bookea-avatar-cache', JSON.stringify(normalizedConfig));
+    }
+  };
+
+  useEffect(() => {
+    draftConfigRef.current = {
+      type: selectedType,
+      color: normalizeHexColor(selectedColor),
+      seed,
+    };
+  }, [selectedType, selectedColor, seed]);
   
   useEffect(() => {
     if (!isInitialized.current && currentAvatarConfig) {
       queueMicrotask(() => {
         if (isInitialized.current) return;
         const config = parseAvatarConfig(currentAvatarConfig);
+        const normalizedColor = normalizeHexColor(config.color);
         setSelectedType((config.type as AvatarStyleType) || "avataaars");
-        setSelectedColor(config.color || "b6e3f4");
+        setSelectedColor(normalizedColor);
+        setColorText(normalizedColor);
         if (config.seed && config.seed !== "") {
           setSeed(config.seed);
         }
+        persistDraft({
+          type: (config.type as AvatarStyleType) || "avataaars",
+          color: normalizedColor,
+          seed: config.seed && config.seed !== "" ? config.seed : draftConfigRef.current.seed,
+        });
         isInitialized.current = true;
       });
     }
@@ -72,13 +115,18 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
   // Cuando cambia el estilo, MANTENER la misma semilla exacta
   const handleStyleChange = (newType: AvatarStyleType) => {
     setSelectedType(newType);
-    // Guardar en caché MANTENIENDO la semilla actual (NO generar nueva)
-    const currentSeed = seed; // Capturar la semilla actual
-    localStorage.setItem('bookea-avatar-cache', JSON.stringify({ 
-      type: newType, 
-      color: selectedColor, 
-      seed: currentSeed 
-    }));
+    persistDraft({ ...draftConfigRef.current, type: newType });
+  };
+
+  const handleColorChange = (rawColor: string) => {
+    const nextColor = normalizeHexColor(rawColor, draftConfigRef.current.color);
+    setSelectedColor(nextColor);
+    setColorText(nextColor);
+    persistDraft({ ...draftConfigRef.current, color: nextColor });
+  };
+
+  const handleRandomColor = () => {
+    handleColorChange(getRandomAvatarColor(draftConfigRef.current.color));
   };
 
   // Mezclar: generar nueva semilla sin cambiar estilo
@@ -86,24 +134,24 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
     setIsShuffling(true);
     const newSeed = generateRandomSeed();
     setSeed(newSeed);
-    // Guardar inmediatamente en caché
-    const config = { type: selectedType, color: selectedColor, seed: newSeed };
-    localStorage.setItem('bookea-avatar-cache', JSON.stringify(config));
+    persistDraft({ ...draftConfigRef.current, seed: newSeed });
     // Esperar a que el SVG se renderice (2 segundos para dar tiempo)
     setTimeout(() => setIsShuffling(false), 2000);
   };
 
   const handleSave = () => {
-    const config = { type: selectedType, color: selectedColor, seed };
+    const config = {
+      ...draftConfigRef.current,
+      type: selectedType,
+      color: normalizeHexColor(selectedColor),
+      seed,
+    };
     const configStr = stringifyAvatarConfig(config);
-    // Guardar en caché local también
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('bookea-avatar-cache', JSON.stringify(config));
-    }
+    persistDraft(config);
     onSelect(configStr);
   };
 
-  const hasChanges = stringifyAvatarConfig({ type: selectedType, color: selectedColor, seed }) !== (currentAvatarConfig || "");
+  const hasChanges = stringifyAvatarConfig({ type: selectedType, color: normalizeHexColor(selectedColor), seed }) !== (currentAvatarConfig || "");
 
   return (
     <div className="space-y-10">
@@ -171,33 +219,48 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
            2. Personaliza el Color de Fondo
          </h3>
          <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-           <input
-             type="color"
-             value={`#${selectedColor}`}
-             onChange={(e) => setSelectedColor(e.target.value.replace('#', ''))}
-             className="w-20 h-20 rounded-2xl border-4 border-gray-200 dark:border-white/10 cursor-pointer shadow-lg hover:scale-105 transition-transform"
-           />
-           <div className="flex-1 space-y-2">
-             <div>
-               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/30 mb-1">Color seleccionado</p>
-               <p className="text-lg font-mono font-black text-gray-900 dark:text-white">#{selectedColor}</p>
-             </div>
-             <input
-               type="text"
-               value={selectedColor}
-               onChange={(e) => {
-                 const val = e.target.value.replace('#', '');
-                 if (/^[0-9a-fA-F]{0,6}$/.test(val)) {
-                   setSelectedColor(val);
-                 }
-               }}
-               placeholder="Hex sin # (ej: b6e3f4)"
-               className="w-full bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
-               maxLength={6}
-             />
-           </div>
-         </div>
-       </div>
+	           <input
+	             type="color"
+	             value={`#${normalizeHexColor(selectedColor)}`}
+	             onChange={(e) => handleColorChange(e.target.value)}
+	             className="w-20 h-20 rounded-2xl border-4 border-gray-200 dark:border-white/10 cursor-pointer shadow-lg hover:scale-105 transition-transform"
+	           />
+	           <div className="flex-1 space-y-2">
+	             <div>
+	               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/30 mb-1">Color seleccionado</p>
+	               <p className="text-lg font-mono font-black text-gray-900 dark:text-white">#{selectedColor}</p>
+	             </div>
+	             <div className="flex gap-2">
+	               <input
+	                 type="text"
+	                 value={colorText}
+	                 onChange={(e) => {
+	                   const val = e.target.value.replace('#', '').trim();
+	                   if (/^[0-9a-fA-F]{0,6}$/.test(val)) {
+	                     setColorText(val);
+	                     if (/^[0-9a-fA-F]{6}$/.test(val)) {
+	                       handleColorChange(val);
+	                     }
+	                   }
+	                 }}
+	                 onBlur={() => setColorText(normalizeHexColor(selectedColor))}
+	                 placeholder="Hex sin #"
+	                 className="min-w-0 flex-1 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
+	                 maxLength={6}
+	               />
+	               <button
+	                 type="button"
+	                 onClick={handleRandomColor}
+	                 disabled={isUpdating}
+	                 className="shrink-0 px-3 rounded-xl bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/60 hover:text-blue-500 hover:border-blue-500/50 transition-colors disabled:opacity-50"
+	                 title="Color aleatorio"
+	               >
+	                 <Shuffle className="w-4 h-4" />
+	               </button>
+	             </div>
+	           </div>
+	         </div>
+	       </div>
 
       {/* 6.4.4 - Botón de Guardado */}
       <button
