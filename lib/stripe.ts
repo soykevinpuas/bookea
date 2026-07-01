@@ -5,12 +5,17 @@ import { Stripe } from 'stripe';
  * Usamos una inicialización segura para evitar fallos durante el build.
  */
 let stripeInstance: Stripe | null = null;
+const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2026-02-25.clover';
 
 /**
  * 6.7.1 - Obtiene la instancia del cliente Stripe (Lazy Loading).
  * Garantiza que las variables de entorno estén cargadas antes de la inicialización.
  */
-export function getStripeClient() {
+export function getStripeClient(): Stripe {
+  if (stripeInstance) {
+    return stripeInstance;
+  }
+
   const secretKey = process.env.STRIPE_SECRET_KEY;
   
   if (!secretKey) {
@@ -18,8 +23,9 @@ export function getStripeClient() {
   }
 
   stripeInstance = new Stripe(secretKey.trim(), {
-    apiVersion: '2024-06-20' as any,
+    apiVersion: STRIPE_API_VERSION,
     typescript: true,
+    maxNetworkRetries: 2,
   });
 
   return stripeInstance;
@@ -64,19 +70,23 @@ export async function createCheckoutSession({
   successUrl: string;
   cancelUrl: string;
   mode?: 'payment' | 'subscription';
-  metadata?: Record<string, string>;
-}) {
+  metadata?: Stripe.MetadataParam;
+}): Promise<Stripe.Checkout.Session> {
   const stripe = getStripeClient();
+  const lineItem: Stripe.Checkout.SessionCreateParams.LineItem = priceData
+    ? { price_data: priceData, quantity: 1 }
+    : { price: priceId, quantity: 1 };
+
+  if (!priceData && !priceId) {
+    throw new Error('Stripe checkout requiere priceId o priceData');
+  }
+
   // Crear sesión de checkout con metadata para webhook
   const session = await stripe.checkout.sessions.create({
     mode,
     payment_method_types: ['card'],
     customer_email: userEmail,
-    line_items: [
-      priceData 
-        ? { price_data: priceData, quantity: 1 } 
-        : { price: priceId, quantity: 1 }
-    ],
+    line_items: [lineItem],
     metadata: {
       userId,
       bookId: bookId || '',
@@ -97,7 +107,7 @@ export async function createPortalSession({
 }: {
   customerId: string;
   returnUrl: string;
-}) {
+}): Promise<Stripe.BillingPortal.Session> {
   const stripe = getStripeClient();
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
