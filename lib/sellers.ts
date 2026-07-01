@@ -11,6 +11,7 @@ export async function getSellerInventory(
     .from("seller_inventory")
     .select("*, books(id, title, author, cover_url, price_physical)")
     .eq("seller_id", sellerId)
+    .gt("quantity", 0)
     .order("updated_at", { ascending: false });
 
   if (error) {
@@ -249,8 +250,11 @@ export async function getAdminSellers(supabase: SupabaseClient, adminId?: string
   const invCounts = new Map<string, number>();
   const invQtys = new Map<string, number>();
   for (const inv of inventoryData ?? []) {
-    invCounts.set(inv.seller_id, (invCounts.get(inv.seller_id) || 0) + 1);
-    invQtys.set(inv.seller_id, (invQtys.get(inv.seller_id) || 0) + (inv.quantity || 0));
+    const quantity = inv.quantity || 0;
+    if (quantity > 0) {
+      invCounts.set(inv.seller_id, (invCounts.get(inv.seller_id) || 0) + 1);
+    }
+    invQtys.set(inv.seller_id, (invQtys.get(inv.seller_id) || 0) + quantity);
   }
 
   const salesQtys = new Map<string, number>();

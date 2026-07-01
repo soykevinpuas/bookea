@@ -109,9 +109,13 @@ export default function VendedorDashboard() {
         queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
         queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "seller_sales" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "seller_sales" }, () => {
         queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
         queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "seller_inventory" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };

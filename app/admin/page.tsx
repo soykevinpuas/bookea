@@ -136,10 +136,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     const channel = supabase
       .channel("admin-dashboard-changes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "seller_sales" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "seller_sales" }, () => {
         queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "seller_inventory" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "seller_inventory" }, () => {
         queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
       })
       .subscribe();
