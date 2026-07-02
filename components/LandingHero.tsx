@@ -56,7 +56,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
       {collageCovers.length > 0 && (
         <div className="fixed inset-0 pointer-events-none -z-20 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#0a0a0a]/40 to-[#0a0a0a] z-10" />
-            <motion.div 
+            <motion.div
               animate={{ x: [0, -50], y: [0, -50] }}
               transition={{ repeat: Infinity, repeatType: "mirror", duration: 25, ease: "linear" }}
               className="grid grid-cols-4 gap-2 w-full h-full rotate-12 scale-[1.3] opacity-[0.25]"
@@ -79,7 +79,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
       )}
 
       {/* Grid Pattern */}
-      <div 
+      <div
         className="fixed inset-0 pointer-events-none -z-10 opacity-20 mix-blend-overlay"
         style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
 
@@ -90,7 +90,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
       {/* ─── HERO ─── */}
       <main className="max-w-7xl mx-auto px-6 pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pb-28 relative z-10 min-h-screen flex items-center">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center w-full">
-          
+
           <div>
             <motion.div {...fadeIn(0.1)}>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-950/50 border border-purple-800/40 text-purple-300 text-sm font-medium mb-6 backdrop-blur-sm">
@@ -165,7 +165,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
             className="h-[300px] sm:h-[360px] lg:h-[460px] xl:h-[500px] relative group"
           >
             {isClient && covers.length > 0 && <FloatingBook3D coverUrl={covers[currentIndex]} />}
-            
+
             <button
               onClick={nextCover}
               className="absolute bottom-4 right-4 bg-[#0a0a0a]/50 hover:bg-[#0a0a0a]/80 p-3 rounded-full backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover:opacity-100 shadow-lg z-20 text-white"

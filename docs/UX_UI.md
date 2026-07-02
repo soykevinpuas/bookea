@@ -1,55 +1,48 @@
-# 🎨 Guía de Experiencia y Diseño: Bookea
+# Guia UX/UI - Bookea
 
-Bookea prioriza la inmersión del lector a través de una interfaz limpia, tipografías editoriales y una arquitectura adaptable.
+Bookea debe sentirse como una biblioteca digital premium y una herramienta operativa clara para admins/vendedores. La interfaz no debe mezclar marketing con pantallas de trabajo.
 
-## 1. Filosofía de Diseño
-- **Inmersividad:** Minimizar distracciones para que el contenido sea el protagonista.
-- **Glassmorphism:** Uso de capas translúcidas con desenfoque (`backdrop-blur`) para interfaces modernas y ligeras.
-- **Animaciones Fluidas:** Transiciones suaves de página y efectos de hover dinámicos con `framer-motion`.
+## 1. Temas
 
----
+La app usa `next-themes` con estos temas:
 
-## 2. El Motor de Temas Dinámicos
+- `light`: lectura clara.
+- `dark`: modo nocturno base.
+- `retro`: estilo terminal.
+- `navy`: lectura seria/profesional.
 
-Bookea implementa un sistema de 4 temas globales sincronizados con el lector:
+`ReaderColorSync` sincroniza colores del lector con el tema activo.
 
-### ☀️ Día (Light)
-- **Fondo:** Gris muy suave (`bg-gray-50`) para reducir el brillo blanco.
-- **Texto:** Negro puro para máximo contraste.
-- **Uso:** Lectura en ambientes con mucha luz.
+## 2. Superficies Visuales
 
-### 🌙 Noche (Dark)
-- **Fondo:** Onyx / Negro profundo (`#0a0a0a`).
-- **Texto:** Gris claro (`#e5e7eb`).
-- **Uso:** Lectura nocturna y ahorro de batería en pantallas OLED.
+- Landing: `components/LandingHero.tsx` usa portadas reales y `FloatingBook3D`.
+- Catalogo: filtros y cards orientados a compra/lectura rapida.
+- Reader: HUD, paneles flotantes, temas, notas, subrayados y marcadores.
+- Dashboard/perfil: informacion personal, biblioteca, progreso, ordenes y facturacion.
+- Admin/vendedor: interfaces densas, orientadas a operacion, metricas, tablas y acciones.
 
-### 📟 Terminal (Retro)
-- **Estética:** Inspirada en computadoras clásicas y estética *Synthwave*.
-- **Colores:** Fondo Negro (#0d1117) con acentos Verde Neón (#3fb950).
-- **Uso:** Lectura técnica o estética retro-futurista.
+## 3. Componentes Reutilizables
 
-### ⚓ Marina (Navy)
-- **Estética:** Profesional y ejecutiva.
-- **Colores:** Azul Marino Profundo (#0a0f1e) con acentos Indigo (#7986cb).
-- **Uso:** Ambientes de trabajo o lectura seria.
+- `components/ui/*`: skeletons, card base, badges, coin balance, transiciones y onboarding.
+- `components/community/*`: reviews, formulario y estrellas.
+- `components/gamification/*`: rachas, monedas y quiz.
+- `components/profile/*`: avatar y referidos.
+- `components/book/*`: acciones especificas de libro.
 
----
+Las carpetas `components/admin`, `components/catalog` y `components/reader` estan reservadas; hoy no contienen componentes implementados.
 
-## 3. Componentes Premium
+## 4. PWA y Movil
 
-### `BookCard3D`
-- **Efecto:** Al pasar el ratón, la portada del libro escala y muestra un degradado inferior dinámico.
-- **Adaptabilidad:** En dispositivos táctiles, el efecto se simplifica para asegurar fluidez.
+- `public/manifest.json` define instalacion standalone.
+- `public/sw.js` maneja offline para EPUBs, portadas y fallback HTML.
+- `app/layout.tsx` usa safe area en la navegacion inferior.
+- `SplashScreen` y el HTML de splash evitan pantalla en blanco mientras hidrata React.
 
-### El Reader HUD (Overlays)
-- **Mecánica:** Los controles de lectura desaparecen al leer y aparecen con un toque inteligente.
-- **Configuración:** Panel lateral flotante con controles de tamaño de fuente (`80%` a `200%`) y tipografías (Nunito, Lora, Baskerville, OpenDyslexic).
+## 5. Reglas Practicas
 
----
-
-## 4. Optimización Móvil (PWA)
-
-Bookea está diseñado para sentirse como una app nativa:
-- **Gestión de Notch (Safe Areas):** Uso de `env(safe-area-inset-*)` para que el contenido no se oculte tras la cámara o la barra de gestos.
-- **Modo Standalone:** Splash screen personalizado y comportamiento sin barras de navegador.
-- **Interacciones Táctiles:** Gestos optimizados para el paso de página y menús desplegables de fácil acceso con el pulgar.
+- Usa iconos de `lucide-react` para acciones claras.
+- No agregues landing pages cuando la tarea pide una pantalla operativa.
+- En admin/vendedor prioriza densidad, tablas escaneables y acciones visibles.
+- En lector evita controles que tapen texto por defecto.
+- No documentes features dentro de la UI con textos largos; las instrucciones viven en docs.
+- Si introduces visuales 3D o canvas, verifica que rendericen en desktop y movil.

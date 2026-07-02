@@ -1,4 +1,4 @@
-/* 1.7 - Tailwind CSS Global Directives & Base Theme Variables */
+/* Tailwind CSS Global Directives & Base Theme Variables */
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *, .retro, .retro *, .navy, .navy *));
 @custom-variant retro (&:where(.retro, .retro *));
@@ -20,7 +20,7 @@
   --color-blue-950: #3b0764;
 }
 
-/* 1.7.1 - Safe Area Utilities for Mobile PWA */
+/* Safe Area Utilities for Mobile PWA */
 @layer base {
   :root {
     --sat: env(safe-area-inset-top);
@@ -29,7 +29,7 @@
     --sal: env(safe-area-inset-left);
   }
 
-  /* 1.7.2 - Retro Theme Global Overrides */
+  /* Retro Theme Global Overrides */
   /* Redefining Tailwind 4 color variables for the retro theme */
   html.retro,
   .retro {
@@ -44,9 +44,9 @@
   }
 
   /* Neon Green Terminal Titles & High Contrast Text */
-  .retro h1, 
-  .retro h2, 
-  .retro h3, 
+  .retro h1,
+  .retro h2,
+  .retro h3,
   .retro .text-gray-900,
   .retro .text-white {
     color: #3fb950 !important;
@@ -552,7 +552,7 @@
   }
 }
 
-/* 1.7.11 - Light mode contrast for admin/vendedor dashboards */
+/* Light mode contrast for admin/vendedor dashboards */
 /* These panels use text-white/* opacity classes designed for dark backgrounds.
    In light mode (no .dark), we remap them to visible gray shades. */
 html:not(.dark):not(.retro):not(.navy) [class*="text-white/"] {
@@ -605,7 +605,7 @@ html:not(.dark):not(.retro):not(.navy) [class~="bg-[#1a1a1a]"] [class*="text-whi
   padding-right: env(safe-area-inset-right);
 }
 
-/* 1.7.9 - Prevenir swipe-back/forward nativo del navegador en los bordes */
+/* Prevenir swipe-back/forward nativo del navegador en los bordes */
 html {
   overscroll-behavior-x: none;
   touch-action: pan-y pinch-zoom;
@@ -615,7 +615,7 @@ body {
   touch-action: pan-y pinch-zoom;
 }
 
-/* 1.7.9b - Evitar auto-zoom agresivo de iOS al enfocar campos.
+/* Evitar auto-zoom agresivo de iOS al enfocar campos.
    Safari en iPhone aumenta el viewport si input/textarea/select usa <16px. */
 @media (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
@@ -627,7 +627,7 @@ body {
   }
 }
 
-/* 1.7.4 - PWA Interactivity & Touch Overrides */
+/* PWA Interactivity & Touch Overrides */
 .no-touch-callout {
   -webkit-touch-callout: none !important;
   -webkit-user-select: none !important;
@@ -641,7 +641,7 @@ body {
   user-select: none !important;
 }
 
-/* 1.7.5 - UX Improvements: Navigation Feel */
+/* UX Improvements: Navigation Feel */
 
 /* Transición suave en todos los elementos interactivos */
 button, a, [role="button"] {
@@ -681,7 +681,7 @@ a[href]:hover, button {
   .animate-spin {
     animation: spin 1s linear infinite;
   }
-  
+
   @keyframes spin {
     from {
       transform: rotate(0deg);
@@ -692,7 +692,7 @@ a[href]:hover, button {
   }
 }
 
-/* 1.7.6 - Page Transition Sutil */
+/* Page Transition Sutil */
 @keyframes page-fade-in {
   from {
     opacity: 0;
@@ -711,7 +711,7 @@ main {
   animation: none;
 }
 
-/* 1.7.8 - Splash Screen Styles */
+/* Splash Screen Styles */
 #bookea-splash {
   position: fixed;
   inset: 0;
@@ -828,7 +828,7 @@ main {
   to   { transform: scale(1.1); opacity: 1; }
 }
 
-/* 1.7.10 - Protección del contenedor epub.js contra overrides agresivos de temas */
+/* Protección del contenedor epub.js contra overrides agresivos de temas */
 /* El epub-container y sus hijos internos (iframes, wrappers de epub.js) NO deben
    ser afectados por las reglas catch-all de retro/navy que fuerzan backgrounds y borders */
 .epub-container,
@@ -859,7 +859,7 @@ main {
   overflow: visible !important;
 }
 
-/* 1.7.1 - Ocultar splash inmediatamente si ya se mostró en la sesión (Head Script support) */
+/* Ocultar splash inmediatamente si ya se mostró en la sesión (Head Script support) */
 html.splash-ready #bookea-splash {
   display: none !important;
   opacity: 0 !important;

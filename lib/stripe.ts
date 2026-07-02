@@ -1,23 +1,17 @@
 import { Stripe } from 'stripe';
 
-/**
- * 6.7.1 - Instancia global del cliente Stripe.
- * Usamos una inicialización segura para evitar fallos durante el build.
- */
+// Instancia lazy para evitar inicializar Stripe durante builds sin secretos.
 let stripeInstance: Stripe | null = null;
 const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2026-02-25.clover';
 
-/**
- * 6.7.1 - Obtiene la instancia del cliente Stripe (Lazy Loading).
- * Garantiza que las variables de entorno estén cargadas antes de la inicialización.
- */
+// Crea/reutiliza el cliente Stripe solo en runtime servidor.
 export function getStripeClient(): Stripe {
   if (stripeInstance) {
     return stripeInstance;
   }
 
   const secretKey = process.env.STRIPE_SECRET_KEY;
-  
+
   if (!secretKey) {
     throw new Error("STRIPE_SECRET_KEY no está configurada");
   }
@@ -31,11 +25,7 @@ export function getStripeClient(): Stripe {
   return stripeInstance;
 }
 
-/**
- * 6.7.1b - Exportación compatible habilitando Lazy Loading.
- * Permite usar 'stripe.checkout.sessions.create' de forma transparente 
- * sin inicializar el cliente hasta que sea realmente invocado.
- */
+// Proxy compatible con imports legacy tipo stripe.checkout.sessions.create.
 export const stripe = new Proxy({} as Stripe, {
   get(target, prop, receiver) {
     const client = getStripeClient();
@@ -44,13 +34,12 @@ export const stripe = new Proxy({} as Stripe, {
   }
 });
 
-// 6.7.2 - ID del precio de suscripción mensual en Stripe (desde variable de entorno)
+// Price IDs configurados en Stripe; el de pagos unicos se calcula desde DB.
 export const PRICE_IDS = {
   premium: process.env.STRIPE_SUBSCRIPTION_PRICE_ID,
 };
 
-// 6.7.3 - Función para crear sesión de checkout de Stripe
-// Soporta tanto pagos únicos como suscripciones
+// Crea sesiones Checkout para suscripciones o pagos unicos con metadata auditada.
 export async function createCheckoutSession({
   priceId,
   priceData,
@@ -81,7 +70,6 @@ export async function createCheckoutSession({
     throw new Error('Stripe checkout requiere priceId o priceData');
   }
 
-  // Crear sesión de checkout con metadata para webhook
   const session = await stripe.checkout.sessions.create({
     mode,
     payment_method_types: ['card'],
@@ -99,8 +87,7 @@ export async function createCheckoutSession({
   return session;
 }
 
-// 6.7.4 - Función para crear sesión del portal de facturación
-// Permite a usuarios gestionar sus suscripciones y métodos de pago
+// Crea portal de facturacion para que el usuario gestione su suscripcion.
 export async function createPortalSession({
   customerId,
   returnUrl,

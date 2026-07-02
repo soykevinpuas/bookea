@@ -1,7 +1,7 @@
 import { createClientClient } from "@/lib/supabase";
 
 /**
- * 6.2 - Perfiles: Lógica de acceso a datos para la gestión de identidad de usuario
+ * Perfiles: Lógica de acceso a datos para la gestión de identidad de usuario
  */
 
 export interface Profile {
@@ -16,6 +16,7 @@ export interface Profile {
 
 export async function getProfile(userId: string): Promise<Profile | null> {
   const supabase = createClientClient();
+  // Perfil publico del usuario; puede no existir todavia para cuentas nuevas.
   const { data } = await supabase
     .from("profiles")
     .select("*")
@@ -24,6 +25,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
   if (typeof window !== "undefined") {
     try {
+      // Cache local simple para que la UI pueda reutilizar el ultimo perfil conocido.
       localStorage.setItem(`profile-${userId}`, JSON.stringify(data));
     } catch {}
   }
@@ -34,6 +36,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 export async function updateProfileAvatar(userId: string, avatarConfig: string): Promise<boolean> {
   const supabase = createClientClient();
 
+  // Upsert manual porque algunas instalaciones no tienen constraint unico expuesto.
   const { data: existing } = await supabase
     .from("profiles")
     .select('id')
@@ -58,6 +61,7 @@ export async function updateProfileAvatar(userId: string, avatarConfig: string):
 export async function updateProfileName(userId: string, name: string): Promise<boolean> {
   const supabase = createClientClient();
 
+  // Mismo patron que avatar: crea perfil si aun no existe.
   const { data: existing } = await supabase
     .from("profiles")
     .select('id')

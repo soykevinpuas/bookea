@@ -1,39 +1,75 @@
-# 📚 Bookea
+# Bookea
 
-**Bookea** es una plataforma SaaS moderna diseñada para revolucionar la lectura digital. Permite a los usuarios leer libros (formato EPUB) de manera fluida directamente desde el navegador, interactuar con el contenido a través de subrayados y notas sincronizadas en la nube, y facilita la adquisición de copias físicas o licencias permanentes.
+Bookea es una plataforma de lectura digital y venta de libros para Mexico. La app permite explorar un catalogo, leer EPUBs en navegador, guardar progreso, notas, subrayados y marcadores, comprar accesos digitales o fisicos con Stripe, y operar paneles de administracion y vendedores.
 
-## Características Principales
+## Estado Actual
 
-- 📖 **Lector EPUB de Alta Fidelidad**: Integración con `epub.js` soportando modo scroll continuo, perfiles de tipografía personalizados, y temas dinámicos (Día, Noche, Navy, Retro).
-- 🖍️ **Highlights y Notas Interactivos**: Selecciona texto en tiempo real, clasifícalo por colores, añade "sticky notes", y accede a ellos desde tu cuaderno virtual.
-- 🎨 **Diseño Moderno (UI/UX)**: Interfaz construida con **Tailwind CSS V4**, modo oscuro progresivo adaptativo y componentes altamente responsivos (incluyendo Safe Area para PWA).
-- 🔐 **Autenticación y Sesiones**: Login seguro respaldado por **Supabase Auth**.
-- 💳 **Pagos Múltiples**: Sistema de compras y suscripciones recurrentes procesadas mediante **Stripe**.
-- 🗄️ **Almacenamiento Desacoplado (Backend)**: Toda la interacción se sincroniza instantáneamente con una base de datos **PostgreSQL** administrada a través de Supabase.
+- App Next.js con App Router, React 19 y TypeScript strict.
+- Autenticacion con Supabase Auth y sesiones SSR mediante `@supabase/ssr`.
+- Catalogo, detalle de libro, dashboard, lector EPUB, perfil, suscripcion, carrito y ordenes.
+- Panel admin para libros, usuarios, inventario, ventas, solicitudes, pagos y vendedores.
+- Panel vendedor para inventario asignado, ventas, ingresos y solicitudes de stock.
+- Pagos con Stripe Checkout, Billing Portal y webhook idempotente.
+- PWA con `manifest.json`, service worker propio y cache offline de EPUBs/portadas.
+- Gamificacion con rachas, monedas, canjes, referidos y quiz de finalizacion.
+- Base de datos Supabase con RLS, migraciones versionadas y RPCs `SECURITY DEFINER` para flujos sensibles.
 
-## Stack Tecnológico 🛠️
-- **Framework:** Next.js 15 (App Router)
-- **Lenguaje:** TypeScript / React 19
-- **Estilos:** Tailwind CSS V4
-- **Backend/DB:** Supabase (PostgreSQL, Realtime, Storage)
-- **Pagos:** Stripe (Suscripciones, Payment Intents)
-- **Herramienta Lector:** epub.js
+## Stack
 
-## Inicialización y Desarrollo
+| Capa | Tecnologia |
+| --- | --- |
+| Framework | Next.js 16.1.6, App Router |
+| UI | React 19.2.3, Tailwind CSS 4, lucide-react, framer-motion |
+| Datos | Supabase PostgreSQL, Auth, Realtime/Storage |
+| Estado/cache | TanStack Query, Zustand |
+| Pagos | Stripe |
+| Lector | epubjs |
+| 3D/visual | Three.js, React Three Fiber, Drei |
+| Email | Resend |
 
-Instala las dependencias y arranca el entorno de desarrollo local:
+## Arranque Local
 
 ```bash
 npm install
 npm run dev
 ```
 
-La aplicación funcionará por defecto en [http://localhost:3000](http://localhost:3000).
-Asegúrate de tener un archivo `.env.local` configurado con tus variables de `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, y tus claves de `STRIPE`.
+La app arranca normalmente en `http://localhost:3000`.
 
-## Documentación del Proyecto
+Variables minimas para desarrollo:
 
-El desarrollo progresivo, hitos completados y la filosofía técnica están regidos por nuestros archivos locales:
-- `spec.md`: Especificaciones del Producto y Features.
-- `bitacora.md`: Historial y Registro (Changelog) de Cambios.
-- `rules.md`: Estándares de Código y Patrones de Arquitectura del proyecto.
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+STRIPE_SECRET_KEY=
+STRIPE_SUBSCRIPTION_PRICE_ID=
+STRIPE_WEBHOOK_SECRET=
+NEXT_PUBLIC_SITE_URL=
+```
+
+## Comandos
+
+```bash
+npm run dev       # servidor local
+npm run lint      # ESLint
+npx tsc --noEmit  # validacion TypeScript
+npm run build     # build de Next.js
+```
+
+Nota: hoy no existen scripts de test en `package.json`. La guia de testing esta en `test.md` como deuda tecnica planificada.
+
+## Documentacion Viva
+
+- `AGENTS.md`: guia rapida para cualquier agente o dev que toque el repo.
+- `rules.md`: reglas operativas, arquitectura y convenciones que deben respetarse.
+- `docs/PROJECT_MASTER.md`: mapa tecnico del sistema actual.
+- `docs/DATABASE.md`: entidades, RLS, RPCs y migraciones relevantes.
+- `docs/UX_UI.md`: temas, UI y PWA.
+- `docs/AUDIT_LOG.md`: auditorias, hallazgos y deuda tecnica.
+- `bitacora.md`: historial cronologico de cambios.
+- `spec.md`: especificacion de producto alineada al estado actual y roadmap.
+
+## Regla Principal
+
+Si el codigo y un documento se contradicen, verifica el codigo, actualiza el documento y registra el cambio en `bitacora.md`. Las migraciones de Supabase son la fuente de verdad para la base de datos.

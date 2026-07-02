@@ -16,7 +16,7 @@ export interface Review {
 const REVIEWS_CACHE_KEY = 'bookea-offline-reviews';
 
 /**
- * 7.0.1 - Guardar reviews localmente para acceso offline
+ * Guardar reviews localmente para acceso offline
  */
 export function saveLocalReviews(bookId: string, reviews: Review[]) {
   if (typeof window === 'undefined') return;
@@ -32,7 +32,7 @@ export function saveLocalReviews(bookId: string, reviews: Review[]) {
 }
 
 /**
- * 7.0.2 - Obtener reviews del caché local
+ * Obtener reviews del caché local
  */
 export function getLocalReviews(bookId: string): Review[] {
   if (typeof window === 'undefined') return [];
@@ -46,7 +46,7 @@ export function getLocalReviews(bookId: string): Review[] {
   }
 }
 
-// 7.1 - Obtener todas las reseñas de un libro específico
+// Obtener todas las reseñas de un libro específico
 export async function getBookReviews(bookId: string): Promise<Review[]> {
   const local = getLocalReviews(bookId);
   if (typeof window !== 'undefined' && !navigator.onLine) {
@@ -80,7 +80,7 @@ export async function getBookReviews(bookId: string): Promise<Review[]> {
   }
 }
 
-// 7.2 - Guardar o actualizar una reseña de usuario
+// Guardar o actualizar una reseña de usuario
 export async function saveReview(
   bookId: string,
   userId: string,
@@ -88,7 +88,7 @@ export async function saveReview(
   content: string
 ): Promise<Review | null> {
   const supabase = createClientClient();
-  
+
   const { data, error } = await supabase
     .from("reviews")
     .upsert(
@@ -111,7 +111,7 @@ export async function saveReview(
   return data as Review;
 }
 
-// 7.3 - Eliminar una reseña propia
+// Eliminar una reseña propia
 export async function deleteReview(reviewId: string): Promise<boolean> {
   const supabase = createClientClient();
   const { error } = await supabase

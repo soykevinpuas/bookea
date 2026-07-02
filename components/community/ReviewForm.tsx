@@ -12,7 +12,7 @@ import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 import { parseAvatarConfig } from "@/lib/avatars-v2";
 
 /**
- * 6.8 - ReviewForm: Formulario dinámico para la participación ciudadana en Bookea
+ * ReviewForm: Formulario dinámico para la participación ciudadana en Bookea
  */
 
 interface ReviewFormProps {
@@ -58,8 +58,8 @@ export default function ReviewForm({ bookId }: ReviewFormProps) {
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs mx-auto">
           Inicia sesión para compartir tu opinión con la comunidad Bookea.
         </p>
-        <a 
-          href="/login" 
+        <a
+          href="/login"
           className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all"
         >
           Iniciar Sesión
@@ -68,7 +68,7 @@ export default function ReviewForm({ bookId }: ReviewFormProps) {
     );
   }
 
-  // 6.8.2 - UI del Formulario para usuario autenticado
+  // UI del Formulario para usuario autenticado
   return (
     <ReviewEditor
       key={existingReview?.id ?? "new-review"}
@@ -127,8 +127,8 @@ function ReviewEditor({
         <div className="flex items-start gap-4">
 <div className="w-12 h-12 rounded-full border-2 border-white/5 overflow-hidden flex-shrink-0">
               {profile?.avatar_url ? (
-                <AnimalEngine 
-                  config={parseAvatarConfig(profile.avatar_url)} 
+                <AnimalEngine
+                  config={parseAvatarConfig(profile.avatar_url)}
                   size={48}
                 />
               ) : (
@@ -137,7 +137,7 @@ function ReviewEditor({
                 </div>
               )}
             </div>
-          
+
           <div className="flex-1 space-y-1">
              <p className="text-sm font-bold text-gray-900 dark:text-white">
                 {profile?.name || "Lector Bookea"}
@@ -156,7 +156,7 @@ function ReviewEditor({
             placeholder="¿Qué te pareció este libro?"
             className="w-full bg-gray-50 dark:bg-black/20 border border-gray-100 dark:border-white/5 rounded-2xl p-4 text-sm text-gray-900 dark:text-white outline-none focus:border-blue-500/50 transition-all resize-none min-h-[100px]"
           />
-          
+
           <AnimatePresence>
             {(isExpanded || content.length > 0) && (
               <motion.div

@@ -3,7 +3,7 @@
 import BookLongPressMenu from "@/components/BookLongPressMenu";
 
 /**
- * 8.6 - CatalogBookCard: Wrapper de cliente para habilitar el menú long-press en el catálogo (Server Component)
+ * CatalogBookCard: Wrapper de cliente para habilitar el menú long-press en el catálogo (Server Component)
  */
 interface CatalogBookCardProps {
   book: import("@/types/book").Book;
@@ -12,6 +12,7 @@ interface CatalogBookCardProps {
 
 export default function CatalogBookCard({ book, children }: CatalogBookCardProps) {
   return (
+    /* El wrapper conserva el markup del catálogo y solo agrega interacción long-press. */
     <BookLongPressMenu book={book}>
       {children}
     </BookLongPressMenu>

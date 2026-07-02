@@ -1,4 +1,4 @@
-// 6.x - Componente de balance de monedas de gamificación
+// Componente de balance de monedas de gamificación
 import { CoinBalance } from '@/types/coins'
 import { COIN_TAILWIND_CLASSES, COIN_BG_CLASSES, COIN_LABELS } from '@/types/coins'
 import { Circle, Medal, Award, Gem, HelpCircle } from 'lucide-react'
@@ -19,6 +19,8 @@ const ICON_MAP = {
 
 export function CoinBalanceDisplay({ balance, variant = 'full' }: CoinBalanceProps) {
   const [showInfo, setShowInfo] = useState(false)
+
+  // Orden canonico de monedas: mantiene UI, etiquetas y colores sincronizados.
   const coins: { type: keyof CoinBalance; label: string }[] = [
     { type: 'bronze', label: COIN_LABELS.bronze },
     { type: 'silver', label: COIN_LABELS.silver },
@@ -26,6 +28,7 @@ export function CoinBalanceDisplay({ balance, variant = 'full' }: CoinBalancePro
     { type: 'diamond', label: COIN_LABELS.diamond },
   ]
 
+  // Variante compacta para headers o tarjetas donde solo importa el total.
   if (variant === 'compact') {
     const total = balance.bronze + balance.silver + balance.gold + balance.diamond
     return (
@@ -38,6 +41,7 @@ export function CoinBalanceDisplay({ balance, variant = 'full' }: CoinBalancePro
 
   return (
     <>
+      {/* Variante completa: desglose por tier y acceso al modal explicativo. */}
       <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-200 dark:border-white/10 shadow-lg p-3 space-y-1.5 min-w-[200px]">
         <div className="flex items-center justify-between px-1 pb-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Tus monedas</span>

@@ -3,23 +3,27 @@ import { Highlight } from "@/types/reading";
 
 const HIGHLIGHTS_KEY = "bookea-offline-highlights";
 
+// Las claves por usuario evitan mezclar subrayados entre sesiones locales.
 function getScopedBookKey(bookId: string, userId?: string | null): string {
   return userId ? `${userId}:${bookId}` : bookId;
 }
 
+// Genera UUID compatible para que un highlight creado offline pueda sincronizarse luego.
 function generateId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID()
   }
-  // Fallback to valid UUID v4 format
-  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c: any) =>
-    (c ^ (crypto?.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
-  );
+  // Fallback con formato UUID v4 valido si crypto.randomUUID no existe.
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => {
+    const numericValue = Number(c);
+    const randomByte = typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function"
+      ? crypto.getRandomValues(new Uint8Array(1))[0]
+      : Math.floor(Math.random() * 256);
+    return (numericValue ^ (randomByte & (15 >> (numericValue / 4)))).toString(16);
+  });
 }
 
-/**
- * 4.3.1 - Obtener subrayados locales
- */
+// Lee subrayados locales y conserva compatibilidad con cache legacy por libro.
 export function getLocalHighlights(bookId: string, userId?: string | null): Highlight[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -35,9 +39,7 @@ export function getLocalHighlights(bookId: string, userId?: string | null): High
   }
 }
 
-/**
- * 4.3.2 - Guardar subrayado localmente
- */
+// Guarda o reemplaza un subrayado local y lo marca como pendiente de sync.
 export function saveLocalHighlight(bookId: string, highlight: Highlight) {
   if (typeof window === 'undefined') return;
   try {
@@ -45,8 +47,7 @@ export function saveLocalHighlight(bookId: string, highlight: Highlight) {
     const all = raw ? JSON.parse(raw) : {};
     const key = getScopedBookKey(bookId, highlight.user_id);
     if (!all[key]) all[key] = [];
-    
-    // Evitar duplicados
+
     const current = all[key] as any[];
     const exists = current.findIndex(h => h.id === highlight.id);
     if (exists >= 0) {
@@ -54,15 +55,14 @@ export function saveLocalHighlight(bookId: string, highlight: Highlight) {
     } else {
       current.unshift({ ...highlight, synced: false } as any);
     }
-    
+
     localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(all));
   } catch (err) {
     console.warn("Error saving local highlight:", err);
   }
 }
 
-// 4.3 - Acceso a Datos (DAO) para interactuar con la sub-entidad de Subrayados y Notas (Highlights)
-
+// Mezcla subrayados remotos con locales no sincronizados.
 export async function getHighlights(
   bookId: string,
   userId: string
@@ -83,17 +83,15 @@ export async function getHighlights(
 
     if (error) return local;
 
-    // 4.3.0.1 - ESTRATEGIA DE MERGE: Preservar locales no sincronizados
     if (data && typeof window !== 'undefined') {
       const raw = localStorage.getItem(HIGHLIGHTS_KEY);
       const all = raw ? JSON.parse(raw) : {};
       const key = getScopedBookKey(bookId, userId);
       const localUnsynced = (all[key] || []).filter((h: any) => h.synced === false);
-      
-      // Combinar: Servidor (prioridad si hay colisión por ID) + Locales no sincronizados
+
       const remoteIds = new Set(data.map(h => h.id));
       const filteredLocal = localUnsynced.filter((h: Highlight) => !remoteIds.has(h.id));
-      
+
       const merged = [
         ...data.map(h => ({ ...h, synced: true })),
         ...filteredLocal
@@ -110,6 +108,7 @@ export async function getHighlights(
   }
 }
 
+// Crea un subrayado offline-first y reemplaza el id temporal al confirmar DB.
 export async function saveHighlight(
   bookId: string,
   userId: string,
@@ -119,7 +118,6 @@ export async function saveHighlight(
   color: string,
   note?: string
 ): Promise<Highlight | null> {
-  // 1. Crear ID temporal para guardado offline inmediato
   const tempId = generateId();
   const newHighlight: Highlight = {
     id: tempId,
@@ -133,7 +131,6 @@ export async function saveHighlight(
     created_at: new Date().toISOString()
   } as any;
 
-  // 2. Guardar Local
   saveLocalHighlight(bookId, newHighlight);
 
   if (typeof window !== 'undefined' && !navigator.onLine) {
@@ -158,10 +155,9 @@ export async function saveHighlight(
 
     if (error) {
       console.warn("Highlight save error:", error.message);
-      return newHighlight; // Devolvemos el local al menos
+      return newHighlight;
     }
-    
-    // Reemplazar el temporal en cache con el oficial de DB
+
     if (data) {
       const raw = localStorage.getItem(HIGHLIGHTS_KEY);
       const all = raw ? JSON.parse(raw) : {};
@@ -177,11 +173,11 @@ export async function saveHighlight(
   }
 }
 
+// Actualiza nota localmente primero para que el lector responda sin red.
 export async function updateHighlightNote(
   highlightId: string,
   note: string
 ): Promise<boolean> {
-  // Actualización local rápida
   if (typeof window !== 'undefined') {
     const raw = localStorage.getItem(HIGHLIGHTS_KEY);
     if (raw) {
@@ -212,11 +208,11 @@ export async function updateHighlightNote(
   }
 }
 
+// Actualiza color localmente primero y sincroniza si hay conexion.
 export async function updateHighlightColor(
   highlightId: string,
   color: string
 ): Promise<boolean> {
-  // Actualización local rápida
   if (typeof window !== 'undefined') {
     const raw = localStorage.getItem(HIGHLIGHTS_KEY);
     if (raw) {
@@ -247,10 +243,10 @@ export async function updateHighlightColor(
   }
 }
 
+// Elimina el subrayado del cache local y luego intenta borrarlo en Supabase.
 export async function deleteHighlight(
   highlightId: string
 ): Promise<boolean> {
-  // Borrado local rápido
   if (typeof window !== 'undefined') {
     const raw = localStorage.getItem(HIGHLIGHTS_KEY);
     if (raw) {

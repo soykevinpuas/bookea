@@ -1,4 +1,4 @@
-// 4.x - Utilería para gestión de rachas de lectura con anti-abuse
+// Utilería para gestión de rachas de lectura con anti-abuse
 // Un día cuenta como "activo" solo si el usuario leyó al menos 2 minutos
 
 import { createClientClient } from '@/lib/supabase'

@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
 import { useState } from "react";
 
+// BuyPhysicalPage: formulario de envio y checkout Stripe para compras fisicas.
 export default function BuyPhysicalPage() {
   const params = useParams();
   const router = useRouter();
@@ -16,20 +17,23 @@ export default function BuyPhysicalPage() {
 
   const { data: book, isLoading } = useBook(id);
 
+  // Envia datos de envio al backend de checkout; Stripe crea la sesion final.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     const formData = new FormData(e.currentTarget);
-    
+
     const { data: { user } } = await supabase.auth.getUser();
-    
+
+    // El checkout fisico requiere usuario autenticado para asociar la orden.
     if (!user) {
       router.push("/login");
       return;
     }
 
+    // Payload minimo de envio que viaja a la API; validacion visible queda en inputs required.
     const shipping = {
       name: formData.get("name"),
       address: formData.get("address"),
@@ -69,6 +73,7 @@ export default function BuyPhysicalPage() {
     }
   };
 
+  // Estados tempranos evitan renderizar formulario sin datos de libro validos.
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -116,6 +121,7 @@ export default function BuyPhysicalPage() {
             Datos de Envío
           </h1>
 
+          {/* Resumen de orden: mantiene visible el total antes de enviar a Stripe. */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <h2 className="font-semibold text-gray-700 mb-2">{book.title}</h2>
             <p className="text-sm text-gray-500">por {book.author}</p>
@@ -133,6 +139,7 @@ export default function BuyPhysicalPage() {
             </div>
           </div>
 
+          {/* Formulario controlado por HTML required; handleSubmit arma el payload final. */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

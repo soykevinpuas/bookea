@@ -6,6 +6,7 @@ import { createClientClient } from "@/lib/supabase";
 import { Users, ShieldCheck, Shield, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
+// AppUser representa la fila minima necesaria para administrar acceso y suscripciones.
 interface AppUser {
   id: string;
   email: string;
@@ -14,6 +15,7 @@ interface AppUser {
   subscription_ends_at: string | null;
 }
 
+// Estilos y etiquetas se separan para que roles nuevos se agreguen en un solo lugar.
 const ROLE_STYLES: Record<AppUser["role"], string> = {
   free: "bg-white/5 text-white/50 border border-white/10",
   subscriber: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
@@ -33,6 +35,7 @@ export default function AdminUsersPage() {
   const supabase = createClientClient();
   const [confirmRole, setConfirmRole] = useState<{ id: string; email: string; oldRole: AppUser["role"]; newRole: AppUser["role"] } | null>(null);
 
+  // Tabla principal: lista usuarios ordenados por registro reciente.
   const { data: users = [], isLoading } = useQuery<AppUser[]>({
     queryKey: ["admin-users"],
     queryFn: async () => {
@@ -45,10 +48,11 @@ export default function AdminUsersPage() {
     },
   });
 
+  // Mutacion de fecha: usa RPC para respetar reglas de admin y mantener historial server-side.
   const updateSubscriptionDate = useMutation({
     mutationFn: async ({ userId, endsAt, email }: { userId: string; endsAt: string | null; email: string }) => {
       const toastId = toast.loading(`Actualizando suscripción de ${email}...`);
-      
+
       try {
         const { error, data } = await supabase.rpc("admin_set_subscription_date", {
           target_user_id: userId,
@@ -56,11 +60,11 @@ export default function AdminUsersPage() {
         });
 
         if (error) throw error;
-        
+
         if (data && typeof data === 'object' && !data.success) {
           throw new Error(data.error || 'El RPC devolvió error');
         }
-        
+
         toast.success(`Suscripción actualizada para ${email}`, { id: toastId });
         return { success: true };
       } catch (err: unknown) {
@@ -72,6 +76,7 @@ export default function AdminUsersPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
+  // Mutacion de rol: pasa por API propia para evitar bloqueos de RLS desde cliente.
   const changeRole = useMutation({
     mutationFn: async ({ id, role, email }: { id: string; role: AppUser["role"]; email: string }) => {
       const toastId = toast.loading(`Cambiando rol de ${email}...`);
@@ -106,6 +111,7 @@ export default function AdminUsersPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
+  // Contadores del encabezado calculados en cliente desde la misma query de usuarios.
   const subscribers = users.filter((u) => u.role === "subscriber").length;
   const vendedores = users.filter((u) => u.role === "vendedor").length;
   const admins = users.filter((u) => u.role === "admin").length;
@@ -117,7 +123,7 @@ export default function AdminUsersPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2 pl-10 md:pl-0">
             <Users className="w-6 h-6 text-blue-500 dark:text-blue-400" />
             <span>Usuarios</span>
-          </h1>
+            </h1>
           <p className="text-white/40 text-sm mt-1">
             {users.length} registrado{users.length !== 1 ? "s" : ""} · {subscribers} suscriptor{subscribers !== 1 ? "es" : ""} · {vendedores} vendedor{vendedores !== 1 ? "es" : ""} · {admins} admin
           </p>
@@ -165,16 +171,17 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
+                       {/* Date input dispara guardado inmediato para minimizar pasos administrativos. */}
                        <div className="relative">
-                         <input 
+                         <input
                            type="date"
                            defaultValue={user.subscription_ends_at ? user.subscription_ends_at.split('T')[0] : ""}
                            onChange={(e) => {
                              const val = e.target.value;
-                             updateSubscriptionDate.mutate({ 
-                               userId: user.id, 
-                               endsAt: val ? new Date(val).toISOString() : null, 
-                               email: user.email 
+                             updateSubscriptionDate.mutate({
+                               userId: user.id,
+                               endsAt: val ? new Date(val).toISOString() : null,
+                               email: user.email
                              });
                            }}
                            disabled={updateSubscriptionDate.isPending && updateSubscriptionDate.variables?.userId === user.id}
@@ -219,7 +226,7 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {/* Modal de Confirmación */}
+      {/* Modal de confirmacion: protege cambios de rol de alto impacto. */}
       {confirmRole && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-[#121212] border border-white/10 p-6 rounded-2xl max-w-sm w-full shadow-2xl">
@@ -229,7 +236,7 @@ export default function AdminUsersPage() {
               </div>
               <h3 className="text-lg font-bold text-white">Confirmar cambio</h3>
             </div>
-            
+
             <p className="text-white/70 text-sm mb-4 leading-relaxed">
               Estás a punto de cambiar el nivel de acceso de <strong className="text-white">{confirmRole.email}</strong>.<br/><br/>
               Pasará de <strong className="line-through opacity-70">{ROLE_LABELS[confirmRole.oldRole]}</strong> a <strong className="text-blue-400">{ROLE_LABELS[confirmRole.newRole]}</strong>.
@@ -242,13 +249,13 @@ export default function AdminUsersPage() {
             )}
 
             <div className="flex justify-end gap-3 mt-6">
-              <button 
-                onClick={() => setConfirmRole(null)} 
+              <button
+                onClick={() => setConfirmRole(null)}
                 className="px-4 py-2 text-sm text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 onClick={() => {
                   changeRole.mutate({ id: confirmRole.id, role: confirmRole.newRole, email: confirmRole.email });
                   setConfirmRole(null);

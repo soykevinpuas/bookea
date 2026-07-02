@@ -1,14 +1,17 @@
 import Link from 'next/link'
 
+// AvisoDePrivacidadPage: documento legal estatico versionado para usuarios de Bookea.
 export default function AvisoDePrivacidadPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100">
       <div className="max-w-3xl mx-auto px-6 py-16 sm:py-24">
         <Link href="/" className="text-blue-600 dark:text-blue-400 text-sm hover:underline mb-8 inline-block">&larr; Volver al inicio</Link>
-        
+
+        {/* Encabezado legal: fecha visible para saber que version acepto el usuario. */}
         <h1 className="text-3xl sm:text-4xl font-extrabold mb-8">Aviso de Privacidad</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-10">Última actualización: Mayo 2026</p>
 
+        {/* Contenido dividido por secciones para facilitar lectura y futuras actualizaciones. */}
         <div className="space-y-8 text-[15px] leading-relaxed text-gray-700 dark:text-gray-300">
           <section>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">1. Identidad y domicilio del responsable</h2>

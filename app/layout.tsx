@@ -9,8 +9,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { Suspense } from "react";
 import BottomNavWrapper from "@/components/BottomNavWrapper";
 
-
-// 1.5 - Configuración de fuentes y Metadata global
+// Metadata PWA y SEO base compartida por toda la app.
 export const metadata: Metadata = {
   title: "Bookea",
   description: "Tu biblioteca premium de E-books",
@@ -41,6 +40,7 @@ import { Toaster } from "sonner";
 import { ReaderColorSync } from "@/components/ReaderColorSync";
 import PanelManager from "@/components/PanelManager";
 
+// Layout raiz: compone temas, auth, React Query, PWA, header/nav y paneles globales.
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -49,7 +49,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        {/* Evitar el flash del splash screen en navegación secundaria */}
+        {/* Evita flash del splash screen en navegacion secundaria. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -69,7 +69,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className="antialiased min-h-screen bg-gray-50 transition-colors duration-300 dark:bg-[#0a0a0a] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-gray-100 retro:text-white navy:text-[#e8eaf6] flex flex-col"
       >
-        {/* 1.7 - Splash Screen HTML puro: visible instantáneamente sin esperar a React */}
+        {/* Splash HTML inmediato; React lo sustituye al hidratar. */}
         <div id="bookea-splash">
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div className="splash-glow" />
@@ -102,10 +102,10 @@ export default function RootLayout({
               </Suspense>
             </AuthProvider>
           </QueryProvider>
-          <Toaster 
-            position="bottom-right" 
-            richColors 
-            theme="system" 
+          <Toaster
+            position="bottom-right"
+            richColors
+            theme="system"
             closeButton
           />
         </ThemeProvider>
@@ -113,4 +113,3 @@ export default function RootLayout({
     </html>
   );
 }
-

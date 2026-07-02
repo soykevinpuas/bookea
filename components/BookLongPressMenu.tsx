@@ -13,7 +13,7 @@ import { useUserBooks } from "@/hooks/useBooks";
 import { useSubscription } from "@/hooks/useSubscription";
 
 /**
- * 8.5 - BookLongPressMenu: Menú contextual que aparece al mantener presionado un libro
+ * BookLongPressMenu: Menú contextual que aparece al mantener presionado un libro
  * Opciones: Ver Detalles, Descargar, Eliminar Descarga, Añadir/Quitar de Biblioteca
  */
 interface BookLongPressMenuProps {
@@ -227,10 +227,10 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchMove}
-      onContextMenu={(e) => { 
-        e.preventDefault(); 
+      onContextMenu={(e) => {
+        e.preventDefault();
         e.stopPropagation();
-        setShowMenu(true); 
+        setShowMenu(true);
       }}
     >
       {/* Indicador de descargado */}
@@ -255,9 +255,9 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       )}
 
       {children}
-      
-      {/* 8.5.1 - Botón de activación para Mouse/Trackpad (Tres puntos) */}
-      <button 
+
+      {/* Botón de activación para Mouse/Trackpad (Tres puntos) */}
+      <button
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();

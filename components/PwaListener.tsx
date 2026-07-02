@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { syncOfflineProgress } from "@/lib/sync";
 
-// 1.8 - PwaListener: Registra el Service Worker en el navegador silenciosamente para habilitar persistencia nativa
+// PwaListener: Registra el Service Worker en el navegador silenciosamente para habilitar persistencia nativa
 export function PwaListener() {
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
@@ -13,9 +13,9 @@ export function PwaListener() {
         .catch((err) => console.error("SW Fallo:", err));
     }
 
-    // 8.6.1 - Disparar sincronización al inicio y cuando vuelve la red
+    // Disparar sincronización al inicio y cuando vuelve la red
     syncOfflineProgress();
-    
+
     window.addEventListener('online', syncOfflineProgress);
     return () => window.removeEventListener('online', syncOfflineProgress);
   }, []);

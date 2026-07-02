@@ -4,8 +4,8 @@ interface SkeletonProps {
 
 export function SkeletonBox({ className }: SkeletonProps) {
   return (
-    <div 
-      className={`animate-pulse bg-gray-200 dark:bg-white/5 rounded ${className || ''}`} 
+    <div
+      className={`animate-pulse bg-gray-200 dark:bg-white/5 rounded ${className || ''}`}
     />
   );
 }
@@ -21,7 +21,7 @@ export function ProfileSkeleton() {
           </div>
           <SkeletonBox className="h-8 w-32 rounded-full" />
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left column */}
           <div className="lg:col-span-4 space-y-6">
@@ -32,7 +32,7 @@ export function ProfileSkeleton() {
               <SkeletonBox className="h-10 w-full rounded-full" />
             </div>
           </div>
-          
+
           {/* Right column */}
           <div className="lg:col-span-8 space-y-8">
             <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8">

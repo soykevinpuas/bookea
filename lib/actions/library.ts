@@ -11,16 +11,16 @@ export async function addToLibraryAction(bookId: string, accessType: LibraryAcce
 
   if (authError || !user) {
     console.error("[addToLibraryAction] NO USER SESSION FOUND ON SERVER:", authError);
-    return { 
-      success: false, 
-      error: 'Sesión no detectada. Intenta cerrar sesión y volver a entrar.' 
+    return {
+      success: false,
+      error: 'Sesión no detectada. Intenta cerrar sesión y volver a entrar.'
     }
   }
 
   try {
     const adminDb = createAdminClient()
 
-    // 1. Verificar si el libro existe y si es gratuito
+    // Verificar si el libro existe y si es gratuito
     const { data: bookCheck, error: bookError } = await adminDb.from('books').select('id, price_digital, is_premium').eq('id', bookId).single();
     if (bookError || !bookCheck) {
       console.error("[addToLibraryAction] Book not found:", bookId, bookError);
@@ -53,7 +53,7 @@ export async function addToLibraryAction(bookId: string, accessType: LibraryAcce
     }
 
     const result = await libAddToLibrary(adminDb, user.id, bookId, accessType)
-    
+
     // Si el resultado es un objeto con error o es nulo
     if (result && 'error' in result) {
       return { success: false, error: 'Error al añadir el libro a la biblioteca' }
@@ -64,7 +64,7 @@ export async function addToLibraryAction(bookId: string, accessType: LibraryAcce
       revalidatePath(`/book/${bookId}`)
       return { success: true, record: result }
     }
-    
+
     return { success: false, error: 'No se pudo añadir el libro a la biblioteca' }
   } catch (error: unknown) {
     console.error('Error in addToLibraryAction:', error)

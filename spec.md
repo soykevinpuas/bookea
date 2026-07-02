@@ -1,362 +1,129 @@
-# 📚 BOOKEA — Product Spec v1.0
-> SaaS de lectura digital + venta física de libros  
-> Mercado objetivo: México  
-> Versión: 0.1 (MVP)
-
----
-
-## 1. VISIÓN DEL PRODUCTO
-
-Bookea es una plataforma SaaS que permite a los usuarios leer libros digitales (EPUB) en el navegador, comprar acceso permanente a títulos, adquirir el libro físico directamente desde el lector, y participar en una comunidad de lectores con comentarios en tiempo real.
-
-El operador (tú) administra el catálogo, inventario físico, órdenes y precios desde un panel de administración integrado.
-
----
-
-## 2. USUARIOS
-
-| Tipo | Descripción |
-|------|-------------|
-| **Visitante** | Sin cuenta. Puede ver catálogo y leer descripción de libros |
-| **Usuario Free** | Con cuenta gratuita. Acceso limitado |
-| **Usuario Suscrito** | Paga $99 MXN/mes. Acceso ilimitado a todo el catálogo digital |
-| **Usuario con compra permanente** | Pagó por un título. Acceso de por vida a ese título |
-| **Admin** | Tú. Acceso total al panel de gestión |
-
----
-
-## 3. MODELO DE NEGOCIO (Manual v1.0)
-
-### 3.1 Planes
-
-| Plan | Precio | Beneficio |
-|------|--------|-----------|
-| **Free** | $0 | Vista previa de X% de cada libro |
-| **Premium Mensual** | $99 MXN/mes | Acceso ilimitado a todo el catálogo digital |
-| **Compra permanente (digital)** | $29 MXN | Acceso de por vida al título. Lectura online + offline |
-| **Libro físico** | $299 MXN | Orden de envío a domicilio. Envío $50 MXN aparte |
-| **Bundle (físico + digital)** | $319 MXN | Ambas versiones, envío incluido |
-
-### 3.2 Lógica de Suscripción
-- La suscripción premium da **acceso ilimitado** a todo el catálogo digital.
-- Stripe maneja la recurrencia mensual ($99 MXN/mes).
-- Al suscribirse, Stripe activa el rol `subscriber` mediante webhook.
-
-### 3.3 Pagos con Stripe
-- **Pasarela:** Stripe Checkout (suscripciones + pagos únicos)
-- **Configuración de Entorno:**
-  ```
-  STRIPE_SECRET_KEY=sk_live_... o sk_test_...
-  STRIPE_SUBSCRIPTION_PRICE_ID=price_...
-  STRIPE_DIGITAL_PERMANENT_PRICE_ID=price_...
-  STRIPE_PHYSICAL_PRICE_ID=price_...
-  STRIPE_BUNDLE_PRICE_ID=price_...
-  STRIPE_WEBHOOK_SECRET=whsec_...
-  ```
-- **Nota:** Todos los Price IDs deben existir en tu cuenta de Stripe. Verificar antes de desplegar.
-- **Flujo de Activación:**
-  1. El usuario selecciona producto en la app
-  2. Se crea sesión de checkout en Stripe
-  3. El usuario completa el pago en Stripe Checkout
-  4. El webhook o `verifySubscriptionAction` actualiza el rol en la base de datos
-
----
-
-## 4. FUNCIONALIDADES
-
-### 4.1 Catálogo
-- Grid de libros con portada, título, autor, precio
-- Filtros por categoría, precio, disponibilidad física
-- Página de detalle de libro con descripción, muestra gratuita, opciones de compra
-- Buscador de títulos
-
-### 4.2 Lector EPUB
-- Renderizado nativo en browser con epub.js
-- Progreso de lectura sincronizado (posición exacta guardada en DB)
-- Cambio de fuente, tamaño y modo oscuro/claro
-- Highlights y notas personales
-- Al llegar a la última página: sugerencia de dejar comentario
-
-### 4.3 Comunidad
-- Sección de comentarios públicos por libro
-- Tiempo real con Supabase Realtime
-- Cualquier usuario (incluyendo free) puede comentar
-- Likes en comentarios
-- Reporte de comentarios inapropiados
-
-### 4.4 Gamificación y retención
-- Rachas de lectura diaria (días consecutivos leyendo)
-- Metas de lectura mensuales (ej. "lee 2 libros este mes")
-- Insignias por logros (primer libro terminado, racha de 7 días, etc.)
-- Perfil público con libros leídos y reseñas
-
-### 4.5 Social y viral
-- Compartir cita con imagen: usuario selecciona texto → app genera imagen branded con la cita → comparte en redes
-- Reseñas y ratings (1–5 estrellas) visibles en catálogo
-- "También te puede gustar" basado en historial
-
-### 4.6 Lista de deseos
-- Guardar títulos sin comprar
-- Notificación cuando un título en lista de deseos tenga oferta o nueva disponibilidad física
-
-### 4.7 Regalos
-- Regalar un título (permanente o físico) a otro usuario por email
+# BOOKEA - Product Spec Actual
 
-### 4.8 Compra de libro físico
-- Botón "Comprar físico" visible en página de libro y dentro del lector
-- Formulario de captura: nombre, dirección, ciudad, estado, CP, teléfono
-- Costo de envío calculado o fijo (a definir)
-- Pago con Stripe
-- Confirmación por email
-- El stock se descuenta automáticamente
-- Si stock = 0, el botón desaparece
+Version de referencia: 2026-07-01.
 
----
+## 1. Producto
 
-## 5. PANEL DE ADMINISTRACIÓN
+Bookea es una plataforma para leer libros digitales EPUB, comprar accesos digitales permanentes, comprar libros fisicos, gestionar suscripciones premium y operar inventario con admins y vendedores.
 
-Solo accesible para usuarios con `role: admin` en Supabase.
+Mercado objetivo actual: Mexico. Moneda: MXN.
 
-### 5.1 Gestión de catálogo
-- Agregar/editar/eliminar libros
-- Campos: título, autor, descripción, categoría, portada (imagen), archivo EPUB, precio digital, precio físico, stock físico, activo/inactivo
-- Un solo registro por libro con datos de ambos formatos (digital + físico)
+## 2. Usuarios
 
-### 5.2 Gestión de inventario físico
-- Ver stock actual por título
-- Actualizar stock manualmente
-- Alerta cuando stock llega a N unidades (configurable)
+| Tipo | Descripcion |
+| --- | --- |
+| Visitante | Puede ver landing y contenido publico disponible. |
+| Free | Usuario autenticado con acceso a libros gratuitos/no premium y compras propias. |
+| Subscriber | Usuario con suscripcion activa y acceso premium digital. |
+| Admin | Gestiona catalogo, usuarios, stock, ventas, ordenes y vendedores. |
+| Vendedor | Vende stock asignado por un admin y solicita mas inventario. |
 
-### 5.3 Gestión de órdenes físicas
-- Lista de órdenes con datos del comprador y dirección
-- Cambiar estado: pendiente → enviado → entregado
-- Marcar como procesada
-
-### 5.4 Marketing y precios
-- Cambiar precios de títulos
-- Crear descuentos por tiempo limitado (% o monto fijo)
-- Enviar notificaciones o emails a usuarios (segmentados por plan)
-- Activar/desactivar bundles
-
-### 5.5 Usuarios
-- Ver lista de usuarios y su plan actual
-- Cambiar plan manualmente si hay soporte requerido
-- Bloquear usuario
-
----
-
-## 6. ESTRUCTURA DE BASE DE DATOS (Supabase)
-
-```
-users
-  id, email, role (free/subscriber/admin), created_at
-
-profiles
-  user_id, name, avatar_url, bio, reading_streak, total_books_read
-
-books
-  id, title, author, description, category, cover_url, epub_url,
-  price_digital, price_physical, price_bundle, stock_physical,
-  is_active, created_at
-
-user_books (acceso)
-  user_id, book_id, access_type (subscription/permanent/gift),
-  expires_at (null si es permanente)
-
--- subscription_credits (eliminada en migración 019)
-
-reading_progress
-  user_id, book_id, cfi_position, percent_complete, last_read_at
-
-highlights
-  id, user_id, book_id, cfi_start, cfi_end, text, color, note, created_at
-
-comments
-  id, user_id, book_id, content, likes_count, created_at
-
-comment_likes
-  user_id, comment_id
-
-reviews
-  user_id, book_id, rating (1-5), content, created_at
-
-orders_physical
-  id, user_id, book_id, status (pending/shipped/delivered),
-  name, address, city, state, zip, phone,
-  shipping_cost, total, stripe_payment_id, created_at
-
-wishlist
-  user_id, book_id, added_at
-
-discounts
-  id, book_id (null = todos), type (percent/fixed), value,
-  starts_at, ends_at, is_active
-
-badges
-  id, name, description, icon_url
-
-user_badges
-  user_id, badge_id, earned_at
-```
-
----
-
-## 7. STACK TECNOLÓGICO
-
-| Capa | Tecnología |
-|------|-----------|
-| **Frontend** | Next.js 15, React 19, TypeScript, Tailwind 4 |
-| **Auth** | Supabase Auth (email/password + magic link) |
-| **Base de datos** | Supabase PostgreSQL + pgvector |
-| **Realtime** | Supabase Realtime (comentarios) |
-| **Storage** | Supabase Storage (EPUBs, portadas) |
-| **Pagos** | Stripe (suscripciones + pagos únicos) |
-| **Lector EPUB** | epub.js |
-| **Estado global** | Zustand |
-| **Fetching/cache** | TanStack Query (React Query) |
-| **Email** | Resend |
-| **Despliegue** | Vercel (frontend) + Supabase cloud |
-| **Moneda** | MXN |
-
----
-
-## 8. ESTRUCTURA DE CARPETAS
-
-```
-bookea/
-├── app/
-│   ├── (auth)/
-│   │   ├── login/
-│   │   └── register/
-│   ├── (marketing)/
-│   │   ├── page.tsx          # Landing page
-│   │   └── pricing/
-│   ├── (app)/
-│   │   ├── dashboard/        # Biblioteca del usuario
-│   │   ├── catalog/          # Catálogo completo
-│   │   ├── book/[id]/        # Detalle de libro
-│   │   ├── reader/[id]/      # Lector EPUB
-│   │   └── profile/          # Perfil y logros
-│   ├── admin/
-│   │   ├── books/            # Gestión catálogo
-│   │   ├── orders/           # Órdenes físicas
-│   │   ├── inventory/        # Stock
-│   │   ├── users/            # Gestión usuarios
-│   │   └── marketing/        # Precios y promociones
-│   └── api/
-│       ├── webhooks/stripe/
-│       └── share-quote/      # Genera imagen de cita
-├── components/
-│   ├── reader/               # Componentes del lector
-│   ├── catalog/              # Cards, filtros, búsqueda
-│   ├── community/            # Comentarios, reviews
-│   ├── admin/                # Componentes del panel
-│   └── ui/                   # Botones, modales, inputs
-├── lib/
-│   ├── supabase.ts
-│   ├── stripe.ts
-│   ├── epub/                 # Utilidades EPUB
-│   └── utils.ts
-├── hooks/                    # Custom hooks
-├── stores/                   # Zustand stores
-├── types/                    # TypeScript types
-└── public/
-```
-
----
-
-## 9. AGENTES DE DESARROLLO
-
-Estos son los agentes que van a construir la app:
-
-| Agente | Herramienta | Responsabilidad |
-|--------|-------------|-----------------|
-| **Agente Backend** | Claude Code / Cursor | API routes, lógica de negocio, Stripe webhooks |
-| **Agente Frontend** | Claude Code / Cursor | Componentes React, páginas, UI |
-| **Agente DB** | Claude Code / Cursor | Esquemas Supabase, migraciones, RLS policies |
-| **Agente Lector** | Claude Code / Cursor | Integración epub.js, sincronización progreso |
-| **Agente Admin** | Claude Code / Cursor | Panel de administración completo |
-
-**Flujo recomendado:**
-1. DB → esquemas y migraciones primero
-2. Auth → login/register con Supabase
-3. Catálogo → CRUD de libros + panel admin básico
-4. Pagos → Stripe integrado
-5. Lector → epub.js + progreso
-6. Comunidad → comentarios realtime
-7. Gamificación → rachas, badges
-8. Social → compartir citas, regalos
-
----
-
-## 10. ENTORNO DE DESARROLLO
-
-| Máquina | Uso |
-|---------|-----|
-| **Mac M1** | Frontend, UI, componentes |
-| **Windows RTX 4050 15GB** | Modelos LLM locales con Ollama (Llama 3.1 8B) para features de IA |
-
----
-
-## 11. MVP — PRIORIDADES
-
-**Fase 1 (lanzar y cobrar):**
-- Auth completo
-- Catálogo básico
-- Lector EPUB funcional
-- Suscripción con Stripe
-- Compra permanente
-- Panel admin básico (subir libros, ver órdenes)
-- Venta física con formulario de envío
-
-**Fase 2 (retención):**
-- Comentarios realtime
-- Progreso y rachas
-- [x] Highlights y notas
-- Reseñas y ratings
-
-**Fase 3 (crecimiento):**
-- Compartir cita con imagen
-- Badges y gamificación
-- Lista de deseos con alertas
-- Regalos entre usuarios
-- "También te puede gustar"
-
----
-
----
-
-## 12. PWA (Progressive Web App)
-
-Bookea debe funcionar como PWA para que los usuarios la instalen en su celular como app nativa.
-
-### Funcionalidades PWA
-- Instalable en iOS y Android desde el browser
-- Ícono en pantalla de inicio
-- Splash screen con branding de Bookea
-- Lectura offline de libros ya descargados en caché
-- Notificaciones push (para alertas de wishlist, nuevos títulos, rachas)
-
-### Implementación
-- `next-pwa` o `@ducanh2912/next-pwa` como wrapper de Next.js
-- `manifest.json` con nombre, íconos, colores de la app
-- Service Worker para cachear EPUBs ya abiertos
-- Estrategia de caché: libros activos del usuario se cachean automáticamente
-
-### Archivos necesarios
-```
-public/
-├── manifest.json        # ya existe, completar
-├── icons/
-│   ├── icon-192.png
-│   └── icon-512.png
-└── sw.js                # generado por next-pwa
-```
-
-### Prioridad
-- Fase 2 — después del MVP funcional
-
----
-
-*Documento generado: Marzo 2026*  
-*Proyecto: Bookea — bookea.mx*
+## 3. Modelo de Ingresos
+
+- Suscripcion mensual premium: Price ID de Stripe en `STRIPE_SUBSCRIPTION_PRICE_ID`; UI actual muestra $99 MXN.
+- Compra digital permanente: precio por libro en `books.price_digital`; fallback tecnico `29`.
+- Compra fisica: precio por libro en `books.price_physical`; fallback tecnico `299`.
+- Bundle fisico + digital: precio en `books.price_bundle`; fallback tecnico `319`.
+
+Regla: la app siempre calcula el precio desde DB/env en backend, nunca desde el payload del cliente.
+
+## 4. Funciones Implementadas
+
+### Catalogo
+
+- Grid/lista de libros.
+- Filtros por busqueda, categoria y disponibilidad digital/fisica.
+- Carrito para compra digital/fisica.
+- Detalle de libro con reviews, compra, acceso y canje.
+
+### Lector EPUB
+
+- Renderizado con `epubjs`.
+- Progreso por CFI, porcentaje y scroll.
+- Temas `light`, `dark`, `retro`, `navy`.
+- Highlights, notas y bookmarks.
+- Fallback offline para progreso, highlights, bookmarks y metadata.
+
+### Pagos
+
+- Stripe Checkout para suscripciones y pagos unicos.
+- Stripe Billing Portal.
+- Webhook idempotente con `webhook_events`.
+- Fallback post-redirect en `verifySubscriptionAction`.
+- Orden fisica y descuento de stock dentro de RPC transaccional.
+
+### Admin
+
+- Metricas e ingresos.
+- Gestion de libros.
+- Gestion de usuarios/roles.
+- Gestion de stock propio por admin.
+- Solicitudes de vendedores.
+- Pagos pendientes a vendedores.
+- Vista de vendedores y detalle por vendedor.
+
+### Vendedor
+
+- Inventario asignado.
+- Registro de ventas.
+- Ingresos y pagos pendientes.
+- Solicitudes de stock.
+
+### Comunidad y Retencion
+
+- Reviews y ratings.
+- Rachas de lectura.
+- Monedas por hitos/reviews/referidos.
+- Canje de monedas por acceso temporal.
+- Referidos.
+- Avatar personalizable.
+
+### PWA
+
+- Manifest standalone.
+- Service worker propio.
+- Cache de EPUBs y assets de lectura.
+- Splash screen.
+
+## 5. Base de Datos
+
+Ver `docs/DATABASE.md` para detalle. Entidades principales:
+
+- `users`, `profiles`.
+- `books`, `authors`, `user_books`.
+- `reading_progress`, `highlights`, `bookmarks`.
+- `reviews`, `comments`, `comment_likes`.
+- `cart_items`, `orders_physical`.
+- `admin_stock`, `seller_inventory`, `seller_sales`, `stock_requests`, `stock_request_items`.
+- `coins`, `coin_transactions`, `coin_redemptions`, `streak_milestones`, `referrals`, `monthly_limits_tracker`.
+- `webhook_events`, `analytics_events`.
+
+## 6. Seguridad
+
+- RLS activo en tablas publicas.
+- `user_books` no acepta escrituras directas del cliente.
+- `orders_physical` no acepta inserts directos del cliente.
+- RPCs `SECURITY DEFINER` incluyen validaciones de auth/rol y `search_path`.
+- Stripe webhook/fallback son idempotentes.
+- Admin y vendedor son roles privilegiados y no deben degradarse por pagos.
+
+## 7. Roadmap Pendiente
+
+- Suite de tests automatizados.
+- Refactor modular del lector/admin/vendedor.
+- Wishlist visible y alertas.
+- Descuentos/cupones en UI.
+- Regalos entre usuarios.
+- Compartir citas como imagen.
+- Recomendaciones "tambien te puede gustar".
+- Notificaciones push.
+
+## 8. Criterio de Coherencia
+
+Cada cambio funcional debe actualizar:
+
+- `rules.md` si cambia una regla.
+- `docs/PROJECT_MASTER.md` si cambia arquitectura/rutas.
+- `docs/DATABASE.md` si cambia DB/RLS/RPC.
+- `test.md` si cambia estrategia de verificacion.
+- `bitacora.md` siempre que sea una correccion, feature o cambio estructural.

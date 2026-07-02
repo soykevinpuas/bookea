@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 
+// Item normalizado que el panel de carrito muestra para pagos digitales/fisicos.
 export interface CartItem {
   id: string
   book_id: string
@@ -36,6 +37,7 @@ type CartStoreState = CartStore & CartActions
 
 const SHIPPING_KEY = 'bookea_shipping'
 
+// Datos de envio persistidos localmente para no obligar al usuario a reescribirlos.
 function loadShipping() {
   if (typeof window === 'undefined') return { name: '', address: '', city: '', state: '', zip: '', phone: '' }
   try {
@@ -45,15 +47,18 @@ function loadShipping() {
   return { name: '', address: '', city: '', state: '', zip: '', phone: '' }
 }
 
+// Persiste shipping del checkout fisico en localStorage.
 function saveShipping(s: CartStore['shipping']) {
   if (typeof window !== 'undefined') {
     localStorage.setItem(SHIPPING_KEY, JSON.stringify(s))
   }
 }
 
+// Contadores anti-race: evitan que una respuesta vieja sobreescriba una mutacion nueva.
 let fetchId = 0
 let mutateId = 0
 
+// Store global de carrito, panel de biblioteca y shipping.
 export const useCartStore = create<CartStoreState>((set, get) => ({
   items: [],
   loading: false,
@@ -82,7 +87,7 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
   addItem: async (bookId, type) => {
     ++mutateId
     set({ loading: true })
-    // Optimistic: add placeholder item instantly
+    // Optimistic UI: muestra un placeholder mientras API confirma item/precio.
     const placeholder: CartItem = { id: `pending-${bookId}`, book_id: bookId, title: '...', author: '...', cover_url: null, type, price: 0, stock_physical: 0 }
     set((s) => ({ items: [...s.items, placeholder] }))
     try {
@@ -99,7 +104,7 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
       const data = await res.json()
       set({ items: data.items || [] })
     } catch (err) {
-      // Revert on failure
+      // Revierte el placeholder si la API rechaza el item.
       set((s) => ({ items: s.items.filter((i) => i.id !== `pending-${bookId}`) }))
       throw err
     } finally {

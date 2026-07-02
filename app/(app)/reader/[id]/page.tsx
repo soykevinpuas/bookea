@@ -25,7 +25,7 @@ import type { EpubContents } from "@/types/epub";
 import { recordReadingSession, canCountStreakDay } from "@/lib/streaks";
 
 
-// 4.2 - ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
+// ReaderPage: Carga del visor de libros EPUB, interfaz HUD y persistencia de configuraciones de lectura local y servidor
 
 const getSpineKey = (cfi: string) => {
   const m = cfi.match(/^([^!]+)!/);
@@ -34,6 +34,9 @@ const getSpineKey = (cfi: string) => {
 
 const HIGHLIGHT_FILL_OPACITY = "0.18";
 const BOOKMARK_FILL_OPACITY = "0.03";
+const BOOKMARK_PROGRESS_THRESHOLD = 0.35;
+const BOOKMARK_SCROLL_PERMILLE_THRESHOLD = 12;
+const DEBUG_READER = process.env.NODE_ENV === "development";
 
 const getCfiAnnotationSelector = (cfi: string) => {
   const safeCfi = cfi.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -50,6 +53,11 @@ const getStoredScrollTop = (scrollTop: number | null | undefined, container: HTM
   return scrollTop < 0
     ? (Math.abs(scrollTop) / 1000) * container.scrollHeight
     : scrollTop;
+};
+
+const normalizeProgressValue = (value: number | null | undefined) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? Math.max(0, Math.min(100, numericValue)) : 0;
 };
 
 const getRelativeScrollMarker = (container?: HTMLElement | null) => {
@@ -77,7 +85,7 @@ const normalizeDictionaryTerm = (value: string) => {
 };
 
 export default function ReaderPage() {
-  // 4.1.9 - Bloqueo de orientación vertical (Portrait)
+  // Bloqueo de orientación vertical (Portrait)
   useEffect(() => {
     const lockPortrait = async () => {
       try {
@@ -104,7 +112,7 @@ export default function ReaderPage() {
   const router = useRouter();
   const bookId = params.id as string;
 
-  // 4.2.1 - Referencias mutables para almacenar la instancia del libro, el renderizador y temporizadores
+  // Referencias mutables para almacenar la instancia del libro, el renderizador y temporizadores
   const bookRef = useRef<Book | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
@@ -135,12 +143,12 @@ export default function ReaderPage() {
   const { data: subscription } = useSubscription(userId);
   const queryClient = useQueryClient();
   const { updateStreak } = useCoins(userId);
-  
-  // 4.2.1 - Estado local del lector
+
+  // Estado local del lector
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // 4.1.9 - INVALIDACIÓN DE CACHÉ: Cuando el usuario sale del lector, 
+
+  // INVALIDACIÓN DE CACHÉ: Cuando el usuario sale del lector,
   // invalidamos las queries de libros para que el Dashboard vea el nuevo progreso instantáneamente.
   useEffect(() => {
     return () => {
@@ -151,7 +159,7 @@ export default function ReaderPage() {
     };
   }, [userId, queryClient]);
 
-  // 4.2.1.1 - Tracking de racha de lectura: inicia sesión al montar, actualiza al desmontar
+  // Tracking de racha de lectura: inicia sesión al montar, actualiza al desmontar
   useEffect(() => {
     if (!userId) return;
     recordReadingSession(bookId);
@@ -173,7 +181,7 @@ export default function ReaderPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // 4.2.2.4 - Estado para Subrayados y Notas
+  // Estado para Subrayados y Notas
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [activeSelection, setActiveSelection] = useState<{ cfiRange: string; text: string; isExistingId?: string } | null>(null);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
@@ -186,15 +194,15 @@ export default function ReaderPage() {
   const [editingNote, setEditingNote] = useState<{ id: string; note: string } | null>(null);
   const [isSavingHighlight, setIsSavingHighlight] = useState(false);
 
-  // 4.2.2.6 - Estado para el color del subrayado
+  // Estado para el color del subrayado
   const [highlightColor, setHighlightColor] = useState('#FFEB3B');
-  
-  // 4.2.4.1 - Efecto inmersivo: Ocultar barra de estado (hora/batería) al ocultar HUD (sin fullscreen toggle)
+
+  // Efecto inmersivo: Ocultar barra de estado (hora/batería) al ocultar HUD (sin fullscreen toggle)
   useEffect(() => {
     if (!mounted) return;
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     const metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-    
+
     if (!showControls) {
       const bgColor = theme === 'retro' ? '#0d1117' : theme === 'navy' ? '#0a0f1e' : theme === 'dark' ? '#0a0a0a' : '#ffffff';
       if (metaTheme) metaTheme.setAttribute('content', bgColor);
@@ -205,7 +213,7 @@ export default function ReaderPage() {
     }
   }, [showControls, theme, mounted]);
 
-  // 4.2.4.2 - Fullscreen permanente: entrar al montar, salir solo al desmontar (elimina el parpadeo en Android)
+  // Fullscreen permanente: entrar al montar, salir solo al desmontar (elimina el parpadeo en Android)
   useEffect(() => {
     if (!mounted) return;
     if (document.documentElement.requestFullscreen) {
@@ -221,7 +229,7 @@ export default function ReaderPage() {
   bookmarksRef.current = bookmarks;
   highlightsRef.current = highlights;
 
-  // 4.2.2.6 - Estado para Diccionario
+  // Estado para Diccionario
   const [dictionaryData, setDictionaryData] = useState<{ word: string; definition: string; context: string; source?: string; sourceUrl?: string } | null>(null);
   const [isDictionaryLoading, setIsDictionaryLoading] = useState(false);
   const [dictionaryError, setDictionaryError] = useState<string | null>(null);
@@ -240,7 +248,7 @@ export default function ReaderPage() {
     progressRef.current = progress;
   }, [progress]);
 
-  // 4.2.2.1 - Colores disponibles para el texto del lector
+  // Colores disponibles para el texto del lector
   const textColors = [
     { name: "Negro", value: "#000000" },
     { name: "Sepia", value: "#f4ecd8" },
@@ -333,7 +341,7 @@ export default function ReaderPage() {
     return false;
   };
 
-  const navigateToCfi = async (cfi: string, fallbackScrollTop?: number | null) => {
+  const navigateToCfi = async (cfi: string, fallbackScrollTop?: number | null, progressAt?: number | null) => {
     if (!renditionRef.current) return;
 
     setIsNavigating(true);
@@ -346,6 +354,18 @@ export default function ReaderPage() {
       centerCfiInViewport(cfi, fallbackScrollTop);
       await waitForAnimationFrames(1);
       syncProgressForCfi(cfi);
+      if (progressAt !== undefined && progressAt !== null) {
+        const savedProgress = normalizeProgressValue(progressAt);
+        setProgress(savedProgress);
+        progressRef.current = savedProgress;
+      }
+      const container = ((renditionRef.current as any)?.manager?.container) as HTMLElement | undefined;
+      if (container) {
+        scrollTopRef.current = container.scrollTop;
+        scrollPermilleRef.current = getRelativeScrollMarker(container);
+      }
+      lastCfiRef.current = cfi;
+      setCurrentSpineKey(getSpineKey(cfi));
       setShowNotesPanel(false);
     } catch (err) {
       console.warn("Error navegando a CFI:", err);
@@ -404,7 +424,7 @@ export default function ReaderPage() {
     }
   };
 
-  // 4.2.2.2 - Validador de contraste entre texto y fondo
+  // Validador de contraste entre texto y fondo
   const handleSetTextColor = (color: string) => {
     // Validación estricta para modo Claro (Día)
     if (theme === "light" && color !== "#000000") {
@@ -415,7 +435,7 @@ export default function ReaderPage() {
     // Si el color es negro puro y el fondo es oscuro, o viceversa
     const isDarkBg = theme !== "light";
     const isBlackText = color === "#000000";
-    
+
     if (isDarkBg && isBlackText) {
       toast.error("No se puede usar ese color de letra con ese fondo (Negro sobre Oscuro)");
       return;
@@ -429,7 +449,7 @@ export default function ReaderPage() {
     setTextColor(color);
   };
 
-  // 4.2.2.3 - Validador de cambio de tema basado en contraste
+  // Validador de cambio de tema basado en contraste
   const handleSetTheme = (newTheme: string) => {
     const isNewDark = newTheme !== "light";
     const isCurrentBlackText = textColor === "#000000";
@@ -448,7 +468,7 @@ export default function ReaderPage() {
     setTheme(newTheme);
   };
 
-  // 4.2.4 - Gestores del tiempo de inactividad para ocultar la interfaz HUD (Inactivity Timeout)
+  // Gestores del tiempo de inactividad para ocultar la interfaz HUD (Inactivity Timeout)
   const resetControlsTimeout = () => {
     setShowControls(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -588,7 +608,7 @@ export default function ReaderPage() {
     }
   }, [showNotesPanel]);
 
-  // 4.2.5 - Inicialización Central del Motor epub.js y configuración DOM
+  // Inicialización Central del Motor epub.js y configuración DOM
   useEffect(() => {
     // If offline and no userId, deny access (cannot verify permissions)
     if (!userId) {
@@ -600,7 +620,7 @@ export default function ReaderPage() {
     const canInit = book?.epub_url && viewerRef.current;
     if (!canInit) return;
 
-    // 4.2.4b - Timeout de seguridad para el cargador
+    // Timeout de seguridad para el cargador
     const loadingTimeout: NodeJS.Timeout | null = setTimeout(() => {
       setIsLoading(false);
       setError("El libro está tardando demasiado en cargar. Por favor, reintenta o verifica tu conexión.");
@@ -611,18 +631,18 @@ export default function ReaderPage() {
         setIsLoading(true);
         setError(null);
 
-        // 4.2.5.0 - VALIDACIÓN DE ACCESO Y AUTO-ADD
+        // VALIDACIÓN DE ACCESO Y AUTO-ADD
         const supabase = createClientClient();
         if (userId && bookId) {
           const hasAccess = await hasBookAccess(supabase, userId, bookId);
-          
+
           if (!hasAccess) {
             setError("No tienes acceso a este libro. Los libros Premium requieren una suscripción activa.");
             setIsLoading(false);
             return;
           }
 
-          // 4.2.5.0.1 - AUTO-ADD seguro: gratis como permanente; premium solo como suscripcion activa.
+          // AUTO-ADD seguro: gratis como permanente; premium solo como suscripcion activa.
           const accessType = book.is_premium === false ? 'permanent' : subscription?.isActive ? 'subscription' : null;
           if (accessType) {
             await addToLibraryAction(bookId, accessType);
@@ -630,10 +650,10 @@ export default function ReaderPage() {
         }
 
         const epubUrl = book.epub_url as string;
-        
-        // 4.1.9.5 - SOPORTE OFFLINE AGRESIVO: Si no hay red, usar local SIEMPRE
+
+        // SOPORTE OFFLINE AGRESIVO: Si no hay red, usar local SIEMPRE
         let epubSource: string | ArrayBuffer | Blob = epubUrl;
-        
+
         if (typeof window !== 'undefined' && !navigator.onLine) {
           try {
             const { getCachedBookFile } = await import("@/lib/downloads");
@@ -657,8 +677,8 @@ export default function ReaderPage() {
         bookRef.current = bookInstance;
 
         const viewerElement = viewerRef.current as Element;
-        
-        // 4.2.5.1 - Configuración base del Rendition con scroll continuo
+
+        // Configuración base del Rendition con scroll continuo
         // CLAVES para que funcione:
         // - flow: "scrolled" = modo scroll vertical (no paginado)
         // - manager: "continuous" = ContinuousViewManager que carga spines al scrollear
@@ -675,11 +695,11 @@ export default function ReaderPage() {
           allowScriptedContent: true,
         });
 
-        // 4.2.5.2 - Inyección de CSS interno (Hooks) para asegurar diseño base constante (saltando estilos del autor/epub original)
+        // Inyección de CSS interno (Hooks) para asegurar diseño base constante (saltando estilos del autor/epub original)
         if (rendition.hooks && rendition.hooks.content) {
           rendition.hooks.content.register((contents: EpubContents) => {
             if (!contents || !contents.document) return;
-            
+
             const style = contents.document.createElement("style");
             style.innerHTML = `
               html, body {
@@ -703,7 +723,7 @@ export default function ReaderPage() {
                 font-family: var(--bookea-font-family, 'Inter', -apple-system, sans-serif) !important;
                 box-sizing: border-box;
               }
-              
+
               /* Ajuste responsive para pantallas grandes */
               @media (min-width: 1024px) {
                 body {
@@ -735,24 +755,24 @@ export default function ReaderPage() {
                 display: block !important;
                 margin: 2em auto !important;
                 border-radius: 12px !important;
-                /* 4.2.5.4 - Estabilidad de Layout: Evita brincos al cargar imágenes */
+                /* Estabilidad de Layout: Evita brincos al cargar imágenes */
                 content-visibility: auto;
                 contain-intrinsic-size: 300px;
               }
             `;
             (contents.document.head || contents.document.documentElement).appendChild(style);
-            
-            // 4.2.5.3 - Event Listener del Iframe: Detecta clicks en toda la hoja para accionar la interfaz HUD central, en lugar de pasar de página
+
+            // Event Listener del Iframe: Detecta clicks en toda la hoja para accionar la interfaz HUD central, en lugar de pasar de página
             contents.document.documentElement.addEventListener('click', async (e: MouseEvent) => {
               const selection = contents.window?.getSelection();
               const text = selection?.toString() || "";
-              
+
               if (text.trim().length > 0) {
-                // El usuario soltó el clic después de seleccionar texto. 
+                // El usuario soltó el clic después de seleccionar texto.
                 // Ignoramos este clic general para que no desaparezca la barra de subrayado.
                 return;
               }
-              
+
               // Lógica de Diccionario: Si el HUD está oculto, intentamos definir palabra
               if (!showControlsRef.current) {
                 const target = e.target as HTMLElement;
@@ -795,9 +815,9 @@ export default function ReaderPage() {
                     // Posición absoluta en la ventana principal para el tooltip
                     const rect = viewerRef.current?.getBoundingClientRect();
                     if (rect) {
-                      setDictionaryPos({ 
-                        x: rect.left + e.clientX, 
-                        y: rect.top + e.clientY 
+                      setDictionaryPos({
+                        x: rect.left + e.clientX,
+                        y: rect.top + e.clientY
                       });
                       handleFetchDefinition(word, context);
                     }
@@ -816,7 +836,7 @@ export default function ReaderPage() {
         }
 
 
-        // 4.2.6 - Gestor de inyección de estilos explícitos (overrides) para temas personalizados
+        // Gestor de inyección de estilos explícitos (overrides) para temas personalizados
         // Siempre establece --bookea-text-color para que el hook CSS resuelva el valor correcto
         const updateTheme = () => {
           if (themeRef.current === "light") {
@@ -839,17 +859,17 @@ export default function ReaderPage() {
         };
 
         updateTheme();
-        
+
         rendition.themes.fontSize(`${sizeRef.current}px`);
         renditionRef.current = rendition;
 
         await bookInstance.ready;
-        
-        // 4.2.7 - Lógica asíncrona de restauración de localizaciones (CFI) y cálculo de porcentajes
+
+        // Lógica asíncrona de restauración de localizaciones (CFI) y cálculo de porcentajes
         // PRECARGA: Obtenemos el progreso y highlights de forma concurrente antes de forzar el display
-        // 4.2.7.0 - GESTIÓN DE TIMEOUT: Si el servidor tarda > 1.5s (Lie-fi), usamos caché local para evitar cuelgues.
+        // GESTIÓN DE TIMEOUT: Si el servidor tarda > 1.5s (Lie-fi), usamos caché local para evitar cuelgues.
         const fetchTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 1500));
-        
+
         let savedProgress = null;
         let savedHighlights: Highlight[] = [];
         let savedBookmarks: BookmarkType[] = [];
@@ -862,7 +882,7 @@ export default function ReaderPage() {
             ]),
             fetchTimeout
           ]) as [any, Highlight[]];
-          
+
           savedProgress = results[0];
           savedHighlights = results[1];
         } catch {
@@ -872,7 +892,7 @@ export default function ReaderPage() {
           savedProgress = getLocalProgress(bookId, userId);
           savedHighlights = getLocalHighlights(bookId, userId);
         }
-        
+
         setHighlights(savedHighlights);
 
         // Cargar marcadores (independiente del try/catch anterior)
@@ -918,7 +938,8 @@ export default function ReaderPage() {
           });
         };
 
-        // EVENTOS PRE-RENDER: El event listener DEBE registrarse antes del display para no perder el primer trigger
+        // Inyecta CSS dentro del iframe de epubjs; debe registrarse antes de display()
+        // para que la primera seccion ya nazca con medidas estables.
         const fixViewCSS = (view: any) => {
           try {
             const doc = view?.iframe?.contentDocument;
@@ -938,7 +959,7 @@ export default function ReaderPage() {
             body.style.setProperty("line-height", "1.8", "important");
             body.style.setProperty("color", "var(--bookea-text-color, #171717)", "important");
             body.style.setProperty("font-family", "var(--bookea-font-family, 'Inter', -apple-system, sans-serif)", "important");
-            console.log("[Reader] CSS directo inyectado en iframe", view.index);
+            if (DEBUG_READER) console.debug("[Reader] CSS directo inyectado en iframe", view.index);
           } catch (e) {
             console.warn("[Reader] Error inyectando CSS directo:", e);
           }
@@ -980,12 +1001,8 @@ export default function ReaderPage() {
           }
         });
 
-        // 4.2.5.5 - Post-init del manager: configurar scroll y desactivar trimming agresivo
-        // El ContinuousViewManager destruye (trim) secciones al salir del viewport,
-        // lo que causa saltos de scroll al navegar hacia arriba porque al destruir
-        // contenido abajo, el scrollHeight cambia y el navegador reajusta el scrollTop.
-        // Solución: desactivar trim() para mantener todas las secciones cargadas en DOM.
-        // Los EPUBs son lo suficientemente pequeños para que esto no cause problemas de memoria.
+        // Ajusta el manager continuo de epubjs: el trim agresivo destruye secciones
+        // fuera del viewport y provoca saltos de scroll al navegar hacia arriba.
         setTimeout(() => {
           const mgr = (rendition as any).manager;
           if (mgr?.container) {
@@ -993,7 +1010,7 @@ export default function ReaderPage() {
             mgr.container.style.overflowX = 'hidden';
             mgr.container.style.webkitOverflowScrolling = 'touch';
 
-            // 4.2.5.6 - Scroll tracking continuo para guardar posición exacta
+            // Scroll tracking continuo para guardar posición exacta
             mgr.container.addEventListener('scroll', () => {
               scrollTopRef.current = mgr.container.scrollTop;
               scrollPermilleRef.current = getRelativeScrollMarker(mgr.container);
@@ -1009,10 +1026,10 @@ export default function ReaderPage() {
           if (mgr?.settings) {
             mgr.settings.offset = 3000;
           }
-          console.log('[Reader] Manager configurado: trim desactivado, offset=3000');
+          if (DEBUG_READER) console.debug('[Reader] Manager configurado: trim desactivado, offset=3000');
         }, 50);
 
-        // 4.2.5.7 - Guardado periódico de la posición de lectura (cada 10s)
+        // Guardado periódico de la posición de lectura (cada 10s)
         // para no perder el progreso si el usuario cierra el libro sin cambiar de capítulo
         saveIntervalRef.current = setInterval(() => {
           if (isNavigatingToBookmark.current) return;
@@ -1025,11 +1042,11 @@ export default function ReaderPage() {
           }
         }, 10000);
 
-        // 4.2.7.2 - Capturar eventos de Selección de texto (Highlights)
+        // Capturar eventos de Selección de texto (Highlights)
         rendition.on("selected", (cfiRange: string, contents: EpubContents) => {
           const selection = contents.window?.getSelection();
           const text = selection?.toString() || "";
-          
+
           if (text && text.trim().length > 0) {
             setActiveSelection({ cfiRange, text });
             // Dejamos la selección nativa del navegador como "previsualización",
@@ -1037,11 +1054,12 @@ export default function ReaderPage() {
           }
         });
 
-        // ACCIÓN DE RENDERIZADO (RESOLVER POSICIÓN INICIAL)
+        // Resuelve la posicion inicial priorizando el CFI guardado y preparando
+        // la restauracion exacta de scroll antes de que epubjs pinte.
         try {
           if (savedProgress?.cfi_position && !hasRestoredPosition.current) {
             hasRestoredPosition.current = true;
-            console.log("[Reader] Restoring position:", savedProgress.cfi_position);
+            if (DEBUG_READER) console.debug("[Reader] Restoring position:", savedProgress.cfi_position);
 
             // Programar restauración de scroll exacto ANTES de display
             if (savedProgress.scroll_top) {
@@ -1050,7 +1068,7 @@ export default function ReaderPage() {
 
             await rendition.display(savedProgress.cfi_position);
           } else {
-            console.log("[Reader] Displaying from start");
+            if (DEBUG_READER) console.debug("[Reader] Displaying from start");
             await rendition.display();
           }
         } catch (e) {
@@ -1123,12 +1141,12 @@ export default function ReaderPage() {
           }
         });
 
-        // 4.2.7.3 - Generación de ubicaciones para cálculo preciso del porcentaje
+        // Generación de ubicaciones para cálculo preciso del porcentaje
         // Se genera en background y cuando termina se recalcula el progreso actual
         const generateLocations = async () => {
           try {
             await bookInstance.locations.generate(1600);
-            console.log("[Reader] Ubicaciones generadas:", bookInstance.locations.length());
+            if (DEBUG_READER) console.debug("[Reader] Ubicaciones generadas:", bookInstance.locations.length());
             // Recalcular progreso con las ubicaciones ya disponibles
             if (lastCfiRef.current && bookInstance.locations.length() > 0) {
               const p = bookInstance.locations.percentageFromCfi(lastCfiRef.current);
@@ -1196,7 +1214,7 @@ export default function ReaderPage() {
     };
   }, []);
 
-  // 4.2.8.1 - Efecto para manejar cambio de tamaño de ventana y orientación
+  // Efecto para manejar cambio de tamaño de ventana y orientación
   useEffect(() => {
     const handleResize = () => {
       if (renditionRef.current && viewerRef.current) {
@@ -1205,7 +1223,7 @@ export default function ReaderPage() {
     };
 
     const handleOrientationChange = () => {
-      // 4.1.9.2 - ANCLAJE POR CFI: Durante la rotación, forzamos al lector a 
+      // ANCLAJE POR CFI: Durante la rotación, forzamos al lector a
       // mantenerse en la coordenada exacta de texto (CFI), ignorando el % relativo.
       setTimeout(() => {
         handleResize();
@@ -1224,7 +1242,7 @@ export default function ReaderPage() {
     };
   }, []);
 
-  // 4.2.8.2 - Save confiable: guardar posición al ocultar página o cerrar (visibilitychange + beforeunload)
+  // Save confiable: guardar posición al ocultar página o cerrar (visibilitychange + beforeunload)
   useEffect(() => {
     if (!userId) return;
 
@@ -1260,7 +1278,7 @@ export default function ReaderPage() {
     localStorage.setItem("bookea-font-size", fontSize.toString());
   }, [fontSize, mounted]);
 
-  // 4.2.9 - Efecto de montura para cargar preferencias de tema y tipografía previas del usuario desde localStorage
+  // Efecto de montura para cargar preferencias de tema y tipografía previas del usuario desde localStorage
   useEffect(() => {
     const savedSize = localStorage.getItem("bookea-font-size");
     if (savedSize && !isNaN(parseInt(savedSize, 10))) {
@@ -1325,7 +1343,7 @@ export default function ReaderPage() {
         if (family === "dyslexic") fontStack = "'OpenDyslexic', 'Comic Sans MS', sans-serif";
         if (family === "lora") fontStack = "'Lora', serif";
         if (family === "nunito") fontStack = "'Nunito', sans-serif";
-        
+
         renditionRef.current!.themes.override("font-family", fontStack);
         renditionRef.current!.themes.override("--bookea-font-family", fontStack);
       };
@@ -1361,11 +1379,11 @@ export default function ReaderPage() {
     document.documentElement.setAttribute("data-reader-color", "true");
   }, [textColor, mounted, theme]);
 
-  // 4.2.9.2 - Funciones de CRUD para Highlights desde UI
+  // Funciones de CRUD para Highlights desde UI
   const handleCreateHighlight = async (color: string) => {
     if (!activeSelection || !bookId || !userId) return;
     setIsSavingHighlight(true);
-    
+
     if (activeSelection.isExistingId) {
       // FLUJO DE ACTUALIZACIÓN DE COLOR
       const success = await updateHighlightColor(activeSelection.isExistingId, color);
@@ -1374,7 +1392,7 @@ export default function ReaderPage() {
         toast.success("Color de subrayado actualizado");
         // Limpiar registro viejo en epubjs PRIMERO para evitar que se queje de nodos huerfanos
         renditionRef.current?.annotations.remove(activeSelection.cfiRange, "highlight");
-        
+
         // Limpieza visual manual por si epub.js deja nodos antiguos en el iframe.
         try {
           const DOMTargets = getCfiAnnotationSelector(activeSelection.cfiRange);
@@ -1382,32 +1400,32 @@ export default function ReaderPage() {
           const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
           contents?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
         } catch {}
-        
+
         // Pintar el color nuevo
         renditionRef.current?.annotations.highlight(activeSelection.cfiRange, { id: activeSelection.isExistingId }, () => {
-          // El objeto actualizado no lo tenemos aquí directo, así que pasamos un mock parcial 
+          // El objeto actualizado no lo tenemos aquí directo, así que pasamos un mock parcial
           const target = highlights.find((h: any) => h.id === activeSelection.isExistingId);
           if (target) handleHighlightClick({...target, color});
         }, undefined, { "fill": color, "fill-opacity": HIGHLIGHT_FILL_OPACITY, "mix-blend-mode": "normal" });
-        
+
       } else {
         toast.error("Error al actualizar color");
       }
     } else {
       // FLUJO DE CREACIÓN DE NUEVO SUBRAYADO
       const newHighlight = await saveHighlight(
-        bookId, 
-        userId, 
-        activeSelection.cfiRange, 
-        activeSelection.cfiRange, 
-        activeSelection.text, 
+        bookId,
+        userId,
+        activeSelection.cfiRange,
+        activeSelection.cfiRange,
+        activeSelection.text,
         color
       );
 
       if (newHighlight) {
         setHighlights(prev => [newHighlight, ...prev]);
         toast.success("Texto subrayado");
-        
+
         // Dibujar estéticamente el oficial
         renditionRef.current?.annotations.highlight(newHighlight.cfi_start, { id: newHighlight.id }, () => {
           handleHighlightClick(newHighlight);
@@ -1419,7 +1437,7 @@ export default function ReaderPage() {
 
     setActiveSelection(null);
     setIsSavingHighlight(false);
-    
+
     // Deseleccionar el texto dentro del Iframe
     if (renditionRef.current) {
       const contentsArray = renditionRef.current.getContents() as unknown as EpubContents[];
@@ -1445,7 +1463,7 @@ export default function ReaderPage() {
     if (success) {
       setHighlights(prev => prev.filter((h: any) => h.id !== id));
       renditionRef.current?.annotations.remove(cfi, "highlight");
-      
+
       // Limpieza visual manual por si epub.js deja nodos antiguos en el iframe.
       try {
         const DOMTargets = getCfiAnnotationSelector(cfi);
@@ -1471,48 +1489,70 @@ export default function ReaderPage() {
     }
   };
 
-  const isBookmarkVisible = (b: BookmarkType) => {
+  const getReaderScrollContainer = () => {
+    return ((renditionRef.current as any)?.manager?.container) as HTMLElement | undefined;
+  };
+
+  const isBookmarkAtPosition = (
+    bookmark: BookmarkType,
+    currentCfi: string | null | undefined,
+    currentProgress: number,
+    container?: HTMLElement
+  ) => {
     if (!renditionRef.current) return false;
-    
-    // El marcador debe pertenecer al spine (capítulo) actual
-    if (getSpineKey(b.cfi) !== currentSpineKey) return false;
-    
-    const mgr = (renditionRef.current as any)?.manager;
-    const container = mgr?.container;
+    if (currentCfi && bookmark.cfi === currentCfi) return true;
+
+    const activeSpineKey = currentCfi ? getSpineKey(currentCfi) : currentSpineKey || (lastCfiRef.current ? getSpineKey(lastCfiRef.current) : "");
+    if (!activeSpineKey || getSpineKey(bookmark.cfi) !== activeSpineKey) return false;
+
+    const progressDelta = Math.abs(normalizeProgressValue(bookmark.progress_at) - normalizeProgressValue(currentProgress));
+    if (progressDelta <= BOOKMARK_PROGRESS_THRESHOLD) return true;
+
     if (!container) return false;
 
-    // Obtener scroll actual
-    const currentScrollTop = container.scrollTop;
-    
-    // Obtener scroll_top del marcador en píxeles
-    let bookmarkScrollTop = 0;
-    if (b.scroll_top < 0) {
-      // Formato relativo (permille): convertir a píxeles usando el scrollHeight actual
-      const ratio = Math.abs(b.scroll_top) / 1000;
-      bookmarkScrollTop = ratio * container.scrollHeight;
-    } else {
-      // Formato absoluto legacy
-      bookmarkScrollTop = b.scroll_top;
-    }
-
-    // Umbral dinámico: 25% de la altura del viewport o mínimo 250px
+    const bookmarkScrollTop = getStoredScrollTop(bookmark.scroll_top, container);
     const threshold = Math.max(250, container.clientHeight * 0.25);
-    return Math.abs(currentScrollTop - bookmarkScrollTop) < threshold;
+    if (Math.abs(container.scrollTop - bookmarkScrollTop) <= threshold) return true;
+
+    const currentScrollMarker = getRelativeScrollMarker(container);
+    return bookmark.scroll_top < 0
+      && currentScrollMarker < 0
+      && Math.abs(Math.abs(bookmark.scroll_top) - Math.abs(currentScrollMarker)) <= BOOKMARK_SCROLL_PERMILLE_THRESHOLD;
+  };
+
+  const getBookmarksAtCurrentPosition = (currentCfi?: string | null) => {
+    const container = getReaderScrollContainer();
+    return bookmarks.filter((bookmark) => isBookmarkAtPosition(bookmark, currentCfi, progressRef.current, container));
   };
 
   const hasBookmarkOnCurrentPage = () => {
-    return bookmarks.some(b => isBookmarkVisible(b));
+    return getBookmarksAtCurrentPosition(getCurrentCfi()).length > 0;
+  };
+
+  const removeBookmarkAnnotation = (cfi: string) => {
+    try {
+      renditionRef.current?.annotations.remove(cfi, "highlight");
+      removeRenderedAnnotationNodes(cfi);
+    } catch {}
+  };
+
+  const deleteBookmarkGroup = async (items: BookmarkType[]) => {
+    const uniqueItems = Array.from(new Map(items.map((item) => [item.id, item])).values());
+    const results = await Promise.all(uniqueItems.map((item) => deleteBookmark(item.id, bookId)));
+    if (!results.every(Boolean)) {
+      toast.error("No se pudo eliminar el marcador");
+      return;
+    }
+
+    const deletedIds = new Set(uniqueItems.map((item) => item.id));
+    setBookmarks(prev => prev.filter(item => !deletedIds.has(item.id)));
+    setMenuBookmark(null);
+    uniqueItems.forEach((item) => removeBookmarkAnnotation(item.cfi));
+    toast.info(uniqueItems.length > 1 ? "Marcadores duplicados eliminados" : "Marcador eliminado");
   };
 
   const handleToggleBookmark = async () => {
     if (!bookId || !userId || !renditionRef.current) return;
-
-    // Si ya hay un marcador visible en esta pantalla, eliminarlo
-    const existing = bookmarks.find(b => isBookmarkVisible(b));
-    if (existing) {
-      handleDeleteBookmark(existing);
-      return;
-    }
 
     const mgr = (renditionRef.current as any)?.manager;
     const container = mgr?.container as HTMLElement | undefined;
@@ -1527,6 +1567,12 @@ export default function ReaderPage() {
     // que display() navegue al mismo nodo DOM exacto.
     const preciseCfi = getCurrentCfi();
     if (!preciseCfi) return;
+
+    const existingBookmarks = getBookmarksAtCurrentPosition(preciseCfi);
+    if (existingBookmarks.length > 0) {
+      await deleteBookmarkGroup(existingBookmarks);
+      return;
+    }
 
     let preview = "";
     try {
@@ -1558,7 +1604,7 @@ export default function ReaderPage() {
   };
 
   const handleGoToBookmark = async (b: BookmarkType) => {
-    await navigateToCfi(b.cfi, b.scroll_top);
+    await navigateToCfi(b.cfi, b.scroll_top, b.progress_at);
   };
 
   const handleDeleteBookmark = async (b: BookmarkType) => {
@@ -1566,13 +1612,7 @@ export default function ReaderPage() {
     if (success) {
       setBookmarks(prev => prev.filter(x => x.id !== b.id));
       setMenuBookmark(null);
-      try {
-        renditionRef.current?.annotations.remove(b.cfi, "highlight");
-        const DOMTargets = getCfiAnnotationSelector(b.cfi);
-        document.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
-        const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
-        contents?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
-      } catch {}
+      removeBookmarkAnnotation(b.cfi);
       toast.info("Marcador eliminado");
     } else {
       toast.error("No se pudo eliminar el marcador");
@@ -1612,11 +1652,11 @@ export default function ReaderPage() {
     );
   }
 
-  // 4.2.10 - Cálculo computado en tiempo real de paletas de color HUD y Glassmorphism (Basado en Modo Día, Noche, o Retro)
+  // Cálculo computado en tiempo real de paletas de color HUD y Glassmorphism (Basado en Modo Día, Noche, o Retro)
   const isDark = theme === 'dark';
   const isRetro = theme === 'retro';
   const isNavy = theme === 'navy';
-  
+
   const iconBgClass = isDark ? 'bg-white/10 hover:bg-white/20' : isRetro ? 'bg-[#3fb950]/10 hover:bg-[#3fb950]/20' : isNavy ? 'bg-[#7986cb]/10 hover:bg-[#7986cb]/20' : 'bg-black/5 hover:bg-black/10';
   const panelBgClass = isDark ? 'bg-white/5' : isRetro ? 'bg-[#3fb950]/5 border border-[#3fb950]/10' : isNavy ? 'bg-[#7986cb]/5 border border-[#7986cb]/10' : 'bg-black/5';
   const activeBtnClass = isDark ? 'bg-white/10 shadow-sm font-medium' : isRetro ? 'bg-[#3fb950]/20 shadow-sm font-medium text-[#3fb950]' : isNavy ? 'bg-[#7986cb]/20 shadow-sm font-medium text-[#7986cb]' : 'bg-white shadow-sm font-medium';
@@ -1624,13 +1664,13 @@ export default function ReaderPage() {
 
   return (
     <div className={`h-[100dvh] w-full flex flex-col overflow-hidden overscroll-none transition-colors duration-500 ${bgColors}`}>
-      
-      {/* 4.2.11 - Barra de Navegación Superior (Top HUD) - Glassmorphism dinámico */}
-      <div 
+
+      {/* Barra de Navegación Superior (Top HUD) - Glassmorphism dinámico */}
+      <div
         className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 py-4 pt-[max(env(safe-area-inset-top,0px),24px)] transition-all duration-300 pointer-events-auto ${
             showControls ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
-        } ${isDark ? 'bg-black/60 backdrop-blur-xl border-b border-white/10' : 
-            isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-b border-[#3fb950]/20' : 
+        } ${isDark ? 'bg-black/60 backdrop-blur-xl border-b border-white/10' :
+            isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-b border-[#3fb950]/20' :
             isNavy ? 'bg-[#0a0f1e]/90 backdrop-blur-xl border-b border-[#7986cb]/20' :
             'bg-white/70 backdrop-blur-xl border-b border-black/5'} shadow-sm`}
       >
@@ -1660,7 +1700,7 @@ export default function ReaderPage() {
           >
             <FileText className="w-5 h-5" />
           </button>
-          
+
           <button
             onClick={handleToggleBookmark}
             className={`p-2.5 rounded-full transition-colors ${iconBgClass}`}
@@ -1672,7 +1712,7 @@ export default function ReaderPage() {
               <Bookmark className="w-5 h-5" />
             )}
           </button>
-          
+
           <button
             onClick={() => setShowSettings(!showSettings)}
             className={`p-2.5 rounded-full transition-colors ${showSettings ? (isRetro ? 'bg-[#3fb950]/20 text-[#3fb950]' : 'bg-black/10 text-blue-500') : iconBgClass}`}
@@ -1681,10 +1721,10 @@ export default function ReaderPage() {
           </button>
 
           {showSettings && (
-            <div 
+            <div
               onClick={(e) => e.stopPropagation()}
               className={`absolute top-14 right-0 w-72 p-4 rounded-2xl shadow-2xl border animate-in fade-in slide-in-from-top-4 duration-200 ${
-              isDark ? 'bg-[#1a1a1a] border-white/10 text-white' : 
+              isDark ? 'bg-[#1a1a1a] border-white/10 text-white' :
               isRetro ? 'bg-[#0d1117] border-[#3fb950]/30 text-[#3fb950]' :
               isNavy ? 'bg-[#0a1422] border-[#7986cb]/30 text-[#c5cae9]' :
               'bg-white border-black/5 text-gray-900'
@@ -1739,29 +1779,29 @@ export default function ReaderPage() {
                       key={color.value}
                       onClick={() => handleSetTextColor(color.value)}
                       className={`w-8 h-8 rounded-full transition-all border-2 no-retro-override flex items-center justify-center ${
-                        textColor === color.value 
-                          ? isRetro 
-                            ? 'border-[#3fb950] scale-110 shadow-[0_0_10px_rgba(63,185,80,0.5)]' 
+                        textColor === color.value
+                          ? isRetro
+                            ? 'border-[#3fb950] scale-110 shadow-[0_0_10px_rgba(63,185,80,0.5)]'
                             : isDark
                               ? 'border-white scale-110'
                               : 'border-black scale-110'
                           : 'border-transparent hover:border-gray-400'
                       }`}
-                      style={{ 
+                      style={{
                         '--dot-bg': color.value,
                         backgroundColor: color.value,
-                        boxShadow: textColor === color.value 
-                          ? isRetro 
-                            ? `0 0 0 2px #0d1117, 0 0 8px ${color.value}` 
+                        boxShadow: textColor === color.value
+                          ? isRetro
+                            ? `0 0 0 2px #0d1117, 0 0 8px ${color.value}`
                             : isDark
                               ? `0 0 0 2px #121212, 0 0 0 4px ${color.value}`
                               : `0 0 0 2px #ffffff, 0 0 0 4px ${color.value}`
                           : 'none'
                       } as any}
                     >
-                      <div 
-                        className="w-full h-full rounded-full no-retro-override" 
-                        style={{ backgroundColor: color.value } as any} 
+                      <div
+                        className="w-full h-full rounded-full no-retro-override"
+                        style={{ backgroundColor: color.value } as any}
                       />
                     </button>
                   ))}
@@ -1773,17 +1813,17 @@ export default function ReaderPage() {
       </div>
 
       {/* Bloqueador superior de Safe Area: Evita que el texto se vea "detrás" de la hora/batería */}
-      <div 
+      <div
         className={`fixed top-0 left-0 right-0 z-40 h-[env(safe-area-inset-top)] ${
           isDark ? 'bg-[#0a0a0a]' : isRetro ? 'bg-[#0d1117]' : isNavy ? 'bg-[#0a0f1e]' : 'bg-white'
         }`}
       />
 
-      {/* 4.2.15 - Ventana principal de visualización del objeto renderizado (Viewport) */}
+      {/* Ventana principal de visualización del objeto renderizado (Viewport) */}
       {/* IMPORTANTE: overflow:hidden aquí para que epub.js maneje el scroll internamente.
           Si este div tiene overflow-y:auto, roba los scroll events del container de epub.js
           y el ContinuousViewManager nunca detecta que necesita cargar más spines. */}
-      <div 
+      <div
         className="flex-1 relative w-full h-full overflow-hidden"
         onClick={() => toggleControls()}
       >
@@ -1806,10 +1846,10 @@ export default function ReaderPage() {
           <div className={`absolute inset-0 flex flex-col items-center justify-center z-10 px-6 text-center ${bgColors}`}>
             <div className="text-red-500 mb-2 text-2xl">⚠️</div>
             <div className="text-lg font-medium mb-4">{typeof error === 'string' ? error : "Error al cargar el libro"}</div>
-            <button 
+            <button
               onClick={() => router.push("/dashboard")}
               className={`px-6 py-2 rounded-lg transition-colors ${
-                isRetro ? 'bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/50 hover:bg-[#3fb950]/30' : 
+                isRetro ? 'bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/50 hover:bg-[#3fb950]/30' :
                 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
@@ -1818,13 +1858,13 @@ export default function ReaderPage() {
           </div>
         )}
 
-        {/* 4.2.16 - Div nativo puro donde ePubJS monta su Iframe interno */}
+        {/* Div nativo puro donde ePubJS monta su Iframe interno */}
         {/* h-full fija la altura para que epub.js tenga un reference point.
             min-h-full causa que el container crezca infinitamente y no scrollee. */}
         <div ref={viewerRef} className="epub-container relative w-full h-full cursor-pointer" />
       </div>
 
-      {/* 4.2.16.1 - Popup fijo interactivo para Subrayados cuando hay Selección */}
+      {/* Popup fijo interactivo para Subrayados cuando hay Selección */}
       {activeSelection && (
         <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] w-[92vw] sm:w-auto max-w-xl bg-white dark:bg-[#1a1a1a] shadow-2xl border border-gray-200 dark:border-white/10 rounded-2xl flex flex-col gap-2 p-3 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 pointer-events-auto">
           {/* Texto seleccionado */}
@@ -1893,8 +1933,8 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* 4.2.16.3 - Panel Lateral por gesto para Notas y Subrayados (50% ancho) */}
-      <div 
+      {/* Panel Lateral por gesto para Notas y Subrayados (50% ancho) */}
+      <div
         ref={notesPanelRef}
         className={`fixed inset-y-0 right-0 z-[70] w-1/2 min-w-[280px] max-w-xl bg-white dark:bg-[#111111] shadow-2xl border-l border-gray-200 dark:border-white/10 transform transition-transform duration-300 ease-in-out ${
           showNotesPanel ? 'translate-x-0' : 'translate-x-full'
@@ -1902,31 +1942,31 @@ export default function ReaderPage() {
       >
         {/* Drag handle */}
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300 dark:bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-        
+
         <div className="flex items-center justify-between px-5 pb-5 pt-[calc(env(safe-area-inset-top)+1.25rem)] border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0a0a0a]">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             Notas y Subrayados
           </h2>
-          <button 
+          <button
             onClick={() => setShowNotesPanel(false)}
             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors text-gray-500 dark:text-gray-400"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {highlights.length > 0 && highlights.map((h) => (
               <div key={h.id} className="bg-white dark:bg-[#1a1a1a] retro:bg-[#161b22] navy:bg-[#111827] border border-gray-100 dark:border-white/10 retro:border-[#3fb950]/20 navy:border-[#7986cb]/20 rounded-xl p-4 shadow-sm relative group">
                 <div className="absolute left-0 top-4 bottom-4 w-1 rounded-r-md" style={{ backgroundColor: h.color }}></div>
-                
+
                 <p className="text-sm text-gray-800 dark:text-gray-200 retro:text-gray-200 navy:text-gray-200 italic mb-2 line-clamp-4 leading-relaxed pr-6 cursor-pointer" onClick={() => navigateToCfi(h.cfi_start)}>
                   &quot;{h.text}&quot;
                 </p>
-                
+
                 {editingNote?.id === h.id ? (
                   <div className="mt-3 bg-gray-50 dark:bg-black/30 retro:bg-black/30 navy:bg-black/30 rounded-lg p-2 border border-blue-500/30">
-                    <textarea 
+                    <textarea
                       className="w-full bg-transparent border-none focus:outline-none text-sm text-gray-800 dark:text-gray-200 retro:text-gray-200 navy:text-gray-200 resize-none"
                       rows={3}
                       value={editingNote.note}
@@ -1954,7 +1994,7 @@ export default function ReaderPage() {
                   )
                 )}
 
-                <button 
+                <button
                   onClick={() => handleDeleteHighlight(h.id, h.cfi_start)}
                   className="absolute right-2 top-2 p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 md:opacity-0 opacity-100 group-hover:opacity-100 transition-all"
                   title="Eliminar"
@@ -1965,7 +2005,7 @@ export default function ReaderPage() {
             )
           )}
 
-          {/* 4.2.16.4 - Sección de Marcadores Visuales */}
+          {/* Sección de Marcadores Visuales */}
           {bookmarks.length > 0 && (
             <div className="border-t border-gray-200 dark:border-white/10 pt-4 mt-6">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
@@ -2003,12 +2043,12 @@ export default function ReaderPage() {
         </div>
       </div>
 
-      {/* 4.2.18 - Tooltip de Diccionario */}
+      {/* Tooltip de Diccionario */}
       {dictionaryPos && (isDictionaryLoading || dictionaryData || dictionaryError) && (
-        <div 
+        <div
           className="fixed z-[80] pointer-events-none"
-          style={{ 
-            left: `${Math.max(150, Math.min((typeof window !== 'undefined' ? window.innerWidth : 300) - 150, dictionaryPos.x))}px`, 
+          style={{
+            left: `${Math.max(150, Math.min((typeof window !== 'undefined' ? window.innerWidth : 300) - 150, dictionaryPos.x))}px`,
             top: `${dictionaryPos.y}px`,
             transform: 'translate(-50%, calc(-100% - 20px))' // Posicionar arriba de la palabra con margen
           }}
@@ -2079,12 +2119,12 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* 4.2.17 - Barra inferior central (Bottom HUD) de navegación de hojas y rastreo de progreso porcentual estricto */}
-      <div 
+      {/* Barra inferior central (Bottom HUD) de navegación de hojas y rastreo de progreso porcentual estricto */}
+      <div
         className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col px-4 sm:px-6 pt-3 pb-[max(env(safe-area-inset-bottom,12px),28px)] transition-all duration-300 pointer-events-none ${
             showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-        } ${isDark ? 'bg-black/60 backdrop-blur-xl border-t border-white/10' : 
-            isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-t border-[#3fb950]/20' : 
+        } ${isDark ? 'bg-black/60 backdrop-blur-xl border-t border-white/10' :
+            isRetro ? 'bg-[#0d1117]/90 backdrop-blur-xl border-t border-[#3fb950]/20' :
             isNavy ? 'bg-[#0a0f1e]/90 backdrop-blur-xl border-t border-[#7986cb]/20' :
             'bg-white/70 backdrop-blur-xl border-t border-black/5'} shadow-[0_-8px_30px_rgba(0,0,0,0.15)]`}
       >

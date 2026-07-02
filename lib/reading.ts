@@ -3,13 +3,12 @@ import { ReadingProgress } from "@/types/reading";
 
 const PROGRESS_KEY = "bookea-offline-progress";
 
+// Separa progreso por usuario para no mezclar lecturas en dispositivos compartidos.
 function getScopedBookKey(bookId: string, userId?: string | null): string {
   return userId ? `${userId}:${bookId}` : bookId;
 }
 
-/**
- * 4.1.5 - Obtener progreso de lectura local (localStorage)
- */
+// Lee progreso local compatible con claves legacy sin usuario.
 export function getLocalProgress(bookId: string, userId?: string | null): ReadingProgress | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -26,9 +25,7 @@ export function getLocalProgress(bookId: string, userId?: string | null): Readin
   }
 }
 
-/**
- * 4.1.6 - Guardar progreso de lectura local (localStorage)
- */
+// Guarda progreso offline-first y lo marca pendiente de sincronizacion.
 export function saveLocalProgress(bookId: string, progress: Partial<ReadingProgress>) {
   if (typeof window === 'undefined') return;
   try {
@@ -39,7 +36,7 @@ export function saveLocalProgress(bookId: string, progress: Partial<ReadingProgr
       ...all[key],
       ...progress,
       updated_at: new Date().toISOString(),
-      synced: false // Marca para el motor de sincronización
+      synced: false
     };
     localStorage.setItem(PROGRESS_KEY, JSON.stringify(all));
   } catch (err) {
@@ -47,15 +44,13 @@ export function saveLocalProgress(bookId: string, progress: Partial<ReadingProgr
   }
 }
 
-// 4.1 - Acceso a Datos (DAO) para guardar y persistir la posición de lectura (CFI) en Supabase
+// Combina Supabase con cache local; gana el dato local si fue actualizado offline.
 export async function getReadingProgress(
   bookId: string,
   userId: string
 ): Promise<ReadingProgress | null> {
-  // 1. Siempre checar lo local primero (es lo más rápido y posiblemente más fresco)
   const local = getLocalProgress(bookId, userId);
 
-  // 2. Si estamos offline, lo local es nuestra única verdad
   if (typeof window !== 'undefined' && !navigator.onLine) {
     return local;
   }
@@ -71,18 +66,16 @@ export async function getReadingProgress(
 
     if (error) return local;
 
-    // 3. Si lo local es más reciente que lo de la DB (o si no hay nada en DB), mandamos lo local
     if (data && local && (local as any).updated_at) {
       const serverTime = new Date(data.last_read_at || 0).getTime();
       const localTime = new Date((local as any).updated_at).getTime();
       if (localTime > serverTime) return local;
     }
 
-    // 4. Si la DB es más reciente o lo único que hay, actualizamos lo local para estar al día
     if (data) {
       saveLocalProgress(bookId, {
         ...data,
-        synced: true // Ya está en la nube
+        synced: true
       } as any);
     }
 
@@ -92,10 +85,11 @@ export async function getReadingProgress(
   }
 }
 
-// 4.1.1 - Expresión Regular para proteger inserciones con formato UUID v4 estricto
+// Evita escribir progreso con ids malformados antes de tocar Supabase.
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isValidUUID = (id: string) => UUID_REGEX.test(id);
 
+// Persiste progreso local de inmediato y luego intenta sincronizarlo en Supabase.
 export async function saveReadingProgress(
   bookId: string,
   userId: string,
@@ -107,7 +101,6 @@ export async function saveReadingProgress(
 
   const cleanPercent = Math.min(100, Math.max(0, Math.round(percentComplete * 100) / 100));
 
-  // 1. GUARDAR LOCAL SIEMPRE (Offline First)
   saveLocalProgress(bookId, {
     book_id: bookId,
     user_id: userId,
@@ -117,7 +110,6 @@ export async function saveReadingProgress(
     last_read_at: new Date().toISOString()
   } as any);
 
-  // 2. Intentar guardar en nube si hay internet
   if (typeof window !== 'undefined' && !navigator.onLine) return;
 
   try {
@@ -138,13 +130,12 @@ export async function saveReadingProgress(
     );
 
     if (!error) {
-      // Marcar como sincronizado localmente
       const local = getLocalProgress(bookId, userId);
       if (local) {
         saveLocalProgress(bookId, { ...local, synced: true } as any);
       }
     }
   } catch {
-    // Fallo silencioso en red: ya guardamos localmente arriba
+    // Fallo de red tolerado: el progreso ya quedo guardado localmente.
   }
 }

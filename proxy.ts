@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Proxy de sesion: refresca cookies de Supabase y protege rutas privadas.
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -36,10 +37,11 @@ export async function proxy(request: NextRequest) {
     const { data } = await supabase.auth.getSession()
     user = data.session?.user ?? null
   } catch {
-    // Si getSession() falla, tratar como no autenticado
+    // Si Supabase falla, tratamos la ruta protegida como no autenticada.
   }
 
   const { pathname } = request.nextUrl
+  // Mantener esta lista sincronizada con las rutas autenticadas reales.
   const protectedPaths = ['/dashboard', '/reader', '/admin', '/catalog', '/profile', '/vendedor']
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
   const isAuthPath = pathname === '/login' || pathname === '/register'

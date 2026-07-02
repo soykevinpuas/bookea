@@ -1,4 +1,4 @@
-// 6.x - Componente de QR de referido para compartir Bookea
+// Componente de QR de referido para compartir Bookea
 'use client'
 
 import { useState } from 'react'

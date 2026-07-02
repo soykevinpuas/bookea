@@ -1,5 +1,5 @@
-// 1.1 - Service Worker para Bookea PWA (Offline-First)
-// Versión 5: Compatible con Next.js + Vercel CDN
+// Service Worker de Bookea PWA: offline-first para EPUBs y fallback seguro para navegacion.
+// Mantener CACHE_NAME/BOOKS_CACHE sincronizados con cambios de estrategia.
 const CACHE_NAME = 'bookea-v4';
 const BOOKS_CACHE = 'bookea-books-v3';
 const LEGACY_BOOKS_CACHES = ['bookea-books', 'bookea-books-v2'];
@@ -10,7 +10,7 @@ const PRECACHE = [
   '/',
 ];
 
-// 1.1.1 - Instalación: Precachear solo archivos estáticos seguros
+// Precachea solo archivos estaticos seguros; no debe cachear manifest en previews con auth.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -20,7 +20,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 1.1.2 - Activación: Limpiar cachés viejos y tomar control inmediato
+// Migra EPUBs de caches legacy y limpia caches de app obsoletos.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
@@ -48,19 +48,18 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 1.2 - Interceptor de peticiones
+// Aplica estrategias por tipo de request para no interferir con Supabase ni RSC.
 self.addEventListener('fetch', (event) => {
-  // Identificar el tipo de asset para aplicar la estrategia correcta
   const { request } = event;
   const url = new URL(request.url);
 
-  // IGNORAR esquemas no soportados (chrome-extension, edge-extension, etc)
+  // Ignorar esquemas no soportados (chrome-extension, edge-extension, etc).
   if (!url.protocol.startsWith('http')) return;
 
-  // Ignorar peticiones que no sean GET
+  // Ignorar peticiones que no sean GET.
   if (request.method !== 'GET') return;
 
-  // ─── ESTRATEGIA 1: EPUBs (Cache First) ───
+  // EPUBs: Cache First porque son archivos grandes y necesarios offline.
   if (url.pathname.endsWith('.epub')) {
     event.respondWith(
       caches.open(BOOKS_CACHE).then((cache) =>
@@ -79,7 +78,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ─── ESTRATEGIA 2: Supabase Storage (portadas, archivos) - Network First con cache offline ───
+  // Supabase Storage: Network First para refrescar portadas y conservar fallback.
   if (url.hostname.includes('supabase') && url.pathname.includes('/storage/')) {
     event.respondWith(
       caches.open(BOOKS_CACHE).then((cache) =>
@@ -98,20 +97,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ─── ESTRATEGIA 3: API calls a Supabase - NO interceptar ───
+  // API calls a Supabase: no interceptar para no ocultar errores de auth/datos.
   if (url.hostname.includes('supabase')) {
-    return; // Dejar que fallen naturalmente offline
+    return;
   }
 
-  // ─── ESTRATEGIA 4: Navegación (HTML pages) - Network First con fallback ───
+  // Navegacion: Network First con HTML fallback; RSC devuelve 503 para que Next maneje offline.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(() => {
-        // 8.2.3 - Manejo quirúrgico de fallos de red
         const url = new URL(request.url);
         const isRscRequest = request.headers.get('RSC') || url.searchParams.has('_rsc') || url.pathname.includes('/_next/data/');
 
-        // Si es una petición de datos (RSC), devolver 503 para que el cliente Next.js maneje el estado offline adecuadamente
         if (isRscRequest) {
           return new Response(null, { status: 503, statusText: 'Service Unavailable' });
         }
@@ -137,7 +134,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ─── ESTRATEGIA 5: Assets de la app (JS, CSS, imágenes, fuentes) - Cache First + background refresh ───
+  // Assets de app: Cache First con refresh en background.
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request).then((res) => {

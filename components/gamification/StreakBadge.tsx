@@ -1,4 +1,4 @@
-// 6.x - Badge de racha de lectura
+// Badge de racha de lectura
 'use client'
 
 import { Flame } from 'lucide-react'
@@ -9,8 +9,10 @@ interface StreakBadgeProps {
 }
 
 export function StreakBadge({ streak, variant = 'full' }: StreakBadgeProps) {
+  // Sin racha activa no se renderiza nada para evitar ruido visual en dashboards.
   if (streak <= 0) return null
 
+  // El color sube de intensidad por hitos, manteniendo un feedback rapido de progreso.
   const getColorClasses = () => {
     if (streak >= 30) return 'text-orange-500 dark:text-orange-400'
     if (streak >= 10) return 'text-amber-500 dark:text-amber-400'
@@ -25,6 +27,7 @@ export function StreakBadge({ streak, variant = 'full' }: StreakBadgeProps) {
     return 'bg-orange-400/10 border-orange-400/20'
   }
 
+  // Compact se usa en espacios densos; full muestra etiqueta legible para paneles.
   if (variant === 'compact') {
     return (
       <span className={`flex items-center gap-0.5 text-xs font-bold ${getColorClasses()}`}>

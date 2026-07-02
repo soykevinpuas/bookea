@@ -186,7 +186,7 @@ export default function AdminBooksPage() {
     try {
       const ext = file.name.split(".").pop();
       const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      
+
       let publicUrl: string;
       if (type === "cover") {
         publicUrl = await uploadFile(file, "covers", uniqueName);

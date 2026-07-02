@@ -1,6 +1,6 @@
 /**
- * 6.1 - Avatares Animales: Configuración de la matriz de sprites para la personalización de usuarios
- * 
+ * Avatares Animales: Configuración de la matriz de sprites para la personalización de usuarios
+ *
  * Regresamos al sprite sheet 3x3 original con una lógica de centrado ultra-precisa
  * para evitar deformaciones y recortes.
  */
@@ -20,8 +20,8 @@ export const ANIMAL_AVATARS = [
 export type AnimalAvatarId = typeof ANIMAL_AVATARS[number]["id"];
 
 /**
- * 6.1.2 - getAvatarStyle: Retorna el estilo de fondo para el recorte del sprite
- * 
+ * getAvatarStyle: Retorna el estilo de fondo para el recorte del sprite
+ *
  * Basado en inspección visual, usamos un escalado del 290% para dar aire a las
  * extremidades (como las orejas del conejo) y evitar que toquen el borde.
  */
@@ -35,7 +35,7 @@ export function getAvatarStyle(avatarUrl: string | null) {
   if (!avatar) return {};
 
   /**
-   * 6.1.2.1 - Lógica de posicionamiento Pixel-Perfect
+   * Lógica de posicionamiento Pixel-Perfect
    * Con background-size: 290%, alejamos ligeramente el contenido de los bordes.
    * Esto evita que el color blanco del sprite sheet "contamine" el círculo de color
    * y permite que personajes altos (conejo/koala) respiren.

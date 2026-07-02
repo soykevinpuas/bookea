@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useIsClient } from "@/hooks/useIsClient";
 
 /**
- * 6.4 - PageSmoother: Transición sutil entre páginas
+ * PageSmoother: Transición sutil entre páginas
  * Crea un overlay que se desvanece suavemente al navegar
  */
 export function PageSmoother({ children }: { children: React.ReactNode }) {
@@ -18,7 +18,7 @@ export function PageSmoother({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * 6.4b - FadeTransition: Alternativa más sutil solo con CSS
+ * FadeTransition: Alternativa más sutil solo con CSS
  * Agrega este componente al layout raíz
  */
 export function FadeIn({ children }: { children: React.ReactNode }) {

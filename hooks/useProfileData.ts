@@ -11,9 +11,11 @@ export interface ProfileData {
   referralCount: number
 }
 
+// Hook consolidado para evitar varias server actions en la pagina de perfil.
 export function useProfileData(userId: string | undefined) {
   return useQuery({
     queryKey: ['profile-data', userId],
+    // La server action ya empaqueta monedas, racha y referidos para una sola ida al servidor.
     queryFn: async (): Promise<ProfileData> => {
       const result = await getProfileDataAction()
       return {
@@ -23,6 +25,7 @@ export function useProfileData(userId: string | undefined) {
         referralCount: result.referralCount,
       }
     },
+    // No consulta hasta que auth resuelve el usuario actual.
     enabled: !!userId,
     staleTime: 0,
   })

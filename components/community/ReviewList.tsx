@@ -9,7 +9,7 @@ import { MessageSquare, Calendar, Trash2, Loader2, Sparkles } from "lucide-react
 import { useUserId } from "@/hooks/useUser";
 
 /**
- * 6.9 - ReviewList: Visualización premium de la comunidad y sus opiniones
+ * ReviewList: Visualización premium de la comunidad y sus opiniones
  */
 
 interface ReviewListProps {
@@ -43,7 +43,7 @@ export default function ReviewList({ bookId }: ReviewListProps) {
 
   return (
     <div className="space-y-6">
-      {/* 6.9.1 - Resumen de Calificaciones */}
+      {/* Resumen de Calificaciones */}
       <div className="flex items-center justify-between p-6 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl shadow-sm">
         <div className="flex items-center gap-4">
           <div className="text-4xl font-black text-gray-900 dark:text-white flex items-center gap-2">
@@ -60,12 +60,12 @@ export default function ReviewList({ bookId }: ReviewListProps) {
         </div>
       </div>
 
-      {/* 6.9.2 - Lista Staggered de Reseñas */}
+      {/* Lista Staggered de Reseñas */}
       <div className="space-y-4">
         <AnimatePresence>
           {reviews.map((review, index) => {
             const isOwner = review.user_id === userId;
-            
+
             return (
               <motion.div
                 key={review.id}
@@ -78,8 +78,8 @@ export default function ReviewList({ bookId }: ReviewListProps) {
                   {/* Avatar con AnimalEngine */}
                   <div className="w-10 h-10 rounded-full border border-white/10 overflow-hidden flex-shrink-0 shadow-sm relative">
                     {review.profiles?.avatar_url ? (
-                        <AnimalEngine 
-                          config={parseAvatarConfig(review.profiles.avatar_url)} 
+                        <AnimalEngine
+                          config={parseAvatarConfig(review.profiles.avatar_url)}
                           size={40}
                         />
                       ) : (
@@ -99,7 +99,7 @@ export default function ReviewList({ bookId }: ReviewListProps) {
                           <Calendar className="w-3 h-3" />
                           {new Date(review.created_at).toLocaleDateString()}
                         </span>
-                        
+
                         {isOwner && (
                           <button
                             onClick={() => deleteReview(review.id)}

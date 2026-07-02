@@ -3,6 +3,7 @@ import { type NextRequest } from 'next/server'
 import { createClient } from '@/lib/server'
 import { redirect } from 'next/navigation'
 
+// Confirma enlaces de Supabase Auth y redirige al destino seguro solicitado.
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const token_hash = searchParams.get('token_hash')
@@ -14,13 +15,14 @@ export async function GET(request: NextRequest) {
 
   if (token_hash && type) {
     const supabase = await createClient()
+    // Supabase envia magiclink, pero verifyOtp espera email para este flujo.
     const otpType = type === 'magiclink' ? 'email' : type
 
     const { error } = await supabase.auth.verifyOtp({
       type: otpType,
       token_hash,
     })
-    
+
     if (!error) {
       redirect(safeNext)
     }

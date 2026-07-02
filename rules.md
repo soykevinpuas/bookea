@@ -1,222 +1,161 @@
-# 📋 BOOKEA — Project Rules
+# BOOKEA - Reglas del Proyecto
 
-Reglas del proyecto para el agente y el desarrollador.
-Seguir estas reglas en cada sesión de desarrollo.
+Estas reglas son para agentes y desarrolladores. Si una tarea toca codigo, documentacion o base de datos, debe quedar coherente con este archivo.
 
----
+Ultima revision: 2026-07-01.
 
-## 1. STACK — NO CAMBIAR
+## 1. Stack Actual
 
-- Next.js 15 + React 19 + TypeScript
-- Supabase (Auth, DB, Storage, Realtime)
-- Tailwind 4
-- Stripe (pagos)
-- epubjs (lector)
-- Zustand (estado global)
-- TanStack Query (fetching)
-- Resend (emails)
-- Vercel (deploy)
+- Next.js 16.1.6 con App Router.
+- React 19.2.3 y TypeScript strict.
+- Tailwind CSS 4.
+- Supabase para Auth, PostgreSQL, Storage y Realtime.
+- Stripe para suscripciones, compras digitales/fisicas y portal de facturacion.
+- epubjs para el lector.
+- Zustand para estado global local.
+- TanStack Query para cache/fetching del cliente.
+- Resend para emails.
+- Three.js/React Three Fiber para elementos 3D.
 
----
+No cambies stack ni agregues librerias sin justificarlo en la tarea y documentarlo.
 
-## 2. ESTRUCTURA DE CARPETAS — RESPETAR
+## 2. Estructura Real del Repo
 
-```
-app/(auth)/         → login, register
-app/(app)/          → dashboard, catalog, book/[id], reader/[id], profile
-app/admin/          → solo role: admin
-components/reader/  → componentes del lector
-components/catalog/ → cards, filtros
-components/community/ → comentarios, reviews
-components/admin/   → panel admin
-components/ui/      → botones, modales, inputs reutilizables
-hooks/              → custom hooks
-stores/             → zustand stores
-types/              → typescript types
-lib/                → supabase.ts, stripe.ts, utils.ts
-```
-
----
-
-## 3. BASE DE DATOS — REGLAS
-
-- **Un solo registro por libro** — digital y físico en la misma tabla `books`
-- **Nunca borrar tablas** — usar `is_active: false` para desactivar
-- **RLS siempre activo** — nunca deshabilitar Row Level Security
-- **Migraciones en** `supabase/migrations/` — nunca editar la DB directo sin migración
-- **Roles de usuario:** `free`, `subscriber`, `admin` — campo en tabla `profiles`
-
----
-
-## 4. AUTH — REGLAS
-
-- Login con **email/password** en desarrollo
-- Magic link para producción (cuando se lance)
-- Rutas protegidas: todo bajo `app/(app)/` requiere sesión activa
-- Rutas admin: verificar `role: admin` en middleware
-- Redirigir a `/login` si no hay sesión
-- Redirigir a `/dashboard` después de login exitoso
-
----
-
-## 5. PRECIOS — FIJOS EN MXN
-
-| Producto | Precio |
-|----------|--------|
-| Suscripción mensual | $99 MXN |
-| Compra digital permanente | $49 MXN |
-| Libro físico | $199–$249 MXN |
-| Bundle físico + digital | $229 MXN |
-
-- Moneda siempre en **MXN**
-- Pagos con **Stripe**
-- Nunca hardcodear precios en componentes — vienen de DB o variables de entorno
-
----
-
-## 6. LECTOR EPUB — REGLAS
-
-- Usar **epubjs** — ya instalado como `epubjs`
-- Siempre cargar con `openAs: "epub"`
-- Guardar progreso en tabla `reading_progress` (posición CFI)
-- El lector es `"use client"`
-- Suscriptores: acceso a sus 5 libros del ciclo
-- Compra permanente: acceso de por vida
-- Free: solo X% del libro (a definir)
-
----
-
-## 7. INVENTARIO — REGLAS
-
-- Stock físico se descuenta automáticamente al confirmar orden
-- Si `stock_physical = 0` → ocultar botón "Comprar físico"
-- Solo admin puede actualizar stock manualmente
-- Alerta cuando stock llegue a 2 unidades
-
----
-
-## 8. COMMITS — CONVENCIÓN
-
-```
-feat: nueva funcionalidad
-fix: corrección de bug
-chore: cambios de configuración
-style: cambios de UI sin lógica
-refactor: refactorización de código
-docs: documentación
-
-**NOTA IMPORTANTE:** Los mensajes de commit deben escribirse estrictamente en **ESPAÑOL**.
+```text
+app/
+  (auth)/                 Login, registro, reset y update password.
+  (app)/                  Vistas autenticadas: dashboard, catalogo, libro, reader, perfil, ordenes, suscripcion.
+  (legal)/                Terminos y aviso de privacidad.
+  admin/                  Panel admin real: dashboard, libros, usuarios, ordenes, vendedores.
+  vendedor/               Panel vendedor real: inventario, ventas, ingresos y solicitudes.
+  api/                    Rutas backend: Stripe, cart, analytics, streak, admin, vendedor, diccionario.
+components/
+  avatars/                Motor de avatar.
+  book/                   Modales/acciones especificas de libro.
+  community/              Reviews y ratings.
+  gamification/           Rachas, monedas y quiz.
+  profile/                Perfil, avatar y referidos.
+  providers/              Providers de transiciones.
+  ui/                     Componentes reutilizables.
+hooks/                    Hooks de datos y UX.
+lib/                      Clientes, acciones servidor y logica de negocio compartida.
+stores/                   Stores Zustand.
+types/                    Contratos TypeScript compartidos.
+supabase/migrations/      Fuente de verdad de schema, RLS y RPCs.
+public/                   PWA, iconos, service worker y assets estaticos.
 ```
 
-Ejemplos:
-```
-feat: agregar página de catálogo con cuadrícula de libros
-fix: resolver recursión infinita de RLS en tabla de usuarios
-chore: añadir dependencia epubjs
-```
+Carpetas como `components/admin`, `components/catalog`, `components/reader`, `app/admin/inventory` y `app/admin/marketing` existen como placeholders. No las documentes como implementadas hasta que tengan codigo real.
 
----
+## 3. Roles y Acceso
 
-## 9. FASES DE DESARROLLO
+Roles validos en `public.users.role`:
 
-### Fase 1 — MVP (lanzar)
-- [ ] Auth completo (login/register)
-- [ ] Catálogo de libros
-- [ ] Página de detalle de libro
-- [ ] Lector EPUB funcional
-- [ ] Suscripción con Stripe
-- [ ] Compra permanente
-- [ ] Panel admin básico
-- [ ] Venta física con formulario de envío
+- `free`: cuenta gratuita.
+- `subscriber`: suscripcion activa si `subscription_ends_at` es nulo o futura.
+- `admin`: administra catalogo, usuarios, stock, vendedores y ventas.
+- `vendedor`: vende inventario asignado por un admin.
 
-### Fase 2 — Retención
-- [ ] Comentarios en tiempo real
-- [ ] Progreso y rachas de lectura
-- [ ] Highlights y notas
-- [ ] Reseñas y ratings
-- [ ] PWA instalable
+Reglas:
 
-### Fase 3 — Crecimiento
-- [ ] Compartir cita con imagen branded
-- [ ] Badges y gamificación
-- [ ] Lista de deseos con alertas
-- [ ] Regalos entre usuarios
-- [ ] "También te puede gustar"
+- Las rutas bajo `(app)`, `admin` y `vendedor` se protegen en `proxy.ts`.
+- Admin y vendedor tienen acceso digital privilegiado en `hasBookAccess`.
+- Los cambios de rol deben pasar por RPC/admin server action, no por cliente directo.
 
----
+## 4. Base de Datos
 
-## 10. LO QUE NO SE TOCA
+- Toda modificacion de DB va en `supabase/migrations/`.
+- RLS debe mantenerse activo en tablas publicas.
+- Las tablas sensibles no deben aceptar escrituras directas del cliente si existe un flujo server/RPC.
+- `public.user_books` solo permite SELECT del usuario/admin; altas y cambios de acceso pasan por server actions, webhooks o RPCs validados.
+- `public.orders_physical` se crea desde Stripe/webhook/fallback server, no desde cliente.
+- El stock fisico actual se reparte por `admin_stock`; `books.stock_physical` se sincroniza como suma.
 
-- No cambiar el nombre del proyecto (es **Bookea**)
-- No cambiar la moneda a USD (es MXN para México)
-- No agregar librerías sin consultar primero
-- No deshabilitar TypeScript strict mode
-- No subir archivos `.env` al repo
+## 5. Pagos y Precios
 
----
+- Moneda: MXN.
+- Suscripcion mensual: `STRIPE_SUBSCRIPTION_PRICE_ID`, mostrada como $99 MXN en UI actual.
+- Compras digitales/fisicas/bundle toman precio desde `books`.
+- Fallbacks defensivos en codigo: digital `29`, fisico `299`, bundle `319`.
+- Nunca confies en precio enviado desde cliente; checkout lee precio desde DB.
+- El webhook de Stripe debe permanecer idempotente mediante `webhook_events`.
 
-## 11. ESTADO ACTUAL DEL PROYECTO
+## 6. Lector y Offline
 
-✅ Auth email/password funcionando
-✅ Tabla `books` en Supabase con libro de prueba
-✅ Catálogo `/catalog` mostrando libros
-✅ Lector EPUB funcional en `/reader/[id]`
-✅ Suscripción con Stripe (Price IDs via env vars)
-✅ Panel admin con gestión de usuarios
-✅ Biblioteca del usuario `/dashboard`
-✅ Highlights y notas en lector
-✅ Profiles con RLS corregido (2026-04-26)
-✅ Compra permanente y física con Stripe
-✅ PWA básico (service worker activo)
-⏳ Reseñas y ratings (en desarrollo)
-⏳ Pagos físicos con tracking  
+- El lector EPUB vive en `app/(app)/reader/[id]/page.tsx`.
+- El progreso se guarda en `reading_progress` y fallback local `bookea-offline-progress`.
+- Highlights y bookmarks tienen fallback local.
+- EPUBs y portadas se cachean con `public/sw.js`.
+- No agregues logs permanentes al lector salvo que sean errores accionables.
 
----
+## 7. Comentarios de Codigo
 
-## 12. DOCUMENTACIÓN Y COMENTARIOS — REGLAS
+Usa comentarios breves y utiles. El objetivo es explicar intencion, reglas de negocio y bordes raros, no narrar sintaxis obvia.
 
-Todo el código fuente debe estar rigurosamente documentado utilizando un sistema de **índice numérico jerárquico** para facilitar la generación futura de Documentos de Arquitectura y Construcción de Software.
+Debe haber comentario o JSDoc en:
 
-Antes de cada bloque funcional importante, hook, componente, o efecto, se debe añadir un comentario breve explicando qué hace, precedido por su índice correspondiente.
+- Modulos con logica de negocio.
+- Exports publicos: componentes, hooks, server actions, helpers compartidos, tipos complejos.
+- Efectos o bloques que dependan de Supabase RLS, Stripe, cache offline, service worker, epubjs o concurrencia.
+- Workarounds por Next/Supabase/Stripe/epubjs.
 
-**Índice de Módulos (Prefijos):**
-* **`1.x`** -> Configuraciones globales, Estructura base y Base de Datos (ej. `lib/`, `middleware.ts`, `globals.css`)
-* **`2.x`** -> Autenticación y Gestión de Usuarios (ej. `app/(auth)/`)
-* **`3.x`** -> Catálogo, Exploración y Hooks de Datos (ej. `app/(app)/catalog`, `hooks/`)
-* **`4.x`** -> Lector EPUB y Progreso de Lectura (ej. `app/(app)/reader/`, `lib/reading.ts`)
-* **`5.x`** -> Panel de Administrador e Inventario (ej. `app/admin/`)
-* **`6.x`** -> Componentes Compartidos de UI y Utilerías (ej. `components/`, `lib/stripe.ts`)
-* **`7.x`** -> APIs de Integración Externa (ej. `app/api/stripe/`, `app/api/books/`)
+Evita comentarios en:
 
-**Formato del comentario:**
-```typescript
-// 4.1 - Carga y configuración inicial del visor epubjs
-const initEpub = async () => {
-   // 4.1.1 - Registro de los temas base
-   rendition.themes.register("light", ...);
-}
+- JSX evidente.
+- `useState` o variables autoexplicativas.
+- Estilos Tailwind que ya se leen por si solos.
+
+Si encuentras comentarios numericos viejos o incorrectos, actualizalos o reemplazalos por texto claro. No inventes indices si no aportan.
+
+## 8. Convencion de Commits
+
+Usar prefijos:
+
+```text
+feat:
+fix:
+docs:
+refactor:
+style:
+chore:
+test:
 ```
 
-Cualquier agente de IA o desarrollador que toque, cree o modifique código **ESTÁ OBLIGADO** a añadir, actualizar o respetar esta numeración.
+Los mensajes de commit deben escribirse en espanol.
 
----
+## 9. Documentacion Obligatoria
 
-## 13. BITÁCORA DE DESARROLLO
+Actualiza documentacion cuando cambie:
 
-Es obligatorio mantener actualizado el archivo `bitacora.md` en la raíz del proyecto. **CADA CAMBIO** estructural, nueva funcionalidad o corrección de bugs debe ser documentado en este archivo. Esto es fundamental para entender la evolución y lógica del sistema a lo largo del tiempo.
+- Flujo de pagos, acceso, stock, roles o auth.
+- Schema, RLS o RPCs.
+- Estructura de carpetas.
+- Scripts o comandos.
+- Comportamiento de PWA/offline.
 
----
+Archivos relevantes:
 
-## 14. AUDITORÍA DE CÓDIGO E INTEGRIDAD
+- `README.md` para onboarding.
+- `AGENTS.md` para instrucciones rapidas de colaboradores.
+- `docs/PROJECT_MASTER.md` para arquitectura.
+- `docs/DATABASE.md` para Supabase.
+- `docs/AUDIT_LOG.md` para auditorias y deuda tecnica.
+- `bitacora.md` para historial de cambios.
 
-Para garantizar la seguridad y estabilidad desde el inicio, el proyecto sigue un protocolo de auditoría asistida por IA:
+## 10. Verificacion Antes de Cerrar
 
-- **Nivel 1 (Estética y Lógica Simple):** Se audita en **Modo FAST** con **Gemini Flash**. Foco en limpieza, convenciones de nombres y documentación jerárquica.
-- **Nivel 2 (Seguridad y Core):** Se audita en **Modo PLAN** con **modelos Pro o Flash (según complejidad)**. Foco en RLS, Auth, Stripe y manejo de datos sensibles.
-- **Registro Obligatorio:** Toda auditoría debe quedar plasmada en `docs/AUDIT_LOG.md`.
-- **Cuidado de Cuotas:** Auditar preferentemente `diffs` de código en lugar de archivos completos para optimizar tokens.
+Como minimo ejecuta:
 
----
+```bash
+npm run lint
+npx tsc --noEmit
+```
 
-*Última actualización: Abril 2026*
-*Proyecto: Bookea — bookea.mx*
+Si no puedes ejecutar algo, dilo en el resumen final y registra el riesgo.
+
+## 11. Deuda Tecnica Conocida
+
+- ESLint permite warnings de `any` y reglas React Hooks para no bloquear fixes; no lo uses como permiso para agregar deuda nueva.
+- Hay muchas pantallas legacy con `<img>` donde Next recomienda `next/image`.
+- No hay suite de tests instalada aunque `test.md` define la estrategia.
+- Algunas pantallas grandes (`reader`, admin, vendedor) necesitan refactor por modulos, pero no deben partirse sin pruebas o verificacion manual.

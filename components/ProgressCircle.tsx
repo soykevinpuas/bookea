@@ -9,9 +9,9 @@ interface ProgressCircleProps {
   className?: string;
 }
 
-export default function ProgressCircle({ 
-  progress, 
-  size = 36, 
+export default function ProgressCircle({
+  progress,
+  size = 36,
   strokeWidth = 3,
   className = ""
 }: ProgressCircleProps) {
@@ -22,9 +22,9 @@ export default function ProgressCircle({
   const offset = circumference - (validProgress / 100) * circumference;
 
   const isComplete = validProgress >= 100;
-  
+
   return (
-    <div 
+    <div
       className={`relative inline-flex items-center justify-center ${className}`}
       style={{ width: size, height: size }}
     >
@@ -58,7 +58,7 @@ export default function ProgressCircle({
       </svg>
       {/* Percentage Text */}
       <span className={`
-        ${isComplete ? 'text-[7.5px] text-amber-500' : 'text-[9px] text-gray-700 dark:text-white/90'} 
+        ${isComplete ? 'text-[7.5px] text-amber-500' : 'text-[9px] text-gray-700 dark:text-white/90'}
         font-black leading-none tabular-nums tracking-tighter
       `}>
         {Math.round(validProgress)}{!isComplete && '%'}

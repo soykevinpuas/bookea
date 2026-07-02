@@ -5,7 +5,7 @@ import { Moon, Sun, Terminal, Anchor } from "lucide-react";
 import { useIsClient } from "@/hooks/useIsClient";
 
 // ============================================
-// 6.2 - ThemeToggle: Botón para alternar entre todos los temas disponibles
+// ThemeToggle: Botón para alternar entre todos los temas disponibles
 // Ciclo: Light -> Dark -> Retro -> Navy
 // ============================================
 
@@ -17,7 +17,7 @@ export function ThemeToggle() {
     return <div className="w-9 h-9" />;
   }
 
-  // 6.2.1 - Ciclo completo: Light -> Dark -> Retro -> Navy
+  // Ciclo completo: Light -> Dark -> Retro -> Navy
   const cycleTheme = () => {
     if (theme === "light") setTheme("dark");
     else if (theme === "dark") setTheme("retro");

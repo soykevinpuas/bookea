@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/server';
 
-// ============================================
-// 7.3 - Claim Free Book API: Endpoint para reclamar libros gratuitos
-// Permite a usuarios autenticados obtener acceso a libros con precio $0
-// ============================================
-
+// Permite reclamar libros no premium usando cliente admin, no escritura directa del cliente.
 export async function POST(request: NextRequest) {
   try {
-    // 7.3.1 - Verificar autenticación del usuario
     const supabase = await createClient();
     const adminDb = createAdminClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -17,7 +12,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado. Inicia sesión para reclamar este libro.' }, { status: 401 });
     }
 
-    // 7.3.2 - Extraer ID del libro del body
     const body = await request.json();
     const { bookId } = body;
 
@@ -25,7 +19,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Book ID requerido' }, { status: 400 });
     }
 
-    // 7.3.3 - Verificar que el libro existe y es gratuito (no premium)
+    // Solo libros no premium pueden reclamarse gratis.
     const { data: book, error: bookError } = await adminDb
       .from('books')
       .select('is_premium, price_digital')
@@ -38,7 +32,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Este libro es Premium y no puede reclamarse gratis.' }, { status: 403 });
     }
 
-    // 7.3.4 - Verificar si el usuario ya tiene acceso
     const { data: existingAccess } = await adminDb
       .from('user_books')
       .select('id')
@@ -50,8 +43,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ alreadyClaimed: true, message: 'Ya tienes acceso a este libro' }, { status: 200 });
     }
 
-    // 7.3.5 - Insertar acceso permanente al libro
-    // La constraint UNIQUE en la BD actúa como backup contra race conditions
+    // La constraint UNIQUE en DB actua como respaldo contra carreras.
     const { error: insertError } = await adminDb
       .from('user_books')
       .insert({
@@ -61,7 +53,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (insertError) {
-      // Código 23505 = unique_violation en PostgreSQL
+      // 23505 es unique_violation en PostgreSQL.
       if (insertError.code === '23505') {
         return NextResponse.json({ alreadyClaimed: true, message: 'Ya tienes acceso a este libro' }, { status: 200 });
       }

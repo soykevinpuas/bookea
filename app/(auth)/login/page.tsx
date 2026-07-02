@@ -7,6 +7,7 @@ import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { createClientClient } from '@/lib/supabase'
 import CoversBackground from '@/components/CoversBackground'
 
+// LoginForm: autentica al usuario y decide la pantalla inicial segun rol.
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -19,10 +20,12 @@ function LoginForm() {
     setIsLoading(true)
     setErrorMessage('')
 
+    // Los campos se leen desde el form para mantener el componente simple y sin estado duplicado.
     const form = e.currentTarget
     const email = (form.elements.namedItem('email') as HTMLInputElement).value
     const password = (form.elements.namedItem('password') as HTMLInputElement).value
 
+    // Supabase Auth valida credenciales; la UI traduce mensajes comunes al usuario.
     const supabase = createClientClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
@@ -38,12 +41,14 @@ function LoginForm() {
       return
     }
 
+    // Si otra ruta mando al login, respetamos ese destino antes del dashboard por rol.
     const redirectTo = searchParams.get('redirect')
     if (redirectTo) {
       router.push(redirectTo);
       return;
     }
 
+    // El rol vive en base de datos; define si entra a admin, vendedor o dashboard lector.
     const { data: roleData } = await supabase.rpc("get_my_role");
     const role = roleData as string;
 
@@ -58,6 +63,7 @@ function LoginForm() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 bg-gray-50/70 dark:bg-[#0a0a0a]/70 retro:bg-[#0d1117]/70 transition-colors duration-300 relative">
+      {/* Fondo visual reutilizable de portadas para mantener identidad de marca. */}
       <CoversBackground />
       <div className="w-full max-w-md p-8 bg-white/80 dark:bg-[#0a0a0a]/80 rounded-2xl shadow-lg border border-gray-100 dark:border-white/10 backdrop-blur-xl">
         <div className="text-center mb-8">
@@ -75,28 +81,28 @@ function LoginForm() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="email">
               Correo electrónico
             </label>
-            <input 
+            <input
               id="email"
-              name="email" 
-              type="email" 
-              placeholder="tu@correo.com" 
+              name="email"
+              type="email"
+              placeholder="tu@correo.com"
               className="w-full p-3 bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-              required 
+              required
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="password">
               Contraseña
             </label>
             <div className="relative">
-              <input 
+              <input
                 id="password"
-                name="password" 
-                type={showPassword ? "text" : "password"} 
-                placeholder="••••••••" 
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
                 className="w-full p-3 pr-12 bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                required 
+                required
               />
               <button
                 type="button"
@@ -107,14 +113,14 @@ function LoginForm() {
               </button>
             </div>
           </div>
-          
+
           {errorMessage && (
             <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400 font-medium text-center">
               {errorMessage}
             </div>
           )}
 
-          <button 
+          <button
             type="submit"
             disabled={isLoading}
             className="w-full mt-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium p-3 rounded-xl transition-all shadow-sm shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5 flex items-center justify-center gap-2"
@@ -128,7 +134,7 @@ function LoginForm() {
               "Iniciar sesión"
             )}
           </button>
-          
+
           <div className="text-center mt-3">
             <Link href="/reset-password" className="text-xs text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
               ¿Olvidaste tu contraseña?
@@ -152,6 +158,7 @@ function LoginForm() {
   )
 }
 
+// Suspense cubre useSearchParams, requerido por Next en rutas del App Router.
 export default function LoginPage() {
   return (
     <Suspense>

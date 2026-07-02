@@ -51,43 +51,43 @@ function RegisterContent() {
             </p>
           )}
         </div>
-        {/* 2.2.1 - Formulario conectado a la Subrutina Server Action 'register' externa */}
+        {/* Formulario conectado a la Subrutina Server Action 'register' externa */}
         <form action={register} onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* Hidden field for referral tracking */}
           {referrerId && (
             <input type="hidden" name="referrer_id" value={referrerId} />
           )}
-          {/* 2.2.2 - Campo de captura para el nuevo Email */}
+          {/* Campo de captura para el nuevo Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="email">
               Correo electrónico
             </label>
-            <input 
+            <input
               id="email"
-              name="email" 
-              type="email" 
-              placeholder="tu@correo.com" 
+              name="email"
+              type="email"
+              placeholder="tu@correo.com"
               className="w-full p-3 bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-              required 
+              required
             />
           </div>
-          
-          {/* 2.2.3 - Campo de registro de Contraseña */}
+
+          {/* Campo de registro de Contraseña */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="password">
               Contraseña
             </label>
             <div className="relative">
-              <input 
+              <input
                 id="password"
-                name="password" 
-                type={showPassword ? "text" : "password"} 
-                placeholder="••••••••" 
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
                 minLength={6}
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setClientError(''); }}
                 className="w-full p-3 pr-12 bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                required 
+                required
               />
               <button
                 type="button"
@@ -100,24 +100,24 @@ function RegisterContent() {
             <p className="text-xs text-gray-500 mt-2">Mínimo 6 caracteres</p>
           </div>
 
-          {/* 2.2.4 - Campo de confirmación de Contraseña */}
+          {/* Campo de confirmación de Contraseña */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="confirmPassword">
               Confirmar contraseña
             </label>
             <div className="relative">
-              <input 
+              <input
                 id="confirmPassword"
                 name="confirmPassword"
-                type={showConfirm ? "text" : "password"} 
-                placeholder="••••••••" 
+                type={showConfirm ? "text" : "password"}
+                placeholder="••••••••"
                 minLength={6}
                 value={confirmPassword}
                 onChange={(e) => { setConfirmPassword(e.target.value); setClientError(''); }}
                 className={`w-full p-3 pr-12 bg-gray-50 dark:bg-black/50 border rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${
                   error ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-white/10'
                 }`}
-                required 
+                required
               />
               <button
                 type="button"
@@ -131,8 +131,8 @@ function RegisterContent() {
               <p className="text-xs text-red-500 mt-2 font-medium">{error}</p>
             )}
           </div>
-          
-          <button 
+
+          <button
             type="submit"
             className="w-full mt-2 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-gray-900 font-medium p-3 rounded-xl transition-all shadow-sm hover:-translate-y-0.5 border border-transparent dark:border-gray-700"
           >

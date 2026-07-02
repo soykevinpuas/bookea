@@ -1,3 +1,4 @@
+// Inventario fisico activo asignado a un vendedor.
 export interface SellerInventory {
   id: string;
   seller_id: string;
@@ -7,6 +8,7 @@ export interface SellerInventory {
   books?: BookInventoryInfo | null;
 }
 
+// Datos minimos de libro embebidos en inventario, ventas y solicitudes.
 export interface BookInventoryInfo {
   id: string;
   title: string;
@@ -15,6 +17,7 @@ export interface BookInventoryInfo {
   price_physical: number;
 }
 
+// Venta reportada por vendedor y liquidable por admin.
 export interface SellerSale {
   id: string;
   seller_id: string;
@@ -26,6 +29,7 @@ export interface SellerSale {
   books?: BookInventoryInfo | null;
 }
 
+// Solicitud de reposicion de stock creada por vendedor.
 export interface StockRequest {
   id: string;
   seller_id: string;
@@ -38,6 +42,7 @@ export interface StockRequest {
   seller?: { id: string; email: string } | null;
 }
 
+// Linea de libro/cantidad dentro de una solicitud de stock.
 export interface StockRequestItem {
   id: string;
   request_id: string;
@@ -47,6 +52,7 @@ export interface StockRequestItem {
   books?: BookInventoryInfo | null;
 }
 
+// Resumen operativo de vendedor para vistas admin.
 export interface AdminSellerInfo {
   id: string;
   email: string;

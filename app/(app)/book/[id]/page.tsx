@@ -1,7 +1,7 @@
 "use client";
 
 // ============================================
-// 3.5 - BookDetailPage: Página de detalle del libro con información, compra y acceso al lector
+// BookDetailPage: Página de detalle del libro con información, compra y acceso al lector
 // ============================================
 
 import { useBook, useUserBooks } from "@/hooks/useBooks";
@@ -40,28 +40,28 @@ function DescriptionText({ text }: { text: string }) {
   );
 }
 
-// 3.5.1 - Componente principal de la página de detalle
+// Componente principal de la página de detalle
 function BookDetailContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = params.id as string;
-  
-  // 3.5.2 - Obtención del ID del usuario autenticado
+
+  // Obtención del ID del usuario autenticado
   const { userId } = useUserId();
-  
-  // 3.5.3 - Estado local para manejar estados de carga en operaciones asíncronas
-  // 3.5.5 - Consulta del libro por ID y verificación de acceso del usuario
+
+  // Estado local para manejar estados de carga en operaciones asíncronas
+  // Consulta del libro por ID y verificación de acceso del usuario
   const { data: book, isLoading, error } = useBook(id);
   const { data: userBooks, refetch } = useUserBooks(userId);
   const queryClient = useQueryClient();
 
-  // 3.5.5.1 - Obtención del estado de suscripción del usuario
+  // Obtención del estado de suscripción del usuario
   const { data: subscription } = useSubscription(userId);
   const addCartItem = useCartStore((s) => s.addItem);
   const cartItems = useCartStore((s) => s.items);
   const setCartOpen = useCartStore((s) => s.setOpen);
-  // 3.5.6 - Determinación del tipo de acceso
+  // Determinación del tipo de acceso
   const isPremiumBook = book?.is_premium !== false;
   const hasPremiumAccess = subscription?.isActive || subscription?.role === 'admin';
   const ownedBook = userBooks?.find((b: any) => b.id.toLowerCase() === id.toLowerCase());
@@ -78,7 +78,7 @@ function BookDetailContent() {
     && subscription?.role !== 'admin';
   const digitalInCart = cartItems.some((item) => item.book_id === id && item.type === 'digital');
 
-  // 3.5.4 - Efecto para detectar retorno de pago exitoso desde Stripe
+  // Efecto para detectar retorno de pago exitoso desde Stripe
   useEffect(() => {
     if (searchParams.get('payment') === 'success') {
       toast.success("¡Pago completado con éxito! El libro se está añadiendo a tu biblioteca.");
@@ -109,7 +109,7 @@ function BookDetailContent() {
     });
   }, [authorOpen, book?.author_id, book?.id]);
 
-  // 3.5.6.1 - Estado para descarga offline y biblioteca
+  // Estado para descarga offline y biblioteca
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [addingToLib, setAddingToLib] = useState(false);
@@ -144,13 +144,13 @@ function BookDetailContent() {
     }
   };
 
-  // 3.5.8.1 - Handler para descarga offline
+  // Handler para descarga offline
   const handleDownload = async () => {
     if (!book?.epub_url) {
       toast.error("El libro no tiene un archivo digital disponible");
       return;
     }
-    
+
     setIsDownloading(true);
     try {
       const success = await downloadBook(book);
@@ -240,12 +240,12 @@ function BookDetailContent() {
   }
 
   // ============================================
-  // 3.5.10 - Renderizado del layout principal
+  // Renderizado del layout principal
   // ============================================
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] retro:bg-[#0d1117] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* 3.5.10.1 - Enlace de navegación de retorno al catálogo */}
+        {/* Enlace de navegación de retorno al catálogo */}
         <Link
           href="/catalog"
           className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors"
@@ -253,10 +253,10 @@ function BookDetailContent() {
           ← Volver al catálogo
         </Link>
 
-        {/* 3.5.10.2 - Contenedor principal con información del libro */}
+        {/* Contenedor principal con información del libro */}
         <div className="bg-white dark:bg-white/5 rounded-2xl shadow-sm border border-gray-100 dark:border-white/10 overflow-hidden transition-colors">
           <div className="md:flex">
-            {/* 3.5.10.2.1 - Sección de portada del libro */}
+            {/* Sección de portada del libro */}
             <div className="md:w-1/3 lg:w-1/4">
               <div className="aspect-[2/3] bg-gray-100 dark:bg-black m-4 md:m-6 rounded-xl overflow-hidden shadow-sm relative group">
                 {book.cover_url ? (
@@ -275,7 +275,7 @@ function BookDetailContent() {
               </div>
             </div>
 
-            {/* 3.5.10.2.2 - Sección de información y opciones de compra */}
+            {/* Sección de información y opciones de compra */}
             <div className="md:w-2/3 lg:w-3/4 p-6 md:p-8">
               {/* Etiqueta de categoría del libro */}
               {book.category && (
@@ -283,7 +283,7 @@ function BookDetailContent() {
                   {book.category}
                 </span>
               )}
-              
+
               {/* Título y autor del libro */}
               <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white mb-2 tracking-tight">
                 {book.title}
@@ -298,9 +298,9 @@ function BookDetailContent() {
                 <DescriptionText text={book.description || "No hay descripción disponible."} />
               </div>
 
-              {/* 3.5.10.2.3 - Opciones de compra y acceso */}
+              {/* Opciones de compra y acceso */}
               <div className="space-y-4 max-w-xl">
-                {/* 3.5.10.2.3.1 - Estado: Usuario tiene acceso al libro */}
+                {/* Estado: Usuario tiene acceso al libro */}
                 {canRead && book.epub_url && (
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-xl gap-4">
@@ -336,8 +336,8 @@ function BookDetailContent() {
                       onClick={handleDownload}
                       disabled={isDownloading || isDownloaded}
                       className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl border transition-all ${
-                        isDownloaded 
-                        ? 'bg-blue-500/5 border-blue-500/20 text-blue-500 cursor-default' 
+                        isDownloaded
+                        ? 'bg-blue-500/5 border-blue-500/20 text-blue-500 cursor-default'
                         : 'border-white/10 hover:bg-white/5 text-gray-400 font-bold'
                       }`}
                     >
@@ -351,14 +351,14 @@ function BookDetailContent() {
                       {isDownloading ? 'Descargando...' : isDownloaded ? 'Disponible Offline' : 'Descargar Offline'}
                     </button>
 
-                    {/* 3.5.10.2.3.1.2 - Botón de Biblioteca (Toggle) */}
+                    {/* Botón de Biblioteca (Toggle) */}
                     {( isCurrentlyInLibrary || (!isPremiumBook || hasPremiumAccess) ) && (
                       <button
                         onClick={isCurrentlyInLibrary ? handleRemoveFromLibrary : handleAddToLibrary}
                         disabled={addingToLib}
                         className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl font-black transition-all border shadow-lg relative overflow-hidden ${
-                          isCurrentlyInLibrary 
-                          ? "bg-white dark:bg-[#1a1a1a] border-amber-500/50 text-amber-500 hover:bg-amber-500/5 shadow-amber-500/10" 
+                          isCurrentlyInLibrary
+                          ? "bg-white dark:bg-[#1a1a1a] border-amber-500/50 text-amber-500 hover:bg-amber-500/5 shadow-amber-500/10"
                           : (hasPremiumAccess
                             ? "bg-amber-500 border-amber-600 text-white hover:bg-amber-600 shadow-amber-500/20"
                             : "bg-white dark:bg-white/5 border-white/10 hover:border-blue-500/40 text-gray-900 dark:text-white")
@@ -369,13 +369,13 @@ function BookDetailContent() {
                             <Loader2 className="w-6 h-6 animate-spin text-current" />
                           </div>
                         )}
-                        
+
                         {!addingToLib && (isCurrentlyInLibrary ? (
                           <BookmarkCheck className="w-6 h-6" />
                         ) : (
                           <BookmarkPlus className="w-6 h-6" />
                         ))}
-                        
+
                         <span className={addingToLib ? "opacity-0" : "opacity-100"}>
                           {isCurrentlyInLibrary ? 'En tu Biblioteca (Quitar)' : 'Añadir a mi Biblioteca'}
                         </span>
@@ -384,7 +384,7 @@ function BookDetailContent() {
                   </div>
                 )}
 
-                {/* 3.5.10.2.3.2 - Estado: Usuario NO tiene acceso Premium (y no es admin) */}
+                {/* Estado: Usuario NO tiene acceso Premium (y no es admin) */}
                 {!hasPremiumAccess && !canRead && (
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 rounded-2xl gap-4 group">
@@ -402,7 +402,7 @@ function BookDetailContent() {
                           <p className="text-xs text-white/40 mt-1">Acceso ilimitado a todos los libros</p>
                         </div>
                       </div>
-                      
+
 	                      <Link
 	                        href="/subscribe"
 	                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
@@ -448,7 +448,7 @@ function BookDetailContent() {
 	                  </div>
 	                )}
 
-                {/* 3.5.10.2.3.3 - Estado: Libro físico disponible en inventario */}
+                {/* Estado: Libro físico disponible en inventario */}
                 {subscription?.role !== 'vendedor' && book.stock_physical > 0 && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-white/5 rounded-xl gap-4">
                     <div>
@@ -526,7 +526,7 @@ function BookDetailContent() {
           </div>
         )}
 
-        {/* 3.5.11 - Sección de Comunidad y Reseñas */}
+        {/* Sección de Comunidad y Reseñas */}
         <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Lado izquierdo: Formulario de reseña */}
           <div className="lg:col-span-1 space-y-6">
@@ -538,7 +538,7 @@ function BookDetailContent() {
                  </h2>
               </div>
               <ReviewForm bookId={id} />
-              
+
               <div className="mt-8 p-6 bg-gradient-to-br from-yellow-500/5 to-transparent border border-yellow-500/10 rounded-2xl">
                  <div className="flex items-center gap-2 mb-2">
                     <Star className="w-4 h-4 text-yellow-500 fill-current" />
@@ -563,7 +563,7 @@ function BookDetailContent() {
                    </h2>
                 </div>
              </div>
-             
+
               <ReviewList bookId={id} />
            </div>
          </div>

@@ -1,66 +1,111 @@
-# 📘 Proyecto Bookea: Plataforma SaaS de Lectura Premium
+# Proyecto Bookea - Mapa Maestro
 
-## 1. Visión General
-**Bookea**  es una solución SaaS (Software as a Service) de vanguardia diseñada para ofrecer una experiencia de lectura digital de alta fidelidad. Combina la elegancia del diseño editorial clásico con herramientas modernas de Inteligencia Artificial y una arquitectura técnica escalable. 
+Este documento describe el estado real del codigo al 2026-07-01. Si contradice al codigo, actualiza este documento en la misma tarea.
 
-### Propuesta de Valor
-- **Lectura sin Distracciones:** Interfaz minimalista y personalizable.
-- **Aprendizaje Aumentado:** Integración con IA para tutoría contextual y definiciones.
-- **Ubicuidad:** Experiencia PWA (Progressive Web App) fluida en cualquier dispositivo.
-- **Ecosistema SaaS:** Gestión completa de suscripciones y acceso por niveles.
+## 1. Vision
 
----
+Bookea es una app SaaS de lectura y venta de libros para Mexico. Combina catalogo digital, lector EPUB, compras con Stripe, PWA offline, gamificacion y operacion de inventario fisico con admins y vendedores.
 
-## 2. Stack Tecnológico (Core)
+## 2. Superficies de Usuario
 
-| Capa | Tecnología | Razón de Elección |
-| :--- | :--- | :--- |
-| **Framework** | Next.js 15 (App Router) | Rendimiento, SEO y Server Components. |
-| **Lenguaje** | TypeScript | Tipado estricto para un mantenimiento robusto. |
-| **Base de Datos** | Supabase (PostgreSQL) | Escalabilidad, Row Level Security (RLS) y Realtime. |
-| **Estilos** | Tailwind CSS 4 | Diseño atómico y sistema de temas ultrarrápido. |
-| **IA** | Gemini 1.5 Flash | Procesamiento de lenguaje natural de baja latencia. |
-| **Pagos (Fase 2)** | Stripe Billing | Estándar de la industria para cobros recurrentes (Integración preparada). |
+| Superficie | Ruta | Estado |
+| --- | --- | --- |
+| Landing | `app/page.tsx` + `components/LandingHero.tsx` | Implementada con portadas y libro 3D. |
+| Auth | `app/(auth)` y `app/auth/*` | Login, registro, reset, update y confirmacion. |
+| Catalogo | `app/(app)/catalog/page.tsx` | Grid/lista, filtros, carrito y acceso a detalle. |
+| Detalle de libro | `app/(app)/book/[id]/page.tsx` | Compra digital/fisica, reviews, acceso y canjes. |
+| Lector | `app/(app)/reader/[id]/page.tsx` | EPUB, temas, progreso, notas, highlights y bookmarks. |
+| Dashboard | `app/(app)/dashboard/page.tsx` | Biblioteca, pago post-Stripe y lectura reciente. |
+| Perfil | `app/(app)/profile/page.tsx` | Avatar, facturacion, biblioteca, ordenes, progreso, referidos y seguridad. |
+| Suscripcion | `app/(app)/subscribe/page.tsx` | Checkout de suscripcion mensual. |
+| Admin | `app/admin/*` | Metricas, libros, usuarios, ordenes, stock, vendedores y pagos. |
+| Vendedor | `app/vendedor/*` | Stock asignado, ventas, ingresos y solicitudes. |
+| Legal | `app/(legal)/*` | Terminos y aviso de privacidad. |
 
----
+## 3. Backend en App Router
 
-## 3. Funcionalidades Destacadas
+| Ruta | Responsabilidad |
+| --- | --- |
+| `app/api/stripe/checkout/route.ts` | Crea sesiones de checkout desde precios de DB/env. |
+| `app/api/stripe/webhook/route.ts` | Procesa pagos y suscripciones de forma idempotente. |
+| `app/api/stripe/portal/route.ts` | Crea portal de facturacion. |
+| `app/api/cart/*` | Lee, modifica y paga carrito. |
+| `app/api/books/claim-free/route.ts` | Reclama libros gratuitos usando cliente admin. |
+| `app/api/books/[id]/quiz/route.ts` | Genera quiz de finalizacion. |
+| `app/api/dictionary/route.ts` | Define palabras con Wiktionary/Gemini fallback. |
+| `app/api/streak/route.ts` | Actualiza rachas. |
+| `app/api/admin/*` | Datos y cambios de rol admin. |
+| `app/api/vendedor/*` | Dashboard y libros solicitables para vendedor. |
+| `app/api/analytics/track/route.ts` | Registro de eventos. |
+| `app/api/account/delete/route.ts` | Eliminacion de cuenta. |
 
-### 📖 El Lector Inteligente
-Módulo central construido sobre `epubjs`, optimizado para una lectura inmersiva:
-- **Modos de Visualización:** Soporte para modo continuo (scrolled) y paginado.
-- **Personalización Dinámica:** Ajuste de tamaño de fuente, interlineado y margen en tiempo real.
-- **Tipografía de Grado Editorial:** Libre Baskerville, Lora, Nunito y OpenDyslexic.
-- **Validación de Contraste:** Algoritmos que aseguran legibilidad según el estándar WCAG.
+## 4. Modulos de Negocio
 
-### 🎨 Motor de Tematización Cuádruple
-Bookea ofrece una experiencia visual única con 4 identidades distintas:
-1. **Día (Light):** Paleta gris suave para reducir la fatiga ocular.
-2. **Noche (Dark):** Modo oscuro profundo para lectura nocturna.
-3. **Terminal (Retro):** Estética neón retro-futurista (verde/negro).
-4. **Ancla (Navy):** Diseño profesional en azul marino profundo.
+| Modulo | Archivo | Notas |
+| --- | --- | --- |
+| Supabase SSR/admin | `lib/server.ts` | Cliente SSR con cookies y cliente service-role. |
+| Supabase cliente | `lib/supabase.ts` | Singleton browser para Auth/Realtime. |
+| Libros/acceso | `lib/books.ts` | Catalogo, biblioteca, acceso premium/free/canje. |
+| Stripe | `lib/stripe.ts` | Cliente lazy, checkout y portal. |
+| Verificacion post-pago | `lib/actions/subscriptions.ts` | Fallback idempotente cuando el webhook aun no corrio. |
+| Vendedores | `lib/sellers.ts` y `lib/actions/sellers.ts` | Stock, ventas, solicitudes y pagos pendientes. |
+| Rachas/monedas | `lib/streaks.ts`, `lib/actions/coins.ts` | Sesiones de lectura, monedas, canjes y anti-abuso. |
+| Offline | `lib/downloads.ts`, `lib/sync.ts` | Cache local y sincronizacion. |
+| Highlights/bookmarks | `lib/highlights.ts`, `lib/bookmarks.ts` | Datos online y fallback local. |
+| Reviews | `lib/reviews.ts` | Reviews con perfil publico. |
+| Perfil | `lib/profiles.ts`, `lib/actions/profile.ts` | Avatar, nombre y resumen consolidado. |
 
-### 🤖 IA Companion
-- **Tutor Contextual:** Capacidad de preguntar a la IA sobre fragmentos específicos del texto.
-- **Diccionario Inteligente:** Definiciones inmediatas y contextuales integradas en el flujo de lectura.
+## 5. Datos y Seguridad
 
-### 🛒 E-commerce y Fidelización (Próxima Implementación)
-La infraestructura de datos está preparada para soportar el módulo de comercio electrónico:
-- **`public.orders_physical`:** Registro de pedidos de libros físicos.
-- **`public.discounts`:** Gestión de ofertas y cupones.
-- **`public.wishlist`:** Lista de deseos personal.
+La fuente de verdad de base de datos son las migraciones en `supabase/migrations`.
 
-### 💳 Gestión SaaS & PWA
-- **Stripe Checkout:** Flujo de compra de libros físicos y digitales.
-- **Billing Portal:** Autogestión de suscripciones para el usuario.
-- **Instalación Nativa:** Funciona como una app de escritorio o móvil mediante PWA.
+Puntos actuales importantes:
 
----
+- `users.role` acepta `free`, `subscriber`, `admin`, `vendedor`.
+- `users.assigned_admin_id` conecta vendedores con su admin.
+- `admin_stock` reparte stock por admin y sincroniza `books.stock_physical`.
+- `seller_inventory`, `seller_sales`, `stock_requests`, `stock_request_items` soportan el flujo vendedor.
+- `webhook_events` guarda idempotencia de Stripe.
+- `orders_physical` incluye `quantity` y `stock_decremented_at`.
+- `user_books` quedo endurecida: el cliente solo lee, no concede accesos.
 
-## 4. Diferenciadores Técnicos
-- **Seguridad por Niveles:** Middleware que protege el contenido según el plan del usuario (Free vs. Premium).
-- **Safe Area Design:** Optimización específica para teléfonos con "Notch" y barras de gestos.
-- **Arquitectura de Webhooks:** Sincronización robusta en tiempo real con proveedores externos (Stripe).
+## 6. Pagos
 
----
-*Este documento es una guía viva del estado actual de Bookea y se actualiza con cada hito de desarrollo.*
+Flujos:
+
+1. Suscripcion: UI llama `/api/stripe/checkout` con `type: "subscription"` y Price ID desde env.
+2. Compra individual: checkout lee precio desde `books` y manda metadata a Stripe.
+3. Carrito: checkout empaqueta items y shipping en metadata.
+4. Webhook: concede acceso digital, crea orden fisica y descuenta stock en RPC transaccional.
+5. Dashboard: `verifySubscriptionAction` confirma pago como fallback si el webhook tarda.
+
+Regla critica: el cliente nunca decide el precio final ni concede acceso.
+
+## 7. PWA y Offline
+
+- `app/layout.tsx` declara `manifest: "/manifest.json"`.
+- `public/manifest.json` define app standalone.
+- `public/sw.js` precachea iconos/home, cachea EPUBs con Cache First y portadas Supabase con Network First.
+- El lector y la biblioteca usan caches locales para progreso, metadata, highlights y bookmarks.
+
+## 8. UI y Temas
+
+Temas activos: `light`, `dark`, `retro`, `navy`.
+
+Providers principales:
+
+- `ThemeProvider`
+- `QueryProvider`
+- `AuthProvider`
+- `ReaderColorSync`
+- `PwaListener`
+- `SplashScreen`
+- `BottomNavWrapper`
+- `PanelManager`
+
+## 9. Riesgos Tecnicos
+
+- `app/(app)/reader/[id]/page.tsx`, `app/admin/page.tsx` y `app/vendedor/page.tsx` son archivos grandes y sensibles.
+- ESLint reporta warnings de `any` y `<img>`, pero no errores.
+- No hay pruebas automatizadas instaladas.
+- Parte de la documentacion historica anterior mezclaba features futuras con estado implementado; este archivo debe mantenerse como mapa verificado.

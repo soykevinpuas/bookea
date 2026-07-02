@@ -1,5 +1,5 @@
 /**
- * 6.9 - Avatares V2: Utilidades para el manejo de avatars dinámicos
+ * Avatares V2: Utilidades para el manejo de avatars dinámicos
  */
 
 import { AvatarStyleType, AVATAR_COLORS, AvatarConfig } from "@/components/avatars/AnimalEngine";
@@ -22,11 +22,11 @@ export function parseAvatarConfig(configStr: string | null | undefined): AvatarC
 
   const parts = configStr.split(":");
   if (parts.length < 3) return { ...DEFAULT_AVATAR };
-  
+
   // Validar que el tipo sea un estilo válido
   const validStyles: AvatarStyleType[] = ["avataaars", "bottts", "lorelei"];
   const type = validStyles.includes(parts[1] as AvatarStyleType) ? parts[1] as AvatarStyleType : "avataaars";
-    
+
   return {
     type,
     color: parts[2] || AVATAR_COLORS[0],

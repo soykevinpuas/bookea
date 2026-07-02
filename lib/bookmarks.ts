@@ -3,20 +3,27 @@ import { Bookmark } from "@/types/bookmark";
 
 const BOOKMARKS_KEY = "bookea-offline-bookmarks";
 
+// Scope por usuario para evitar que marcadores de cuentas distintas se mezclen.
 function getScopedBookKey(bookId: string, userId?: string | null): string {
   return userId ? `${userId}:${bookId}` : bookId;
 }
 
+// Genera ids validos tambien cuando el marcador nace offline.
 function generateId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID()
   }
-  // Fallback to valid UUID v4 format
-  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c: any) =>
-    (c ^ (crypto?.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
-  );
+  // Fallback con formato UUID v4 valido si crypto.randomUUID no existe.
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => {
+    const numericValue = Number(c);
+    const randomByte = typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function"
+      ? crypto.getRandomValues(new Uint8Array(1))[0]
+      : Math.floor(Math.random() * 256);
+    return (numericValue ^ (randomByte & (15 >> (numericValue / 4)))).toString(16);
+  });
 }
 
+// Lee marcadores locales y soporta claves legacy previas al scope por usuario.
 export function getLocalBookmarks(bookId: string, userId?: string | null): Bookmark[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -32,6 +39,7 @@ export function getLocalBookmarks(bookId: string, userId?: string | null): Bookm
   }
 }
 
+// Guarda o reemplaza un marcador local y lo deja pendiente de sincronizacion.
 export function saveLocalBookmark(bookId: string, bookmark: Bookmark) {
   if (typeof window === 'undefined') return;
   try {
@@ -51,6 +59,7 @@ export function saveLocalBookmark(bookId: string, bookmark: Bookmark) {
   }
 }
 
+// Borra un marcador del cache local usado por el lector offline.
 export function removeLocalBookmark(bookId: string, bookmarkId: string, userId?: string | null) {
   if (typeof window === 'undefined') return;
   try {
@@ -65,6 +74,7 @@ export function removeLocalBookmark(bookId: string, bookmarkId: string, userId?:
   } catch {}
 }
 
+// Fusiona marcadores remotos con locales no sincronizados, evitando duplicados por id/CFI.
 export async function getBookmarks(
   bookId: string,
   userId: string
@@ -105,6 +115,7 @@ export async function getBookmarks(
   }
 }
 
+// Crea un marcador offline-first y reemplaza el temporal con el registro remoto.
 export async function saveBookmark(
   bookId: string,
   userId: string,
@@ -165,6 +176,7 @@ export async function saveBookmark(
   }
 }
 
+// Elimina un marcador localmente y luego intenta eliminarlo en Supabase.
 export async function deleteBookmark(bookmarkId: string, bookId: string): Promise<boolean> {
   if (typeof window !== 'undefined') {
     const raw = localStorage.getItem(BOOKMARKS_KEY);

@@ -451,7 +451,7 @@ export default function ProfilePage() {
                     className="w-full p-2.5 text-sm bg-white dark:bg-black/50 border border-gray-300 dark:border-white/20 rounded-lg text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50"
                     id="new-password-input"
                   />
-                  <button 
+                  <button
                     onClick={async () => {
                       const input = document.getElementById("new-password-input") as HTMLInputElement;
                       const newPassword = input.value;

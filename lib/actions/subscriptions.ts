@@ -6,6 +6,7 @@ import { getStripeClient } from '@/lib/stripe'
 import { revalidatePath } from 'next/cache'
 import { addToLibrary } from '@/lib/books'
 
+// Contratos internos para verificar pagos despues del redirect de Stripe.
 type SupabaseAdminClient = ReturnType<typeof createAdminClient>
 type UserRole = 'free' | 'subscriber' | 'admin' | 'vendedor'
 type PurchaseType = 'digital_permanent' | 'physical' | 'bundle' | 'subscription'
@@ -47,6 +48,7 @@ type PaymentVerificationResult =
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const PRIVILEGED_ROLES: ReadonlySet<UserRole> = new Set(['admin', 'vendedor'])
 
+// Helpers de parsing defensivo: Stripe metadata llega como strings no confiables.
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -197,6 +199,7 @@ function normalizeUserSubscriptionRow(value: unknown): UserSubscriptionRow {
   }
 }
 
+// Lee rol y fin de suscripcion usando service-role para evitar falsos negativos por RLS.
 async function getUserSubscriptionRow(
   supabase: SupabaseAdminClient,
   userId: string
@@ -211,6 +214,7 @@ async function getUserSubscriptionRow(
   return normalizeUserSubscriptionRow(data)
 }
 
+// Activa o extiende suscripcion sin degradar roles privilegiados.
 async function setSubscriptionActive(
   supabase: SupabaseAdminClient,
   userId: string,
@@ -236,6 +240,7 @@ async function setSubscriptionActive(
   assertNoSupabaseError(error, 'Error actualizando suscripcion despues de pago')
 }
 
+// Concede acceso permanente a un libro desde un flujo de pago verificado.
 async function grantPermanentBookAccess(
   supabase: SupabaseAdminClient,
   userId: string,
@@ -247,6 +252,7 @@ async function grantPermanentBookAccess(
   }
 }
 
+// Lee precio fisico/bundle desde DB y usa fallback solo si el campo esta vacio.
 async function getPhysicalBookPrice(
   supabase: SupabaseAdminClient,
   bookId: string,
@@ -271,6 +277,7 @@ async function getPhysicalBookPrice(
   return priceColumn === 'price_bundle' ? 319 : 299
 }
 
+// Normaliza la respuesta de la RPC transaccional de orden fisica.
 function assertPhysicalOrderFulfilled(value: unknown): void {
   if (!isRecord(value) || value.success !== true) {
     const message = isRecord(value) && typeof value.error === 'string'
@@ -280,6 +287,7 @@ function assertPhysicalOrderFulfilled(value: unknown): void {
   }
 }
 
+// Crea orden fisica y descuenta stock dentro de Supabase.
 async function fulfillPhysicalOrder(
   supabase: SupabaseAdminClient,
   input: {
@@ -310,6 +318,7 @@ async function fulfillPhysicalOrder(
   assertPhysicalOrderFulfilled(data)
 }
 
+// Limpia items ya pagados para que el carrito no vuelva a cobrarlos.
 async function removeProcessedCartItems(
   supabase: SupabaseAdminClient,
   cartItemIds: string[]
@@ -324,6 +333,7 @@ async function removeProcessedCartItems(
   assertNoSupabaseError(error, 'Error limpiando carrito despues del pago')
 }
 
+// Devuelve nombres legibles para mostrar confirmacion al usuario.
 async function getItemNames(
   supabase: SupabaseAdminClient,
   items: CartPurchaseItem[]
@@ -355,6 +365,7 @@ async function getItemNames(
   })
 }
 
+// Verifica una sesion de suscripcion y activa el rol si Stripe ya marco pago.
 async function handleVerifiedSubscription(
   supabase: SupabaseAdminClient,
   stripe: Stripe,
@@ -388,6 +399,7 @@ async function handleVerifiedSubscription(
   return { success: true, type: 'subscription' }
 }
 
+// Procesa pago de carrito: digitales conceden acceso, fisicos crean orden.
 async function handleVerifiedCartPayment(
   supabase: SupabaseAdminClient,
   session: Stripe.Checkout.Session,
@@ -427,6 +439,7 @@ async function handleVerifiedCartPayment(
   return { success: true, type: 'payment', items: itemNames }
 }
 
+// Procesa checkout legacy de un solo libro.
 async function handleVerifiedSingleBookPayment(
   supabase: SupabaseAdminClient,
   session: Stripe.Checkout.Session,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * 7.2 - Analytics Track API: Recibe eventos y los guarda en Supabase
+ * Analytics Track API: Recibe eventos y los guarda en Supabase
  */
 export async function POST(request: NextRequest) {
   try {
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * 7.2.1 - GET: Métricas para admins (opcional)
+ * GET: Métricas para admins (opcional)
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

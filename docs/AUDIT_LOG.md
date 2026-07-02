@@ -10,15 +10,39 @@ Este documento registra todas las auditorías de código realizadas en el proyec
 | 2026-04-08 | Project Rules & Docs | 1 | Flash | Fast | Antigravity | ✅ OK | Inicialización del protocolo de auditoría. |
 | 2026-04-08 | Supabase Schema (001) | 2 | Pro | Plan | Antigravity | 🛡️ Analítico | Revisión base de RLS. Pendiente de reporte detallado. |
 | 2026-05-07 | Migraciones 001-013 + Server Actions | 2 | Flash | Plan | AI Agent | ⚠️ Hallazgos | Ver reporte detallado abajo. 8 hallazgos (3 críticos, 3 altos, 2 medios). |
+| 2026-07-01 | Docs + estructura + comentarios | 1 | GPT-5 Codex | Default | Codex | ⚠️ Deuda documentada | Docs reconciliadas con codigo. Lint: 0 errores, 247 warnings. TypeScript/build: 0 errores. |
 
 ---
 
 ## Reportes de Auditoría Detallados
 
+### [2026-07-01] - Auditoría de Coherencia Documental y Comentarios
+**Módulo:** Documentación raíz, docs técnicas y módulos críticos.
+**Estado:** ⚠️ OK operativo con deuda técnica documentada.
+
+#### Resultado de verificación
+- `npm run lint`: pasa con 0 errores y 247 warnings.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+#### Hallazgos
+- La documentación anterior decía Next 15, pero el proyecto usa Next 16.1.6.
+- La documentación mezclaba features futuras con módulos ya implementados: vendedor, stock por admin, carrito, canjes, PWA y webhook Stripe endurecido.
+- `test.md` describía scripts y dependencias de test que no existen en `package.json`.
+- Varias reglas de comentarios usaban numeración jerárquica rígida que no estaba aplicada de forma consistente.
+- ESLint conserva deuda amplia de `@typescript-eslint/no-explicit-any` y recomendaciones de `next/image`.
+
+#### Decisión
+- Se reescribieron docs como inventario vivo del código.
+- Se añadió `AGENTS.md` como guía corta para próximos agentes.
+- Se mantuvo la deuda de typing/UI como advertencia, sin refactor masivo en esta pasada.
+
+---
+
 ### [2026-04-08] - Auditoría de Cimentación de Seguridad
-**Módulo:** `supabase/migrations/001_initial_schema.sql`  
-**Estado:** 🛡️ SEGURO (Básico)  
-**Hallazgos:**  
+**Módulo:** `supabase/migrations/001_initial_schema.sql`
+**Estado:** 🛡️ SEGURO (Básico)
+**Hallazgos:**
 - Las tablas principales tienen RLS habilitado.
 - Las políticas de `users` y `profiles` correctamente vinculadas a `auth.uid()`.
 - **Recomendación:** Monitorear el crecimiento de políticas RLS para evitar recursividad en tablas de `reviews` y `comments`.
@@ -26,8 +50,8 @@ Este documento registra todas las auditorías de código realizadas en el proyec
 ---
 
 ### [2026-05-07] - Auditoría de RLS y Seguridad (Completa)
-**Módulo:** Migraciones 001-013 + `lib/books.ts` + `lib/actions/coins.ts`  
-**Estado:** ⚠️ REQUIERE CORRECCIÓN INMEDIATA  
+**Módulo:** Migraciones 001-013 + `lib/books.ts` + `lib/actions/coins.ts`
+**Estado:** ⚠️ REQUIERE CORRECCIÓN INMEDIATA
 
 #### 🔴 Crítico: Políticas "System can..." exponen tablas de gamificación
 5 tablas en `013_coins_gamification.sql` tienen políticas `FOR ALL USING (true)` o `FOR INSERT WITH CHECK (true)` que permiten manipulación directa desde el cliente, bypassando la lógica de negocio de las RPCs SECURITY DEFINER:

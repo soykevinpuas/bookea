@@ -89,31 +89,31 @@ export default function SubscribePage() {
 
   return (
     <div className="min-h-screen bg-[#070708] text-white selection:bg-amber-500/30 overflow-hidden relative font-sans">
-      {/* 6.2.1 - Fondo Dinámico con Gradientes Premium */}
+      {/* Fondo Dinámico con Gradientes Premium */}
       <div className="absolute top-0 inset-x-0 h-[800px] bg-gradient-to-b from-amber-600/5 to-transparent pointer-events-none -z-10"></div>
       <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-amber-600/10 blur-[120px] rounded-full pointer-events-none"></div>
-      
+
       <main className="max-w-6xl mx-auto px-6 py-16 sm:py-24 relative z-10">
         <div className="flex flex-col items-center text-center mb-16 sm:mb-24">
           <div className="animate-fade-in-up inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-bold mb-8 uppercase tracking-widest backdrop-blur-md">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Membresía Premium</span>
           </div>
-          
+
           <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-8 leading-[1.1]">
             La mejor forma de <br className="hidden sm:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200">
               devorar historias
             </span>
           </h1>
-          
+
           <p className="text-lg sm:text-xl text-white/50 max-w-2xl mx-auto leading-relaxed">
             Únete a la comunidad de lectores más apasionados y rompe los límites de tu biblioteca digital.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          {/* 6.2.2 - Listado de Beneficios (Izquierda) */}
+          {/* Listado de Beneficios (Izquierda) */}
           <div className="lg:col-span-5 order-2 lg:order-1">
             <h2 className="text-2xl font-bold mb-8 text-white/90">Todo lo que incluye:</h2>
             <ul className="space-y-6">
@@ -128,19 +128,19 @@ export default function SubscribePage() {
             </ul>
           </div>
 
-          {/* 6.2.3 - Tarjeta de Checkout (Derecha) */}
+          {/* Tarjeta de Checkout (Derecha) */}
           <div className="lg:col-span-7 order-1 lg:order-2">
             <div className="relative group">
               {/* Glow exterior */}
               <div className="absolute -inset-1 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 rounded-[2.5rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
-              
+
               <div className="relative bg-[#111113] border border-white/10 rounded-[2.5rem] p-8 sm:p-12 shadow-2xl flex flex-col md:flex-row gap-12 sm:gap-16">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 text-amber-500 font-bold text-sm uppercase tracking-widest mb-4">
                     <Zap className="w-4 h-4 fill-current" />
                     Membresía Mensual
                   </div>
-                  
+
                   <div className="flex items-baseline gap-2 mb-8">
                     <span className="text-7xl font-black text-white">$99</span>
                     <span className="text-2xl text-white/40 font-medium">MXN</span>
@@ -185,10 +185,10 @@ export default function SubscribePage() {
           </div>
         </div>
 
-        {/* 6.2.4 - Footer Alternativo (Pago Manual) */}
+        {/* Footer Alternativo (Pago Manual) */}
         <div className="mt-32 text-center">
           <p className="text-white/30 text-sm mb-6">¿No tienes tarjeta? Ofrecemos métodos de pago manuales.</p>
-          <button 
+          <button
             onClick={handleWhatsApp}
             className="inline-flex items-center gap-2 text-white/60 hover:text-white font-bold text-sm border border-white/10 hover:border-amber-500/30 px-6 py-2.5 rounded-full transition-all hover:bg-amber-500/5"
           >

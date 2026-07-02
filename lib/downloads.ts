@@ -4,14 +4,14 @@ import { Book } from "@/types/book";
 export const BOOKS_CACHE = 'bookea-books-v3';
 const METADATA_KEY = 'bookea-offline-metadata';
 
-/** 
- * 8.0 - Guardar metadatos del libro para acceso offline
+/**
+ * Guardar metadatos del libro para acceso offline
  */
 export function saveBookMetadata(book: Book, isOfflineReady: boolean = false) {
   try {
     const existing = localStorage.getItem(METADATA_KEY);
     const metadata = existing ? JSON.parse(existing) : {};
-    
+
     // Si ya estaba marcado como offlineReady, no le quitemos la marca a menos que sea explícito
     const wasReady = metadata[book.id]?.isOfflineReady || false;
 
@@ -27,7 +27,7 @@ export function saveBookMetadata(book: Book, isOfflineReady: boolean = false) {
 }
 
 /**
- * 8.0.1 - Obtener metadatos de un libro específico desde el caché local
+ * Obtener metadatos de un libro específico desde el caché local
  */
 export function getCachedBookMetadata(bookId: string): Book | null {
   try {
@@ -41,7 +41,7 @@ export function getCachedBookMetadata(bookId: string): Book | null {
 }
 
 /**
- * 8.0.2 - Obtener todos los libros guardados offline
+ * Obtener todos los libros guardados offline
  */
 export function getAllCachedBooks(): Book[] {
   try {
@@ -55,7 +55,7 @@ export function getAllCachedBooks(): Book[] {
 }
 
 /**
- * 8.1 - Verificar si un libro está descargado en el caché local
+ * Verificar si un libro está descargado en el caché local
  */
 export async function isBookDownloaded(epubUrl: string): Promise<boolean> {
   try {
@@ -68,7 +68,7 @@ export async function isBookDownloaded(epubUrl: string): Promise<boolean> {
 }
 
 /**
- * 8.2 - Descargar libro al caché local para acceso offline (Incluyendo Portada y Metadata)
+ * Descargar libro al caché local para acceso offline (Incluyendo Portada y Metadata)
  */
 export async function downloadBook(book: Book): Promise<boolean> {
   const { epub_url: epubUrl, cover_url: coverUrl } = book;
@@ -90,7 +90,7 @@ export async function downloadBook(book: Book): Promise<boolean> {
       }
     }
 
-    // GUARDAR METADATA 
+    // GUARDAR METADATA
     saveBookMetadata(book, true);
 
     // CACHEAR REVIEWS (Comunidad) para modo offline
@@ -116,15 +116,15 @@ export async function downloadBook(book: Book): Promise<boolean> {
 }
 
 /**
- * 8.3 - Eliminar libro del caché local
+ * Eliminar libro del caché local
  */
 export async function removeBookDownload(bookId: string, epubUrl: string): Promise<boolean> {
   try {
-    // 1. Eliminar archivos del Caché API
+    // Eliminar archivos del Caché API
     const cache = await caches.open(BOOKS_CACHE);
     await cache.delete(epubUrl);
 
-    // 2. Eliminar metadatos del LocalStorage
+    // Eliminar metadatos del LocalStorage
     const existing = localStorage.getItem(METADATA_KEY);
     if (existing) {
       const metadata = JSON.parse(existing);
@@ -139,7 +139,7 @@ export async function removeBookDownload(bookId: string, epubUrl: string): Promi
 }
 
 /**
- * 8.4 - Obtener tamaño aproximado del caché de libros
+ * Obtener tamaño aproximado del caché de libros
  */
 export async function getCacheSize(): Promise<string> {
   try {
@@ -155,7 +155,7 @@ export async function getCacheSize(): Promise<string> {
 }
 
 /**
- * 8.5 - Obtener el archivo (Blob) desde el caché local
+ * Obtener el archivo (Blob) desde el caché local
  */
 export async function getCachedBookFile(epubUrl: string): Promise<Blob | null> {
   try {

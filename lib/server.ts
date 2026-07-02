@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
+// Cliente SSR que conserva la sesion de Supabase mediante cookies de Next.
 export async function createClient() {
   const cookieStore = await cookies()
 
@@ -9,7 +10,7 @@ export async function createClient() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    console.warn("⚠️ ALERTA: Variables de Supabase ausentes durante el build (Server).")
+    console.warn("ALERTA: Variables de Supabase ausentes durante el build (Server).")
   }
 
   return createServerClient(
@@ -26,7 +27,7 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // El middleware se encargará de esto si falla en un Server Component
+            // En Server Components no siempre se pueden mutar cookies; proxy conserva la sesion.
           }
         },
       },
@@ -34,6 +35,7 @@ export async function createClient() {
   )
 }
 
+// Cliente service-role para server actions/webhooks; nunca debe usarse en cliente.
 export function createAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY

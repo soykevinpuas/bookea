@@ -7,8 +7,8 @@ import { createClientClient } from "@/lib/supabase";
 import type { Book } from "@/types/book";
 
 const BOOK_QUERY_OPTIONS = {
-  staleTime: 10 * 1000, // 10 segundos (para ser muy reactivo al volver del lector)
-  gcTime: 30 * 60 * 1000, 
+  staleTime: 10 * 1000,
+  gcTime: 30 * 60 * 1000,
   retry: 1,
 };
 
@@ -17,10 +17,12 @@ type CatalogCachePayload = { cachedAt: number; data: Book[] };
 
 const CATALOG_CACHE_PREFIX = "bookea-catalog-cache-v2";
 
+// Cache por admin/publico para que catalogo cargue rapido y respete stock propio.
 function getCatalogCacheKey(adminId?: string) {
   return `${CATALOG_CACHE_PREFIX}-${adminId || "public"}`;
 }
 
+// Lee cache local sin romper SSR ni modo privado del navegador.
 function readCatalogCacheRaw(cacheKey: string) {
   if (typeof window === "undefined") return null;
 
@@ -31,6 +33,7 @@ function readCatalogCacheRaw(cacheKey: string) {
   }
 }
 
+// Acepta formato legacy (array) y formato nuevo con timestamp.
 function parseCatalogCache(cached: string | null): CatalogCachePayload | null {
   try {
     if (!cached) return null;
@@ -42,6 +45,7 @@ function parseCatalogCache(cached: string | null): CatalogCachePayload | null {
   return null;
 }
 
+// Escribe cache y notifica a otros hooks en la misma pestaña.
 function writeCatalogCache(cacheKey: string, data: Book[]) {
   if (typeof window === "undefined") return;
 
@@ -51,6 +55,7 @@ function writeCatalogCache(cacheKey: string, data: Book[]) {
   } catch {}
 }
 
+// useSyncExternalStore necesita una suscripcion estable a localStorage/evento custom.
 function subscribeCatalogCache(onStoreChange: () => void) {
   if (typeof window === "undefined") return () => {};
 
@@ -62,6 +67,7 @@ function subscribeCatalogCache(onStoreChange: () => void) {
   };
 }
 
+// Reaplica filtros client-side sobre placeholderData cacheada.
 function applyBookFilters(data: Book[], options?: BookFilters) {
   let filtered = data;
   if (options?.search) {
@@ -80,7 +86,7 @@ function applyBookFilters(data: Book[], options?: BookFilters) {
   return filtered;
 }
 
-// 3.2 - useBooks: Hook para el catálogo general con persistencia y filtros
+// Hook de catalogo general con persistencia local y filtros.
 export function useBooks(options?: BookFilters) {
   const supabase = createClientClient();
   const cacheKey = getCatalogCacheKey(options?.adminId);
@@ -94,7 +100,7 @@ export function useBooks(options?: BookFilters) {
     () => parseCatalogCache(cachedCatalogRaw),
     [cachedCatalogRaw]
   );
-  
+
   return useQuery({
     queryKey: ["books", options?.search, options?.category, options?.author, options?.adminId],
     queryFn: async () => {
@@ -114,6 +120,7 @@ export function useBooks(options?: BookFilters) {
   });
 }
 
+// Hook de detalle de libro por UUID.
 export function useBook(id: string) {
   const supabase = createClientClient();
   return useQuery({
@@ -124,6 +131,7 @@ export function useBook(id: string) {
   });
 }
 
+// Hook de biblioteca del usuario con cache local y realtime sobre user_books.
 export function useUserBooks(userId: string, options?: { search?: string; category?: string }) {
   const supabase = createClientClient();
   const queryClient = useQueryClient();
@@ -133,7 +141,7 @@ export function useUserBooks(userId: string, options?: { search?: string; catego
     queryKey: ["userBooks", userId, options?.search, options?.category],
     queryFn: async () => {
       const data = await getUserBooks(supabase, userId!, options);
-      // Solo cacheamos la vista principal (sin filtros) para el inicio rápido
+      // Solo cacheamos la vista principal sin filtros para arranque rapido.
       if (data && !options?.search && !options?.category && typeof window !== 'undefined') {
         localStorage.setItem(`bookea-library-${userId}`, JSON.stringify(data));
       }
@@ -152,12 +160,12 @@ export function useUserBooks(userId: string, options?: { search?: string; catego
       }
       return undefined;
     },
-    // Habilitado si hay usuario O si estamos offline (para ver lo que hay en caché)
+    // Offline sin userId aun puede mostrar cache de biblioteca local.
     enabled: !!userId || (typeof window !== 'undefined' && !navigator.onLine),
     ...BOOK_QUERY_OPTIONS,
   });
 
-  // 3.2.1 - Sincronización Realtime para la biblioteca del usuario
+  // Realtime invalida biblioteca cuando Stripe/admin/canjes modifican user_books.
   useEffect(() => {
     if (!userId) return;
     if (channelRef.current) return;
@@ -167,13 +175,12 @@ export function useUserBooks(userId: string, options?: { search?: string; catego
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
+          event: '*',
           schema: 'public',
           table: 'user_books',
           filter: `user_id=eq.${userId}`
         },
         () => {
-          // Invalidar todas las queries de libros del usuario
           queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
         }
       )

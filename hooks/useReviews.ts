@@ -6,14 +6,14 @@ import { useEffect } from "react";
 import { createClientClient } from "@/lib/supabase";
 
 /**
- * 6.6 - useReviews: Hook de gestión de la comunidad con soporte Realtime nativo
+ * useReviews: Hook de gestión de la comunidad con soporte Realtime nativo
  */
 
 export function useReviews(bookId: string) {
   const queryClient = useQueryClient();
   const supabase = createClientClient();
 
-  // 6.6.1 - Consulta de todas las reseñas del libro
+  // Consulta de todas las reseñas del libro
   const reviewsQuery = useQuery({
     queryKey: ["reviews", bookId],
     queryFn: () => getBookReviews(bookId),
@@ -21,21 +21,21 @@ export function useReviews(bookId: string) {
     staleTime: 5 * 60 * 1000, // 5 min
   });
 
-  // 6.6.2 - Promedio de calificación computado
-  const averageRating = reviewsQuery.data?.length 
+  // Promedio de calificación computado
+  const averageRating = reviewsQuery.data?.length
     ? (reviewsQuery.data.reduce((acc, curr) => acc + curr.rating, 0) / reviewsQuery.data.length).toFixed(1)
     : "0";
 
-  // 6.6.3 - Mutación para guardar/actualizar reseña
+  // Mutación para guardar/actualizar reseña
   const saveMutation = useMutation({
-    mutationFn: ({ userId, rating, content }: { userId: string; rating: number; content: string }) => 
+    mutationFn: ({ userId, rating, content }: { userId: string; rating: number; content: string }) =>
       saveReview(bookId, userId, rating, content),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reviews", bookId] });
     },
   });
 
-  // 6.6.4 - Mutación para eliminar reseña
+  // Mutación para eliminar reseña
   const deleteMutation = useMutation({
     mutationFn: (reviewId: string) => deleteReview(reviewId),
     onSuccess: () => {
@@ -43,7 +43,7 @@ export function useReviews(bookId: string) {
     },
   });
 
-  // 6.6.5 - Suscripción Realtime para actualizaciones automáticas
+  // Suscripción Realtime para actualizaciones automáticas
   useEffect(() => {
     if (!bookId) return;
 

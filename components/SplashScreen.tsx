@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 /**
- * 1.7 - SplashScreen: Controlador del splash screen HTML puro.
+ * SplashScreen: Controlador del splash screen HTML puro.
  * El splash se renderiza directamente en el layout como HTML/CSS.
  * Este componente solo se encarga de OCULTARLO cuando React está listo.
  * Se muestra solo una vez por sesión (usando sessionStorage).

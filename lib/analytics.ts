@@ -1,5 +1,5 @@
 /**
- * 7.1 - Analytics: Sistema de tracking de eventos para Bookea
+ * Analytics: Sistema de tracking de eventos para Bookea
  * Registra eventos en Supabase para análisis en el panel admin
  */
 
@@ -18,7 +18,7 @@ interface AnalyticsInstance {
 let analyticsInstance: AnalyticsInstance | null = null;
 
 /**
- * 7.1.1 - Inicializar analytics (llamar una vez)
+ * Inicializar analytics (llamar una vez)
  */
 export function initAnalytics(): AnalyticsInstance {
   if (analyticsInstance) return analyticsInstance;
@@ -63,7 +63,7 @@ export function initAnalytics(): AnalyticsInstance {
 }
 
 /**
- * 7.1.2 - Obtener instancia activa
+ * Obtener instancia activa
  */
 export function getAnalytics(): AnalyticsInstance {
   if (!analyticsInstance) {
@@ -73,7 +73,7 @@ export function getAnalytics(): AnalyticsInstance {
 }
 
 /**
- * 7.1.3 - Constantes de eventos
+ * Constantes de eventos
  */
 export const EVENTS = {
   // Autenticación
@@ -107,7 +107,7 @@ export const EVENTS = {
 } as const;
 
 /**
- * 7.1.4 - Helper rápido
+ * Helper rápido
  */
 export const track = async (event: string, data?: Record<string, unknown>): Promise<void> => {
   const analytics = getAnalytics();
@@ -115,7 +115,7 @@ export const track = async (event: string, data?: Record<string, unknown>): Prom
 };
 
 /**
- * 7.1.5 - Hook para usar analytics en componentes
+ * Hook para usar analytics en componentes
  */
 export function useAnalytics() {
   return {

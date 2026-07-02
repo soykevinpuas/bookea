@@ -4,6 +4,7 @@ import { createClient } from '@/lib/server'
 import { revalidatePath } from 'next/cache'
 import { CoinType, CoinSource, ANTI_ABUSE_LIMITS } from '@/types/coins'
 
+// Lee el saldo de monedas del usuario autenticado desde la RPC segura.
 export async function getUserCoinsAction() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -28,6 +29,7 @@ export async function getUserCoinsAction() {
   }
 }
 
+// Otorga una moneda por una fuente permitida; la RPC aplica limites anti-abuso.
 export async function addCoinsAction(coinType: CoinType, source: CoinSource, bookId?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -61,6 +63,7 @@ export async function addCoinsAction(coinType: CoinType, source: CoinSource, boo
   }
 }
 
+// Canjea una moneda por acceso temporal a un libro.
 export async function redeemCoinAction(bookId: string, coinType: CoinType) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -96,6 +99,7 @@ export async function redeemCoinAction(bookId: string, coinType: CoinType) {
   }
 }
 
+// Devuelve movimientos recientes de monedas para historial del perfil.
 export async function getUserCoinTransactionsAction(limit = 50) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -124,6 +128,7 @@ export async function getUserCoinTransactionsAction(limit = 50) {
   }
 }
 
+// Lista canjes del usuario con datos basicos del libro asociado.
 export async function getUserCoinRedemptionsAction() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -151,6 +156,7 @@ export async function getUserCoinRedemptionsAction() {
   }
 }
 
+// Lee la racha actual desde profiles para mostrarla en UI.
 export async function getUserStreakAction() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -178,6 +184,7 @@ export async function getUserStreakAction() {
   }
 }
 
+// Actualiza racha y premios por hitos mediante RPC transaccional.
 export async function updateStreakAction() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -205,6 +212,7 @@ export async function updateStreakAction() {
   }
 }
 
+// Premia la finalizacion de libro despues de validar progreso minimo.
 export async function completeBookAndAwardCoinAction(bookId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -214,7 +222,6 @@ export async function completeBookAndAwardCoinAction(bookId: string) {
   }
 
   try {
-    // Verificar que el usuario tenga al menos 10% de progreso
     const { data: progress } = await supabase
       .from('reading_progress')
       .select('percent_complete')
@@ -226,7 +233,6 @@ export async function completeBookAndAwardCoinAction(bookId: string) {
       return { success: false, error: 'insufficient_progress' }
     }
 
-    // Actualizar total_books_read (incrementar en 1)
     const { data: currentProfile } = await supabase
       .from('profiles')
       .select('total_books_read')
@@ -238,7 +244,6 @@ export async function completeBookAndAwardCoinAction(bookId: string) {
       .update({ total_books_read: (currentProfile?.total_books_read || 0) + 1 })
       .eq('user_id', user.id)
 
-    // Otorgar moneda de bronce
     const { data: result, error } = await supabase
       .rpc('add_coins', {
         p_user_id: user.id,
@@ -271,6 +276,7 @@ export async function completeBookAndAwardCoinAction(bookId: string) {
   }
 }
 
+// Valida requisitos minimos de una review antes de pedir moneda a la RPC.
 export async function processReviewAndAwardCoinAction(bookId: string, content: string, rating: number) {
   if (content.length < ANTI_ABUSE_LIMITS.min_review_chars_for_coin) {
     return { success: false, error: 'review_too_short', min_chars: ANTI_ABUSE_LIMITS.min_review_chars_for_coin }
@@ -315,6 +321,7 @@ export async function processReviewAndAwardCoinAction(bookId: string, content: s
   }
 }
 
+// Construye link de referido desde la URL publica configurada.
 export async function getReferralLinkAction() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -329,6 +336,7 @@ export async function getReferralLinkAction() {
   return { success: true, link: referralLink, userId: user.id }
 }
 
+// Cuenta referidos registrados para el usuario actual.
 export async function getReferralCountAction() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

@@ -5,7 +5,7 @@ import { getProfile, updateProfileAvatar, updateProfileName } from "@/lib/profil
 import type { Profile } from "@/lib/profiles";
 
 /**
- * 6.3 - useProfile / useAvatars: Hook de gestión de la identidad visual del usuario
+ * useProfile / useAvatars: Hook de gestión de la identidad visual del usuario
  */
 
 export function useProfile(userId: string | undefined) {
@@ -18,7 +18,7 @@ export function useProfile(userId: string | undefined) {
     } catch {}
   };
 
-  // 6.3.1 - Consulta del perfil actual
+  // Consulta del perfil actual
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
     queryFn: async () => {
@@ -38,7 +38,7 @@ export function useProfile(userId: string | undefined) {
     },
   });
 
-  // 6.3.2 - Mutación para actualizar el avatar
+  // Mutación para actualizar el avatar
   const avatarMutation = useMutation({
     mutationFn: async (avatarConfig: string) => {
       const success = await updateProfileAvatar(userId!, avatarConfig);
@@ -81,7 +81,7 @@ export function useProfile(userId: string | undefined) {
     },
   });
 
-  // 6.3.3 - Mutación para actualizar el nombre público
+  // Mutación para actualizar el nombre público
   const nameMutation = useMutation({
     mutationFn: (name: string) => updateProfileName(userId!, name),
     onSuccess: () => {

@@ -1,4 +1,3 @@
-// 6.x - Modal de canje de monedas por acceso a libro
 'use client'
 
 import { useState } from 'react'
@@ -6,6 +5,7 @@ import { X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { CoinBalance, COIN_DAYS, COIN_COLORS, COIN_LABELS, ANTI_ABUSE_LIMITS } from '@/types/coins'
 import { Circle, Medal, Award, Gem } from 'lucide-react'
 
+// Modal visual para elegir moneda; la validacion anti-abuso definitiva ocurre en redeem_coin.
 interface CoinRedemptionModalProps {
   isOpen: boolean
   onClose: () => void
@@ -15,6 +15,7 @@ interface CoinRedemptionModalProps {
   alreadyHasAccess: boolean
 }
 
+// Mapea cada moneda a un icono estable para no duplicar JSX por opcion.
 const COIN_LUCIDE_ICONS = {
   bronze: Circle,
   silver: Medal,
@@ -22,6 +23,7 @@ const COIN_LUCIDE_ICONS = {
   diamond: Gem,
 }
 
+// Opciones mostradas al usuario; los dias vienen del contrato compartido de monedas.
 const COIN_OPTIONS = [
   { type: 'bronze' as const, days: COIN_DAYS.bronze, color: COIN_COLORS.bronze },
   { type: 'silver' as const, days: COIN_DAYS.silver, color: COIN_COLORS.silver },
@@ -64,7 +66,8 @@ export function CoinRedemptionModal({
     setIsProcessing(false)
   }
 
-  const maxRedemptionsReached = false // TODO: check from server
+  // El RPC aplica el limite mensual; el modal solo muestra bloqueos conocidos localmente.
+  const maxRedemptionsReached = false
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

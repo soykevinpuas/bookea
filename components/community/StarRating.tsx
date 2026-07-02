@@ -5,7 +5,7 @@ import { Star } from "lucide-react";
 import { useState } from "react";
 
 /**
- * 6.7 - StarRating: Componente táctil y animado para calificar libros
+ * StarRating: Componente táctil y animado para calificar libros
  */
 
 interface StarRatingProps {
@@ -15,14 +15,16 @@ interface StarRatingProps {
   size?: "sm" | "md" | "lg";
 }
 
-export default function StarRating({ 
-  rating, 
-  onRatingChange, 
+export default function StarRating({
+  rating,
+  onRatingChange,
   readOnly = false,
-  size = "md" 
+  size = "md"
 }: StarRatingProps) {
+  // hovered permite previsualizar la calificacion antes de confirmarla con click/tap.
   const [hovered, setHovered] = useState<number | null>(null);
 
+  // Tamaños compartidos para mantener consistencia entre tarjetas, formularios y reseñas.
   const sizes = {
     sm: "w-4 h-4",
     md: "w-6 h-6",
@@ -32,8 +34,9 @@ export default function StarRating({
   return (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map((star) => {
+        // Si hay hover gana la previsualizacion; si no, se pinta el rating persistido.
         const isFilled = hovered !== null ? star <= hovered : star <= rating;
-        
+
         return (
           <motion.button
             key={star}
@@ -46,12 +49,12 @@ export default function StarRating({
             className={`${readOnly ? "cursor-default" : "cursor-pointer"} focus:outline-none transition-colors`}
             disabled={readOnly}
           >
-            <Star 
+            <Star
               className={`${sizes[size]} ${
-                isFilled 
-                  ? "fill-yellow-400 text-yellow-400" 
+                isFilled
+                  ? "fill-yellow-400 text-yellow-400"
                   : "text-gray-300 dark:text-white/10"
-              }`} 
+              }`}
             />
           </motion.button>
         );

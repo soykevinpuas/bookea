@@ -1,186 +1,38 @@
-# 🧪 BOOKEA — Testing Guide
+# BOOKEA - Testing Guide
 
----
-
-## 1. FILOSOFÍA
-
-No testeamos todo — testeamos lo que duele si falla.
-Prioridad: lógica de negocio crítica > UI > todo lo demás.
-
----
-
-## 2. QUÉ TESTEAR Y QUÉ NO
-
-### ✅ Testear siempre
-- Lógica de pagos (Stripe)
-- Acceso a libros (quién puede leer qué)
-- Descuento de stock físico al comprar
-- Reset de créditos de suscripción
-- Roles de usuario (admin vs user)
-- Auth (login, sesión, redirecciones)
-
-### ⬜ Testear cuando sea posible
-- Componentes críticos de UI (lector, catálogo)
-- Queries a Supabase
-- Webhooks de Stripe
-
-### ❌ No testear
-- Estilos y Tailwind
-- Animaciones
-- Componentes puramente visuales
-
----
-
-## 3. STACK DE TESTING
-
-| Herramienta | Para qué |
-|-------------|----------|
-| **Vitest** | Tests unitarios (lógica, utils, hooks) |
-| **React Testing Library** | Componentes React |
-| **Playwright** | Tests E2E (flujos completos en browser) |
-| **Stripe CLI** | Simular webhooks de pago |
-
-Instalación:
-```bash
-npm install -D vitest @testing-library/react @testing-library/jest-dom playwright
-```
-
----
-
-## 4. ESTRUCTURA DE ARCHIVOS DE TEST
-
-```
-bookea/
-├── __tests__/
-│   ├── unit/
-│   │   ├── auth.test.ts
-│   │   ├── books.test.ts
-│   │   ├── orders.test.ts
-│   │   └── subscriptions.test.ts
-│   ├── components/
-│   │   ├── catalog.test.tsx
-│   │   └── reader.test.tsx
-│   └── e2e/
-│       ├── login.spec.ts
-│       ├── purchase.spec.ts
-│       └── reader.spec.ts
-```
-
----
-
-## 5. TESTS UNITARIOS CRÍTICOS
-
-### Auth
-```typescript
-// __tests__/unit/auth.test.ts
-- usuario sin sesión es redirigido a /login
-- usuario con role:admin puede acceder a /admin
-- usuario con role:free NO puede acceder a /admin
-- después de login exitoso redirige a /dashboard
-```
-
-### Acceso a libros
-```typescript
-// __tests__/unit/books.test.ts
-- usuario free NO puede leer libro completo
-- usuario suscrito SÍ puede leer sus 5 libros seleccionados
-- usuario suscrito NO puede leer libros que no seleccionó
-- usuario con compra permanente SÍ puede leer ese título
-- usuario con compra permanente NO puede leer otros títulos
-```
-
-### Stock físico
-```typescript
-// __tests__/unit/orders.test.ts
-- al confirmar orden, stock se descuenta en 1
-- si stock = 0, no se puede crear orden física
-- solo admin puede actualizar stock manualmente
-```
-
-### Suscripción
-```typescript
-// __tests__/unit/subscriptions.test.ts
-- usuario puede seleccionar máximo 5 libros por ciclo
-- al renovar, créditos se resetean a 5
-- al cancelar suscripción, pierde acceso a los libros
-```
-
----
-
-## 6. TESTS E2E CRÍTICOS (Playwright)
-
-### Flujo de login
-```
-1. Ir a /login
-2. Ingresar email y password
-3. Verificar redirección a /dashboard
-4. Verificar que navbar muestra sesión activa
-```
-
-### Flujo de compra digital
-```
-1. Ir a /catalog
-2. Seleccionar un libro
-3. Click en "Comprar digital $49 MXN"
-4. Completar pago con tarjeta de prueba Stripe
-5. Verificar acceso al lector
-```
-
-### Flujo de compra física
-```
-1. Ir a /book/[id]
-2. Click en "Comprar físico $199 MXN"
-3. Llenar formulario de envío
-4. Completar pago
-5. Verificar que stock se descontó
-6. Verificar que orden aparece en panel admin
-```
-
-### Flujo de suscripción
-```
-1. Ir a /pricing
-2. Click en "Suscribirse $99 MXN/mes"
-3. Completar pago recurrente con Stripe
-4. Verificar 5 créditos disponibles
-5. Seleccionar 5 libros
-6. Verificar acceso al lector de esos libros
-```
-
----
-
-## 7. TARJETAS DE PRUEBA STRIPE
-
-```
-Pago exitoso:        4242 4242 4242 4242
-Pago rechazado:      4000 0000 0000 0002
-Requiere 3D Secure:  4000 0025 0000 3155
-
-Fecha: cualquiera futura
-CVC: cualquier 3 dígitos
-CP: cualquier 5 dígitos
-```
-
----
-
-## 8. CÓMO CORRER LOS TESTS
+Estado actual: el proyecto no tiene framework de tests instalado ni scripts `test` en `package.json`. Por ahora la verificacion disponible es:
 
 ```bash
-# Tests unitarios
-npm run test
-
-# Tests unitarios en watch mode
-npm run test:watch
-
-# Tests E2E
-npm run test:e2e
-
-# Tests E2E con UI visual
-npm run test:e2e:ui
+npm run lint
+npx tsc --noEmit
+npm run build
 ```
 
-Agregar al `package.json`:
+## 1. Prioridad de Pruebas
+
+Cuando se instale la suite, probar primero lo que rompe dinero, acceso o datos:
+
+- Stripe Checkout, webhook y fallback `verifySubscriptionAction`.
+- Acceso a libros en `hasBookAccess` y `user_books`.
+- Stock fisico, `admin_stock`, `seller_inventory` y ordenes fisicas.
+- Roles `free`, `subscriber`, `admin`, `vendedor`.
+- RLS/RPCs sensibles de Supabase.
+- Lector EPUB: progreso, highlights, bookmarks y offline.
+
+## 2. Stack Recomendado
+
+| Herramienta | Uso |
+| --- | --- |
+| Vitest | Unit tests de helpers y server actions desacopladas. |
+| React Testing Library | Componentes y hooks de UI. |
+| Playwright | Flujos reales: auth, checkout, lector, admin/vendedor. |
+| Stripe CLI | Webhooks locales. |
+| Supabase CLI | Base local y migraciones. |
+
+Scripts sugeridos cuando se instalen:
+
 ```json
-"scripts": {
+{
   "test": "vitest",
   "test:watch": "vitest --watch",
   "test:e2e": "playwright test",
@@ -188,24 +40,43 @@ Agregar al `package.json`:
 }
 ```
 
----
+## 3. Casos Criticos
 
-## 9. CUÁNDO CORRER TESTS
+### Acceso Digital
 
-| Momento | Qué correr |
-|---------|-----------|
-| Antes de cada commit | `npm run test` |
-| Antes de merge a main | `npm run test` + `npm run test:e2e` |
-| Antes de deploy a producción | Todo |
-| Cuando el agente termina una feature | Tests relacionados a esa feature |
+- Libro no premium: usuario autenticado puede acceder o reclamar.
+- Libro premium: requiere subscriber activo, admin/vendedor, compra permanente, regalo o canje vigente.
+- Canje de moneda vencido no da acceso.
+- Cache offline de acceso no debe elevar privilegios.
 
----
+### Stripe
 
-## 10. REGLA DEL AGENTE
+- Suscripcion activa `subscriber` sin degradar `admin` o `vendedor`.
+- Compra digital agrega `user_books` permanente.
+- Compra fisica crea `orders_physical` y descuenta stock una sola vez.
+- Bundle concede digital y fisico.
+- Webhook duplicado no duplica orden ni descuento.
 
-Después de cada feature, escribe automáticamente los tests unitarios correspondientes en `__tests__/unit/[nombre].test.ts` usando Vitest. Cubre casos exitosos y casos de error.
+### Inventario
 
----
+- Admin solo usa su `admin_stock`.
+- `assign_stock` descuenta admin y suma vendedor.
+- `sell_book` usa bloqueo concurrente y elimina inventario en cero.
+- `paid_at` marca pagos pendientes sin borrar ventas.
 
-*Última actualización: Marzo 2026*
-*Proyecto: Bookea — bookea.mx*
+### Lector
+
+- Guarda/restaura CFI y `scroll_top`.
+- Highlights/bookmarks funcionan online y con fallback local.
+- Service worker no rompe RSC ni navegacion offline.
+
+## 4. Tarjetas Stripe de Prueba
+
+```text
+Pago exitoso:        4242 4242 4242 4242
+Pago rechazado:      4000 0000 0000 0002
+Requiere 3D Secure:  4000 0025 0000 3155
+Fecha: cualquiera futura
+CVC: cualquier 3 digitos
+CP: cualquier 5 digitos
+```

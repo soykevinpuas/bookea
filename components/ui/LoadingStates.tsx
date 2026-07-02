@@ -8,7 +8,7 @@ interface SkeletonProps {
 
 export function Skeleton({ className = "" }: SkeletonProps) {
   return (
-    <div 
+    <div
       className={`animate-pulse bg-gray-200 dark:bg-gray-800 rounded ${className}`}
     />
   );
@@ -22,7 +22,7 @@ export function PageTransition({ children }: PageTransitionProps) {
   const mounted = useIsClient();
 
   return (
-    <div 
+    <div
       className={`
         transition-all duration-200 ease-out
         ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}
@@ -83,7 +83,7 @@ export function DashboardSkeleton() {
           </div>
         ))}
       </div>
-      
+
       {/* Library section */}
       <div>
         <Skeleton className="h-6 w-32 mb-4" />
@@ -110,10 +110,10 @@ export function CatalogSkeleton({ variant = "grid" }: CatalogSkeletonProps) {
         <Skeleton className="h-10 w-32" />
         <Skeleton className="h-10 w-24" />
       </div>
-      
+
       {/* Grid */}
       <div className={
-        variant === "grid" 
+        variant === "grid"
           ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
           : variant === "compact"
           ? "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
@@ -127,7 +127,7 @@ export function CatalogSkeleton({ variant = "grid" }: CatalogSkeletonProps) {
   );
 }
 
-// 6.2 - LoadingButton: Botón con feedback de carga instantáneo
+// LoadingButton: Botón con feedback de carga instantáneo
 interface LoadingButtonProps {
   children: React.ReactNode;
   isLoading?: boolean;
@@ -150,7 +150,7 @@ export function LoadingButton({
   type = "button",
 }: LoadingButtonProps) {
   const baseClasses = "relative inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
-  
+
   const variantClasses = {
     primary: "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/30 focus:ring-blue-500",
     secondary: "bg-white/10 hover:bg-white/20 text-white border border-white/20 focus:ring-white/50",
@@ -163,7 +163,7 @@ export function LoadingButton({
       disabled={disabled || isLoading}
       onClick={onClick}
       className={`${baseClasses} ${variantClasses[variant]} ${className}`}
-      style={{ 
+      style={{
         transform: 'translate(var(--press-transform, 0))',
         transition: 'transform 100ms ease-out, opacity 150ms ease-out',
       }}
@@ -190,7 +190,7 @@ export function LoadingButton({
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
       )}
-      
+
       {/* Text */}
       <span className={isLoading && loadingText ? "hidden" : ""}>
         {children}
@@ -202,7 +202,7 @@ export function LoadingButton({
   );
 }
 
-// 6.3 - PrefetchLink: Link con prefetching automático (Rutas + Datos)
+// PrefetchLink: Link con prefetching automático (Rutas + Datos)
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
@@ -222,10 +222,10 @@ interface PrefetchLinkProps {
   bookId?: string;
 }
 
-export function PrefetchLink({ 
-  href, 
-  children, 
-  className = "", 
+export function PrefetchLink({
+  href,
+  children,
+  className = "",
   style,
   prefetch = true,
   onClick,
@@ -234,14 +234,14 @@ export function PrefetchLink({
   const router = useRouter();
   const queryClient = useQueryClient();
   const supabase = createClientClient();
-  
+
   const handleMouseEnter = useCallback(() => {
     if (!prefetch) return;
 
-    // 1. Prefetch de la ruta de Next.js
+    // Prefetch de la ruta de Next.js
     router.prefetch(href);
 
-    // 2. Prefetch inteligente de datos en React Query
+    // Prefetch inteligente de datos en React Query
     if (bookId) {
       queryClient.prefetchQuery({
         queryKey: ["book", bookId],
@@ -261,8 +261,8 @@ export function PrefetchLink({
   }, [href, prefetch, router, bookId, queryClient, supabase]);
 
   return (
-    <Link 
-      href={href} 
+    <Link
+      href={href}
       className={className}
       style={style}
       onMouseEnter={handleMouseEnter}

@@ -23,7 +23,7 @@ const ALLOWED_DOMAINS = [
   'outlook.es', 'hotmail.es',
 ]
 
-// 2.3 - Auth Actions: Server Action para Registro
+// Auth Actions: Server Action para Registro
 export async function register(formData: FormData) {
   const supabase = await createClient()
   let admin: ReturnType<typeof createAdminClient> | null = null
@@ -68,7 +68,7 @@ export async function register(formData: FormData) {
     redirect(`/register?error=${encodeURIComponent(friendly || error.message || 'Error desconocido')}`)
   }
 
-  // 2.3.1 - Tracking de analytics: nuevo registro
+  // Tracking de analytics: nuevo registro
   try {
     await supabase.rpc('track_event', {
       event_name: 'user_signed_up',
@@ -79,7 +79,7 @@ export async function register(formData: FormData) {
     console.warn('[Analytics] Error al trackear registro:', trackError)
   }
 
-  // 2.3.2 - Crear customer en Stripe para portal de facturación
+  // Crear customer en Stripe para portal de facturación
   if (signupData?.user) {
     try {
       const stripe = getStripeClient()
@@ -96,12 +96,12 @@ export async function register(formData: FormData) {
     }
   }
 
-  // 2.3.3 - Enviar correo de bienvenida
+  // Enviar correo de bienvenida
   if (signupData?.user) {
     await sendWelcomeEmail(data.email, data.email.split('@')[0])
   }
 
-  // 2.3.4 - Procesar referido si existe
+  // Procesar referido si existe
   if (referrerId && signupData?.user) {
     try {
       await supabase.rpc('track_referral', {

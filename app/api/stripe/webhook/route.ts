@@ -5,6 +5,7 @@ import { getStripeClient } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/server';
 import { addToLibrary } from '@/lib/books';
 
+// Contratos internos del webhook; la UI no debe depender de estos detalles.
 type SupabaseAdminClient = ReturnType<typeof createAdminClient>;
 type UserRole = 'free' | 'subscriber' | 'admin' | 'vendedor';
 type PurchaseType = 'digital_permanent' | 'physical' | 'bundle' | 'subscription';
@@ -55,6 +56,7 @@ type DecrementedPhysicalOrderResult =
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PRIVILEGED_ROLES: ReadonlySet<UserRole> = new Set(['admin', 'vendedor']);
 
+// Error con status HTTP para distinguir payload invalido de fallos internos.
 class WebhookProcessingError extends Error {
   readonly statusCode: number;
 
@@ -69,6 +71,7 @@ function invalidWebhookPayload(message: string): WebhookProcessingError {
   return new WebhookProcessingError(message, 400);
 }
 
+// Helpers de parsing defensivo: Stripe metadata llega como strings no confiables.
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -158,6 +161,7 @@ function normalizeUserIdentityRow(value: unknown): Pick<UserSubscriptionRow, 'id
   };
 }
 
+// Valida tipos de compra permitidos antes de conceder acceso o crear orden.
 function isPurchaseType(value: string): value is PurchaseType {
   return value === 'digital_permanent' || value === 'physical' || value === 'bundle' || value === 'subscription';
 }
@@ -195,6 +199,7 @@ function parsePositiveInteger(value: unknown, fieldName: string, defaultValue = 
   return numberValue;
 }
 
+// Parsea items serializados por checkout de carrito.
 function parseCartItems(metadata: Stripe.Metadata | null | undefined): CartPurchaseItem[] {
   const rawItems = getMetadataValue(metadata, 'items');
   if (!rawItems) {
@@ -220,6 +225,7 @@ function parseCartItems(metadata: Stripe.Metadata | null | undefined): CartPurch
   });
 }
 
+// Shipping es obligatorio para cualquier item fisico.
 function parseRequiredShippingInfo(metadata: Stripe.Metadata | null | undefined): ShippingInfo {
   const rawShipping = getMetadataValue(metadata, 'shipping');
   if (!rawShipping) {
@@ -241,6 +247,7 @@ function parseRequiredShippingInfo(metadata: Stripe.Metadata | null | undefined)
   };
 }
 
+// Stripe puede entregar customer/subscription como id string u objeto expandido.
 function getCustomerId(customer: Stripe.Checkout.Session.CustomerDetails | string | Stripe.Customer | Stripe.DeletedCustomer | null): string | null {
   if (typeof customer === 'string') {
     return customer;
@@ -261,6 +268,7 @@ function getSubscriptionId(subscription: string | Stripe.Subscription | null): s
   return subscription?.id ?? null;
 }
 
+// Lee fin de periodo compatible con distintas formas de objeto Stripe.Subscription.
 function getLegacyNumericField(value: unknown, key: string): number | null {
   if (!isRecord(value)) {
     return null;
@@ -300,6 +308,7 @@ function calculateFallbackSubscriptionEnd(existingEnd: Date | null): Date {
   return fallbackEnd;
 }
 
+// Consulta el usuario con service-role; el webhook no depende de RLS del cliente.
 async function getUserSubscriptionRow(
   supabase: SupabaseAdminClient,
   userId: string
@@ -319,6 +328,7 @@ async function getUserSubscriptionRow(
   return normalizeUserSubscriptionRow(data);
 }
 
+// Activa/renueva suscripcion y conserva roles admin/vendedor.
 async function setSubscriptionActive(
   supabase: SupabaseAdminClient,
   user: UserSubscriptionRow,
@@ -359,6 +369,7 @@ async function setSubscriptionActive(
   assertNoSupabaseError(error, 'Error actualizando suscripcion de usuario');
 }
 
+// Guarda customer id para portal y eventos futuros.
 async function persistCustomerId(
   supabase: SupabaseAdminClient,
   userId: string,
@@ -376,6 +387,7 @@ async function persistCustomerId(
   assertNoSupabaseError(error, 'Error guardando customer id de Stripe');
 }
 
+// Concede acceso digital permanente desde un pago confirmado.
 async function grantPermanentBookAccess(
   supabase: SupabaseAdminClient,
   userId: string,
@@ -388,6 +400,7 @@ async function grantPermanentBookAccess(
   }
 }
 
+// Obtiene precio de DB y usa fallback defensivo solo si falta el campo.
 async function getPhysicalBookPrice(
   supabase: SupabaseAdminClient,
   bookId: string,
@@ -434,6 +447,7 @@ function parsePhysicalOrderResult(value: unknown): DecrementedPhysicalOrderResul
   };
 }
 
+// Crea la orden fisica y descuenta stock dentro de una RPC transaccional.
 async function fulfillPhysicalOrder(
   supabase: SupabaseAdminClient,
   input: PhysicalOrderInput
@@ -461,6 +475,7 @@ async function fulfillPhysicalOrder(
   }
 }
 
+// Elimina items del carrito solo despues de procesar pago.
 async function removeProcessedCartItems(
   supabase: SupabaseAdminClient,
   cartItemIds: string[]
@@ -477,6 +492,7 @@ async function removeProcessedCartItems(
   assertNoSupabaseError(error, 'Error limpiando carrito despues del pago');
 }
 
+// Idempotencia: evita reprocesar reintentos de Stripe.
 async function hasProcessedWebhookEvent(
   supabase: SupabaseAdminClient,
   eventId: string
@@ -491,6 +507,7 @@ async function hasProcessedWebhookEvent(
   return Boolean(data);
 }
 
+// Registra evento procesado aun cuando Stripe vuelva a enviarlo.
 async function recordProcessedWebhookEvent(
   supabase: SupabaseAdminClient,
   event: Stripe.Event
@@ -508,6 +525,7 @@ async function recordProcessedWebhookEvent(
   assertNoSupabaseError(error, 'Error guardando idempotencia de webhook');
 }
 
+// Maneja checkout de suscripcion completado.
 async function handleSubscriptionCheckoutCompleted(
   supabase: SupabaseAdminClient,
   stripeClient: Stripe,
@@ -524,6 +542,7 @@ async function handleSubscriptionCheckoutCompleted(
   await setSubscriptionActive(supabase, user, endsAt, customerId);
 }
 
+// Maneja checkout moderno de carrito con items serializados en metadata.
 async function handleCartCheckoutCompleted(
   supabase: SupabaseAdminClient,
   session: Stripe.Checkout.Session,
@@ -560,6 +579,7 @@ async function handleCartCheckoutCompleted(
   );
 }
 
+// Maneja checkout legacy de un solo libro.
 async function handleLegacyBookCheckoutCompleted(
   supabase: SupabaseAdminClient,
   session: Stripe.Checkout.Session,
@@ -589,6 +609,7 @@ async function handleLegacyBookCheckoutCompleted(
   }
 }
 
+// Decide si una sesion completada es suscripcion, carrito o compra legacy.
 async function handleCheckoutCompleted(
   supabase: SupabaseAdminClient,
   stripeClient: Stripe,
@@ -626,6 +647,7 @@ async function handleCheckoutCompleted(
   }
 }
 
+// Extrae email solo de clientes no eliminados.
 function extractCustomerEmail(customer: Stripe.Customer | Stripe.DeletedCustomer): string | null {
   if ('deleted' in customer && customer.deleted) {
     return null;
@@ -639,6 +661,7 @@ async function fetchCustomerEmail(stripeClient: Stripe, customerId: string): Pro
   return extractCustomerEmail(customer);
 }
 
+// Busca usuario por customer id guardado.
 async function findUserByStripeCustomerId(
   supabase: SupabaseAdminClient,
   customerId: string
@@ -653,6 +676,7 @@ async function findUserByStripeCustomerId(
   return data ? normalizeUserIdentityRow(data) : null;
 }
 
+// Busca usuario por email cuando Stripe no puede asociarse por customer id.
 async function findUserByEmail(
   supabase: SupabaseAdminClient,
   email: string
@@ -667,6 +691,7 @@ async function findUserByEmail(
   return data ? normalizeUserIdentityRow(data) : null;
 }
 
+// Revoca suscripcion sin degradar roles privilegiados.
 async function revokeSubscriptionAccess(
   supabase: SupabaseAdminClient,
   user: Pick<UserSubscriptionRow, 'id' | 'role'>,
@@ -696,6 +721,7 @@ async function revokeSubscriptionAccess(
   assertNoSupabaseError(error, 'Error revocando suscripcion cancelada');
 }
 
+// Procesa cancelacion/eliminacion de suscripcion.
 async function handleSubscriptionDeleted(
   supabase: SupabaseAdminClient,
   stripeClient: Stripe,
@@ -729,6 +755,7 @@ async function handleSubscriptionDeleted(
   await revokeSubscriptionAccess(supabase, userByEmail, customerId);
 }
 
+// Procesa renovaciones o reactivaciones de suscripcion.
 async function handleSubscriptionUpdated(
   supabase: SupabaseAdminClient,
   subscription: Stripe.Subscription
@@ -757,6 +784,7 @@ async function handleSubscriptionUpdated(
   await setSubscriptionActive(supabase, subscriptionUser, periodEnd, customerId);
 }
 
+// Router interno por tipo de evento Stripe.
 async function processStripeEvent(
   supabase: SupabaseAdminClient,
   stripeClient: Stripe,
@@ -780,10 +808,11 @@ async function processStripeEvent(
       return;
 
     default:
-      console.log(`Tipo de evento no manejado: ${event.type}`);
+      console.info(`Tipo de evento no manejado: ${event.type}`);
   }
 }
 
+// Entrada HTTP del webhook: verifica firma, aplica idempotencia y procesa evento.
 export async function POST(request: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -815,7 +844,7 @@ export async function POST(request: NextRequest) {
     const alreadyProcessed = await hasProcessedWebhookEvent(supabase, event.id);
 
     if (alreadyProcessed) {
-      console.log('[webhook] Evento ya procesado, saltando:', event.id);
+      console.info('[webhook] Evento ya procesado, saltando:', event.id);
       return NextResponse.json({ received: true, idempotent: true });
     }
 

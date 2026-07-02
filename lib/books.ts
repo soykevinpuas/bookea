@@ -2,12 +2,13 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { Book } from "@/types/book";
 import { getCachedBookMetadata, getAllCachedBooks, saveBookMetadata } from "./downloads";
 
+// Modulo central de catalogo, biblioteca y reglas de acceso digital.
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isValidUUID = (id: string) => UUID_REGEX.test(id);
 
-// 3.3 - Configuración y Utilerías de Acceso a Supabase para la Entidad Books
+// Lista libros activos aplicando filtros de catalogo y visibilidad fisica/digital.
 export async function getBooks(
-  supabase: SupabaseClient, 
+  supabase: SupabaseClient,
   filters?: { search?: string; category?: string; author?: string; adminId?: string }
 ): Promise<Book[]> {
   try {
@@ -16,7 +17,7 @@ export async function getBooks(
       .select("*")
       .eq("is_active", true);
 
-    // Si se especifica adminId, filtrar por admin_stock en vez de stock_physical global
+    // Admin ve fisicos disponibles en su propio stock; usuarios ven stock agregado.
     if (filters?.adminId) {
       const { data: adminStock } = await supabase
         .from("admin_stock")
@@ -27,18 +28,15 @@ export async function getBooks(
       const adminBookIds = (adminStock ?? []).map(s => s.book_id);
 
       if (adminBookIds.length > 0) {
-        // Columna en books es "id", no "book_id" (book_id solo existe en admin_stock)
         query = query.or(`epub_url.not.is.null,id.in.(${adminBookIds.join(',')})`);
       } else {
         query = query.not("epub_url", "is", null);
       }
     } else {
-      // Free/subscriber: digitales siempre; físicos solo si hay stock en almacén (suma admin_stock)
       query = query.or("epub_url.not.is.null,stock_physical.gt.0");
     }
 
     if (filters?.search) {
-      // Búsqueda simple en título o autor
       query = query.or(`title.ilike.%${filters.search}%,author.ilike.%${filters.search}%`);
     }
 
@@ -64,10 +62,10 @@ export async function getBooks(
   }
 }
 
+// Obtiene un libro activo por UUID y cae al cache local si no hay red.
 export async function getBook(supabase: SupabaseClient, id: string): Promise<Book | null> {
-  if (!id) return null;
   if (!id || !isValidUUID(id)) return null;
-  
+
   try {
     const { data, error } = await supabase
       .from("books")
@@ -77,26 +75,23 @@ export async function getBook(supabase: SupabaseClient, id: string): Promise<Boo
       .single();
 
     if (error) {
-      // FALLBACK OFFLINE: Si no hay internet, intentar obtener del caché local
       return getCachedBookMetadata(id);
     }
     return (data as Book) || null;
   } catch {
-    // FALLBACK OFFLINE: En caso de error de red (fetch fallido)
     return getCachedBookMetadata(id);
   }
 }
 
+// Devuelve la biblioteca del usuario, combinando Supabase con progreso/cache offline.
 export async function getUserBooks(supabase: SupabaseClient, userId: string, options?: { search?: string; category?: string; author?: string }): Promise<Book[]> {
-  // 1. Si estamos offline (chequeo rápido de navegador), vamos directo al grano
   if (typeof window !== 'undefined' && !navigator.onLine) {
     return getAllCachedBooks();
   }
 
-  if (!userId) return getAllCachedBooks(); // Devolver caché incluso si no hay ID por ahora
-  
+  if (!userId) return getAllCachedBooks();
+
   try {
-    // 1. Obtener los libros en la biblioteca del usuario
     const { data: userBooksData, error: ubError } = await supabase
       .from("user_books")
       .select(`
@@ -114,13 +109,12 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
 
     if (!userBooksData || !Array.isArray(userBooksData)) return getAllCachedBooks();
 
-    // 2. Obtener el progreso de lectura por separado para evitar errores de relación
+    // El progreso se consulta aparte porque la relacion historica no siempre existe.
     const { data: progressData } = await supabase
       .from("reading_progress")
       .select("book_id, last_read_at, percent_complete, cfi_position")
       .eq("user_id", userId);
 
-    // Crear un mapa de progreso para búsqueda rápida O(1)
     const progressMap = new Map();
     progressData?.forEach(p => {
       progressMap.set(p.book_id, p);
@@ -130,15 +124,15 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
       .map((item: { access_type: string; expires_at?: string | null; book_id: string; books: Book | Book[] }) => {
         const bookData = item.books;
         const book = Array.isArray(bookData) ? bookData[0] : bookData;
-        
+
         if (!book || !book.id) return null;
 
         const progressEntry = progressMap.get(book.id);
-        
+
         const serverPercent = progressEntry?.percent_complete || 0;
         const lastRead = progressEntry?.last_read_at || null;
 
-        // 3.4.1.9 - PRIORIDAD OFFLINE
+        // El progreso local puede ser mas fresco si el usuario leyo offline.
         let local = null;
         try {
           const rawLocal = typeof window !== 'undefined' ? localStorage.getItem("bookea-offline-progress") : null;
@@ -148,25 +142,25 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
             if (local?.user_id && local.user_id !== userId) local = null;
           }
         } catch {}
-        
+
         let finalPercent = serverPercent;
         let finalLastRead = lastRead;
-        
+
         if (local && (local.updated_at || local.last_read_at)) {
           const localTimestamp = local.updated_at || local.last_read_at;
           const sTime = lastRead ? new Date(lastRead).getTime() : 0;
           const lTime = new Date(localTimestamp).getTime();
-          
+
           if (lTime > sTime) {
             finalPercent = local.percent_complete ?? serverPercent;
             finalLastRead = localTimestamp;
           }
         }
-        
+
         const isOfflineReady = getCachedBookMetadata(book.id) ? true : false;
 
-        return { 
-          ...book, 
+        return {
+          ...book,
           last_read_at: finalLastRead,
           percent_complete: finalPercent,
           access_type: item.access_type,
@@ -176,7 +170,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
       })
       .filter((b): b is NonNullable<typeof b> => !!b);
 
-    // 3.4.2 - AUTO-CACHING
+    // Mantiene metadata disponible para biblioteca offline.
     if (books.length > 0) {
       books.forEach(b => saveBookMetadata(b));
     }
@@ -206,6 +200,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
 const ACCESS_CACHE_KEY = 'bookea-access-cache';
 const ACCESS_CACHE_TTL = 5 * 60 * 1000;
 
+// Cachea solo el resultado booleano por usuario/libro; nunca roles ni privilegios.
 function getAccessCacheKey(userId: string, bookId: string): string {
   return `${userId}:${bookId}`;
 }
@@ -237,37 +232,35 @@ function setCachedAccess(userId: string, bookId: string, hasAccess: boolean): vo
     cache[getAccessCacheKey(userId, bookId)] = { hasAccess, cachedAt: Date.now() };
     localStorage.setItem(ACCESS_CACHE_KEY, JSON.stringify(cache));
   } catch {
-    // localStorage may be full or unavailable
+    // localStorage puede estar lleno o bloqueado por privacidad.
   }
 }
 
+// Determina si un usuario puede leer un libro premium/free con fallback offline seguro.
 export async function hasBookAccess(supabase: SupabaseClient, userId: string, bookId: string): Promise<boolean> {
   if (!userId || !bookId) return false;
-  
+
   try {
-    // 1. Obtener datos del usuario (rol y fin de suscripción)
-const { data: userData, error: userError } = await supabase
-  .from("users")
-  .select("role, subscription_ends_at")
-  .eq("id", userId)
-  .single();
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("role, subscription_ends_at")
+      .eq("id", userId)
+      .single();
 
-if (userError || !userData) {
-  console.error('[hasBookAccess] Error al consultar usuario:', userError?.message);
-  const cached = getCachedAccess(userId, bookId);
-  if (cached !== null) return cached;
-  return false;
-}
+    if (userError || !userData) {
+      console.error('[hasBookAccess] Error al consultar usuario:', userError?.message);
+      const cached = getCachedAccess(userId, bookId);
+      if (cached !== null) return cached;
+      return false;
+    }
 
-    // Administradores y vendedores tienen acceso total al catálogo digital
+    // Admin/vendedor necesitan acceso operativo al catalogo digital.
     if (userData.role === 'admin' || userData.role === 'vendedor') return true;
 
-    // Verificar si es Premium activo
     const now = new Date();
     const endsAt = userData.subscription_ends_at ? new Date(userData.subscription_ends_at) : null;
     const isPremiumActive = userData.role === 'subscriber' && (!endsAt || endsAt > now);
 
-    // 2. Obtener datos del libro para ver si es Premium
     const { data: book, error: bookError } = await supabase
       .from("books")
       .select("is_premium, title")
@@ -281,21 +274,19 @@ if (userError || !userData) {
       return false;
     }
 
-    // --- REGLA DE ORO DE LIBROS GRATIS ---
-    // Si el libro NO es premium, cualquier usuario (incluso gratis) puede leerlo.
+    // Libro no premium: cualquier usuario autenticado puede leerlo.
     if (!book.is_premium) {
       setCachedAccess(userId, bookId, true);
       return true;
     }
 
-    // --- REGLA DE LIBROS PREMIUM ---
-    // Si el usuario es Premium activo y el libro es Premium, permitir acceso
+    // Libro premium: subscriber activo entra por plan.
     if (isPremiumActive && book.is_premium) {
       setCachedAccess(userId, bookId, true);
       return true;
     }
-    
-    // 3. Verificar acceso específico en biblioteca (Compras permanentes, regalos, o canjes con monedas)
+
+    // Accesos explicitos cubren compras permanentes, regalos y canjes vigentes.
     const { data: userBook } = await supabase
       .from("user_books")
       .select("access_type, expires_at")
@@ -333,9 +324,7 @@ if (userError || !userData) {
 }
 
 /**
- * 3.3.4 - Agregar un libro a la biblioteca del usuario.
- * Verifica existencia antes de insertar y nunca degrada accesos fuertes
- * (compras permanentes, regalos o canjes vigentes).
+ * Tipos de acceso guardados en user_books y usados por lector/catalogo.
  */
 export type LibraryAccessType = 'subscription' | 'permanent' | 'gift' | 'coin_redemption';
 
@@ -363,11 +352,11 @@ function shouldUpdateLibraryAccess(
   return true;
 }
 
+// Agrega o actualiza biblioteca sin degradar accesos mas fuertes ya existentes.
 export async function addToLibrary(supabase: SupabaseClient, userId: string, bookId: string, accessType: LibraryAccessType = 'subscription') {
   if (!userId || !bookId) return null;
 
   try {
-    // 1. Verificar si ya existe para evitar errores de duplicidad/constraint
     const { data: existing, error: checkError } = await supabase
       .from("user_books")
       .select("id, access_type, expires_at")
@@ -385,68 +374,65 @@ export async function addToLibrary(supabase: SupabaseClient, userId: string, boo
       if (!shouldUpdateLibraryAccess(existing as { access_type: LibraryAccessType; expires_at?: string | null }, accessType)) {
         record = existing;
       } else {
-      const { data, error: updateError } = await supabase
-        .from("user_books")
-        .update({ access_type: accessType, expires_at: null })
-        .eq("id", existing.id)
-        .select()
-        .single();
-      
-      if (updateError) {
-        console.error("[addToLibrary] Update error:", updateError);
-        throw new Error(`Update failed: ${updateError.message}`);
-      }
-      record = data;
+        const { data, error: updateError } = await supabase
+          .from("user_books")
+          .update({ access_type: accessType, expires_at: null })
+          .eq("id", existing.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error("[addToLibrary] Update error:", updateError);
+          throw new Error(`Update failed: ${updateError.message}`);
+        }
+        record = data;
       }
     } else {
-      // Si no existe, insertar
       const { data, error: insertError } = await supabase
         .from("user_books")
-        .insert({ 
-          user_id: userId, 
-          book_id: bookId, 
-          access_type: accessType 
+        .insert({
+          user_id: userId,
+          book_id: bookId,
+          access_type: accessType
         })
         .select()
         .single();
 
       if (insertError) {
-      console.error("[addToLibrary] ERROR DE SUPABASE AL INSERTAR:", insertError.message, insertError.details, insertError.hint);
-      throw new Error(`Error de base de datos: ${insertError.message}`);
+        console.error("[addToLibrary] ERROR DE SUPABASE AL INSERTAR:", insertError.message, insertError.details, insertError.hint);
+        throw new Error(`Error de base de datos: ${insertError.message}`);
+      }
+      record = data;
     }
-    record = data;
-  }
 
-  // 2. Asegurar que exista el registro de progreso (necesario para el join)
-  const { data: existingProgress } = await supabase
-    .from("reading_progress")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("book_id", bookId)
-    .maybeSingle();
-
-  if (!existingProgress) {
-    await supabase
+    // El dashboard espera que exista progreso para ordenar y mostrar el libro.
+    const { data: existingProgress } = await supabase
       .from("reading_progress")
-      .insert({ 
-        user_id: userId, 
-        book_id: bookId,
-        percent_complete: 0,
-        last_read_at: new Date().toISOString()
-      });
+      .select("id")
+      .eq("user_id", userId)
+      .eq("book_id", bookId)
+      .maybeSingle();
+
+    if (!existingProgress) {
+      await supabase
+        .from("reading_progress")
+        .insert({
+          user_id: userId,
+          book_id: bookId,
+          percent_complete: 0,
+          last_read_at: new Date().toISOString()
+        });
+    }
+
+    return record;
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Error desconocido';
+    console.error("Critical error in addToLibrary:", msg);
+    return { error: "Error desconocido" };
   }
-
-  return record;
-} catch (error: unknown) {
-  const msg = error instanceof Error ? error.message : 'Error desconocido';
-  console.error("Critical error in addToLibrary:", msg);
-  return { error: "Error desconocido" };
-}
 }
 
-/**
- * 3.3.5 - Quitar un libro de la biblioteca personal.
- */
+// Quita accesos removibles sin permitir borrar compras, regalos o canjes activos.
 export async function removeFromLibrary(supabase: SupabaseClient, userId: string, bookId: string) {
   if (!userId || !bookId) return { success: false, error: "Datos incompletos" };
 

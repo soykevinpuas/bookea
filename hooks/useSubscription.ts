@@ -10,6 +10,7 @@ export interface SubscriptionData {
   daysRemaining: number | null;
 }
 
+// Cachea rol/suscripcion para evitar pantalla vacia entre navegaciones.
 function readCachedSubscription(cacheKey: string): SubscriptionData | undefined {
   if (typeof window === "undefined") return undefined;
 
@@ -25,6 +26,7 @@ function readCachedSubscription(cacheKey: string): SubscriptionData | undefined 
   }
 }
 
+// Normaliza rol, expiracion y estados derivados para UI.
 function buildSubscriptionData(data: {
   role: string;
   subscription_ends_at: string | null;
@@ -57,6 +59,7 @@ function buildSubscriptionData(data: {
   };
 }
 
+// Hook de rol/suscripcion con fallback local y Realtime de cambios admin/Stripe.
 export function useSubscription(userId: string | undefined) {
   const queryClient = useQueryClient();
   const supabase = useMemo(() => createClientClient(), []);
@@ -93,7 +96,7 @@ export function useSubscription(userId: string | undefined) {
     placeholderData: (previousData) => previousData,
   });
 
-  // Escuchar cambios de rol/suscripción hechos desde el panel admin en tiempo real
+  // Escucha cambios de rol/suscripcion hechos desde admin o webhooks.
   useEffect(() => {
     if (!userId) return;
     if (channelRef.current) return;

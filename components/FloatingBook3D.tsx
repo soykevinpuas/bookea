@@ -77,10 +77,10 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
   useEffect(() => {
     let active = true;
     const urlToLoad = coverUrl || FALLBACK_URL;
-    
+
     const loader = new TextureLoader();
     loader.setCrossOrigin("anonymous");
-    
+
     loader.load(
       urlToLoad,
       (tex) => {
@@ -115,8 +115,8 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
   }, [coverUrl]);
 
   const img = texture?.image as HTMLImageElement | undefined;
-  const imgAspect = img && img.width && img.height 
-    ? img.width / img.height 
+  const imgAspect = img && img.width && img.height
+    ? img.width / img.height
     : 1.5;
 
   useFrame((_, delta) => {

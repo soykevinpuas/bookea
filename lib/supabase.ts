@@ -5,21 +5,19 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  console.warn("⚠️ ALERTA: Variables de Supabase ausentes durante el build o ejecución. Usando placeholders.");
-  
-  // En el navegador, esto es crítico:
+  console.warn("ALERTA: Variables de Supabase ausentes durante el build o ejecución. Usando placeholders.");
+
   if (typeof window !== 'undefined') {
-    console.error("❌ ERROR DE CONFIGURACIÓN: La aplicación no tiene las variables de Supabase. Revisa tu archivo .env.local.");
+    console.error("ERROR DE CONFIGURACIÓN: La aplicación no tiene las variables de Supabase. Revisa tu archivo .env.local.");
   }
 }
 
-// Singleton para el cliente del navegador para evitar múltiples instancias de Auth/Realtime
+// Singleton del navegador para evitar multiples instancias de Auth/Realtime.
 let browserClient: SupabaseClient | null = null;
 
-// 1.1 - Cliente Supabase Estándar (SSG / Funciones Puras)
-// Si estamos en el navegador, apuntamos al browserClient para evitar instancias múltiples
-export const supabase = typeof window === 'undefined' 
-  ? createStandardClient(supabaseUrl, supabaseAnonKey) 
+// Cliente compatible con imports legacy: en browser delega al singleton SSR-aware.
+export const supabase = typeof window === 'undefined'
+  ? createStandardClient(supabaseUrl, supabaseAnonKey)
   : new Proxy({} as SupabaseClient, {
       get: (target, prop) => {
         if (!browserClient) {
@@ -30,7 +28,7 @@ export const supabase = typeof window === 'undefined'
     });
 
 
-// 1.2 - Cliente Supabase para Componentes de Cliente (SSR Aware / Singleton)
+// Factory explicita para componentes cliente.
 export const createClientClient = () => {
   if (typeof window === 'undefined') {
     return createBrowserClient(supabaseUrl, supabaseAnonKey);

@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { parseAvatarConfig, stringifyAvatarConfig } from "@/lib/avatars-v2";
 
 /**
- * 6.4 - AvatarSelector: Nuevo constructor de identidad con DiceBear API
+ * AvatarSelector: Nuevo constructor de identidad con DiceBear API
  * Permite elegir estilo y color de fondo
  */
 
@@ -42,14 +42,14 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
   const initialColor = hasSavedAvatar(currentAvatarConfig)
     ? normalizeHexColor(initialConfig.color)
     : getRandomAvatarColor();
-  
+
   // Inicializar semilla: leer del config o caché, NUNCA generar una nueva automáticamente
   const [seed, setSeed] = useState<string>(() => {
-    // 1. Intentar usar la semilla del config actual
+    // Intentar usar la semilla del config actual
     if (initialConfig.seed && initialConfig.seed !== "") {
       return initialConfig.seed;
     }
-    // 2. Intentar leer del caché local
+    // Intentar leer del caché local
     if (typeof window !== 'undefined') {
       try {
         const cached = localStorage.getItem('bookea-avatar-cache');
@@ -61,10 +61,10 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
         }
       } catch {}
     }
-    // 3. Si no hay semilla, usar "default" (NO generar una nueva)
+    // Si no hay semilla, usar "default" (NO generar una nueva)
     return "default";
   });
-  
+
   const [selectedType, setSelectedType] = useState<AvatarStyleType>(initialConfig.type as AvatarStyleType || "avataaars");
   const [selectedColor, setSelectedColor] = useState<string>(initialColor);
   const [colorText, setColorText] = useState<string>(initialColor);
@@ -89,7 +89,7 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
       seed,
     };
   }, [selectedType, selectedColor, seed]);
-  
+
   useEffect(() => {
     if (!isInitialized.current && currentAvatarConfig) {
       queueMicrotask(() => {
@@ -155,17 +155,17 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
 
   return (
     <div className="space-y-10">
-      {/* 6.4.1 - Previsualización Gigante */}
+      {/* Previsualización Gigante */}
       <div className="flex flex-col items-center">
         <div className="relative group">
           <div className="absolute -inset-4 bg-gradient-to-r from-amber-500/20 to-blue-500/20 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
           <div className="relative">
-            <AnimalEngine 
-              type={selectedType} 
-              color={selectedColor} 
+            <AnimalEngine
+              type={selectedType}
+              color={selectedColor}
               seed={seed}
-              size={140} 
-              className="relative bg-white dark:bg-[#151515] shadow-2xl border-4 border-white dark:border-white/5 outline outline-1 outline-white/10" 
+              size={140}
+              className="relative bg-white dark:bg-[#151515] shadow-2xl border-4 border-white dark:border-white/5 outline outline-1 outline-white/10"
             />
             {/* Botón de mezclar/shuffle */}
              <button
@@ -185,7 +185,7 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
         <p className="mt-4 text-sm font-bold text-gray-900 dark:text-white uppercase tracking-widest">Tu Identidad</p>
       </div>
 
-      {/* 6.4.2 - Selector de Estilo */}
+      {/* Selector de Estilo */}
       <div className="space-y-4">
         <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-white/30 flex items-center gap-2">
           1. Elige tu Estilo
@@ -196,8 +196,8 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
               key={style.id}
               onClick={() => handleStyleChange(style.id)}
               className={`relative aspect-square rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-1 p-2 ${
-                selectedType === style.id 
-                  ? "border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/10" 
+                selectedType === style.id
+                  ? "border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/10"
                   : "border-gray-100 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/10 bg-white dark:bg-white/5"
               }`}
             >
@@ -213,7 +213,7 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
         </div>
       </div>
 
-       {/* 6.4.3 - Selector de Color */}
+       {/* Selector de Color */}
        <div className="space-y-4">
          <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-white/30 flex items-center gap-2">
            2. Personaliza el Color de Fondo
@@ -262,7 +262,7 @@ export default function AvatarSelector({ currentAvatarConfig, onSelect, isUpdati
 	         </div>
 	       </div>
 
-      {/* 6.4.4 - Botón de Guardado */}
+      {/* Botón de Guardado */}
       <button
         onClick={handleSave}
         disabled={isUpdating || !hasChanges}

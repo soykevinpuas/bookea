@@ -3,7 +3,7 @@
 import React from "react";
 
 /**
- * 6.8 - AnimalEngine: Motor de renderizado usando DiceBear API
+ * AnimalEngine: Motor de renderizado usando DiceBear API
  * 3 estilos: Persona, Robot, Artístico
  * Paleta de colores clara/oscura
  */
@@ -59,14 +59,14 @@ export const AVATAR_COLORS = [
 ];
 
 /**
- * 6.8.1 - Convierte color hex a formato DiceBear (sin #)
+ * Convierte color hex a formato DiceBear (sin #)
  */
 function formatColorForDiceBear(color: string): string {
   return color.replace('#', '');
 }
 
 /**
- * 6.8.2 - Genera URL de DiceBear SVG
+ * Genera URL de DiceBear SVG
  */
 function getDiceBearUrl(style: string, seed: string, backgroundColor: string): string {
   const bgColor = formatColorForDiceBear(backgroundColor);
@@ -74,18 +74,18 @@ function getDiceBearUrl(style: string, seed: string, backgroundColor: string): s
 }
 
 /**
- * 6.8.3 - Genera una semilla aleatoria
+ * Genera una semilla aleatoria
  */
 export function generateRandomSeed(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
 /**
- * 6.8.4 - Componente principal AnimalEngine
+ * Componente principal AnimalEngine
  */
 export function AnimalEngine(props: AnimalAvatarProps | AnimalAvatarConfigProps) {
   // Support both modes: direct props or config object
-  const { type, color, seed, size = 48, className = "" } = 'config' in props 
+  const { type, color, seed, size = 48, className = "" } = 'config' in props
     ? { type: props.config.type, color: props.config.color, seed: props.config.seed, size: props.size, className: props.className }
     : props;
 
@@ -94,11 +94,11 @@ export function AnimalEngine(props: AnimalAvatarProps | AnimalAvatarConfigProps)
   const url = getDiceBearUrl(type, effectiveSeed, color);
 
   return (
-    <div 
+    <div
       className={`relative flex items-center justify-center overflow-hidden rounded-full ${className}`}
       style={{ width: size, height: size }}
     >
-      <img 
+      <img
         src={url}
         alt="Avatar"
         className="w-full h-full rounded-full"

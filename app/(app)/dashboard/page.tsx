@@ -37,7 +37,7 @@ function clearPaymentParams() {
   window.history.replaceState({}, "", nextUrl);
 }
 
-// 3.4 - DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
+// DashboardPage: Panel principal del usuario con soporte offline y sección de lectura reciente
 // Componente interno con toda la lógica del Dashboard
 function DashboardContent() {
   const { userId } = useUserId();
@@ -45,7 +45,7 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   const stripeSessionId = searchParams.get("session_id");
   const paymentStatus = searchParams.get("payment");
-  
+
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [isOnline, setIsOnline] = useState(true);
@@ -53,7 +53,7 @@ function DashboardContent() {
 
   const queryClient = useQueryClient();
 
-  // 3.4.1 - Tracking de analytics: visita a dashboard
+  // Tracking de analytics: visita a dashboard
   useEffect(() => {
     track('page_view', { page: 'dashboard' }).catch(console.warn);
   }, []);
@@ -153,7 +153,7 @@ function DashboardContent() {
     poll();
   }, [paymentStatus, queryClient, router, stripeSessionId, userId]);
 
-  // 3.4.1 - Detección de estado de conexión
+  // Detección de estado de conexión
   useEffect(() => {
     const handleStatus = () => setIsOnline(navigator.onLine);
     queueMicrotask(handleStatus);
@@ -263,8 +263,8 @@ function DashboardContent() {
             )}
           </div>
           {isOnline && (
-            <Link 
-              href="/catalog" 
+            <Link
+              href="/catalog"
               className="text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-full transition-all flex items-center gap-2 uppercase tracking-widest"
             >
               Catálogo <Compass className="w-4 h-4" />
@@ -342,7 +342,7 @@ function DashboardContent() {
   );
 }
 
-// 3.4 - DashboardPage: Panel principal envuelto en Suspense para manejar useSearchParams en producción
+// DashboardPage: Panel principal envuelto en Suspense para manejar useSearchParams en producción
 export default function DashboardPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#f5f0eb] dark:bg-[#0a0a0a] p-6"><DashboardSkeleton /></div>}>

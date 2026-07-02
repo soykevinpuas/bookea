@@ -1,4 +1,4 @@
-// 6.x - Quiz de finalización de lectura para otorgar monedas
+// Quiz de finalización de lectura para otorgar monedas
 'use client'
 
 import { useState, useEffect } from 'react'

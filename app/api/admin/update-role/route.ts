@@ -5,19 +5,19 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // 1. Verificar que el usuario autenticado es admin
+    // Verificar que el usuario autenticado es admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    // 2. Verificar rol admin vía RPC (SECURITY DEFINER, bypass RLS)
+    // Verificar rol admin vía RPC (SECURITY DEFINER, bypass RLS)
     const { data: roleData } = await supabase.rpc('get_my_role');
     if (roleData !== 'admin') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 
-    // 3. Obtener datos del body
+    // Obtener datos del body
     const body = await request.json();
     const { targetUserId, newRole } = body;
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Rol inválido' }, { status: 400 });
     }
 
-    // 4. Usar adminClient (service_role) para bypassear RLS completamente
+    // Usar adminClient (service_role) para bypassear RLS completamente
     const adminDb = createAdminClient();
 
     const updatePayload: { role: string; assigned_admin_id?: string } = { role: newRole };
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // 5. Asegurar que el usuario tiene un perfil
+    // Asegurar que el usuario tiene un perfil
     const { data: existingProfile } = await adminDb
       .from('profiles')
       .select('id')

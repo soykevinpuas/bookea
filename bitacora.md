@@ -4,6 +4,39 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-01-A] — Reconciliación de documentación y comentarios base
+
+### Problema
+La documentación principal estaba desfasada frente al código real: mencionaba Next 15 aunque el proyecto usa Next 16.1.6, mezclaba features futuras con módulos ya implementados, omitía el rol `vendedor`, el stock por admin, el carrito, los canjes con monedas y el webhook Stripe endurecido. También conservaba reglas de comentarios con numeración rígida que varios agentes no respetaron.
+
+### Cambios
+1. **Documentación raíz:** `README.md`, `rules.md`, `spec.md` y `test.md` fueron reescritos como estado verificado del repo.
+2. **Documentación técnica:** `docs/PROJECT_MASTER.md`, `docs/DATABASE.md` y `docs/UX_UI.md` quedaron alineados con rutas, módulos, tablas, RPCs, PWA y riesgos actuales.
+3. **Guía de agentes:** agregado `AGENTS.md` con rutas críticas, reglas de seguridad y checklist de verificación.
+4. **Auditoría base:** se registró que `npm run lint` pasa con warnings, `npx tsc --noEmit` pasa sin errores y `npm run build` compila correctamente.
+
+### Archivos modificados
+- `README.md`
+- `rules.md`
+- `spec.md`
+- `test.md`
+- `AGENTS.md`
+- `docs/PROJECT_MASTER.md`
+- `docs/DATABASE.md`
+- `docs/UX_UI.md`
+- `docs/AUDIT_LOG.md`
+- `app/(app)/reader/[id]/page.tsx`
+- `lib/books.ts`
+- `lib/reading.ts`
+- `lib/highlights.ts`
+- `lib/bookmarks.ts`
+- `lib/stripe.ts`
+- `lib/server.ts`
+- `lib/supabase.ts`
+- `public/sw.js`
+
+---
+
 ## [2026-06-24-C] — Auditoría Profunda: Fixes de Seguridad en Vendedores y Animación Landing
 
 ### Problema
@@ -564,7 +597,7 @@ Crear un sistema de monedas de 4 denominaciones (Bronce, Plata, Oro, Diamante) p
 **Objetivo:** Fomentar la interacción social y la personalización estética mediante un sistema de reseñas en tiempo real y avatars predefinidos.
 
 ### Añadido
-- **Módulo de Comunidad (Frontend & Backend):** 
+- **Módulo de Comunidad (Frontend & Backend):**
   - Nueva API/Hook `useReviews.ts` integrada con **Supabase Realtime**.
   - Componentes `ReviewForm`, `ReviewList` y `StarRating` con animaciones de Framer Motion.
   - Implementación de **Calificación de 1-5 estrellas** y comentarios públicos abiertos a todos los usuarios.
@@ -586,7 +619,7 @@ Crear un sistema de monedas de 4 denominaciones (Bronce, Plata, Oro, Diamante) p
 **Objetivo:** Transicionar de un modelo de cobro automático (Stripe) a un sistema manual basado en créditos por libro para facilitar la administración tributaria.
 
 ### Añadido
-- **Módulo de Créditos (Backend):** 
+- **Módulo de Créditos (Backend):**
   - Nueva API `api/credits/redeem` para el canje de libros (1 crédito = 30 días de acceso).
   - Hook personalizado `useCredits.ts` para gestión de saldo y mutaciones de canje.
 - **Admin Panel Pro:**
@@ -611,7 +644,7 @@ Crear un sistema de monedas de 4 denominaciones (Bronce, Plata, Oro, Diamante) p
 - **Capa DAO (Highlights):** Creación del módulo central de conexiones `lib/highlights.ts` con soporte CRUD nativo (Crear, Obtener, Editar Color/Nota, Eliminar).
 - **Validación de Contraste Estricto:** En el lector (`page.tsx`), se añadió una regla de negocio que **prohíbe** persistir selecciones donde el contraste de color del *highlight* elegido falle las pautas WCAG AA sobre el color de fondo de la página (ej. no se permite texto negro sobre fondo blanco seleccionado con un color de subrayado muy claro).
 - **Panel Drawer Lateral (Cuaderno):** Implementado un gestor visual de tarjetas accesible mediante la navegación superior. Cada tarjeta corresponde a un subrayado en la base de datos, permitiendo atar notas tipo "sticky" directamente vinculadas a contextos exactos del libro.
-  
+
 ### Arreglos Críticos
 - **Destrucción Manual del DOM ("Exorcismo"):** Implementada lógica agresiva `querySelectorAll(g, mark).remove()` para solventar el bug endémico de Epub.js v0.3 *Continuous Flow* donde `.annotations.remove()` perdía la referencia del elemento y fallaba al limpiar la capa SVG.
 - **Race Condition de Preferencias (localStorage):** Parcheado un defecto grave de ciclo de vida en `app/(app)/reader/[id]/page.tsx` donde el efecto de 'guardado' se activaba milisegundos antes del montaje total, causando borrado e inicialización automática de los ajustes del usuario.
@@ -681,7 +714,7 @@ Crear un sistema de monedas de 4 denominaciones (Bronce, Plata, Oro, Diamante) p
 - **Inicialización del Proyecto:** Creación de repositorio con Next.js 15 App Router, React 19, Tailwind CSS 4 y TypeScript.
 - **Autenticación (Auth):** Integración completa del proveedor `Supabase SSR` para inicio de sesión y registro de usuarios por email/password (`app/(auth)/`). Creadas políticas RLS básicas.
 - **Base de Datos & Catálogo:** Despliegue de entidades `books` y `user_books`. Creación del catálogo responsivo con efecto 3D (`components/Book3D.tsx`) conectando React Query con la DB.
-- **Lector EPUB:** Construcción del módulo de lectura principal (`reader/[id]/page.tsx`) utilizando la librería `epubjs`. 
+- **Lector EPUB:** Construcción del módulo de lectura principal (`reader/[id]/page.tsx`) utilizando la librería `epubjs`.
    - Se configuró la interfaz HUD estilo *glassmorphism* aislada de Tailwind Dark Mode global.
    - Creación de temas personalizados: **Día**, **Noche** y **Retro**.
    - Integración del sistema `rendition.themes.override()` para forzar actualizaciones dinámicas del DOM sin bloqueos de caché.
@@ -808,11 +841,11 @@ Pendiente de prueba en teléfono.
 **1. `app/(app)/profile/page.tsx`:**
 - Agregada la prop `seed` al componente `AnimalEngine` para mostrar el avatar con la semilla correcta del usuario:
   ```tsx
-  <AnimalEngine 
-    type={parseAvatarConfig(profile.avatar_url).type} 
+  <AnimalEngine
+    type={parseAvatarConfig(profile.avatar_url).type}
     color={parseAvatarConfig(profile.avatar_url).color}
     seed={parseAvatarConfig(profile.avatar_url).seed}
-    size="100%" 
+    size="100%"
   />
   ```
 

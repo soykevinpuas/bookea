@@ -1,8 +1,9 @@
 /**
- * 4.1 - Tipos para epub.js
- * Define interfaces tipadas para evitar el uso de `any`
+ * Tipos parciales para epub.js.
+ * Cubren solo la superficie que usa el lector y reducen casts en nuevos cambios.
  */
 
+// Instancia principal del libro EPUB.
 export interface EpubBook {
   id?: string;
   pack?: string;
@@ -10,6 +11,7 @@ export interface EpubBook {
   destroy?: () => void;
 }
 
+// Controlador de renderizado de epubjs.
 export interface EpubRendition {
   display?: (target?: string | HTMLElement) => Promise<void>;
   on?: (event: string, callback: (...args: unknown[]) => void) => EpubRendition;
@@ -33,6 +35,7 @@ export interface EpubRendition {
   };
 }
 
+// Documento/iframe de una seccion renderizada.
 export interface EpubContents {
   dom?: Document | null;
   document?: Document | null;
@@ -48,18 +51,21 @@ export interface EpubContents {
   };
 }
 
+// Item del spine interno de epubjs.
 export interface EpubSpineItem {
   href?: string;
   id?: string;
   index?: number;
 }
 
+// Posicion reportada por epubjs.
 export interface EpubLocation {
   cfi?: string;
   displayed?: { page?: number; total?: number };
   index?: number;
 }
 
+// Datos de gestos tactiles dentro del iframe.
 export interface EpubGestureData {
   x?: number;
   y?: number;
@@ -67,12 +73,14 @@ export interface EpubGestureData {
   preventDefault?: () => void;
 }
 
+// Datos de seleccion de texto para highlights.
 export interface EpubSelectionData {
   cfiRange?: string;
   selection?: Selection | null;
   contents?: EpubContents;
 }
 
+// Eventos relevantes del lector.
 export interface EpubEvents {
   'book-ready': () => void;
   'rendition-ready': () => void;
@@ -83,6 +91,7 @@ export interface EpubEvents {
   'renderer': (contents: EpubContents) => void;
 }
 
+// Preferencias visuales del lector.
 export interface BookPreferences {
   fontSize: number;
   fontFamily: string;
@@ -91,7 +100,7 @@ export interface BookPreferences {
   textAlign: 'justify' | 'left';
 }
 
-// Alias para compatibilidad
+// Alias mantenidos para imports legacy.
 export type EpubBookInstance = EpubBook;
 export type EpubRenditionInstance = EpubRendition;
 export type EpubContentsInstance = EpubContents;

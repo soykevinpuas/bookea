@@ -17,7 +17,7 @@ import { useCartStore } from "@/stores/cart";
 import { ShoppingCart, Loader2, CheckCircle2, Search, LayoutGrid, List, Zap } from "lucide-react";
 import { toast } from "sonner";
 
-// 3.1 - CatalogContent: Lógica interna del catálogo con React Query para velocidad SPA
+// CatalogContent: Lógica interna del catálogo con React Query para velocidad SPA
 function CatalogContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -26,6 +26,8 @@ function CatalogContent() {
   const isInCart = (bookId: string, type: string) => cartItems.some(i => i.book_id === bookId && i.type === type);
   const { userId } = useUserId();
   const { data: subscription } = useSubscription(userId);
+
+  // El rol cambia reglas comerciales visibles: admin ve stock asignado y vendedor no compra.
   const { data: userRoleData } = useQuery({
     queryKey: ["user-role", userId],
     queryFn: async () => {
@@ -38,6 +40,8 @@ function CatalogContent() {
   // Solo admin filtra por su admin_stock; vendedor/free/subscriber ven catálogo completo
   const adminId = userRoleData?.role === 'admin' ? userId : undefined;
   const { data: userBooks } = useUserBooks(userId || '');
+
+  // Evita ofrecer compra digital cuando el usuario ya posee acceso permanente.
   const ownedDigitalIds = useMemo(() => {
     if (!userBooks) return new Set<string>();
     return new Set(userBooks.filter((b: any) => b.access_type === 'permanent').map((b: any) => b.id));
@@ -55,6 +59,7 @@ function CatalogContent() {
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [debouncedCategory, setDebouncedCategory] = useState(categoryFilter);
 
+  // Debounce corto: sincroniza filtros con URL sin reemplazar ruta en cada tecla.
   useEffect(() => {
     if (!mounted) { setDebouncedQuery(searchQuery); setDebouncedCategory(categoryFilter); return; }
     const timer = setTimeout(() => {
@@ -74,6 +79,7 @@ function CatalogContent() {
 
   const isVendedor = subscription?.role === 'vendedor';
 
+  // Tabs de negocio: lector filtra por formato; vendedor conserva todo el catálogo.
   const filteredByTab = useMemo(() => {
     if (!booksData) return [];
     if (isVendedor) return booksData;
@@ -88,6 +94,7 @@ function CatalogContent() {
 
   const categories = ["Ficción", "No Ficción", "Novela", "Clásicos", "Misterio y Suspenso", "Fantasía", "Ciencia Ficción", "Romance", "Terror", "Autoayuda", "Negocios y Finanzas", "Historia", "Biografías", "Cuentos", "Poesía", "Otros"];
 
+  // Agrega al carrito y abre el panel para confirmar visualmente la accion.
   const handleAddToCart = async (book: Book, type: 'digital' | 'physical') => {
     const key = `${book.id}-${type}`
     setAdding(key)
@@ -118,6 +125,7 @@ function CatalogContent() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Catálogo
             </h1>
+            {/* Selector de formato visible solo para roles compradores. */}
             {!isVendedor && (
               <div className="flex gap-1 p-0.5 bg-gray-100 dark:bg-zinc-800/50 rounded-lg">
                 {[
@@ -142,6 +150,7 @@ function CatalogContent() {
           </div>
         </div>
 
+        {/* Barra de busqueda y filtros persistidos en query params. */}
         <div className="flex gap-3 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-500" />
@@ -176,8 +185,9 @@ function CatalogContent() {
             <p className="text-gray-500 dark:text-gray-400">No encontramos libros que coincidan con tu búsqueda.</p>
           </Card>
         ) : (
+          /* Misma data con dos layouts: grid visual o lista compacta. */
           <div className={
-            viewMode === "grid" 
+            viewMode === "grid"
               ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
               : "flex flex-col gap-3"
           }>
@@ -328,7 +338,7 @@ function CatalogContent() {
   );
 }
 
-// 3.1 - CatalogPage: Wrapper con Suspense para manejar searchParams en cliente
+// CatalogPage: Wrapper con Suspense para manejar searchParams en cliente
 export default function CatalogPage() {
   return (
     <Suspense fallback={<main className="max-w-7xl mx-auto px-8 py-12"><CatalogSkeleton /></main>}>
