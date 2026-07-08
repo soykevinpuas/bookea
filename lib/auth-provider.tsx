@@ -13,6 +13,7 @@ interface AuthState {
 const CACHE_KEY = "bookea-auth-id";
 const EMAIL_CACHE_KEY = "bookea-auth-email";
 const AUTH_RECOVERY_GRACE_MS = 10000;
+const SESSION_KEEPALIVE_MS = 5 * 60 * 1000;
 type SessionUser = { id: string; email?: string | null } | null | undefined;
 
 const AuthContext = createContext<AuthState>({
@@ -73,6 +74,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [clearAuthState, clearRecoveryTimer]);
 
+  const refreshSession = useCallback(async () => {
+    try {
+      const { data } = await supabase.current.auth.refreshSession();
+      if (data.session?.user) {
+        applySessionUser(data.session.user);
+        return true;
+      }
+    } catch {
+      // La recuperacion por getUser/getSession decide si se conserva el cache local.
+    }
+
+    return false;
+  }, [applySessionUser]);
+
   const confirmMissingSession = useCallback(async () => {
     recoveryTimer.current = null;
 
@@ -82,6 +97,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         applySessionUser(sessionData.session.user);
         return;
       }
+
+      const refreshed = await refreshSession();
+      if (refreshed) return;
 
       const { data: userData, error } = await supabase.current.auth.getUser();
       if (userData.user) {
@@ -98,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       keepLastKnownAuth();
     }
-  }, [applySessionUser, clearAuthState, keepLastKnownAuth]);
+  }, [applySessionUser, clearAuthState, keepLastKnownAuth, refreshSession]);
 
   const handleMissingSession = useCallback(() => {
     const cachedUserId = localStorage.getItem(CACHE_KEY);
@@ -142,12 +160,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      const refreshed = await refreshSession();
+      if (refreshed) return;
+
       handleMissingSession();
     } catch {
       // Network error — keep last known state
       keepLastKnownAuth();
     }
-  }, [applySessionUser, handleMissingSession, keepLastKnownAuth]);
+  }, [applySessionUser, handleMissingSession, keepLastKnownAuth, refreshSession]);
 
   useEffect(() => {
     // Fast path: getSession() lee cookies localmente, SIN request de red
@@ -186,18 +207,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handle = () => {
       if (document.visibilityState === "visible") {
-        loadInitialSession();
-        syncUser();
+        void refreshSession().finally(() => {
+          loadInitialSession();
+          syncUser();
+        });
       }
     };
     document.addEventListener("visibilitychange", handle);
     return () => document.removeEventListener("visibilitychange", handle);
-  }, [loadInitialSession, syncUser]);
+  }, [loadInitialSession, refreshSession, syncUser]);
 
   useEffect(() => {
     window.addEventListener("online", syncUser);
     return () => window.removeEventListener("online", syncUser);
   }, [syncUser]);
+
+  useEffect(() => {
+    if (!state.userId) return;
+
+    const interval = setInterval(() => {
+      void refreshSession();
+    }, SESSION_KEEPALIVE_MS);
+
+    return () => clearInterval(interval);
+  }, [refreshSession, state.userId]);
 
   return (
     <AuthContext.Provider value={state}>

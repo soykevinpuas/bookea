@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClientClient } from "@/lib/supabase";
+import { recoverBrowserSession } from "@/lib/auth-fetch";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -46,7 +47,10 @@ export default function AdminLayout({
   useEffect(() => {
     if (authLoading) return;
     if (!userId) {
-      router.push("/login");
+      const supabase = createClientClient();
+      void recoverBrowserSession(supabase).then((recovered) => {
+        if (!recovered) router.push("/login");
+      });
       return;
     }
     if (!isFetched && !roleKnown) return;

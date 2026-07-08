@@ -34,8 +34,8 @@ export async function proxy(request: NextRequest) {
 
   let user = null
   try {
-    const { data } = await supabase.auth.getSession()
-    user = data.session?.user ?? null
+    const { data } = await supabase.auth.getUser()
+    user = data.user ?? null
   } catch {
     // Si Supabase falla, tratamos la ruta protegida como no autenticada.
   }
@@ -47,7 +47,9 @@ export async function proxy(request: NextRequest) {
   const isAuthPath = pathname === '/login' || pathname === '/register'
 
   if (!user && isProtectedPath) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    const redirectUrl = new URL('/login', request.url)
+    redirectUrl.searchParams.set('redirect', `${pathname}${request.nextUrl.search}`)
+    return NextResponse.redirect(redirectUrl)
   }
 
   if (user && isAuthPath) {

@@ -4,6 +4,85 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-08-B] — Descargas explicitas en biblioteca y acciones de auth en landing
+
+### Problema
+La biblioteca mostraba el sello de descarga cuando el EPUB estaba en Cache API por una lectura online, aunque el usuario nunca hubiera usado "Descargar Offline". Ademas, la landing no tenia accesos rapidos visibles para iniciar sesion o registrarse.
+
+### Cambios
+1. **`lib/downloads.ts`** — La descarga offline ahora se valida con metadata `isOfflineReady` creada por una descarga explicita y se confirma contra Cache API; `getAllCachedBooks()` solo devuelve libros descargados explicitamente.
+2. **`lib/books.ts`** — `getUserBooks()` calcula `isOfflineReady` con la nueva validacion explicita, no por mera presencia de metadata local.
+3. **`components/BookLongPressMenu.tsx` y `app/(app)/book/[id]/page.tsx`** — El sello/boton "Disponible Offline" ahora usan `bookId + epubUrl` para confirmar descarga real.
+4. **`components/LandingHero.tsx`** — Agregada barra superior derecha con accesos a iniciar sesion y registrarse.
+5. **`docs/AUDIT_LOG.md`** — Registrado el ajuste de comportamiento offline/PWA.
+
+### Verificacion
+- `npm run lint`: pasa con 0 errores y 243 warnings legacy.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Archivos modificados
+- `lib/downloads.ts`
+- `lib/books.ts`
+- `components/BookLongPressMenu.tsx`
+- `app/(app)/book/[id]/page.tsx`
+- `components/LandingHero.tsx`
+- `docs/AUDIT_LOG.md`
+
+---
+
+## [2026-07-08-A] — Sesion persistente y carga confiable en Mi Tienda
+
+### Problema
+El panel de vendedor podia quedar sin inventario visible si la primera llamada a `/api/vendedor/dashboard` ocurria antes de que Supabase terminara de hidratar o refrescar la sesion. Despues de dejar la app inactiva, algunos layouts tambien empujaban a `/login` sin intentar recuperar el refresh token. En consola seguian apareciendo el manifest de previews protegidos y el warning `THREE.Clock`.
+
+### Cambios
+1. **`proxy.ts`** — La proteccion de rutas ahora usa `supabase.auth.getUser()` para forzar refresh de cookies antes de redirigir y conserva la ruta original en `redirect`.
+2. **`lib/auth-provider.tsx`** — Agregado refresh al volver a primer plano, keepalive cada 5 minutos y recuperacion antes de limpiar estado local.
+3. **`lib/auth-fetch.ts`** — Nuevo helper cliente para reintentar APIs una vez despues de recuperar sesion Supabase.
+4. **`app/vendedor/page.tsx`** — El dashboard espera auth lista, pide datos con `no-store`, usa cache por usuario, reintenta tras refresh y muestra error con boton de reintento en vez de stock vacio falso.
+5. **`app/vendedor/layout.tsx` y `app/admin/layout.tsx`** — Intentan recuperar sesion antes de mandar al login.
+6. **`app/api/vendedor/dashboard/route.ts`** — Marcada como dinamica para evitar cache en datos de stock/ventas.
+7. **`docs/AUDIT_LOG.md`** — Documentado que `THREE.Clock` viene de `@react-three/fiber` 9.6.1/latest y no bloquea ventas ni sesion.
+
+### Verificacion
+- `npm run lint`: pasa con 0 errores y 243 warnings legacy.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Archivos modificados
+- `proxy.ts`
+- `lib/auth-provider.tsx`
+- `lib/auth-fetch.ts`
+- `app/vendedor/page.tsx`
+- `app/vendedor/layout.tsx`
+- `app/admin/layout.tsx`
+- `app/api/vendedor/dashboard/route.ts`
+- `docs/AUDIT_LOG.md`
+
+---
+
+## [2026-07-06-A] — Preview de Vercel sin manifest SSO y landing sin fotos externas
+
+### Problema
+El preview de Vercel intentaba cargar `/manifest.json`, pero Vercel lo redirigía a `vercel.com/sso-api`, provocando error CORS en consola. Además, si la consulta de portadas reales fallaba o no devolvía datos, la landing usaba imágenes externas de `picsum.photos`, mostrando fotos aleatorias ajenas al catálogo/galería de Bookea.
+
+### Cambios
+1. **`app/layout.tsx`** — El manifest PWA solo se expone fuera de `VERCEL_ENV=preview`, evitando la petición a `/manifest.json` en previews protegidos por SSO.
+2. **`app/page.tsx`** — Eliminado el fallback de `picsum.photos`; si Supabase/service role falla, no se inventan portadas externas.
+3. **`components/LandingHero.tsx`** — Corregido el enlace de catálogo de `/catalogo` a `/catalog`; el botón de cambiar portada solo aparece cuando hay más de una portada real.
+4. **`components/FloatingBook3D.tsx`** — Eliminado el fallback externo de textura 3D; si una portada no carga, se muestra el material interno del libro.
+5. **`docs/AUDIT_LOG.md`** — Registrado el riesgo operativo de Vercel SSO en previews.
+
+### Archivos modificados
+- `app/layout.tsx`
+- `app/page.tsx`
+- `components/LandingHero.tsx`
+- `components/FloatingBook3D.tsx`
+- `docs/AUDIT_LOG.md`
+
+---
+
 ## [2026-07-01-A] — Reconciliación de documentación y comentarios base
 
 ### Problema

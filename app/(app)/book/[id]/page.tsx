@@ -119,11 +119,11 @@ function BookDetailContent() {
   const isCurrentlyInLibrary = !!isInLibrary; // Booleano estable
 
   useEffect(() => {
-    // Verificar si el libro está en el caché al cargar
+    // Verificar descarga explícita, no solo EPUB cacheado por lectura online.
     if (book?.epub_url && typeof caches !== 'undefined') {
-      isBookDownloaded(book.epub_url).then(setIsDownloaded);
+      isBookDownloaded(book.id, book.epub_url).then(setIsDownloaded);
     }
-  }, [book?.epub_url]);
+  }, [book?.epub_url, book?.id]);
 
   const handleAddDigitalToCart = async () => {
     if (!book) return;

@@ -4,13 +4,23 @@ import { Book } from "@/types/book";
 export const BOOKS_CACHE = 'bookea-books-v3';
 const METADATA_KEY = 'bookea-offline-metadata';
 
+type CachedBook = Book & { cachedAt?: string; isOfflineReady?: boolean };
+
+function readOfflineMetadata(): Record<string, CachedBook> {
+  try {
+    const existing = localStorage.getItem(METADATA_KEY);
+    return existing ? JSON.parse(existing) : {};
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Guardar metadatos del libro para acceso offline
  */
 export function saveBookMetadata(book: Book, isOfflineReady: boolean = false) {
   try {
-    const existing = localStorage.getItem(METADATA_KEY);
-    const metadata = existing ? JSON.parse(existing) : {};
+    const metadata = readOfflineMetadata();
 
     // Si ya estaba marcado como offlineReady, no le quitemos la marca a menos que sea explícito
     const wasReady = metadata[book.id]?.isOfflineReady || false;
@@ -31,9 +41,7 @@ export function saveBookMetadata(book: Book, isOfflineReady: boolean = false) {
  */
 export function getCachedBookMetadata(bookId: string): Book | null {
   try {
-    const existing = localStorage.getItem(METADATA_KEY);
-    if (!existing) return null;
-    const metadata = JSON.parse(existing);
+    const metadata = readOfflineMetadata();
     return metadata[bookId] || null;
   } catch {
     return null;
@@ -41,14 +49,20 @@ export function getCachedBookMetadata(bookId: string): Book | null {
 }
 
 /**
- * Obtener todos los libros guardados offline
+ * Obtener metadata solo de libros que el usuario descargó explícitamente.
+ */
+export function getOfflineReadyBookMetadata(bookId: string): Book | null {
+  const metadata = getCachedBookMetadata(bookId) as CachedBook | null;
+  return metadata?.isOfflineReady === true ? metadata : null;
+}
+
+/**
+ * Obtener todos los libros descargados explícitamente para modo offline
  */
 export function getAllCachedBooks(): Book[] {
   try {
-    const existing = localStorage.getItem(METADATA_KEY);
-    if (!existing) return [];
-    const metadata = JSON.parse(existing);
-    return Object.values(metadata);
+    const metadata = readOfflineMetadata();
+    return Object.values(metadata).filter((book) => book.isOfflineReady === true);
   } catch {
     return [];
   }
@@ -57,10 +71,16 @@ export function getAllCachedBooks(): Book[] {
 /**
  * Verificar si un libro está descargado en el caché local
  */
-export async function isBookDownloaded(epubUrl: string): Promise<boolean> {
+export async function isBookDownloaded(bookId: string, epubUrl?: string | null): Promise<boolean> {
+  const metadata = getOfflineReadyBookMetadata(bookId) as CachedBook | null;
+  if (!metadata) return false;
+
+  const urlToMatch = epubUrl || metadata.epub_url;
+  if (!urlToMatch) return false;
+
   try {
     const cache = await caches.open(BOOKS_CACHE);
-    const response = await cache.match(epubUrl);
+    const response = await cache.match(urlToMatch);
     return !!response;
   } catch {
     return false;

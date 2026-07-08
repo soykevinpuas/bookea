@@ -2,11 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
+import { fetchJsonWithSessionRetry } from "@/lib/auth-fetch";
 import { markAsSold, COST_PER_BOOK, ADMIN_COST_BOOK } from "@/lib/sellers";
 import { createStockRequestAction, receiveStockItemAction } from "@/lib/actions/sellers";
-import { useUserId } from "@/hooks/useUser";
+import { useAuth } from "@/lib/auth-provider";
 import { Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X, Search, Store, Info, Send, LayoutGrid, List, type LucideIcon } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -85,9 +86,9 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function VendedorDashboard() {
-  const supabase = createClientClient();
+  const supabase = useMemo(() => createClientClient(), []);
   const queryClient = useQueryClient();
-  const { userId } = useUserId();
+  const { userId, isLoading: authLoading, isReady: authReady } = useAuth();
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<Section>("ingresos");
   const [stockTab, setStockTab] = useState<StockTab>("inventory");
@@ -138,27 +139,29 @@ export default function VendedorDashboard() {
   const [requestSearch, setRequestSearch] = useState("");
   const [requestCart, setRequestCart] = useState<RequestCartItem[]>([]);
   const [requestNotes, setRequestNotes] = useState("");
+  const dashboardQueryKey = useMemo(() => ["vendedor-dashboard", userId] as const, [userId]);
+  const fetchVendedorJson = useCallback(
+    <T,>(url: string, fallbackError: string) =>
+      fetchJsonWithSessionRetry<T>(supabase, url, { cache: "no-store" }, fallbackError),
+    [supabase]
+  );
 
-  const { data, isLoading } = useQuery<DashboardData>({
-    queryKey: ["vendedor-dashboard"],
-    queryFn: async () => {
-      const res = await fetch("/api/vendedor/dashboard");
-      if (!res.ok) throw new Error("Error al cargar dashboard");
-      return res.json();
-    },
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<DashboardData, Error>({
+    queryKey: dashboardQueryKey,
+    queryFn: () => fetchVendedorJson<DashboardData>("/api/vendedor/dashboard", "Error al cargar dashboard"),
+    enabled: authReady && !!userId,
     staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const { data: requestableData, isLoading: requestableLoading } = useQuery<RequestableBooksResponse>({
     queryKey: ["requestable-books", userId],
-    queryFn: async () => {
-      const res = await fetch("/api/vendedor/requestable-books", { cache: "no-store" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "No se pudieron cargar los libros");
-      return json as RequestableBooksResponse;
-    },
-    enabled: !!userId && activeSection === "stock",
+    queryFn: () => fetchVendedorJson<RequestableBooksResponse>("/api/vendedor/requestable-books", "No se pudieron cargar los libros"),
+    enabled: authReady && !!userId && activeSection === "stock",
     staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const inventory = useMemo(() => data?.inventory ?? [], [data?.inventory]);
@@ -298,6 +301,7 @@ export default function VendedorDashboard() {
   });
 
   const handleSell = async (bookId: string, currentQty: number) => {
+    if (!userId) { toast.error("Sesion no lista. Espera unos segundos e intenta de nuevo."); return; }
     const qty = saleQtys[bookId] || 1;
     const price = salePrices[bookId];
     if (!price || price <= 0) { toast.error("Agrega un precio de venta"); return; }
@@ -306,8 +310,8 @@ export default function VendedorDashboard() {
 
     setSelling(bookId);
     const saleData = { id: `optimistic-${Date.now()}`, seller_id: userId!, book_id: bookId, quantity: qty, sale_price: price, sold_at: new Date().toISOString(), books: inventory.find(i => i.book_id === bookId)?.books ?? null, paid_at: null };
-    const prevDashboard = queryClient.getQueryData<DashboardData>(["vendedor-dashboard"]);
-    queryClient.setQueryData<DashboardData>(["vendedor-dashboard"], (old) => {
+    const prevDashboard = queryClient.getQueryData<DashboardData>(dashboardQueryKey);
+    queryClient.setQueryData<DashboardData>(dashboardQueryKey, (old) => {
       if (!old) return old;
       return {
         ...old,
@@ -322,7 +326,7 @@ export default function VendedorDashboard() {
       setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
       setSalePrices(prev => { const copy = { ...prev }; delete copy[bookId]; return copy; });
     } catch (e) {
-      queryClient.setQueryData<DashboardData>(["vendedor-dashboard"], prevDashboard);
+      queryClient.setQueryData<DashboardData>(dashboardQueryKey, prevDashboard);
       toast.error(e instanceof Error ? e.message : "Error al registrar venta");
     } finally {
       queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
@@ -348,8 +352,20 @@ export default function VendedorDashboard() {
     }
   };
 
-  if (isLoading && inventory.length === 0) {
+  const initialDashboardLoading = authLoading || !authReady || !userId || (isLoading && inventory.length === 0);
+
+  if (initialDashboardLoading) {
     return <VendedorSkeleton />;
+  }
+
+  if (isError && inventory.length === 0) {
+    return (
+      <VendedorLoadError
+        message={error.message}
+        isFetching={isFetching}
+        onRetry={() => { void refetch(); }}
+      />
+    );
   }
 
   return (
@@ -1162,6 +1178,35 @@ function VendedorSkeleton() {
           <div className="h-8 w-48 bg-white/10 rounded-lg" />
           <div className="h-[300px] bg-white/10 border border-white/8 rounded-2xl" />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function VendedorLoadError({
+  message,
+  isFetching,
+  onRetry,
+}: {
+  message: string;
+  isFetching: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="min-h-[50vh] flex items-center justify-center">
+      <div className="w-full max-w-md rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+        <Info className="mx-auto mb-3 h-8 w-8 text-red-300" />
+        <h2 className="text-sm font-bold text-white">No se pudo cargar tu tienda</h2>
+        <p className="mt-2 text-sm text-white/50">{message}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={isFetching}
+          className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-amber-500 disabled:opacity-50"
+        >
+          {isFetching && <Loader2 className="h-4 w-4 animate-spin" />}
+          Reintentar
+        </button>
       </div>
     </div>
   );

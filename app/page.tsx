@@ -10,17 +10,6 @@ export default async function Home() {
     redirect("/dashboard");
   }
 
-  const FALLBACK_COVERS = [
-    "https://picsum.photos/seed/bookcover1/400/600",
-    "https://picsum.photos/seed/bookcover2/400/600",
-    "https://picsum.photos/seed/bookcover3/400/600",
-    "https://picsum.photos/seed/bookcover4/400/600",
-    "https://picsum.photos/seed/bookcover5/400/600",
-    "https://picsum.photos/seed/bookcover6/400/600",
-    "https://picsum.photos/seed/bookcover7/400/600",
-    "https://picsum.photos/seed/bookcover8/400/600",
-  ];
-
   let covers: string[] = [];
   try {
     const admin = createAdminClient();
@@ -35,9 +24,8 @@ export default async function Home() {
       .filter((url): url is string => !!url)
       .slice(0, 12);
   } catch {
-    // Fallback silencioso
+    // Si falla Supabase o la service role, no mostramos fotos externas ajenas al catalogo.
   }
-  covers = covers.length > 0 ? covers : FALLBACK_COVERS;
 
   return <LandingHero covers={covers} />;
 }

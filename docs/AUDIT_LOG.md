@@ -11,10 +11,73 @@ Este documento registra todas las auditorías de código realizadas en el proyec
 | 2026-04-08 | Supabase Schema (001) | 2 | Pro | Plan | Antigravity | 🛡️ Analítico | Revisión base de RLS. Pendiente de reporte detallado. |
 | 2026-05-07 | Migraciones 001-013 + Server Actions | 2 | Flash | Plan | AI Agent | ⚠️ Hallazgos | Ver reporte detallado abajo. 8 hallazgos (3 críticos, 3 altos, 2 medios). |
 | 2026-07-01 | Docs + estructura + comentarios | 1 | GPT-5 Codex | Default | Codex | ⚠️ Deuda documentada | Docs reconciliadas con codigo. Lint: 0 errores, 247 warnings. TypeScript/build: 0 errores. |
+| 2026-07-06 | Preview Vercel + Landing PWA | 1 | GPT-5 Codex | Default | Codex | ⚠️ Riesgo operativo | Previews protegidos por Vercel SSO redirigen `manifest.json`; se ocultó manifest en preview y se quitaron fotos externas de fallback. |
+| 2026-07-08 | Sesion + Vendedor | 1 | GPT-5 Codex | Default | Codex | ✅ OK con nota | Sesion reforzada, dashboard vendedor no cachea 401/stock vacio falso. `THREE.Clock` confirmado como warning externo de React Three Fiber. |
+| 2026-07-08 | Biblioteca offline + Landing auth | 1 | GPT-5 Codex | Default | Codex | ✅ OK | El sello de descargado ahora requiere descarga explicita; landing agrega accesos a login/registro. |
 
 ---
 
 ## Reportes de Auditoría Detallados
+
+### [2026-07-08] - Biblioteca Offline y Accesos de Landing
+**Módulo:** `lib/downloads.ts`, `lib/books.ts`, `components/BookLongPressMenu.tsx`, `app/(app)/book/[id]/page.tsx`, `components/LandingHero.tsx`.
+**Estado:** ✅ OK operativo.
+
+#### Hallazgos
+- El service worker cachea EPUBs leídos online para resiliencia, pero la UI usaba presencia en Cache API como si fuera descarga explícita.
+- `getUserBooks()` marcaba `isOfflineReady` con solo encontrar metadata local, aunque esa metadata se guarda para arrancar rápido la biblioteca.
+- La landing no exponía accesos inmediatos de login/registro cuando el header global se oculta en `/`.
+
+#### Decisión
+- La UI de descarga ahora exige `isOfflineReady === true` en metadata local y confirma que el EPUB siga en Cache API.
+- El modo offline lista solo libros descargados explícitamente, no todo lo que quedó cacheado por navegación.
+- Se añadió barra superior derecha en landing con acciones de iniciar sesión y registrarse.
+
+#### Resultado de verificación
+- `npm run lint`: pasa con 0 errores y 243 warnings legacy.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+---
+
+### [2026-07-08] - Sesion Persistente y Panel Vendedor
+**Módulo:** `proxy.ts`, `lib/auth-provider.tsx`, `lib/auth-fetch.ts`, `app/vendedor/page.tsx`, `app/vendedor/layout.tsx`, `app/admin/layout.tsx`, `app/api/vendedor/dashboard/route.ts`.
+**Estado:** ✅ OK operativo.
+
+#### Hallazgos
+- El dashboard de vendedor podia consultar `/api/vendedor/dashboard` antes de que auth terminara de hidratar o refrescar sesion, dejando UI sin inventario aunque el stock existiera.
+- `admin` y `vendedor` redirigian a `/login` al ver `userId` vacio sin intentar recuperar refresh token.
+- `proxy.ts` usaba `getSession()` para proteger rutas; con access token vencido es mas robusto usar `getUser()` para validar y refrescar cookies.
+- El warning `THREE.Clock: This module has been deprecated` se origina en `node_modules/@react-three/fiber/dist/...`, no en codigo propio. `npm view @react-three/fiber version` reporto 9.6.1, igual a la version instalada, por lo que queda como warning upstream no bloqueante.
+
+#### Decisión
+- Se agrego recuperacion de sesion en cliente, keepalive cada 5 minutos y reintento de APIs tras refresh.
+- El dashboard de vendedor usa `cache: "no-store"`, query por usuario y `refetchOnMount/refetchOnWindowFocus`.
+- La API de vendedor queda `force-dynamic` para datos operativos.
+- Para eliminar el warning de `THREE.Clock` haria falta migrar el render 3D fuera de React Three Fiber o esperar version upstream que reemplace `Clock` por `Timer`; no afecta ventas, stock ni auth.
+
+#### Resultado de verificación
+- `npm run lint`: pasa con 0 errores y 243 warnings legacy.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+---
+
+### [2026-07-06] - Riesgo Operativo: Vercel SSO en Previews
+**Módulo:** `app/layout.tsx`, `app/page.tsx`, `components/LandingHero.tsx`, `components/FloatingBook3D.tsx`.
+**Estado:** ⚠️ Mitigado en UI, requiere configuración de deployment para acceso público.
+
+#### Hallazgos
+- En previews protegidos, Vercel puede redirigir `/manifest.json` a `vercel.com/sso-api`, lo que el navegador bloquea por CORS al cargar el manifest PWA.
+- Este bloqueo ocurre antes de que Next.js procese la request, por lo que no se puede resolver completamente desde rutas, proxy o headers de la app.
+- La landing usaba `picsum.photos` como fallback cuando no había portadas de Supabase, mostrando fotos ajenas al catálogo.
+
+#### Decisión
+- El manifest PWA se mantiene en producción/local, pero se omite cuando `VERCEL_ENV=preview`.
+- Se eliminaron fallbacks externos de portadas para que solo se muestren imágenes reales del catálogo.
+- Para acceso público al preview, la configuración pendiente vive en Vercel: desactivar Deployment Protection para ese deployment/proyecto, usar un dominio de producción sin SSO, o compartir un bypass autorizado.
+
+---
 
 ### [2026-07-01] - Auditoría de Coherencia Documental y Comentarios
 **Módulo:** Documentación raíz, docs técnicas y módulos críticos.

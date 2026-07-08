@@ -4,8 +4,6 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Group, SRGBColorSpace, Texture, TextureLoader, MeshBasicMaterial, BufferGeometry, Float32BufferAttribute, PointsMaterial, AdditiveBlending, Points } from "three";
 
-const FALLBACK_URL = "https://picsum.photos/seed/fallback/400/600";
-
 /* ─── Sparkle Particles ─── */
 const seededUnit = (index: number, salt: number) => {
   const value = Math.sin(index * 12.9898 + salt * 78.233) * 43758.5453;
@@ -76,36 +74,36 @@ function BookMesh({ coverUrl }: { coverUrl: string }) {
 
   useEffect(() => {
     let active = true;
-    const urlToLoad = coverUrl || FALLBACK_URL;
+    const previousTexture = currentTexRef.current;
+    setPrevTexture(previousTexture);
+    currentTexRef.current = null;
+    setTexture(null);
+
+    if (!coverUrl) {
+      return () => {
+        active = false;
+      };
+    }
 
     const loader = new TextureLoader();
     loader.setCrossOrigin("anonymous");
 
     loader.load(
-      urlToLoad,
+      coverUrl,
       (tex) => {
         if (!active) return;
         tex.colorSpace = SRGBColorSpace;
         tex.needsUpdate = true;
-        setPrevTexture(currentTexRef.current);
         currentTexRef.current = tex;
         setTexture(tex);
         if (materialRef.current) materialRef.current.opacity = 0;
       },
       undefined,
       () => {
-        console.warn("Texture failed to load", urlToLoad);
-        if (urlToLoad !== FALLBACK_URL && active) {
-          loader.load(FALLBACK_URL, (fallbackTex) => {
-             if (!active) return;
-             fallbackTex.colorSpace = SRGBColorSpace;
-             fallbackTex.needsUpdate = true;
-             setPrevTexture(currentTexRef.current);
-             currentTexRef.current = fallbackTex;
-             setTexture(fallbackTex);
-             if (materialRef.current) materialRef.current.opacity = 0;
-          });
-        }
+        if (!active) return;
+        setPrevTexture(null);
+        currentTexRef.current = null;
+        setTexture(null);
       }
     );
 

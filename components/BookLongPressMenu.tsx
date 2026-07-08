@@ -41,9 +41,9 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   // Verificar estado de descarga al montar
   useEffect(() => {
     if (epubUrl) {
-      isBookDownloaded(epubUrl).then(setIsDownloaded);
+      isBookDownloaded(bookId, epubUrl).then(setIsDownloaded);
     }
-  }, [epubUrl]);
+  }, [bookId, epubUrl]);
 
   const [menuPosition, setMenuPosition] = useState<"bottom" | "top">("bottom");
   const containerRef = useRef<HTMLDivElement>(null);

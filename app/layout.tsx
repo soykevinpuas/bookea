@@ -9,11 +9,13 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { Suspense } from "react";
 import BottomNavWrapper from "@/components/BottomNavWrapper";
 
+const shouldExposePwaManifest = process.env.VERCEL_ENV !== "preview";
+
 // Metadata PWA y SEO base compartida por toda la app.
 export const metadata: Metadata = {
   title: "Bookea",
   description: "Tu biblioteca premium de E-books",
-  manifest: "/manifest.json",
+  ...(shouldExposePwaManifest ? { manifest: "/manifest.json" } : {}),
   icons: {
     icon: "/icon.png",
     apple: "/icon-192x192.png",

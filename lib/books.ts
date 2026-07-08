@@ -1,6 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Book } from "@/types/book";
-import { getCachedBookMetadata, getAllCachedBooks, saveBookMetadata } from "./downloads";
+import { getCachedBookMetadata, getAllCachedBooks, isBookDownloaded, saveBookMetadata } from "./downloads";
 
 // Modulo central de catalogo, biblioteca y reglas de acceso digital.
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -120,8 +120,8 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
       progressMap.set(p.book_id, p);
     });
 
-    const books = userBooksData
-      .map((item: { access_type: string; expires_at?: string | null; book_id: string; books: Book | Book[] }) => {
+    const books = (await Promise.all(
+      userBooksData.map(async (item: { access_type: string; expires_at?: string | null; book_id: string; books: Book | Book[] }) => {
         const bookData = item.books;
         const book = Array.isArray(bookData) ? bookData[0] : bookData;
 
@@ -157,7 +157,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
           }
         }
 
-        const isOfflineReady = getCachedBookMetadata(book.id) ? true : false;
+        const isOfflineReady = await isBookDownloaded(book.id, book.epub_url);
 
         return {
           ...book,
@@ -168,6 +168,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
           isOfflineReady
         };
       })
+    ))
       .filter((b): b is NonNullable<typeof b> => !!b);
 
     // Mantiene metadata disponible para biblioteca offline.

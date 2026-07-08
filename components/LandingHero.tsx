@@ -9,6 +9,8 @@ import {
   Star,
   ArrowRight,
   Dices,
+  LogIn,
+  UserPlus,
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 import FloatingBook3D from "@/components/FloatingBook3D";
@@ -24,9 +26,10 @@ export default function LandingHero({ covers }: { covers: string[] }) {
   const featuresInView = useInView(featuresRef, { once: true, margin: "-80px" });
   const stepsInView = useInView(stepsRef, { once: true, margin: "-80px" });
   const testimonialsInView = useInView(testimonialsRef, { once: true, margin: "-80px" });
+  const activeCover = covers[currentIndex] ?? covers[0] ?? "";
 
   const nextCover = useCallback(() => {
-    if (covers.length > 0) {
+    if (covers.length > 1) {
       setCurrentIndex((prev) => {
         let next = Math.floor(Math.random() * covers.length);
         if (next === prev && covers.length > 1) {
@@ -38,9 +41,10 @@ export default function LandingHero({ covers }: { covers: string[] }) {
   }, [covers]);
 
   useEffect(() => {
+    if (covers.length < 2) return;
     const timer = setInterval(nextCover, 3000);
     return () => clearInterval(timer);
-  }, [nextCover, currentIndex]);
+  }, [covers.length, nextCover]);
 
   const fadeIn = (delay = 0) =>
     isClient
@@ -82,6 +86,27 @@ export default function LandingHero({ covers }: { covers: string[] }) {
       <div
         className="fixed inset-0 pointer-events-none -z-10 opacity-20 mix-blend-overlay"
         style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
+
+      <header className="fixed inset-x-0 top-0 z-30 pt-safe">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-end px-4 sm:px-6">
+          <nav className="flex items-center gap-2 rounded-full border border-white/10 bg-black/45 p-1 shadow-2xl backdrop-blur-xl">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white sm:px-4"
+            >
+              <LogIn className="h-4 w-4" />
+              <span>Iniciar</span>
+            </Link>
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-black text-gray-950 transition-colors hover:bg-purple-100 sm:px-4"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span>Registrarse</span>
+            </Link>
+          </nav>
+        </div>
+      </header>
 
       {/* Glows - changed to fixed to prevent scroll jank */}
       <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/8 blur-[150px] pointer-events-none -z-10 will-change-transform" />
@@ -147,7 +172,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative" />
               </Link>
               <Link
-                href="/catalogo"
+                href="/catalog"
                 className="group w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl font-semibold text-lg transition-all duration-300 flex items-center justify-center gap-2"
               >
                 <BookOpen className="w-5 h-5" />
@@ -164,15 +189,17 @@ export default function LandingHero({ covers }: { covers: string[] }) {
             {...fadeIn(0.25)}
             className="h-[300px] sm:h-[360px] lg:h-[460px] xl:h-[500px] relative group"
           >
-            {isClient && covers.length > 0 && <FloatingBook3D coverUrl={covers[currentIndex]} />}
+            {isClient && activeCover && <FloatingBook3D coverUrl={activeCover} />}
 
-            <button
-              onClick={nextCover}
-              className="absolute bottom-4 right-4 bg-[#0a0a0a]/50 hover:bg-[#0a0a0a]/80 p-3 rounded-full backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover:opacity-100 shadow-lg z-20 text-white"
-              title="Siguiente portada"
-            >
-              <Dices className="w-6 h-6" />
-            </button>
+            {covers.length > 1 && (
+              <button
+                onClick={nextCover}
+                className="absolute bottom-4 right-4 bg-[#0a0a0a]/50 hover:bg-[#0a0a0a]/80 p-3 rounded-full backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover:opacity-100 shadow-lg z-20 text-white"
+                title="Siguiente portada"
+              >
+                <Dices className="w-6 h-6" />
+              </button>
+            )}
           </motion.div>
         </div>
       </main>

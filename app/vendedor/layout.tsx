@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth-provider";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useMobileMenu } from "@/stores/menu";
 import { createClientClient } from "@/lib/supabase";
+import { recoverBrowserSession } from "@/lib/auth-fetch";
 
 const navItems = [
   { href: "/vendedor", label: "Mi Tienda", icon: Store, exact: true },
@@ -38,7 +39,10 @@ export default function VendedorLayout({
   useEffect(() => {
     if (authLoading) return;
     if (!userId) {
-      router.push("/login");
+      const supabase = createClientClient();
+      void recoverBrowserSession(supabase).then((recovered) => {
+        if (!recovered) router.push("/login");
+      });
       return;
     }
     if (!isFetched && !roleKnown) return;
