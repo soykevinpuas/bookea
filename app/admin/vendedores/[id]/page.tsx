@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { getAdminSellerDetail, assignStock, getPhysicalBooks, revertAssignStock } from "@/lib/sellers";
@@ -37,13 +38,13 @@ export default function AdminSellerDetailPage() {
   });
 
   const [showAssign, setShowAssign] = useState(false);
-  const [modalItems, setModalItems] = useState<any[] | null>(null);
+  const [modalItems, setModalItems] = useState<UntypedValue[] | null>(null);
   const [showAllInventory, setShowAllInventory] = useState(false);
   const [showAllSales, setShowAllSales] = useState(false);
   const [showAllRequests, setShowAllRequests] = useState(false);
   const [assignBookId, setAssignBookId] = useState("");
   const [assignQty, setAssignQty] = useState(1);
-  const [previewBook, setPreviewBook] = useState<any>(null);
+  const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
   const [bookSearch, setBookSearch] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -103,7 +104,7 @@ export default function AdminSellerDetailPage() {
   const totalRevenue = (data?.sales || []).reduce((s, i) => s + (i.sale_price || 0) * (i.quantity || 0), 0);
 
   const filteredBooks = physicalBooks.filter(
-    (b: any) =>
+    (b: UntypedValue) =>
       b.title.toLowerCase().includes(bookSearch.toLowerCase()) ||
       b.author.toLowerCase().includes(bookSearch.toLowerCase())
   );
@@ -185,7 +186,7 @@ export default function AdminSellerDetailPage() {
         </div>
 
         {showAssign && (
-          <div className="bg-white/5 border border-white/8 rounded-2xl p-5 mb-4">
+          <div className="relative overflow-hidden bg-white/5 border border-white/8 rounded-2xl p-5 mb-4">
             <h3 className="font-medium mb-3">Asignar stock a {seller.email}</h3>
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
@@ -193,25 +194,33 @@ export default function AdminSellerDetailPage() {
                 value={bookSearch}
                 onChange={(e) => setBookSearch(e.target.value)}
                 placeholder="Buscar libro físico..."
+                disabled={assignMutation.isPending}
                 className="w-full pl-9 pr-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-blue-500/50"
               />
             </div>
             <div className="max-h-48 overflow-y-auto mb-3 space-y-1">
-              {filteredBooks.map((book: any) => (
-                <button
-                  key={book.id}
-                  onClick={() => setAssignBookId(book.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                    assignBookId === book.id
-                      ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
-                      : "text-white/60 hover:bg-white/5 border border-transparent"
-                  }`}
-                >
-                  <span className="font-medium">{book.title}</span>
-                  <span className="text-white/30 ml-2">({book.author})</span>
-                  <span className="text-white/20 text-xs ml-2">Stock: {book.stock_physical}</span>
-                </button>
-              ))}
+              {filteredBooks.map((book: UntypedValue) => {
+                const isAssigningBook = assignMutation.isPending && assignBookId === book.id;
+                return (
+                  <button
+                    key={book.id}
+                    onClick={() => setAssignBookId(book.id)}
+                    disabled={assignMutation.isPending}
+                    className={`relative overflow-hidden w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                      isAssigningBook
+                        ? "bg-green-500/10 text-green-300 border border-green-500/30"
+                        : assignBookId === book.id
+                          ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
+                          : "text-white/60 hover:bg-white/5 border border-transparent"
+                    }`}
+                  >
+                    <span className="font-medium">{book.title}</span>
+                    <span className="text-white/30 ml-2">({book.author})</span>
+                    <span className="text-white/20 text-xs ml-2">Stock: {book.stock_physical}</span>
+                    {isAssigningBook && <div className="stock-progress-line" aria-hidden="true" />}
+                  </button>
+                );
+              })}
               {filteredBooks.length === 0 && (
                 <p className="text-sm text-white/30 py-2 text-center">Sin resultados</p>
               )}
@@ -220,14 +229,16 @@ export default function AdminSellerDetailPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setAssignQty(Math.max(1, assignQty - 1))}
-                  className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
+                  disabled={assignMutation.isPending}
+                  className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none"
                 >
                   <Minus className="w-3.5 h-3.5" />
                 </button>
                 <span className="w-8 text-center font-medium">{assignQty}</span>
                 <button
                   onClick={() => setAssignQty(assignQty + 1)}
-                  className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
+                  disabled={assignMutation.isPending}
+                  className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -242,11 +253,13 @@ export default function AdminSellerDetailPage() {
               </button>
               <button
                 onClick={() => setShowAssign(false)}
-                className="px-4 py-1.5 text-sm text-white/40 hover:text-white/60"
+                disabled={assignMutation.isPending}
+                className="px-4 py-1.5 text-sm text-white/40 hover:text-white/60 disabled:opacity-30 disabled:pointer-events-none"
               >
                 Cancelar
               </button>
             </div>
+            {assignMutation.isPending && <div className="stock-progress-line" aria-hidden="true" />}
           </div>
         )}
 
@@ -264,7 +277,7 @@ export default function AdminSellerDetailPage() {
                   <div className="flex gap-3">
                     {item.books?.cover_url && (
                       <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                        <img
+                        <AppImage
                           src={item.books.cover_url}
                           alt=""
                           className="w-12 h-16 rounded-lg object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all"
@@ -324,7 +337,7 @@ export default function AdminSellerDetailPage() {
                 <div className="flex items-center gap-3">
                   {sale.books?.cover_url && (
                     <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                      <img
+                      <AppImage
                         src={sale.books.cover_url}
                         alt=""
                         className="w-8 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all"
@@ -400,7 +413,7 @@ export default function AdminSellerDetailPage() {
                         <span className="flex items-center gap-2 min-w-0 flex-1">
                           {item.books?.cover_url && (
                             <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                              <img src={item.books.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                              <AppImage src={item.books.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                             </button>
                           )}
                           <span className="text-white/60 truncate">{item.books?.title ?? "Libro"}</span>
@@ -466,7 +479,7 @@ export default function AdminSellerDetailPage() {
                 <div key={item.id} className="flex items-center gap-3">
                   {item.books?.cover_url && (
                     <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                      <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                      <AppImage src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                     </button>
                   )}
                   <div className="flex-1 min-w-0">
@@ -497,7 +510,7 @@ export default function AdminSellerDetailPage() {
                 <div key={sale.id} className="flex items-center gap-3">
                   {sale.books?.cover_url && (
                     <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                      <img src={sale.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                      <AppImage src={sale.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                     </button>
                   )}
                   <div className="flex-1 min-w-0">
@@ -543,7 +556,7 @@ export default function AdminSellerDetailPage() {
                     )}
                   </div>
                   <div className="space-y-1">
-                    {(req.items ?? []).slice(0, 3).map((item: any) => {
+                    {(req.items ?? []).slice(0, 3).map((item: UntypedValue) => {
                       const soldQty = salesMap.get(item.book_id) || 0;
                       const isReceived = !!item.received_at;
                       return (
@@ -551,7 +564,7 @@ export default function AdminSellerDetailPage() {
                           <span className="flex items-center gap-2 min-w-0 flex-1">
                             {item.books?.cover_url && (
                               <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                                <img src={item.books.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                                <AppImage src={item.books.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                               </button>
                             )}
                             <span className="text-white/60 truncate">{item.books?.title ?? "Libro"}</span>
@@ -591,14 +604,14 @@ export default function AdminSellerDetailPage() {
         items={modalItems ?? []}
         title="Libros en solicitud"
       >
-        {(item: any) => {
+        {(item: UntypedValue) => {
           const soldQty = salesMap.get(item.book_id) || 0;
           const isReceived = !!item.received_at;
           return (
             <div key={item.id} className="flex items-center gap-3">
               {item.books?.cover_url && (
                 <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                  <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                  <AppImage src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                 </button>
               )}
               <span className="text-white/80 text-sm flex-1 min-w-0 truncate">

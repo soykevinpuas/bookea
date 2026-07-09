@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import { X, ExternalLink, BookOpen } from "lucide-react";
 import Link from "next/link";
 
@@ -38,7 +39,7 @@ export default function BookPreviewModal({ book, onClose }: BookPreviewModalProp
           <div className="flex gap-5">
             {book.cover_url && (
               <div className="w-[140px] shrink-0">
-                <img
+                <AppImage
                   src={book.cover_url}
                   alt={book.title}
                   className="w-full aspect-[2/3] rounded-xl object-cover bg-white/5 shadow-lg"

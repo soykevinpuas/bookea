@@ -135,7 +135,7 @@ export function useBook(id: string) {
 export function useUserBooks(userId: string, options?: { search?: string; category?: string }) {
   const supabase = createClientClient();
   const queryClient = useQueryClient();
-  const channelRef = useRef<any>(null);
+  const channelRef = useRef<UntypedValue>(null);
 
   const query = useQuery({
     queryKey: ["userBooks", userId, options?.search, options?.category],

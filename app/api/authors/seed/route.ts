@@ -58,7 +58,7 @@ export async function POST() {
     }
 
     return NextResponse.json({ updated, failed, skipped, total: authors.length });
-  } catch (err: any) {
+  } catch (err: UntypedValue) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

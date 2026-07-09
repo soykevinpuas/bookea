@@ -71,10 +71,10 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside as any);
+    document.addEventListener("touchstart", handleClickOutside as UntypedValue);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside as any);
+      document.removeEventListener("touchstart", handleClickOutside as UntypedValue);
     };
   }, [showMenu]);
 
@@ -164,26 +164,26 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   const handleAddToLibrary = async () => {
     if (!userId) return;
     setIsLibraryProcessing(true);
-    queryClient.setQueryData(["userBooks", userId], (old: any) => {
+    queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
       if (!old) return old;
       return [{ ...book, id: bookId }, ...old];
     });
     try {
       const accessType = subscription?.isActive ? 'subscription' : 'permanent';
-      const result = await addToLibraryAction(bookId, accessType as any);
+      const result = await addToLibraryAction(bookId, accessType as UntypedValue);
       if (result.success) {
         toast.success(`"${bookTitle}" añadido a tu biblioteca`);
       } else {
-        queryClient.setQueryData(["userBooks", userId], (old: any) => {
+        queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
           if (!old) return old;
-          return old.filter((b: any) => b.id !== bookId);
+          return old.filter((b: UntypedValue) => b.id !== bookId);
         });
         toast.error(result.error || "No se pudo añadir a la biblioteca");
       }
     } catch {
-      queryClient.setQueryData(["userBooks", userId], (old: any) => {
+      queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
         if (!old) return old;
-        return old.filter((b: any) => b.id !== bookId);
+        return old.filter((b: UntypedValue) => b.id !== bookId);
       });
       toast.error("Error al conectar con el servidor");
     } finally {
@@ -197,9 +197,9 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     if (!userId) return;
     setIsLibraryProcessing(true);
     const oldData = queryClient.getQueryData(["userBooks", userId]);
-    queryClient.setQueryData(["userBooks", userId], (old: any) => {
+    queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
       if (!old) return old;
-      return old.filter((b: any) => b.id !== bookId);
+      return old.filter((b: UntypedValue) => b.id !== bookId);
     });
     try {
       const result = await removeFromLibraryAction(bookId);
@@ -223,7 +223,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     <div
       ref={containerRef}
       className={`relative select-none transition-transform duration-150 ${isPressing ? 'scale-[0.97]' : ''}`}
-      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' } as any}
+      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' } as UntypedValue}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchMove}

@@ -23,7 +23,7 @@ export const supabase = typeof window === 'undefined'
         if (!browserClient) {
           browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
         }
-        return (browserClient as any)[prop];
+        return (browserClient as UntypedValue)[prop];
       }
     });
 

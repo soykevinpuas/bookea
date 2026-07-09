@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       updatedUser: updateResult,
     });
 
-  } catch (err: any) {
+  } catch (err: UntypedValue) {
     console.error('[admin/update-role] Error inesperado:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

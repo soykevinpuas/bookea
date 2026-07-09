@@ -48,12 +48,12 @@ export function saveLocalHighlight(bookId: string, highlight: Highlight) {
     const key = getScopedBookKey(bookId, highlight.user_id);
     if (!all[key]) all[key] = [];
 
-    const current = all[key] as any[];
+    const current = all[key] as UntypedValue[];
     const exists = current.findIndex(h => h.id === highlight.id);
     if (exists >= 0) {
       current[exists] = { ...current[exists], ...highlight, synced: false };
     } else {
-      current.unshift({ ...highlight, synced: false } as any);
+      current.unshift({ ...highlight, synced: false } as UntypedValue);
     }
 
     localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(all));
@@ -87,7 +87,7 @@ export async function getHighlights(
       const raw = localStorage.getItem(HIGHLIGHTS_KEY);
       const all = raw ? JSON.parse(raw) : {};
       const key = getScopedBookKey(bookId, userId);
-      const localUnsynced = (all[key] || []).filter((h: any) => h.synced === false);
+      const localUnsynced = (all[key] || []).filter((h: UntypedValue) => h.synced === false);
 
       const remoteIds = new Set(data.map(h => h.id));
       const filteredLocal = localUnsynced.filter((h: Highlight) => !remoteIds.has(h.id));
@@ -129,7 +129,7 @@ export async function saveHighlight(
     color,
     note: note || null,
     created_at: new Date().toISOString()
-  } as any;
+  } as UntypedValue;
 
   saveLocalHighlight(bookId, newHighlight);
 
@@ -162,7 +162,7 @@ export async function saveHighlight(
       const raw = localStorage.getItem(HIGHLIGHTS_KEY);
       const all = raw ? JSON.parse(raw) : {};
       const key = getScopedBookKey(bookId, userId);
-      all[key] = (all[key] || []).filter((h: any) => h.id !== tempId);
+      all[key] = (all[key] || []).filter((h: UntypedValue) => h.id !== tempId);
       all[key].unshift({ ...data, synced: true });
       localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(all));
     }
@@ -183,7 +183,7 @@ export async function updateHighlightNote(
     if (raw) {
       const all = JSON.parse(raw);
       for (const bookId in all) {
-        const idx = all[bookId].findIndex((h: any) => h.id === highlightId);
+        const idx = all[bookId].findIndex((h: UntypedValue) => h.id === highlightId);
         if (idx >= 0) {
           all[bookId][idx].note = note;
           all[bookId][idx].synced = false;
@@ -218,7 +218,7 @@ export async function updateHighlightColor(
     if (raw) {
       const all = JSON.parse(raw);
       for (const bookId in all) {
-        const idx = all[bookId].findIndex((h: any) => h.id === highlightId);
+        const idx = all[bookId].findIndex((h: UntypedValue) => h.id === highlightId);
         if (idx >= 0) {
           all[bookId][idx].color = color;
           all[bookId][idx].synced = false;
@@ -252,7 +252,7 @@ export async function deleteHighlight(
     if (raw) {
       const all = JSON.parse(raw);
       for (const bookId in all) {
-        all[bookId] = all[bookId].filter((h: any) => h.id !== highlightId);
+        all[bookId] = all[bookId].filter((h: UntypedValue) => h.id !== highlightId);
       }
       localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(all));
     }

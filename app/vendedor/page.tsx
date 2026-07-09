@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { fetchJsonWithSessionRetry } from "@/lib/auth-fetch";
@@ -7,7 +8,7 @@ import { markAsSold, COST_PER_BOOK, ADMIN_COST_BOOK } from "@/lib/sellers";
 import { createStockRequestAction, receiveStockItemAction } from "@/lib/actions/sellers";
 import { useAuth } from "@/lib/auth-provider";
 import { Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X, Search, Store, Info, Send, LayoutGrid, List, type LucideIcon } from "lucide-react";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -71,12 +72,14 @@ const STATUS_TABS = [
   { key: "cancelled", label: "Canceladas" },
 ];
 
-const ChartTooltip = ({ active, payload, label }: any) => {
+const STOCK_EXIT_ANIMATION_MS = 320;
+
+const ChartTooltip = ({ active, payload, label }: UntypedValue) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-[#1a1a1a] border border-white/10 rounded-xl px-3 py-2 text-xs shadow-xl">
       <p className="text-white/50 mb-1">{label}</p>
-      {payload.map((entry: any, i: number) => (
+      {payload.map((entry: UntypedValue, i: number) => (
         <p key={i} className="font-medium" style={{ color: entry.color }}>
           {entry.name}: ${entry.value.toLocaleString("es-MX")}
         </p>
@@ -94,7 +97,8 @@ export default function VendedorDashboard() {
   const [stockTab, setStockTab] = useState<StockTab>("inventory");
   const [requestViewMode, setRequestViewMode] = useState<RequestViewMode>("grid");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
-  const [previewBook, setPreviewBook] = useState<any>(null);
+  const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
+  const stockWriteInFlight = useRef(false);
 
   useEffect(() => {
     const seccion = searchParams?.get("seccion");
@@ -107,14 +111,17 @@ export default function VendedorDashboard() {
     const channel = supabase
       .channel("vendedor-dashboard-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "stock_requests" }, () => {
+        if (stockWriteInFlight.current) return;
         queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
         queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "seller_sales" }, () => {
+        if (stockWriteInFlight.current) return;
         queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
         queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "seller_inventory" }, () => {
+        if (stockWriteInFlight.current) return;
         queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
         queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
       })
@@ -123,7 +130,10 @@ export default function VendedorDashboard() {
   }, [supabase, queryClient, userId]);
 
   useEffect(() => {
-    const refetch = () => queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"], refetchType: "all" });
+    const refetch = () => {
+      if (stockWriteInFlight.current) return;
+      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"], refetchType: "all" });
+    };
     const interval = setInterval(refetch, 5000);
     const onVisible = () => { if (document.visibilityState === "visible") refetch(); };
     document.addEventListener("visibilitychange", onVisible);
@@ -133,8 +143,9 @@ export default function VendedorDashboard() {
   const [salePrices, setSalePrices] = useState<Record<string, number>>({});
   const [saleQtys, setSaleQtys] = useState<Record<string, number>>({});
   const [selling, setSelling] = useState<string | null>(null);
+  const [exitingSoldBooks, setExitingSoldBooks] = useState<Set<string>>(() => new Set());
   const [receiving, setReceiving] = useState<string | null>(null);
-  const [modalItems, setModalItems] = useState<any[] | null>(null);
+  const [modalItems, setModalItems] = useState<UntypedValue[] | null>(null);
   const [solicitudFilter, setSolicitudFilter] = useState("all");
   const [requestSearch, setRequestSearch] = useState("");
   const [requestCart, setRequestCart] = useState<RequestCartItem[]>([]);
@@ -300,40 +311,72 @@ export default function VendedorDashboard() {
     },
   });
 
+  const playSoldOutExit = useCallback(async (bookId: string) => {
+    setExitingSoldBooks((prev) => {
+      const next = new Set(prev);
+      next.add(bookId);
+      return next;
+    });
+    await new Promise<void>((resolve) => setTimeout(resolve, STOCK_EXIT_ANIMATION_MS));
+  }, []);
+
   const handleSell = async (bookId: string, currentQty: number) => {
     if (!userId) { toast.error("Sesion no lista. Espera unos segundos e intenta de nuevo."); return; }
+    if (stockWriteInFlight.current) return;
     const qty = saleQtys[bookId] || 1;
     const price = salePrices[bookId];
     if (!price || price <= 0) { toast.error("Agrega un precio de venta"); return; }
     if (qty < 1) { toast.error("Cantidad inválida"); return; }
     if (qty > currentQty) { toast.error("Stock insuficiente"); return; }
 
+    stockWriteInFlight.current = true;
     setSelling(bookId);
-    const saleData = { id: `optimistic-${Date.now()}`, seller_id: userId!, book_id: bookId, quantity: qty, sale_price: price, sold_at: new Date().toISOString(), books: inventory.find(i => i.book_id === bookId)?.books ?? null, paid_at: null };
-    const prevDashboard = queryClient.getQueryData<DashboardData>(dashboardQueryKey);
-    queryClient.setQueryData<DashboardData>(dashboardQueryKey, (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        sales: [{ ...saleData }, ...old.sales],
-        inventory: old.inventory.map((i) => i.book_id === bookId ? { ...i, quantity: i.quantity - qty } : i),
-        pendingPayment: old.pendingPayment + price * qty,
-      };
-    });
+    const saleData = {
+      id: `local-${Date.now()}`,
+      seller_id: userId,
+      book_id: bookId,
+      quantity: qty,
+      sale_price: price,
+      sold_at: new Date().toISOString(),
+      books: inventory.find((i) => i.book_id === bookId)?.books ?? null,
+      paid_at: null,
+    };
+
     try {
-      await markAsSold(supabase, userId!, bookId, qty, price);
+      await markAsSold(supabase, userId, bookId, qty, price);
       toast.success(`Vendido${qty > 1 ? `s ${qty}` : ""} por $${(price * qty).toLocaleString("es-MX")}`);
+      if (qty >= currentQty) await playSoldOutExit(bookId);
+      queryClient.setQueryData<DashboardData>(dashboardQueryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          sales: [{ ...saleData }, ...old.sales],
+          inventory: old.inventory.map((i) =>
+            i.book_id === bookId
+              ? { ...i, quantity: Math.max(0, i.quantity - qty) }
+              : i
+          ),
+          pendingPayment: old.pendingPayment + price * qty,
+        };
+      });
       setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
       setSalePrices(prev => { const copy = { ...prev }; delete copy[bookId]; return copy; });
     } catch (e) {
-      queryClient.setQueryData<DashboardData>(dashboardQueryKey, prevDashboard);
       toast.error(e instanceof Error ? e.message : "Error al registrar venta");
     } finally {
-      queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
-      queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
-      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      setExitingSoldBooks((prev) => {
+        const next = new Set(prev);
+        next.delete(bookId);
+        return next;
+      });
       setSelling(null);
+      stockWriteInFlight.current = false;
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
+        queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
+        queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      }, 400);
     }
   };
 
@@ -467,12 +510,23 @@ export default function VendedorDashboard() {
                         const price = salePrices[item.book_id] || 0;
                         const qty = saleQtys[item.book_id] || 1;
                         const isSelling = selling === item.book_id;
+                        const isExiting = exitingSoldBooks.has(item.book_id);
+                        const saleControlsLocked = Boolean(selling);
                         return (
-                          <div key={item.id} className="px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                          <div
+                            key={item.id}
+                            className={`relative overflow-hidden px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 transition-all duration-300 ease-out ${
+                              isExiting
+                                ? "translate-x-8 opacity-0"
+                                : isSelling
+                                  ? "translate-x-0 opacity-100 bg-green-500/[0.04]"
+                                  : "translate-x-0 opacity-100"
+                            }`}
+                          >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                               {book?.cover_url && (
                                 <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                                  <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                                  <AppImage src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                                 </button>
                               )}
                               <div className="min-w-0 flex-1">
@@ -484,14 +538,16 @@ export default function VendedorDashboard() {
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => setSaleQtys(prev => ({ ...prev, [item.book_id]: Math.max(1, (prev[item.book_id] || 1) - 1) }))}
-                                  className="p-1 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                                  disabled={saleControlsLocked}
+                                  className="p-1 bg-white/5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none"
                                 >
                                   <Minus className="w-3 h-3" />
                                 </button>
                                 <span className="w-6 text-center text-xs font-bold">{qty}</span>
                                 <button
                                   onClick={() => setSaleQtys(prev => ({ ...prev, [item.book_id]: Math.min(item.quantity, (prev[item.book_id] || 1) + 1) }))}
-                                  className="p-1 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                                  disabled={saleControlsLocked}
+                                  className="p-1 bg-white/5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none"
                                 >
                                   <Plus className="w-3 h-3" />
                                 </button>
@@ -505,17 +561,19 @@ export default function VendedorDashboard() {
                                   className="w-16 bg-white/5 border border-white/10 rounded-lg px-1.5 py-1 text-xs text-white outline-none focus:border-amber-500/50 transition-colors placeholder:text-white/20"
                                   placeholder="precio"
                                   min={1}
+                                  disabled={saleControlsLocked}
                                 />
                               </div>
                               <button
                                 onClick={() => handleSell(item.book_id, item.quantity)}
-                                disabled={isSelling}
+                                disabled={saleControlsLocked}
                                 className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-all disabled:opacity-50"
                               >
                                 {isSelling ? <Loader2 className="w-3 h-3 animate-spin" /> : <DollarSign className="w-3 h-3" />}
-                                Vender
+                                {isSelling ? "Vendiendo..." : "Vender"}
                               </button>
                             </div>
+                            {(isSelling || isExiting) && <div className="stock-progress-line" aria-hidden="true" />}
                           </div>
                         );
                       })}
@@ -852,13 +910,13 @@ export default function VendedorDashboard() {
                 <div className="text-center py-8 text-white/30 text-sm">Aún no hay ventas.</div>
               ) : (
                 <div className="divide-y divide-white/5">
-                   {sales.map((sale: any) => {
+                   {sales.map((sale: UntypedValue) => {
                     const book = sale.books;
                     return (
                       <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
                         {book?.cover_url && (
                           <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                            <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                            <AppImage src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                           </button>
                         )}
                         <span className="text-sm flex-1 min-w-0 truncate text-white/80">
@@ -941,10 +999,10 @@ export default function VendedorDashboard() {
                       <YAxis domain={[0, 'auto']} tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
                       <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                       <Bar dataKey="venta" name="Venta" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={20}>
-                        <LabelList dataKey="venta" position="top" fill="#22c55e" fontSize={10} fontWeight={700} formatter={(v: any) => `$${(v || 0).toLocaleString("es-MX")}`} />
+                        <LabelList dataKey="venta" position="top" fill="#22c55e" fontSize={10} fontWeight={700} formatter={(v: UntypedValue) => `$${(v || 0).toLocaleString("es-MX")}`} />
                       </Bar>
                       <Bar dataKey="ganancia" name="Ganancia" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={20}>
-                        <LabelList dataKey="ganancia" position="top" fill="#60a5fa" fontSize={10} fontWeight={600} formatter={(v: any) => `$${(v || 0).toLocaleString("es-MX")}`} />
+                        <LabelList dataKey="ganancia" position="top" fill="#60a5fa" fontSize={10} fontWeight={600} formatter={(v: UntypedValue) => `$${(v || 0).toLocaleString("es-MX")}`} />
                       </Bar>
                       <Bar dataKey="ahorro" name="Inversión ahorrada" fill="#a78bfa" radius={[4, 4, 0, 0]} maxBarSize={20} />
                     </BarChart>
@@ -1009,9 +1067,9 @@ export default function VendedorDashboard() {
                   </div>
                 ) : (
                   <div className="divide-y divide-white/5">
-                    {filteredRequests.map((req: any) => {
+                    {filteredRequests.map((req: UntypedValue) => {
                       const statusInfo = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending;
-                      const totalItems = (req as any).items?.reduce((s: number, i: any) => s + i.quantity, 0) ?? 0;
+                      const totalItems = (req as UntypedValue).items?.reduce((s: number, i: UntypedValue) => s + i.quantity, 0) ?? 0;
                       return (
                         <div key={req.id} className="px-5 py-3">
                           <div className="flex items-center justify-between mb-2">
@@ -1027,15 +1085,15 @@ export default function VendedorDashboard() {
                           </div>
 
                           <div className="space-y-1">
-                            {((req as any).items || []).slice(0, 3).map((item: any) => {
-                              const book = item.books as any;
+                            {((req as UntypedValue).items || []).slice(0, 3).map((item: UntypedValue) => {
+                              const book = item.books as UntypedValue;
                               const isReceived = !!item.received_at;
                               const soldQty = soldByBook.get(item.book_id) || 0;
                               return (
                                 <div key={item.id} className="flex items-center gap-2 text-xs">
                                   {book?.cover_url && (
                                     <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                                      <img src={book.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                                      <AppImage src={book.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                                     </button>
                                   )}
                                   <span className="text-white/60 flex-1 truncate">{book?.title || "Libro"}</span>
@@ -1083,12 +1141,12 @@ export default function VendedorDashboard() {
                                 </div>
                               );
                             })}
-                            {((req as any).items?.length ?? 0) > 3 && (
+                            {((req as UntypedValue).items?.length ?? 0) > 3 && (
                               <button
-                                onClick={() => setModalItems((req as any).items ?? [])}
+                                onClick={() => setModalItems((req as UntypedValue).items ?? [])}
                                 className="text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1"
                               >
-                                +{(req as any).items!.length - 3} libros más
+                                +{(req as UntypedValue).items!.length - 3} libros más
                               </button>
                             )}
                           </div>
@@ -1115,13 +1173,13 @@ export default function VendedorDashboard() {
         items={modalItems ?? []}
         title="Libros en solicitud"
       >
-        {(item: any) => {
+        {(item: UntypedValue) => {
           const soldQty = soldByBook.get(item.book_id) || 0;
           return (
             <div key={item.id} className="flex items-center gap-3">
               {item.books?.cover_url && (
                 <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                  <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                  <AppImage src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                 </button>
               )}
               <span className="text-white/80 text-sm flex-1 min-w-0 truncate">

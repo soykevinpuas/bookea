@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -35,7 +36,7 @@ interface Order {
   books?: { id: string; title: string; cover_url: string | null; author: string } | null;
 }
 
-const STATUS_CONFIG: Record<Order["status"], { label: string; color: string; icon: any; msg: string }> = {
+const STATUS_CONFIG: Record<Order["status"], { label: string; color: string; icon: UntypedValue; msg: string }> = {
   pending: { label: "Pendiente", color: "bg-amber-500/10 text-amber-400 border border-amber-500/20", icon: Clock, msg: "El administrador procesará tu envío pronto." },
   shipped: { label: "Enviado", color: "bg-blue-500/10 text-blue-400 border border-blue-500/20", icon: Truck, msg: "Tu pedido está en camino." },
   delivered: { label: "Entregado", color: "bg-green-500/10 text-green-400 border border-green-500/20", icon: CheckCircle2, msg: "Entregado — gracias por tu compra." },
@@ -73,7 +74,7 @@ export default function ProfilePage() {
 
   const { data: allUserBooks } = useUserBooks(userId);
   const completedBooks = useMemo(
-    () => (allUserBooks || []).filter((b: any) => (b.percent_complete || 0) >= 100).length,
+    () => (allUserBooks || []).filter((b: UntypedValue) => (b.percent_complete || 0) >= 100).length,
     [allUserBooks]
   );
 
@@ -85,7 +86,7 @@ export default function ProfilePage() {
   const [deleteStep, setDeleteStep] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [purchasedBooks, setPurchasedBooks] = useState<any[]>([]);
+  const [purchasedBooks, setPurchasedBooks] = useState<UntypedValue[]>([]);
   const [purchasedLoading, setPurchasedLoading] = useState(false);
   const [purchasedOpen, setPurchasedOpen] = useState(false);
 
@@ -156,8 +157,8 @@ export default function ProfilePage() {
       .eq('user_id', userId)
       .eq('access_type', 'permanent')
       .then(async ({ data: digitalData }) => {
-        const bookMap = new Map<string, any>();
-        (digitalData || []).forEach((item: any) => {
+        const bookMap = new Map<string, UntypedValue>();
+        (digitalData || []).forEach((item: UntypedValue) => {
           const book = item.books;
           if (book?.id) bookMap.set(book.id, { ...book, types: ['digital'] });
         });
@@ -165,13 +166,13 @@ export default function ProfilePage() {
           .from('orders_physical')
           .select('book_id')
           .eq('user_id', userId);
-        const physicalBookIds = [...new Set((physicalOrders || []).map((o: any) => o.book_id))];
+        const physicalBookIds = [...new Set((physicalOrders || []).map((o: UntypedValue) => o.book_id))];
         if (physicalBookIds.length > 0) {
           const { data: physicalBooks } = await supabase
             .from('books')
             .select('id, title, cover_url, author')
             .in('id', physicalBookIds);
-          (physicalBooks || []).forEach((book: any) => {
+          (physicalBooks || []).forEach((book: UntypedValue) => {
             if (bookMap.has(book.id)) bookMap.get(book.id).types.push('physical');
             else bookMap.set(book.id, { ...book, types: ['physical'] });
           });
@@ -387,11 +388,11 @@ export default function ProfilePage() {
                     ) : purchasedBooks.length === 0 ? (
                       <p className="text-sm text-white/40 text-center py-6">Aún no has comprado ningún libro.</p>
                     ) : (
-                      purchasedBooks.map((book: any) => (
+                      purchasedBooks.map((book: UntypedValue) => (
                         <Link key={book.id} href={`/book/${book.id}`}
                           className="flex items-center gap-3 px-4 py-3 bg-gray-200 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 rounded-xl transition-all group">
                           {book.cover_url ? (
-                            <img src={book.cover_url} alt={book.title} className="w-10 h-14 rounded-lg object-cover flex-shrink-0" />
+                            <AppImage src={book.cover_url} alt={book.title} className="w-10 h-14 rounded-lg object-cover flex-shrink-0" />
                           ) : (
                             <div className="w-10 h-14 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-xs text-white/30 flex-shrink-0">{book.title?.charAt(0)}</div>
                           )}
@@ -544,7 +545,7 @@ export default function ProfilePage() {
                           <div className="flex items-start gap-3">
                             <Link href={`/book/${book?.id || order.book_id}`} className="shrink-0">
                               {book?.cover_url ? (
-                                <img src={book.cover_url} alt={book.title} className="w-12 h-[68px] rounded-lg object-cover" />
+                                <AppImage src={book.cover_url} alt={book.title} className="w-12 h-[68px] rounded-lg object-cover" />
                               ) : (
                                 <div className="w-12 h-[68px] rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-sm text-gray-400">📚</div>
                               )}

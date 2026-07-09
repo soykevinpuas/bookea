@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { useState, useRef, useEffect } from "react";
@@ -77,7 +78,7 @@ export default function AdminBooksPage() {
   const authorPhotoInputRef = useRef<HTMLInputElement>(null);
   const [filterTab, setFilterTab] = useState<"all" | "physical" | "no-epub">("all");
   const [stockLoading, setStockLoading] = useState<Set<string>>(new Set());
-  const [previewBook, setPreviewBook] = useState<any>(null);
+  const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
 
   const { data: books = [], isLoading } = useQuery({
     queryKey: ["admin-books"],
@@ -130,7 +131,7 @@ export default function AdminBooksPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-books"] });
       toast.success("Estado del libro actualizado");
     },
-    onError: (err: any) => toast.error(`Error: ${err.message}`),
+    onError: (err: UntypedValue) => toast.error(`Error: ${err.message}`),
   });
 
   const adjustStockMutation = useMutation({
@@ -141,7 +142,7 @@ export default function AdminBooksPage() {
         p_delta: delta,
       });
       if (error) throw error;
-      const result = (data as any) || {};
+      const result = (data as UntypedValue) || {};
       if (!result.success) throw new Error(result.error || "Error al ajustar stock");
     },
     onMutate: ({ id }) => {
@@ -197,7 +198,7 @@ export default function AdminBooksPage() {
         setEditingBook((prev) => ({ ...prev, epub_url: publicUrl }));
         toast.success("Archivo EPUB subido");
       }
-    } catch (err: any) {
+    } catch (err: UntypedValue) {
       toast.error(`Error al subir ${type === "cover" ? "portada" : "EPUB"}: ${err.message}`);
     } finally {
       setUploading(null);
@@ -215,7 +216,7 @@ export default function AdminBooksPage() {
       const publicUrl = await uploadFile(file, "covers", uniqueName);
       setAuthorPhotoUrl(publicUrl);
       toast.success("Foto del autor subida");
-    } catch (err: any) {
+    } catch (err: UntypedValue) {
       toast.error(`Error al subir foto: ${err.message}`);
     } finally {
       setAuthorPhotoUploading(false);
@@ -263,7 +264,7 @@ export default function AdminBooksPage() {
         if (updateAuthorError) throw updateAuthorError;
       }
 
-      const payload: Record<string, any> = {
+      const payload: Record<string, UntypedValue> = {
         title: editingBook.title,
         author: editingBook.author,
         author_id: authorId,
@@ -292,7 +293,7 @@ export default function AdminBooksPage() {
             p_delta: initialStock,
           });
           if (stockError) throw stockError;
-          const result = (stockResult as any) || {};
+          const result = (stockResult as UntypedValue) || {};
           if (!result.success) throw new Error(result.error || "No se pudo asignar stock inicial");
         }
         toast.success("Libro creado con éxito");
@@ -300,7 +301,7 @@ export default function AdminBooksPage() {
 
       queryClient.invalidateQueries({ queryKey: ["admin-books"] });
       setShowModal(false);
-    } catch (err: any) {
+    } catch (err: UntypedValue) {
       toast.error(err.message);
     } finally {
       setSaving(false);
@@ -386,7 +387,7 @@ export default function AdminBooksPage() {
                     <div className="flex items-center gap-3">
                       {book.cover_url ? (
                         <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                          <img src={book.cover_url} alt={book.title} className="w-8 h-11 object-contain rounded-md flex-shrink-0 bg-white/5 shadow-inner hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                          <AppImage src={book.cover_url} alt={book.title} className="w-8 h-11 object-contain rounded-md flex-shrink-0 bg-white/5 shadow-inner hover:ring-2 hover:ring-blue-500/50 transition-all" />
                         </button>
                       ) : (
                         <div className="w-8 h-11 bg-white/10 rounded-md flex-shrink-0" />
@@ -534,7 +535,7 @@ export default function AdminBooksPage() {
                       {authorPhotoUploading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : authorPhotoUrl ? (
-                        <img src={authorPhotoUrl} alt={editingBook.author} className="h-full w-full object-cover rounded-xl" />
+                        <AppImage src={authorPhotoUrl} alt={editingBook.author} className="h-full w-full object-cover rounded-xl" />
                       ) : (
                         <>
                           <ImageIcon className="w-5 h-5" />
@@ -637,7 +638,7 @@ export default function AdminBooksPage() {
                     {uploading === "cover" ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : editingBook.cover_url ? (
-                      <img src={editingBook.cover_url} alt="Cover" className="h-full w-full object-cover rounded-xl" />
+                      <AppImage src={editingBook.cover_url} alt="Cover" className="h-full w-full object-cover rounded-xl" />
                     ) : (
                       <>
                         <ImageIcon className="w-5 h-5" />

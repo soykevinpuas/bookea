@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
@@ -70,7 +71,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
                 key={i}
                 className="relative aspect-[2/3] rounded-md overflow-hidden bg-white/5 border border-white/5"
               >
-                <img
+                <AppImage
                   src={url}
                   alt="Book cover"
                   className="w-full h-full object-cover"
@@ -365,7 +366,7 @@ export default function LandingHero({ covers }: { covers: string[] }) {
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6">&ldquo;{t.text}&rdquo;</p>
                 <div className="flex items-center gap-3">
-                  <img
+                  <AppImage
                     src={`https://api.dicebear.com/7.x/thumbs/svg?seed=${t.name.replace(/\s/g, '')}&size=36`}
                     alt={t.name}
                     className="w-9 h-9 rounded-full bg-purple-500/10"

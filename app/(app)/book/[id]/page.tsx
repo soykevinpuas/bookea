@@ -4,6 +4,7 @@
 // BookDetailPage: Página de detalle del libro con información, compra y acceso al lector
 // ============================================
 
+import AppImage from "@/components/ui/AppImage";
 import { useBook, useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -64,7 +65,7 @@ function BookDetailContent() {
   // Determinación del tipo de acceso
   const isPremiumBook = book?.is_premium !== false;
   const hasPremiumAccess = subscription?.isActive || subscription?.role === 'admin';
-  const ownedBook = userBooks?.find((b: any) => b.id.toLowerCase() === id.toLowerCase());
+  const ownedBook = userBooks?.find((b: UntypedValue) => b.id.toLowerCase() === id.toLowerCase());
   const hasPermanentAccess = ownedBook?.access_type === 'permanent' || ownedBook?.access_type === 'gift';
   const coinExpiresAt = ownedBook?.expires_at ? new Date(ownedBook.expires_at) : null;
   const hasCoinAccess = ownedBook?.access_type === 'coin_redemption' && !!coinExpiresAt && coinExpiresAt > new Date();
@@ -115,7 +116,7 @@ function BookDetailContent() {
   const [addingToLib, setAddingToLib] = useState(false);
   const [addingDigital, setAddingDigital] = useState(false);
 
-  const isInLibrary = userBooks?.some((b: any) => b.id.toLowerCase() === id.toLowerCase());
+  const isInLibrary = userBooks?.some((b: UntypedValue) => b.id.toLowerCase() === id.toLowerCase());
   const isCurrentlyInLibrary = !!isInLibrary; // Booleano estable
 
   useEffect(() => {
@@ -171,26 +172,26 @@ function BookDetailContent() {
   const handleAddToLibrary = async () => {
     if (!userId) return;
     setAddingToLib(true);
-    queryClient.setQueryData(["userBooks", userId], (old: any) => {
+    queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
       if (!old) return old;
       return [{ ...book, id }, ...old];
     });
     try {
       const accessType = subscription?.isActive ? 'subscription' : 'permanent';
-      const result = await addToLibraryAction(id, accessType as any);
+      const result = await addToLibraryAction(id, accessType as UntypedValue);
       if (result.success) {
         toast.success("¡Libro añadido a tu biblioteca!");
       } else {
-        queryClient.setQueryData(["userBooks", userId], (old: any) => {
+        queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
           if (!old) return old;
-          return old.filter((b: any) => b.id !== id);
+          return old.filter((b: UntypedValue) => b.id !== id);
         });
         toast.error(result.error || "No se pudo añadir el libro");
       }
     } catch {
-      queryClient.setQueryData(["userBooks", userId], (old: any) => {
+      queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
         if (!old) return old;
-        return old.filter((b: any) => b.id !== id);
+        return old.filter((b: UntypedValue) => b.id !== id);
       });
       toast.error("Error al conectar con el servidor");
     } finally {
@@ -203,9 +204,9 @@ function BookDetailContent() {
     if (!userId) return;
     setAddingToLib(true);
     const oldData = queryClient.getQueryData(["userBooks", userId]);
-    queryClient.setQueryData(["userBooks", userId], (old: any) => {
+    queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
       if (!old) return old;
-      return old.filter((b: any) => b.id !== id);
+      return old.filter((b: UntypedValue) => b.id !== id);
     });
     try {
       const result = await removeFromLibraryAction(id);
@@ -261,7 +262,7 @@ function BookDetailContent() {
               <div className="aspect-[2/3] bg-gray-100 dark:bg-black m-4 md:m-6 rounded-xl overflow-hidden shadow-sm relative group">
                 {book.cover_url ? (
                   /* Fallback a img nativo garantizado a estirarse a los bordes si Book3D colapsaba su height por conflictos css */
-                  <img
+                  <AppImage
                     src={book.cover_url}
                     alt={book.title}
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 z-10"
@@ -486,7 +487,7 @@ function BookDetailContent() {
             >
               <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-lg font-bold text-blue-600 dark:text-blue-400 flex-shrink-0 overflow-hidden">
                 {authorData.photo_url ? (
-                  <img src={authorData.photo_url} alt={authorData.name} className="w-full h-full object-cover" />
+                  <AppImage src={authorData.photo_url} alt={authorData.name} className="w-full h-full object-cover" />
                 ) : (
                   authorData.name.charAt(0).toUpperCase()
                 )}

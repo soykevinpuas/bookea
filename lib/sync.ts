@@ -38,7 +38,7 @@ export async function syncOfflineProgress() {
     if (rawH) {
       const allHighlights = JSON.parse(rawH);
       for (const bookId in allHighlights) {
-        const highlights = allHighlights[bookId] as any[];
+        const highlights = allHighlights[bookId] as UntypedValue[];
         for (const h of highlights) {
           if (!h.synced && h.user_id) {
             // Nota: Usamos upsert para manejar actualizaciones de color/nota offline
@@ -65,7 +65,7 @@ export async function syncOfflineProgress() {
     if (rawB) {
       const allBookmarks = JSON.parse(rawB);
       for (const bookId in allBookmarks) {
-        const bookmarks = allBookmarks[bookId] as any[];
+        const bookmarks = allBookmarks[bookId] as UntypedValue[];
         for (const b of bookmarks) {
           if (!b.synced && b.user_id) {
             const { error } = await supabase.from("bookmarks").upsert({

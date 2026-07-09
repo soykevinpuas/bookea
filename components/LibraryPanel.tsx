@@ -107,7 +107,7 @@ export default function LibraryPanel({ open, onClose }: LibraryPanelProps) {
               <p className="text-[10px] text-gray-500 mt-2">Usa el icono del libro en la barra superior o desliza desde el borde derecho para abrir de nuevo</p>
             </div>
           ) : (
-            books.map((book: any) => (
+            books.map((book: UntypedValue) => (
               <Link
                 key={book.id}
                 href={`/reader/${book.id}`}

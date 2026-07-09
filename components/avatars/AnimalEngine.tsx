@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import React from "react";
 
 /**
@@ -98,7 +99,7 @@ export function AnimalEngine(props: AnimalAvatarProps | AnimalAvatarConfigProps)
       className={`relative flex items-center justify-center overflow-hidden rounded-full ${className}`}
       style={{ width: size, height: size }}
     >
-      <img
+      <AppImage
         src={url}
         alt="Avatar"
         className="w-full h-full rounded-full"

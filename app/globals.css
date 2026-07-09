@@ -657,6 +657,46 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Línea de progreso para ventas/asignaciones de stock en curso */
+.stock-progress-line {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  overflow: hidden;
+  background: rgba(34, 197, 94, 0.16);
+  pointer-events: none;
+}
+
+.stock-progress-line::after {
+  content: "";
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0), rgba(34, 197, 94, 0.95), rgba(34, 197, 94, 0));
+  animation: stock-progress-sweep 1.15s ease-in-out infinite;
+}
+
+@keyframes stock-progress-sweep {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stock-progress-line::after {
+    width: 100%;
+    background: #22c55e;
+    opacity: 0.85;
+    animation: none;
+  }
+}
+
 /* Transición de opacidad para skeleton loaders */
 @keyframes skeleton-pulse {
   0%, 100% {

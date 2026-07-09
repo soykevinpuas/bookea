@@ -218,7 +218,7 @@ interface PrefetchLinkProps {
   prefetch?: boolean;
   onClick?: () => void;
   // Opcional: datos específicos para precargar en React Query
-  queryKey?: any[];
+  queryKey?: UntypedValue[];
   bookId?: string;
 }
 

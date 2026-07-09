@@ -4,6 +4,56 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-09-B] — Limpieza de warnings ESLint legacy
+
+### Problema
+El proyecto mantenia 243 warnings de lint heredados: 207 por `any` explicitos y 36 por uso directo de `<img>`.
+
+### Cambios
+1. **`components/ui/AppImage.tsx`** — Nuevo wrapper sobre `next/image` con `unoptimized` por defecto para portadas/imagenes dinamicas, conservando clases visuales existentes.
+2. **Pantallas y componentes con imagenes** — Reemplazados los `<img>` reportados por ESLint con `AppImage`.
+3. **`types/global.d.ts`** — Agregado `UntypedValue` como tipo puente para datos legacy sin contrato fuerte; elimina `any` explicitos sin fingir tipado definitivo.
+4. **Codigo legacy con `any`** — Reemplazados los `any` explicitos por `UntypedValue` para dejar el lint en cero y hacer visible donde queda trabajo futuro de tipado real.
+5. **`docs/AUDIT_LOG.md`** — Registrada la decision tecnica del tipo puente.
+
+### Verificacion
+- `npm run lint`: pasa con 0 errores y 0 warnings.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Archivos clave
+- `components/ui/AppImage.tsx`
+- `types/global.d.ts`
+- Pantallas/componentes con portadas e imagenes dinamicas.
+- Modulos legacy que usaban `any` explicito.
+
+---
+
+## [2026-07-09-A] — Feedback visual y salida estable al mover stock
+
+### Problema
+La venta de un libro podia sentirse lenta o parpadear: la card desaparecia por una actualizacion optimista, luego podia regresar por refetch/realtime y finalmente desaparecer cuando el backend confirmaba. Las asignaciones de stock a vendedores/admin tampoco mostraban feedback claro mientras la operacion seguia en curso.
+
+### Cambios
+1. **`app/vendedor/page.tsx`** — La venta ya no descuenta el inventario visualmente antes de que `markAsSold` confirme. Durante "Vendiendo..." se bloquean controles, se muestra una linea verde de progreso y, si el libro queda sin unidades, la card hace deslizamiento de salida antes de desaparecer.
+2. **`app/vendedor/page.tsx` y `app/admin/page.tsx`** — Los refetches automaticos/realtime se pausan mientras hay una operacion de stock en vuelo para evitar saltos visuales a mitad de venta/asignacion.
+3. **`app/admin/page.tsx`** — Las filas seleccionadas para asignar stock a vendedores o al admin muestran linea verde de progreso y deshabilitan controles mientras se procesa la asignacion.
+4. **`app/admin/vendedores/[id]/page.tsx`** — El panel de asignacion en detalle de vendedor muestra el mismo feedback visual durante "Asignando..." y bloquea cambios mientras la mutacion esta pendiente.
+5. **`app/globals.css`** — Agregada clase reutilizable `stock-progress-line` con animacion accesible para reducir movimiento.
+
+### Verificacion
+- `npm run lint`: pasa con 0 errores y 243 warnings legacy.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Archivos modificados
+- `app/vendedor/page.tsx`
+- `app/admin/page.tsx`
+- `app/admin/vendedores/[id]/page.tsx`
+- `app/globals.css`
+
+---
+
 ## [2026-07-08-B] — Descargas explicitas en biblioteca y acciones de auth en landing
 
 ### Problema

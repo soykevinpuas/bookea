@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import { X } from "lucide-react";
 
 export interface StockRequestItem {
@@ -43,7 +44,7 @@ export default function StockRequestItemsModal({
             ) : (
               <div key={item.id} className="flex items-center gap-3">
                 {item.books?.cover_url && (
-                  <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
+                  <AppImage src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 shrink-0" />
                 )}
                 <span className="text-white/80 text-sm flex-1 min-w-0 truncate">
                   {item.books?.title ?? "Libro"}

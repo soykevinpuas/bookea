@@ -40,7 +40,7 @@ export async function POST() {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
+  } catch (error: UntypedValue) {
     // Si el customer no existe en Stripe (ej. test vs live mismatch),
     // crear uno nuevo y actualizar la DB
     if (error?.type === 'StripeInvalidRequestError' && error?.code === 'resource_missing') {
@@ -57,7 +57,7 @@ export async function POST() {
           return_url: `${baseUrl}/profile`,
         });
         return NextResponse.json({ url: session.url });
-      } catch (retryError: any) {
+      } catch (retryError: UntypedValue) {
         console.error('Error creating portal session after retry:', retryError);
         return NextResponse.json(
           { error: 'Error al crear la sesión del portal de cliente' },

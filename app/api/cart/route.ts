@@ -13,7 +13,7 @@ export async function GET() {
 
   if (error) return NextResponse.json({ items: [] })
 
-  const items = data.map((item: any) => ({
+  const items = data.map((item: UntypedValue) => ({
     id: item.id,
     book_id: item.book_id,
     type: item.type,
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     .select('id, book_id, type, quantity, books(title, author, cover_url, price_digital, price_physical, stock_physical)')
     .eq('user_id', user.id)
 
-  const items = (data || []).map((item: any) => ({
+  const items = (data || []).map((item: UntypedValue) => ({
     id: item.id,
     book_id: item.book_id,
     type: item.type,
@@ -88,7 +88,7 @@ export async function DELETE(req: Request) {
     .select('id, book_id, type, quantity, books(title, author, cover_url, price_digital, price_physical, stock_physical)')
     .eq('user_id', user.id)
 
-  const items = (data || []).map((item: any) => ({
+  const items = (data || []).map((item: UntypedValue) => ({
     id: item.id,
     book_id: item.book_id,
     type: item.type,

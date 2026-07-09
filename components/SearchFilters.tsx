@@ -197,7 +197,7 @@ export function SearchFilters({
                     "Misterio y Suspenso", "Fantasía", "Ciencia Ficción",
                     "Romance", "Terror", "Autoayuda", "Negocios y Finanzas",
                     "Historia", "Biografías", "Cuentos", "Poesía", "Otros"
-                  ].map((cat: any) => (
+                  ].map((cat: UntypedValue) => (
                     <button
                       key={cat}
                       onClick={() => {

@@ -1,6 +1,7 @@
 // Componente de QR de referido para compartir Bookea
 'use client'
 
+import AppImage from "@/components/ui/AppImage";
 import { useState } from 'react'
 import { Copy, Check, Share2 } from 'lucide-react'
 
@@ -61,7 +62,7 @@ export function ReferralQR({ referralLink, referralCount }: ReferralQRProps) {
         {/* QR Code */}
         <div className="flex-shrink-0">
           <div className="w-[200px] h-[200px] bg-white rounded-xl p-2 shadow-lg">
-            <img
+            <AppImage
               src={qrUrl}
               alt="QR de referido"
               className="w-full h-full object-contain"

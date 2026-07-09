@@ -1,3 +1,4 @@
+import AppImage from "@/components/ui/AppImage";
 interface Book3DProps {
   src: string;
   title: string;
@@ -22,7 +23,7 @@ export default function Book3D({
       <div className={`relative h-full overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-800 ${
         showShadow ? 'shadow-sm' : ''
       } ${isCompleted ? 'ring-1 ring-amber-500/40' : ''}`}>
-        <img
+        <AppImage
           src={src || ''}
           alt={title}
           loading="lazy"

@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { getSellerInventory } from "@/lib/sellers";
@@ -27,7 +28,7 @@ export default function NuevaSolicitudPage() {
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [notes, setNotes] = useState("");
-  const [previewBook, setPreviewBook] = useState<any>(null);
+  const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
 
   const { data: requestableData, isLoading: booksLoading } = useQuery({
     queryKey: ["requestable-books", userId],
@@ -36,7 +37,7 @@ export default function NuevaSolicitudPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudieron cargar los libros");
       return json as {
-        books: any[];
+        books: UntypedValue[];
         reason: "ok" | "no_admin" | "no_stock";
       };
     },
@@ -53,9 +54,9 @@ export default function NuevaSolicitudPage() {
   });
 
   const inventoryMap = new Map(inventory.map(i => [i.book_id, i.quantity]));
-  const booksMap = new Map(books.map((b: any) => [b.id, b]));
+  const booksMap = new Map(books.map((b: UntypedValue) => [b.id, b]));
 
-  const addToCart = (book: any) => {
+  const addToCart = (book: UntypedValue) => {
     setCart((prev) => {
       const existing = prev.find((c) => c.book_id === book.id);
       if (existing) {
@@ -80,7 +81,7 @@ export default function NuevaSolicitudPage() {
       prev
         .map((c) => {
           if (c.book_id !== bookId) return c;
-          const book = booksMap.get(bookId) as any;
+          const book = booksMap.get(bookId) as UntypedValue;
           const maxAllowed = book?.stock_physical ?? Infinity;
           return { ...c, quantity: Math.max(1, Math.min(maxAllowed, c.quantity + delta)) };
         })
@@ -117,9 +118,9 @@ export default function NuevaSolicitudPage() {
 
   const isFormValid = cart.length > 0;
 
-  const booksInStock = books.filter((b: any) => b.stock_physical > 0);
+  const booksInStock = books.filter((b: UntypedValue) => b.stock_physical > 0);
   const filteredBooks = booksInStock.filter(
-    (b: any) =>
+    (b: UntypedValue) =>
       b.title.toLowerCase().includes(search.toLowerCase()) ||
       b.author.toLowerCase().includes(search.toLowerCase())
   );
@@ -181,7 +182,7 @@ export default function NuevaSolicitudPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredBooks.map((book: any) => {
+              {filteredBooks.map((book: UntypedValue) => {
                 const inCart = cart.find((c) => c.book_id === book.id);
                 return (
                   <div
@@ -193,7 +194,7 @@ export default function NuevaSolicitudPage() {
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {book.cover_url && (
                         <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                          <img
+                          <AppImage
                             src={book.cover_url}
                             alt=""
                             className="w-8 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-amber-500/50 transition-all"

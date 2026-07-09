@@ -260,7 +260,7 @@ export default function ReaderPage() {
   const getCurrentCfi = () => {
     let cfi = lastCfiRef.current;
     try {
-      const currentLocation = renditionRef.current?.currentLocation() as any;
+      const currentLocation = renditionRef.current?.currentLocation() as UntypedValue;
       if (currentLocation?.start?.cfi) {
         cfi = currentLocation.start.cfi;
       } else if (currentLocation?.cfi) {
@@ -294,23 +294,23 @@ export default function ReaderPage() {
       const selector = getCfiAnnotationSelector(cfi);
       document.querySelectorAll(selector).forEach((node) => node.remove());
       const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
-      contents?.forEach((content: any) => {
+      contents?.forEach((content: UntypedValue) => {
         content.document?.querySelectorAll(selector).forEach((node: Element) => node.remove());
       });
     } catch {}
   };
 
   const centerCfiInViewport = (cfi: string, fallbackScrollTop?: number | null) => {
-    const mgr = (renditionRef.current as any)?.manager;
+    const mgr = (renditionRef.current as UntypedValue)?.manager;
     const container = mgr?.container as HTMLElement | undefined;
     if (!container) return false;
 
     try {
       const contents = renditionRef.current?.getContents() as unknown as EpubContents[] | undefined;
-      const didCenter = contents?.some((content: any) => {
+      const didCenter = contents?.some((content: UntypedValue) => {
         try {
           const range = content.range(cfi);
-          const iframe = content.iframe || (content as any).iframe;
+          const iframe = content.iframe || (content as UntypedValue).iframe;
           if (!range || !iframe) return false;
 
           const rangeRect = range.getBoundingClientRect();
@@ -359,7 +359,7 @@ export default function ReaderPage() {
         setProgress(savedProgress);
         progressRef.current = savedProgress;
       }
-      const container = ((renditionRef.current as any)?.manager?.container) as HTMLElement | undefined;
+      const container = ((renditionRef.current as UntypedValue)?.manager?.container) as HTMLElement | undefined;
       if (container) {
         scrollTopRef.current = container.scrollTop;
         scrollPermilleRef.current = getRelativeScrollMarker(container);
@@ -792,8 +792,8 @@ export default function ReaderPage() {
                     textNode = range.startContainer;
                     offset = range.startOffset;
                   }
-                } else if ((doc as any).caretPositionFromPoint) {
-                  const pos = (doc as any).caretPositionFromPoint(e.clientX, e.clientY);
+                } else if ((doc as UntypedValue).caretPositionFromPoint) {
+                  const pos = (doc as UntypedValue).caretPositionFromPoint(e.clientX, e.clientY);
                   if (pos) {
                     textNode = pos.offsetNode;
                     offset = pos.offset;
@@ -881,7 +881,7 @@ export default function ReaderPage() {
               getHighlights(bookId, userId)
             ]),
             fetchTimeout
-          ]) as [any, Highlight[]];
+          ]) as [UntypedValue, Highlight[]];
 
           savedProgress = results[0];
           savedHighlights = results[1];
@@ -902,9 +902,9 @@ export default function ReaderPage() {
         } catch {}
 
         // Registrar función visual para cada highlight
-        const renderHighlights = (section?: any) => {
+        const renderHighlights = (section?: UntypedValue) => {
           const sectionSpineKey = section ? getSpineKey(section.cfiBase) : null;
-          highlightsRef.current.forEach((h: any) => {
+          highlightsRef.current.forEach((h: UntypedValue) => {
             try {
               if (sectionSpineKey && getSpineKey(h.cfi_start) !== sectionSpineKey) return;
               try {
@@ -921,7 +921,7 @@ export default function ReaderPage() {
         };
 
         // Registrar marcadores visuales en el texto
-        const renderBookmarks = (section?: any) => {
+        const renderBookmarks = (section?: UntypedValue) => {
           const sectionSpineKey = section ? getSpineKey(section.cfiBase) : null;
           bookmarksRef.current.forEach((b: BookmarkType) => {
             try {
@@ -940,7 +940,7 @@ export default function ReaderPage() {
 
         // Inyecta CSS dentro del iframe de epubjs; debe registrarse antes de display()
         // para que la primera seccion ya nazca con medidas estables.
-        const fixViewCSS = (view: any) => {
+        const fixViewCSS = (view: UntypedValue) => {
           try {
             const doc = view?.iframe?.contentDocument;
             if (!doc) return;
@@ -965,7 +965,7 @@ export default function ReaderPage() {
           }
         };
 
-        rendition.on("rendered", (_section: any, view: any) => {
+        rendition.on("rendered", (_section: UntypedValue, view: UntypedValue) => {
           if (loadingTimeout) clearTimeout(loadingTimeout);
           setIsLoading(false);
           if (!isNavigatingToBookmark.current) {
@@ -991,7 +991,7 @@ export default function ReaderPage() {
           // Restaurar scroll exacto después del primer render
           if (pendingScrollRestore.current !== null && !hasRestoredScroll.current) {
             hasRestoredScroll.current = true;
-            const mgr = (rendition as any).manager;
+            const mgr = (rendition as UntypedValue).manager;
             if (mgr?.container) {
               const saved = pendingScrollRestore.current;
               pendingScrollRestore.current = null;
@@ -1004,7 +1004,7 @@ export default function ReaderPage() {
         // Ajusta el manager continuo de epubjs: el trim agresivo destruye secciones
         // fuera del viewport y provoca saltos de scroll al navegar hacia arriba.
         setTimeout(() => {
-          const mgr = (rendition as any).manager;
+          const mgr = (rendition as UntypedValue).manager;
           if (mgr?.container) {
             mgr.container.style.overflowY = 'scroll';
             mgr.container.style.overflowX = 'hidden';
@@ -1085,7 +1085,7 @@ export default function ReaderPage() {
         if (pendingScrollRestore.current !== null && !hasRestoredScroll.current) {
           hasRestoredScroll.current = true;
           requestAnimationFrame(() => {
-            const mgr = (rendition as any)?.manager;
+            const mgr = (rendition as UntypedValue)?.manager;
             if (mgr?.container && pendingScrollRestore.current) {
               const saved = pendingScrollRestore.current;
               pendingScrollRestore.current = null;
@@ -1104,7 +1104,7 @@ export default function ReaderPage() {
           if (isNavigatingToBookmark.current) return;
 
           let percent = 0;
-          const totalSpines = (bookInstance.spine as any)?.length || (bookInstance.spine as any)?.items?.length || 1;
+          const totalSpines = (bookInstance.spine as UntypedValue)?.length || (bookInstance.spine as UntypedValue)?.items?.length || 1;
 
           // Primero intentar con locations (más preciso)
           if (bookInstance.locations && bookInstance.locations.length() > 0) {
@@ -1125,7 +1125,7 @@ export default function ReaderPage() {
           setCurrentSpineKey(getSpineKey(location.start.cfi));
 
           // Capturar scroll exacto del contenedor (como permille ‰)
-          const mgr = (rendition as any)?.manager;
+          const mgr = (rendition as UntypedValue)?.manager;
           if (mgr?.container) {
             scrollTopRef.current = mgr.container.scrollTop;
             scrollPermilleRef.current = getRelativeScrollMarker(mgr.container);
@@ -1388,7 +1388,7 @@ export default function ReaderPage() {
       // FLUJO DE ACTUALIZACIÓN DE COLOR
       const success = await updateHighlightColor(activeSelection.isExistingId, color);
       if (success) {
-        setHighlights(prev => prev.map((h: any) => h.id === activeSelection.isExistingId ? { ...h, color } : h));
+        setHighlights(prev => prev.map((h: UntypedValue) => h.id === activeSelection.isExistingId ? { ...h, color } : h));
         toast.success("Color de subrayado actualizado");
         // Limpiar registro viejo en epubjs PRIMERO para evitar que se queje de nodos huerfanos
         renditionRef.current?.annotations.remove(activeSelection.cfiRange, "highlight");
@@ -1396,15 +1396,15 @@ export default function ReaderPage() {
         // Limpieza visual manual por si epub.js deja nodos antiguos en el iframe.
         try {
           const DOMTargets = getCfiAnnotationSelector(activeSelection.cfiRange);
-          document.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
+          document.querySelectorAll(DOMTargets).forEach((n: UntypedValue) => n.remove());
           const contents = renditionRef.current?.getContents() as unknown as EpubContents[];
-          contents?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
+          contents?.forEach((c: UntypedValue) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
         } catch {}
 
         // Pintar el color nuevo
         renditionRef.current?.annotations.highlight(activeSelection.cfiRange, { id: activeSelection.isExistingId }, () => {
           // El objeto actualizado no lo tenemos aquí directo, así que pasamos un mock parcial
-          const target = highlights.find((h: any) => h.id === activeSelection.isExistingId);
+          const target = highlights.find((h: UntypedValue) => h.id === activeSelection.isExistingId);
           if (target) handleHighlightClick({...target, color});
         }, undefined, { "fill": color, "fill-opacity": HIGHLIGHT_FILL_OPACITY, "mix-blend-mode": "normal" });
 
@@ -1441,7 +1441,7 @@ export default function ReaderPage() {
     // Deseleccionar el texto dentro del Iframe
     if (renditionRef.current) {
       const contentsArray = renditionRef.current.getContents() as unknown as EpubContents[];
-      contentsArray?.forEach((content: any) => {
+      contentsArray?.forEach((content: UntypedValue) => {
         content.window?.getSelection()?.removeAllRanges();
       });
     }
@@ -1452,7 +1452,7 @@ export default function ReaderPage() {
     // Deseleccionar el texto (la previsualización nativa) dentro del Iframe
     if (renditionRef.current) {
       const contentsArray = renditionRef.current.getContents() as unknown as EpubContents[];
-      contentsArray?.forEach((content: any) => {
+      contentsArray?.forEach((content: UntypedValue) => {
         content.window?.getSelection()?.removeAllRanges();
       });
     }
@@ -1461,15 +1461,15 @@ export default function ReaderPage() {
   const handleDeleteHighlight = async (id: string, cfi: string) => {
     const success = await deleteHighlight(id);
     if (success) {
-      setHighlights(prev => prev.filter((h: any) => h.id !== id));
+      setHighlights(prev => prev.filter((h: UntypedValue) => h.id !== id));
       renditionRef.current?.annotations.remove(cfi, "highlight");
 
       // Limpieza visual manual por si epub.js deja nodos antiguos en el iframe.
       try {
         const DOMTargets = getCfiAnnotationSelector(cfi);
-        document.querySelectorAll(DOMTargets).forEach((n: any) => n.remove());
+        document.querySelectorAll(DOMTargets).forEach((n: UntypedValue) => n.remove());
         const contentsArray = renditionRef.current?.getContents() as unknown as EpubContents[];
-        contentsArray?.forEach((c: any) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
+        contentsArray?.forEach((c: UntypedValue) => c.document?.querySelectorAll(DOMTargets).forEach((n: Element) => n.remove()));
       } catch {}
 
       toast.info("Subrayado eliminado");
@@ -1481,7 +1481,7 @@ export default function ReaderPage() {
   const handleUpdateNote = async (id: string, note: string) => {
     const success = await updateHighlightNote(id, note);
     if (success) {
-      setHighlights(prev => prev.map((h: any) => h.id === id ? { ...h, note } : h));
+      setHighlights(prev => prev.map((h: UntypedValue) => h.id === id ? { ...h, note } : h));
       setEditingNote(null);
       toast.success("Nota guardada");
     } else {
@@ -1490,7 +1490,7 @@ export default function ReaderPage() {
   };
 
   const getReaderScrollContainer = () => {
-    return ((renditionRef.current as any)?.manager?.container) as HTMLElement | undefined;
+    return ((renditionRef.current as UntypedValue)?.manager?.container) as HTMLElement | undefined;
   };
 
   const isBookmarkAtPosition = (
@@ -1554,7 +1554,7 @@ export default function ReaderPage() {
   const handleToggleBookmark = async () => {
     if (!bookId || !userId || !renditionRef.current) return;
 
-    const mgr = (renditionRef.current as any)?.manager;
+    const mgr = (renditionRef.current as UntypedValue)?.manager;
     const container = mgr?.container as HTMLElement | undefined;
 
     // Guardar scroll como permille (‰) del scrollHeight total para ser
@@ -1797,11 +1797,11 @@ export default function ReaderPage() {
                               ? `0 0 0 2px #121212, 0 0 0 4px ${color.value}`
                               : `0 0 0 2px #ffffff, 0 0 0 4px ${color.value}`
                           : 'none'
-                      } as any}
+                      } as UntypedValue}
                     >
                       <div
                         className="w-full h-full rounded-full no-retro-override"
-                        style={{ backgroundColor: color.value } as any}
+                        style={{ backgroundColor: color.value } as UntypedValue}
                       />
                     </button>
                   ))}

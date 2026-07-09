@@ -36,7 +36,7 @@ export async function assignStock(
   });
 
   if (error) throw error;
-  const result = (data as any) || {};
+  const result = (data as UntypedValue) || {};
   if (!result.success) throw new Error(result.error || "Error al asignar stock");
 }
 
@@ -64,7 +64,7 @@ export async function markAsSold(
 
   if (rpcErr) throw new Error(`Error al registrar venta: ${rpcErr.message}`);
 
-  const result = (data as any) || {};
+  const result = (data as UntypedValue) || {};
   if (!result.success) throw new Error(result.error || "Error al registrar venta");
 }
 
@@ -172,7 +172,7 @@ export async function updateStockRequestStatus(
       console.error("[updateStockRequestStatus] rpc error:", rpcErr);
       throw new Error(`Error al entregar solicitud: ${rpcErr.message}`);
     }
-    const raw = (data as any) || {};
+    const raw = (data as UntypedValue) || {};
     const result = raw.success !== undefined ? raw : (Array.isArray(raw) ? raw[0] : raw);
     if (!result?.success) throw new Error(result?.error || "Error al entregar solicitud");
     return;
@@ -194,14 +194,14 @@ export async function updateStockRequestStatus(
         console.error("[updateStockRequestStatus] cancel rpc error:", rpcErr);
         throw new Error(`Error al cancelar solicitud: ${rpcErr.message}`);
       }
-      const raw = (data as any) || {};
+      const raw = (data as UntypedValue) || {};
       const result = raw.success !== undefined ? raw : (Array.isArray(raw) ? raw[0] : raw);
       if (!result?.success) throw new Error(result?.error || "Error al cancelar solicitud");
       return;
     }
   }
 
-  const update: Record<string, any> = {
+  const update: Record<string, UntypedValue> = {
     status,
     updated_at: new Date().toISOString(),
   };
@@ -389,6 +389,6 @@ export async function revertAssignStock(
   });
 
   if (error) throw error;
-  const result = (data as any) || {};
+  const result = (data as UntypedValue) || {};
   if (!result.success) throw new Error(result.error || "Error al revertir asignación");
 }

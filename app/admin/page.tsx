@@ -1,11 +1,12 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { updateStockRequestStatus, COST_PER_BOOK, ADMIN_COST_BOOK, markSalesAsPaid, assignStock } from "@/lib/sellers";
 import { deleteStockRequestAction, deleteSaleAction, removeSellerInventoryAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 
 import Link from "next/link";
 import {
@@ -22,7 +23,7 @@ import BookPreviewModal from "@/components/BookPreviewModal";
 
 type Section = "ingresos" | "stock" | "vendidos" | "solicitudes" | "pagos";
 
-const sections: { key: Section; label: string; icon: any }[] = [
+const sections: { key: Section; label: string; icon: UntypedValue }[] = [
   { key: "ingresos", label: "Ingresos", icon: BarChart3 },
   { key: "stock", label: "Stock", icon: Package },
   { key: "vendidos", label: "Vendidos", icon: TrendingUp },
@@ -37,12 +38,12 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Cancelado", color: "bg-red-500/10 text-red-400 border border-red-500/20" },
 };
 
-const ChartTooltip = ({ active, payload, label }: any) => {
+const ChartTooltip = ({ active, payload, label }: UntypedValue) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-[#1a1a1a] border border-white/10 rounded-xl px-3 py-2 text-xs shadow-xl">
       <p className="text-white/50 mb-1">{label}</p>
-      {payload.map((entry: any, i: number) => (
+      {payload.map((entry: UntypedValue, i: number) => (
         <p key={i} className="font-medium" style={{ color: entry.color }}>
           {entry.name}: ${entry.value.toLocaleString("es-MX")}
         </p>
@@ -65,9 +66,10 @@ export default function AdminDashboard() {
   const [assignSellerQtys, setAssignSellerQtys] = useState<Record<string, number>>({});
   const [assignSellerSearch, setAssignSellerSearch] = useState("");
   const [pendingOps, setPendingOps] = useState<Set<string>>(new Set());
-  const [modalItems, setModalItems] = useState<{ sellerId: string; items: any[] } | null>(null);
-  const [stockModalSeller, setStockModalSeller] = useState<{sellerId: string; email: string; items: any[]} | null>(null);
-  const [previewBook, setPreviewBook] = useState<any>(null);
+  const [modalItems, setModalItems] = useState<{ sellerId: string; items: UntypedValue[] } | null>(null);
+  const [stockModalSeller, setStockModalSeller] = useState<{sellerId: string; email: string; items: UntypedValue[]} | null>(null);
+  const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
+  const stockWriteInFlight = useRef(false);
   interface PaginatedResponse<T> {
     data: T[];
     total: number;
@@ -77,12 +79,12 @@ export default function AdminDashboard() {
 
   interface DashboardData {
     adminUserId: string;
-    sales: PaginatedResponse<any>;
-    inventory: PaginatedResponse<any>;
-    sellers: any[];
+    sales: PaginatedResponse<UntypedValue>;
+    inventory: PaginatedResponse<UntypedValue>;
+    sellers: UntypedValue[];
     requests: PaginatedResponse<StockRequest>;
-    pendingSales: any[];
-    physicalBooks: any[];
+    pendingSales: UntypedValue[];
+    physicalBooks: UntypedValue[];
     salesMap: Record<string, number>;
     adminStock: { book_id: string; quantity: number }[];
   }
@@ -137,9 +139,11 @@ export default function AdminDashboard() {
     const channel = supabase
       .channel("admin-dashboard-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "seller_sales" }, () => {
+        if (stockWriteInFlight.current) return;
         queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "seller_inventory" }, () => {
+        if (stockWriteInFlight.current) return;
         queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
       })
       .subscribe();
@@ -147,7 +151,10 @@ export default function AdminDashboard() {
   }, [supabase, queryClient]);
 
   useEffect(() => {
-    const refetch = () => queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
+    const refetch = () => {
+      if (stockWriteInFlight.current) return;
+      queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
+    };
     const interval = setInterval(refetch, 5000);
     const onVisible = () => {
       if (document.visibilityState === "visible") refetch();
@@ -169,7 +176,7 @@ export default function AdminDashboard() {
       });
       return { previous };
     },
-    onError: (err: any, variables, context) => {
+    onError: (err: UntypedValue, variables, context) => {
       if (context?.previous) queryClient.setQueryData(["admin-dashboard"], context.previous);
       toast.error(err?.message || "Error al actualizar estado");
     },
@@ -192,7 +199,7 @@ export default function AdminDashboard() {
       queryClient.refetchQueries({ queryKey: ["admin-sellers"] });
       toast.success("Solicitud eliminada");
     },
-    onError: (err: any) => toast.error(err?.message || "Error al eliminar"),
+    onError: (err: UntypedValue) => toast.error(err?.message || "Error al eliminar"),
     onSettled: (data, error, requestId) => {
       setPendingOps(prev => { const next = new Set(prev); next.delete(`del-req-${requestId}`); return next; });
     },
@@ -207,7 +214,7 @@ export default function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
       toast.success("Venta(s) marcada(s) como pagada(s)");
     },
-    onError: (err: any) => toast.error(err?.message || "Error al marcar pago"),
+    onError: (err: UntypedValue) => toast.error(err?.message || "Error al marcar pago"),
   });
 
   const assignSelfMutation = useMutation({
@@ -215,6 +222,9 @@ export default function AdminDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
       await assignStock(supabase, user.id, assignSelfBookId, assignSelfQty);
+    },
+    onMutate: () => {
+      stockWriteInFlight.current = true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
@@ -224,6 +234,9 @@ export default function AdminDashboard() {
       toast.success("Stock asignado a tu perfil de vendedor");
     },
     onError: (err) => toast.error(err.message),
+    onSettled: () => {
+      stockWriteInFlight.current = false;
+    },
   });
 
   const assignSellerMutation = useMutation({
@@ -237,8 +250,11 @@ export default function AdminDashboard() {
         p_items: items,
       });
       if (error) throw new Error(error.message);
-      const result = (data as any) || {};
+      const result = (data as UntypedValue) || {};
       if (!result.success) throw new Error(result.error || "Error al asignar stock");
+    },
+    onMutate: () => {
+      stockWriteInFlight.current = true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
@@ -247,6 +263,9 @@ export default function AdminDashboard() {
       toast.success("Stock asignado al vendedor");
     },
     onError: (err) => toast.error(err.message),
+    onSettled: () => {
+      stockWriteInFlight.current = false;
+    },
   });
 
   const removeInventory = useMutation({
@@ -259,7 +278,7 @@ export default function AdminDashboard() {
       queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
       toast.success("Stock removido del vendedor");
     },
-    onError: (err: any) => toast.error(err?.message || "Error al remover stock"),
+    onError: (err: UntypedValue) => toast.error(err?.message || "Error al remover stock"),
     onSettled: (data, error, { sellerId, bookId }) => {
       setPendingOps(prev => { const next = new Set(prev); next.delete(`del-inv-${sellerId}-${bookId}`); return next; });
     },
@@ -275,7 +294,7 @@ export default function AdminDashboard() {
       queryClient.refetchQueries({ queryKey: ["admin-sellers"] });
       toast.success("Venta eliminada y stock revertido");
     },
-    onError: (err: any) => toast.error(err?.message || "Error al eliminar venta"),
+    onError: (err: UntypedValue) => toast.error(err?.message || "Error al eliminar venta"),
     onSettled: (data, error, saleId) => {
       setPendingOps(prev => { const next = new Set(prev); next.delete(`del-sale-${saleId}`); return next; });
     },
@@ -320,10 +339,10 @@ export default function AdminDashboard() {
 
   const inventoryBySeller = useMemo(() => {
     try {
-      const map = new Map<string, { email: string; items: any[] }>();
+      const map = new Map<string, { email: string; items: UntypedValue[] }>();
       for (const item of allInventory) {
         if (item.quantity <= 0) continue;
-        const sid = (item as any).seller_id;
+        const sid = (item as UntypedValue).seller_id;
         if (!sid) continue;
         if (!map.has(sid)) map.set(sid, { email: sellerLookup.get(sid) || "Desconocido", items: [] });
         map.get(sid)!.items.push(item);
@@ -337,12 +356,12 @@ export default function AdminDashboard() {
 
   const pendingBySeller = useMemo(() => {
     try {
-      const map = new Map<string, { email: string; total: number; sales: any[] }>();
+      const map = new Map<string, { email: string; total: number; sales: UntypedValue[] }>();
       for (const sale of pendingSales) {
         if (sale.seller_id === adminUserId) continue;
         const sid = sale.seller_id;
         if (!sid) continue;
-        const email = (sale as any).seller?.email || sellerLookup.get(sid) || "Desconocido";
+        const email = (sale as UntypedValue).seller?.email || sellerLookup.get(sid) || "Desconocido";
         if (!map.has(sid)) map.set(sid, { email, total: 0, sales: [] });
         const entry = map.get(sid)!;
         entry.total += (sale.quantity || 0) * COST_PER_BOOK;
@@ -356,7 +375,7 @@ export default function AdminDashboard() {
   }, [pendingSales, sellerLookup, adminUserId]);
 
   const filteredSelfBooks = physicalBooks.filter(
-    (b: any) =>
+    (b: UntypedValue) =>
       (b.title.toLowerCase().includes(assignSelfSearch.toLowerCase()) ||
       b.author.toLowerCase().includes(assignSelfSearch.toLowerCase()))
   );
@@ -445,14 +464,14 @@ export default function AdminDashboard() {
                   onClick={() => setActiveSection("vendidos")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
                 >
-                  <p className="text-lg font-bold text-white/60">{allSales.reduce((s: number, i: any) => s + i.quantity, 0)}</p>
+                  <p className="text-lg font-bold text-white/60">{allSales.reduce((s: number, i: UntypedValue) => s + i.quantity, 0)}</p>
                   <p className="text-[10px] text-white/40 mt-0.5">Unidades vendidas</p>
                 </button>
                 <button
                   onClick={() => setActiveSection("pagos")}
                   className="bg-white/5 border border-amber-500/20 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
                 >
-                  <p className="text-lg font-bold text-amber-400">${pendingSales.filter((i: any) => i.seller_id !== adminUserId).reduce((s: number, i: any) => s + (i.quantity || 0) * COST_PER_BOOK, 0).toLocaleString("es-MX")}</p>
+                  <p className="text-lg font-bold text-amber-400">${pendingSales.filter((i: UntypedValue) => i.seller_id !== adminUserId).reduce((s: number, i: UntypedValue) => s + (i.quantity || 0) * COST_PER_BOOK, 0).toLocaleString("es-MX")}</p>
                   <p className="text-[10px] text-white/40 mt-0.5">Pagos pendientes</p>
                 </button>
               </div>
@@ -489,7 +508,7 @@ export default function AdminDashboard() {
                       <YAxis domain={[0, 'auto']} tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
                       <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                       <Bar dataKey="ganancia" name="Ganancia" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={24}>
-                        <LabelList dataKey="ganancia" position="top" fill="#22c55e" fontSize={10} fontWeight={700} formatter={(v: any) => `$${(v || 0).toLocaleString("es-MX")}`} />
+                        <LabelList dataKey="ganancia" position="top" fill="#22c55e" fontSize={10} fontWeight={700} formatter={(v: UntypedValue) => `$${(v || 0).toLocaleString("es-MX")}`} />
                       </Bar>
                       <Bar dataKey="inversion" name="Inversión" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={24} />
                     </BarChart>
@@ -545,10 +564,11 @@ export default function AdminDashboard() {
                       setAssignSellerId(e.target.value);
                       setAssignSellerQtys({});
                     }}
+                    disabled={assignSellerMutation.isPending}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50"
                   >
                     <option value="">Seleccionar vendedor...</option>
-                    {allSellers.map((s: any) => (
+                    {allSellers.map((s: UntypedValue) => (
                       <option key={s.id} value={s.id}>
                         {s.email}{!s.assigned_admin_id ? " (demo/sin asignar)" : ""}
                       </option>
@@ -562,6 +582,7 @@ export default function AdminDashboard() {
                       value={assignSellerSearch}
                       onChange={(e) => setAssignSellerSearch(e.target.value)}
                       placeholder="Buscar libro..."
+                      disabled={assignSellerMutation.isPending}
                       className="w-full pl-9 pr-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-amber-500/50"
                     />
                   </div>
@@ -573,26 +594,29 @@ export default function AdminDashboard() {
                     <>
                       <div className="space-y-2 max-h-80 overflow-y-auto">
                         {physicalBooks
-                          .filter((b: any) =>
+                          .filter((b: UntypedValue) =>
                             b.title.toLowerCase().includes(assignSellerSearch.toLowerCase()) ||
                             b.author.toLowerCase().includes(assignSellerSearch.toLowerCase())
                           )
-                          .map((book: any) => {
+                          .map((book: UntypedValue) => {
                             const qty = assignSellerQtys[book.id] || 0;
                             const myStock = adminStockMap.get(book.id) || 0;
                             const lowStock = myStock > 0 && myStock <= 3;
                             const outOfStock = myStock <= 0;
+                            const isAssigningSelected = assignSellerMutation.isPending && qty > 0;
                             return (
                               <div
                                 key={book.id}
-                                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${
-                                  qty > 0
-                                    ? "bg-amber-500/5 border border-amber-500/20"
+                                className={`relative overflow-hidden flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${
+                                  isAssigningSelected
+                                    ? "bg-green-500/10 border border-green-500/30"
+                                    : qty > 0
+                                      ? "bg-amber-500/5 border border-amber-500/20"
                                     : "bg-white/5 border border-white/8 hover:bg-white/10"
                                 }`}
                               >
                                 {book.cover_url && (
-                                  <img src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                                  <AppImage src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
                                 )}
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium truncate">{book.title}</p>
@@ -615,7 +639,8 @@ export default function AdminDashboard() {
                                             return copy;
                                           })
                                         }
-                                        className="p-1 bg-white/5 hover:bg-red-500/20 rounded-lg transition-colors"
+                                        disabled={assignSellerMutation.isPending}
+                                        className="p-1 bg-white/5 hover:bg-red-500/20 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
                                       >
                                         <Minus className="w-3.5 h-3.5" />
                                       </button>
@@ -627,7 +652,7 @@ export default function AdminDashboard() {
                                             [book.id]: Math.min(myStock, (prev[book.id] || 0) + 1),
                                           }))
                                         }
-                                        disabled={qty >= myStock}
+                                        disabled={assignSellerMutation.isPending || qty >= myStock}
                                         className="p-1 bg-white/5 hover:bg-green-500/20 rounded-lg transition-colors disabled:opacity-20 disabled:pointer-events-none"
                                       >
                                         <Plus className="w-3.5 h-3.5" />
@@ -641,19 +666,20 @@ export default function AdminDashboard() {
                                           [book.id]: 1,
                                         }))
                                       }
-                                      disabled={outOfStock}
+                                      disabled={assignSellerMutation.isPending || outOfStock}
                                       className="text-xs font-medium px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
                                     >
                                       + Asignar
                                     </button>
                                   )}
                                 </div>
+                                {isAssigningSelected && <div className="stock-progress-line" aria-hidden="true" />}
                               </div>
                                 );
                               })}
                             </div>
                             <div className="sticky bottom-0 -mx-1 pt-3 bg-[#0a0a0a]/95 backdrop-blur border-t border-amber-500/10">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-amber-500/5 border border-amber-500/15 p-3">
+                              <div className="relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-amber-500/5 border border-amber-500/15 p-3">
                                 <div>
                                   <p className="text-sm font-semibold text-white">
                                     {assignSellerEntries.length > 0
@@ -672,6 +698,7 @@ export default function AdminDashboard() {
                                   {assignSellerMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                                   {assignSellerMutation.isPending ? "Asignando..." : "Asignar stock"}
                                 </button>
+                                {assignSellerMutation.isPending && <div className="stock-progress-line" aria-hidden="true" />}
                               </div>
                             </div>
                           </>
@@ -695,19 +722,24 @@ export default function AdminDashboard() {
                       value={assignSelfSearch}
                       onChange={(e) => setAssignSelfSearch(e.target.value)}
                       placeholder="Buscar libro físico..."
+                      disabled={assignSelfMutation.isPending}
                       className="w-full pl-9 pr-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 outline-none focus:border-blue-500/50"
                     />
                   </div>
                       <div className="space-y-2 max-h-48 overflow-y-auto mb-3">
-                    {filteredSelfBooks.map((book: any) => {
+                    {filteredSelfBooks.map((book: UntypedValue) => {
                       const myStock = adminStockMap.get(book.id) || 0;
                       const outOfStock = myStock <= 0;
+                      const isSelfAssigningBook = assignSelfMutation.isPending && assignSelfBookId === book.id;
                       return (
                       <button
                         key={book.id}
-                        onClick={() => { if (!outOfStock) { setAssignSelfBookId(book.id); setAssignSelfQty(Math.min(1, myStock)); } }}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
-                          outOfStock
+                        onClick={() => { if (!outOfStock && !assignSelfMutation.isPending) { setAssignSelfBookId(book.id); setAssignSelfQty(Math.min(1, myStock)); } }}
+                        disabled={outOfStock || assignSelfMutation.isPending}
+                        className={`relative overflow-hidden w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
+                          isSelfAssigningBook
+                            ? "bg-green-500/10 text-green-300 border border-green-500/30"
+                            : outOfStock
                             ? "text-red-400/50 cursor-not-allowed"
                             : assignSelfBookId === book.id
                               ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
@@ -715,12 +747,13 @@ export default function AdminDashboard() {
                         }`}
                       >
                         {book.cover_url && (
-                          <img src={book.cover_url} alt="" className="w-6 h-9 rounded object-cover bg-white/5 shrink-0" />
+                          <AppImage src={book.cover_url} alt="" className="w-6 h-9 rounded object-cover bg-white/5 shrink-0" />
                         )}
                         <div className="flex-1 min-w-0 text-left">
                           <p className="text-sm font-medium truncate">{book.title}</p>
                           <p className="text-xs text-white/30 truncate">{outOfStock ? "Agotado" : `Stock: ${myStock}`}</p>
                         </div>
+                        {isSelfAssigningBook && <div className="stock-progress-line" aria-hidden="true" />}
                       </button>
                       );
                     })}
@@ -728,18 +761,20 @@ export default function AdminDashboard() {
                       <p className="text-sm text-white/30 py-2 text-center">Sin resultados</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="relative overflow-hidden flex items-center gap-3 rounded-xl">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setAssignSelfQty(Math.max(1, assignSelfQty - 1))}
-                        className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
+                        disabled={assignSelfMutation.isPending}
+                        className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
                       <span className="w-8 text-center font-medium">{assignSelfQty}</span>
                       <button
                         onClick={() => setAssignSelfQty(prev => Math.min(prev + 1, adminStockMap.get(assignSelfBookId) || 1))}
-                        className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
+                        disabled={assignSelfMutation.isPending}
+                        className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -752,6 +787,7 @@ export default function AdminDashboard() {
                       {assignSelfMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       {assignSelfMutation.isPending ? "Asignando..." : "Asignarme"}
                     </button>
+                    {assignSelfMutation.isPending && <div className="stock-progress-line" aria-hidden="true" />}
                   </div>
                 </div>
               </details>
@@ -772,12 +808,12 @@ export default function AdminDashboard() {
                       <span className="text-[10px] text-white/40">{items.reduce((s, i) => s + i.quantity, 0)} uds.</span>
                     </div>
                     <div className="divide-y divide-white/5">
-                      {items.slice(0, 3).map((item: any) => {
+                      {items.slice(0, 3).map((item: UntypedValue) => {
                         const isRemoving = pendingOps.has(`del-inv-${sellerId}-${item.book_id}`);
                         return (
                           <div key={item.id} className="px-5 py-3 flex items-center gap-3">
                             {item.books?.cover_url && (
-                              <img src={item.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
+                              <AppImage src={item.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 shrink-0" />
                             )}
                             <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{item.books?.title || "Libro"}</span>
                             <span className="text-xs text-white/40 hidden sm:inline">{item.books?.author}</span>
@@ -843,20 +879,20 @@ export default function AdminDashboard() {
               ) : (
                 <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
                   <div className="divide-y divide-white/5">
-                    {allSales.map((sale: any) => {
+                    {allSales.map((sale: UntypedValue) => {
                       const isDeletingSale = pendingOps.has(`del-sale-${sale.id}`);
                       return (
                         <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
                           {sale.books?.cover_url && (
                             <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                              <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                              <AppImage src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                             </button>
                           )}
                           <div className="flex-1 min-w-0">
                             <span className="text-sm text-white/70 block truncate">{sale.books?.title || "Libro"}</span>
                             <span className="text-[10px] text-white/30 block truncate">
-                              {sellerLookup.get(sale.seller_id) || (sale as any).seller?.email || "Desconocido"}
-                              {(sale as any).profile?.name ? ` · ${(sale as any).profile.name}` : ""}
+                              {sellerLookup.get(sale.seller_id) || (sale as UntypedValue).seller?.email || "Desconocido"}
+                              {(sale as UntypedValue).profile?.name ? ` · ${(sale as UntypedValue).profile.name}` : ""}
                             </span>
                           </div>
                           <span className="text-[10px] text-white/30 shrink-0">
@@ -927,11 +963,11 @@ export default function AdminDashboard() {
                       <span className="text-sm font-bold text-amber-400">${total.toLocaleString("es-MX")}</span>
                     </div>
                     <div className="divide-y divide-white/5">
-                      {sales.map((sale: any) => (
+                      {sales.map((sale: UntypedValue) => (
                         <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
                           {sale.books?.cover_url && (
                             <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                              <img src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                              <AppImage src={sale.books.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                             </button>
                           )}
                           <span className="text-sm text-white/70 flex-1 min-w-0 truncate">{sale.books?.title || "Libro"}</span>
@@ -947,7 +983,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="px-5 py-3 border-t border-white/5 bg-white/[0.02]">
                       <button
-                        onClick={() => markPaid.mutate(sales.map((s: any) => s.id))}
+                        onClick={() => markPaid.mutate(sales.map((s: UntypedValue) => s.id))}
                         disabled={markPaid.isPending}
                         className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50"
                       >
@@ -989,22 +1025,22 @@ export default function AdminDashboard() {
                           </div>
                           <p className="text-sm text-white/50 mb-2">
                             <span className="text-white/70 font-medium">Vendedor:</span>{" "}
-                            {sellerLookup.get(req.seller_id) || (req.seller as any)?.email || "Desconocido"}
+                            {sellerLookup.get(req.seller_id) || (req.seller as UntypedValue)?.email || "Desconocido"}
                           </p>
                           <div className="space-y-0.5">
-                            {(req.items ?? []).slice(0, 3).map((item: any) => {
-                              const sellerId = (req as any).seller_id;
+                            {(req.items ?? []).slice(0, 3).map((item: UntypedValue) => {
+                              const sellerId = (req as UntypedValue).seller_id;
                               const soldQty = salesMap[`${sellerId}:${item.book_id}`] || 0;
                               const isReceived = !!item.received_at;
                               return (
                                 <div key={item.id} className="flex items-center justify-between text-sm">
                                     <span className="flex items-center gap-2 min-w-0 flex-1">
-                                      {(item.books as any)?.cover_url && (
+                                      {(item.books as UntypedValue)?.cover_url && (
                                         <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                                          <img src={(item.books as any).cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                                          <AppImage src={(item.books as UntypedValue).cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                                         </button>
                                       )}
-                                      <span className="text-white/70 truncate">{(item.books as any)?.title ?? "Libro"}</span>
+                                      <span className="text-white/70 truncate">{(item.books as UntypedValue)?.title ?? "Libro"}</span>
                                     <span className="text-white/50 shrink-0">x{item.quantity}</span>
                                   </span>
                                   <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
@@ -1125,7 +1161,7 @@ export default function AdminDashboard() {
         items={modalItems?.items ?? []}
         title="Libros en solicitud"
       >
-        {(item: any) => {
+        {(item: UntypedValue) => {
           const sellerId = modalItems?.sellerId ?? '';
           const soldQty = salesMap[`${sellerId}:${item.book_id}`] || 0;
           const isReceived = !!item.received_at;
@@ -1133,7 +1169,7 @@ export default function AdminDashboard() {
             <div key={item.id} className="flex items-center gap-3">
               {item.books?.cover_url && (
                 <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                  <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                  <AppImage src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                 </button>
               )}
               <span className="text-white/80 text-sm flex-1 min-w-0 truncate">
@@ -1174,14 +1210,14 @@ export default function AdminDashboard() {
               </button>
             </div>
             <div className="overflow-y-auto p-5 space-y-3">
-              {stockModalSeller.items.map((item: any) => {
+              {stockModalSeller.items.map((item: UntypedValue) => {
                 const { sellerId } = stockModalSeller;
                 const isRemoving = pendingOps.has(`del-inv-${sellerId}-${item.book_id}`);
                 return (
                   <div key={item.id} className="flex items-center gap-3">
                     {item.books?.cover_url && (
                       <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                        <img src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                        <AppImage src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                       </button>
                     )}
                     <div className="flex-1 min-w-0">

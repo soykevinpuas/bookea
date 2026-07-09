@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import { useQuery } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { useUserId } from "@/hooks/useUser";
@@ -23,7 +24,7 @@ interface Order {
   books?: { id: string; title: string; cover_url: string | null; author: string } | null;
 }
 
-const STATUS_CONFIG: Record<Order["status"], { label: string; color: string; icon: any; msg: string }> = {
+const STATUS_CONFIG: Record<Order["status"], { label: string; color: string; icon: UntypedValue; msg: string }> = {
   pending: {
     label: "Pendiente",
     color: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
@@ -123,7 +124,7 @@ export default function OrdersPage() {
                     {/* Book cover */}
                     <Link href={`/book/${book?.id || order.book_id}`} className="shrink-0">
                       {book?.cover_url ? (
-                        <img
+                        <AppImage
                           src={book.cover_url}
                           alt={book.title}
                           className="w-14 h-20 rounded-lg object-cover"

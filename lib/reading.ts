@@ -66,9 +66,9 @@ export async function getReadingProgress(
 
     if (error) return local;
 
-    if (data && local && (local as any).updated_at) {
+    if (data && local && (local as UntypedValue).updated_at) {
       const serverTime = new Date(data.last_read_at || 0).getTime();
-      const localTime = new Date((local as any).updated_at).getTime();
+      const localTime = new Date((local as UntypedValue).updated_at).getTime();
       if (localTime > serverTime) return local;
     }
 
@@ -76,7 +76,7 @@ export async function getReadingProgress(
       saveLocalProgress(bookId, {
         ...data,
         synced: true
-      } as any);
+      } as UntypedValue);
     }
 
     return data || local;
@@ -108,7 +108,7 @@ export async function saveReadingProgress(
     scroll_top: scrollTop ?? null,
     percent_complete: cleanPercent,
     last_read_at: new Date().toISOString()
-  } as any);
+  } as UntypedValue);
 
   if (typeof window !== 'undefined' && !navigator.onLine) return;
 
@@ -132,7 +132,7 @@ export async function saveReadingProgress(
     if (!error) {
       const local = getLocalProgress(bookId, userId);
       if (local) {
-        saveLocalProgress(bookId, { ...local, synced: true } as any);
+        saveLocalProgress(bookId, { ...local, synced: true } as UntypedValue);
       }
     }
   } catch {

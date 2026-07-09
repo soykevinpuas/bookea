@@ -1,5 +1,6 @@
 "use client";
 
+import AppImage from "@/components/ui/AppImage";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { createClientClient } from "@/lib/supabase";
@@ -17,7 +18,7 @@ export default function CoversBackground() {
       .limit(24)
       .then(({ data }) => {
         const urls = (data ?? [])
-          .map((b: any) => b.cover_url)
+          .map((b: UntypedValue) => b.cover_url)
           .filter((url: string | null): url is string => !!url);
         setCovers([...urls, ...urls, ...urls].slice(0, 24));
       });
@@ -38,7 +39,7 @@ export default function CoversBackground() {
             key={i}
             className="relative aspect-[2/3] rounded-md overflow-hidden bg-white/5 border border-white/5"
           >
-            <img
+            <AppImage
               src={url}
               alt=""
               className="w-full h-full object-cover"

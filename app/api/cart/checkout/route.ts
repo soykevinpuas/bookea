@@ -22,12 +22,12 @@ export async function POST(req: Request) {
     const stripe = getStripeClient()
     const baseUrl = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
-    const lineItems: any[] = []
-    const itemsMeta: any[] = []
+    const lineItems: UntypedValue[] = []
+    const itemsMeta: UntypedValue[] = []
     let hasPhysical = false
 
     for (const item of cartItems) {
-      const book = item.books as any
+      const book = item.books as UntypedValue
       const quantity = item.quantity || 1
       const price = item.type === 'digital' ? (book.price_digital || 29) : (book.price_physical || 299)
 

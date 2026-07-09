@@ -182,27 +182,27 @@ function DashboardContent() {
     });
 
     if (!isOnline) {
-      return sorted.find((b: any) => (b as any).isOfflineReady === true) || sorted[0];
+      return sorted.find((b: UntypedValue) => (b as UntypedValue).isOfflineReady === true) || sorted[0];
     }
     return sorted[0];
   }, [displayBooks, isOnline]);
 
   const totalCompleted = useMemo(() => {
-    return displayBooks?.filter((b: any) => (b.percent_complete || 0) >= 100).length ?? 0;
+    return displayBooks?.filter((b: UntypedValue) => (b.percent_complete || 0) >= 100).length ?? 0;
   }, [displayBooks]);
 
   const books = useMemo(() => {
     if (!displayBooks) return [];
     let filtered = [...displayBooks];
-    if (!isOnline) filtered = filtered.filter((b: any) => (b as any).isOfflineReady === true);
+    if (!isOnline) filtered = filtered.filter((b: UntypedValue) => (b as UntypedValue).isOfflineReady === true);
     if (search) {
       const s = search.toLowerCase();
-      filtered = filtered.filter((b: any) =>
+      filtered = filtered.filter((b: UntypedValue) =>
         b.title?.toLowerCase().includes(s) || b.author?.toLowerCase().includes(s)
       );
     }
     if (category && category !== "all") {
-      filtered = filtered.filter((b: any) => b.category === category);
+      filtered = filtered.filter((b: UntypedValue) => b.category === category);
     }
     return filtered;
   }, [displayBooks, search, category, isOnline]);

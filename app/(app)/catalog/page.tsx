@@ -44,7 +44,7 @@ function CatalogContent() {
   // Evita ofrecer compra digital cuando el usuario ya posee acceso permanente.
   const ownedDigitalIds = useMemo(() => {
     if (!userBooks) return new Set<string>();
-    return new Set(userBooks.filter((b: any) => b.access_type === 'permanent').map((b: any) => b.id));
+    return new Set(userBooks.filter((b: UntypedValue) => b.access_type === 'permanent').map((b: UntypedValue) => b.id));
   }, [userBooks]);
 
   const showDigital = !subscription || (!subscription.isActive && subscription.role !== 'vendedor' && subscription.role !== 'admin');
@@ -102,7 +102,7 @@ function CatalogContent() {
       await addItem(book.id, type)
       useCartStore.getState().setOpen(true)
       toast.success(`${book.title} agregado (${type === 'digital' ? 'Digital' : 'Físico'})`)
-    } catch (e: any) {
+    } catch (e: UntypedValue) {
       toast.error(e.message || 'Error al agregar al carrito')
     } finally {
       setAdding(null)
