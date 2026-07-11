@@ -13,7 +13,7 @@ import {
   BarChart3, Package, TrendingUp, ShoppingCart,
   Store, ChevronLeft, ChevronRight,
   Calendar, Check, Clock, Trash2, DollarSign,
-  Plus, Minus, Search, Loader2, Shield, X,
+  Plus, Minus, Search, Loader2, Shield, X, List,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from "recharts";
@@ -22,6 +22,31 @@ import StockRequestItemsModal from "@/components/StockRequestItemsModal";
 import BookPreviewModal from "@/components/BookPreviewModal";
 
 type Section = "ingresos" | "stock" | "vendidos" | "solicitudes" | "pagos";
+type TopBooksPeriod = "currentMonth" | "last30Days" | "all";
+type TopBooksView = "list" | "chart";
+
+interface TopBook {
+  book_id: string;
+  title: string;
+  author: string | null;
+  cover_url: string | null;
+  units: number;
+  revenue: number;
+  sales: number;
+  lastSoldAt: string | null;
+}
+
+const TOP_BOOK_PERIODS: { key: TopBooksPeriod; label: string }[] = [
+  { key: "currentMonth", label: "Este mes" },
+  { key: "last30Days", label: "30 días" },
+  { key: "all", label: "Todo" },
+];
+
+const EMPTY_TOP_BOOKS: Record<TopBooksPeriod, TopBook[]> = {
+  currentMonth: [],
+  last30Days: [],
+  all: [],
+};
 
 const sections: { key: Section; label: string; icon: UntypedValue }[] = [
   { key: "ingresos", label: "Ingresos", icon: BarChart3 },
@@ -38,14 +63,20 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Cancelado", color: "bg-red-500/10 text-red-400 border border-red-500/20" },
 };
 
+const ADMIN_DASHBOARD_STALE_MS = 60 * 1000;
+const ADMIN_BACKGROUND_REFRESH_MS = 60 * 1000;
+
 const ChartTooltip = ({ active, payload, label }: UntypedValue) => {
   if (!active || !payload?.length) return null;
+  const displayLabel = payload[0]?.payload?.title ?? label;
   return (
     <div className="bg-[#1a1a1a] border border-white/10 rounded-xl px-3 py-2 text-xs shadow-xl">
-      <p className="text-white/50 mb-1">{label}</p>
+      <p className="text-white/50 mb-1">{displayLabel}</p>
       {payload.map((entry: UntypedValue, i: number) => (
         <p key={i} className="font-medium" style={{ color: entry.color }}>
-          {entry.name}: ${entry.value.toLocaleString("es-MX")}
+          {entry.name}: {entry.name === "Unidades"
+            ? `${entry.value.toLocaleString("es-MX")} uds.`
+            : `$${entry.value.toLocaleString("es-MX")}`}
         </p>
       ))}
     </div>
@@ -57,6 +88,8 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState<Section>("ingresos");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [topBooksPeriod, setTopBooksPeriod] = useState<TopBooksPeriod>("currentMonth");
+  const [topBooksView, setTopBooksView] = useState<TopBooksView>("list");
 
   const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
   const [assignSelfBookId, setAssignSelfBookId] = useState("");
@@ -87,6 +120,7 @@ export default function AdminDashboard() {
     physicalBooks: UntypedValue[];
     salesMap: Record<string, number>;
     adminStock: { book_id: string; quantity: number }[];
+    topBooks: Record<TopBooksPeriod, TopBook[]>;
   }
 
   const [salesPage, setSalesPage] = useState(1);
@@ -105,7 +139,8 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error("Error al cargar dashboard");
       return res.json();
     },
-    staleTime: 30000,
+    staleTime: ADMIN_DASHBOARD_STALE_MS,
+    placeholderData: (previousData) => previousData,
   });
 
   const allSales = useMemo(() => dash?.sales?.data ?? [], [dash?.sales?.data]);
@@ -121,6 +156,17 @@ export default function AdminDashboard() {
   const salesMap = dash?.salesMap ?? {};
   const adminUserId = dash?.adminUserId ?? "";
   const adminStock = useMemo(() => dash?.adminStock ?? [], [dash?.adminStock]);
+  const topBooks = dash?.topBooks ?? EMPTY_TOP_BOOKS;
+  const currentTopBooks = topBooks[topBooksPeriod] ?? EMPTY_TOP_BOOKS[topBooksPeriod];
+  const bestSellingBook = currentTopBooks[0] ?? null;
+  const topBooksChartData = useMemo(
+    () => currentTopBooks.slice(0, 8).map((book, index) => ({
+      ...book,
+      rank: index + 1,
+      shortTitle: book.title.length > 18 ? `${book.title.slice(0, 18)}...` : book.title,
+    })),
+    [currentTopBooks]
+  );
   const adminStockMap = useMemo(() => {
     const m = new Map<string, number>();
     for (const s of adminStock) m.set(s.book_id, s.quantity);
@@ -155,7 +201,7 @@ export default function AdminDashboard() {
       if (stockWriteInFlight.current) return;
       queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
     };
-    const interval = setInterval(refetch, 5000);
+    const interval = setInterval(refetch, ADMIN_BACKGROUND_REFRESH_MS);
     const onVisible = () => {
       if (document.visibilityState === "visible") refetch();
     };
@@ -850,7 +896,7 @@ export default function AdminDashboard() {
           {/* ── VENDIDOS (todos los vendedores) ── */}
           {activeSection === "vendidos" && (
             <div className="space-y-5">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <button
                   onClick={() => setActiveSection("ingresos")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
@@ -872,6 +918,150 @@ export default function AdminDashboard() {
                   <p className="text-lg font-bold text-amber-400">{allSellers.length}</p>
                   <p className="text-[10px] text-white/40 mt-0.5">Vendedores activos</p>
                 </Link>
+                <button
+                  onClick={() => setTopBooksView("list")}
+                  className="bg-white/5 border border-blue-500/15 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <p className="text-lg font-bold text-blue-400">
+                    {bestSellingBook ? `${bestSellingBook.units} uds.` : "0"}
+                  </p>
+                  <p className="text-[10px] text-white/40 mt-0.5 truncate">
+                    {bestSellingBook?.title || "Libro top"}
+                  </p>
+                </button>
+              </div>
+
+              <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-white/8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="font-semibold text-sm flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-green-400" />
+                      Libros más vendidos
+                    </h2>
+                    <p className="text-xs text-white/35 mt-1">Ranking por unidades vendidas.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex rounded-lg bg-white/5 p-0.5 border border-white/10">
+                      {TOP_BOOK_PERIODS.map((period) => (
+                        <button
+                          key={period.key}
+                          onClick={() => setTopBooksPeriod(period.key)}
+                          className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors ${
+                            topBooksPeriod === period.key
+                              ? "bg-white text-gray-950"
+                              : "text-white/50 hover:text-white"
+                          }`}
+                        >
+                          {period.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex rounded-lg bg-white/5 p-0.5 border border-white/10">
+                      <button
+                        onClick={() => setTopBooksView("list")}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors ${
+                          topBooksView === "list"
+                            ? "bg-green-500 text-white"
+                            : "text-white/50 hover:text-white"
+                        }`}
+                      >
+                        <List className="w-3.5 h-3.5" />
+                        Lista
+                      </button>
+                      <button
+                        onClick={() => setTopBooksView("chart")}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors ${
+                          topBooksView === "chart"
+                            ? "bg-green-500 text-white"
+                            : "text-white/50 hover:text-white"
+                        }`}
+                      >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        Gráfica
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {currentTopBooks.length === 0 ? (
+                  <div className="text-center py-12 text-white/30 text-sm">Sin ventas en este periodo.</div>
+                ) : topBooksView === "chart" ? (
+                  <div className="h-72 p-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={topBooksChartData}
+                        layout="vertical"
+                        margin={{ top: 8, right: 28, bottom: 8, left: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                        <XAxis
+                          type="number"
+                          tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }}
+                          axisLine={false}
+                          tickLine={false}
+                          allowDecimals={false}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="shortTitle"
+                          width={126}
+                          tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 11 }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                        <Bar dataKey="units" name="Unidades" fill="#22c55e" radius={[0, 4, 4, 0]} maxBarSize={24}>
+                          <LabelList dataKey="units" position="right" fill="#22c55e" fontSize={11} fontWeight={700} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/5">
+                    {currentTopBooks.map((book, index) => (
+                      <div key={book.book_id} className="px-5 py-3 flex items-center gap-3">
+                        <span className="w-7 text-xs font-black text-white/30 shrink-0">#{index + 1}</span>
+                        {book.cover_url ? (
+                          <button
+                            onClick={() => setPreviewBook({
+                              id: book.book_id,
+                              title: book.title,
+                              author: book.author,
+                              cover_url: book.cover_url,
+                            })}
+                            className="shrink-0 p-0 border-0 bg-transparent cursor-pointer"
+                          >
+                            <AppImage
+                              src={book.cover_url}
+                              alt=""
+                              className="w-9 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all"
+                            />
+                          </button>
+                        ) : (
+                          <div className="w-9 h-12 rounded bg-white/5 border border-white/8 flex items-center justify-center text-xs font-bold text-white/30 shrink-0">
+                            {book.title.charAt(0)}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white/80 truncate">{book.title}</p>
+                          <p className="text-xs text-white/35 truncate">{book.author || "Autor no registrado"}</p>
+                          <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] text-white/35">
+                            <span className="rounded-full bg-white/5 px-2 py-0.5 border border-white/8">{book.sales} ventas</span>
+                            {book.lastSoldAt && (
+                              <span className="rounded-full bg-white/5 px-2 py-0.5 border border-white/8">
+                                Última {new Date(book.lastSoldAt).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-black text-green-400">{book.units} uds.</p>
+                          <p className="text-[10px] font-semibold text-white/35">${book.revenue.toLocaleString("es-MX")}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {allSales.length === 0 ? (

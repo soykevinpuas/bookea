@@ -90,8 +90,9 @@ export function useSubscription(userId: string | undefined) {
       return subscription;
     },
     enabled: !!userId,
-    staleTime: 30 * 1000,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     initialData: () => readCachedSubscription(cacheKey),
     placeholderData: (previousData) => previousData,
   });

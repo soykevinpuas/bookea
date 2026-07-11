@@ -8,6 +8,7 @@ import { PrefetchLink } from "@/components/ui/LoadingStates";
 import { useUserId } from "@/hooks/useUser";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useIsClient } from "@/hooks/useIsClient";
+import { useNavigationWarmup } from "@/hooks/useNavigationWarmup";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -15,6 +16,7 @@ export function BottomNav() {
   const mounted = useIsClient();
   const { userId } = useUserId();
   const { data: subscription } = useSubscription(userId);
+  useNavigationWarmup(userId, subscription?.role);
 
   const isReader = pathname?.includes("/reader/");
   const isAuth = pathname?.includes("/login") || pathname?.includes("/register");

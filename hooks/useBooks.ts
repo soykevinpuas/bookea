@@ -7,8 +7,10 @@ import { createClientClient } from "@/lib/supabase";
 import type { Book } from "@/types/book";
 
 const BOOK_QUERY_OPTIONS = {
-  staleTime: 10 * 1000,
-  gcTime: 30 * 60 * 1000,
+  staleTime: 5 * 60 * 1000,
+  gcTime: 60 * 60 * 1000,
+  refetchOnMount: false,
+  refetchOnWindowFocus: false,
   retry: 1,
 };
 
@@ -114,8 +116,6 @@ export function useBooks(options?: BookFilters) {
       if (!cachedCatalog) return undefined;
       return applyBookFilters(cachedCatalog.data, options);
     },
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
     ...BOOK_QUERY_OPTIONS,
   });
 }

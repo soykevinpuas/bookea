@@ -8,6 +8,62 @@ function safeParseInt(val: string | null, def: number): number {
   return Number.isNaN(n) ? def : n;
 }
 
+type TopBook = {
+  book_id: string;
+  title: string;
+  author: string | null;
+  cover_url: string | null;
+  units: number;
+  revenue: number;
+  sales: number;
+  lastSoldAt: string | null;
+};
+
+function pickJoinedBook(books: UntypedValue) {
+  if (Array.isArray(books)) return books[0] ?? null;
+  return books ?? null;
+}
+
+function buildTopBooks(sales: UntypedValue[], since?: Date): TopBook[] {
+  const map = new Map<string, TopBook>();
+  const sinceMs = since?.getTime() ?? null;
+
+  for (const sale of sales) {
+    if (!sale?.book_id) continue;
+    const soldAt = sale.sold_at ? new Date(sale.sold_at) : null;
+    if (sinceMs !== null && (!soldAt || soldAt.getTime() < sinceMs)) continue;
+
+    const qty = Number(sale.quantity || 0);
+    if (qty <= 0) continue;
+
+    const book = pickJoinedBook(sale.books);
+    const existing = map.get(sale.book_id) ?? {
+      book_id: sale.book_id,
+      title: book?.title || "Libro",
+      author: book?.author ?? null,
+      cover_url: book?.cover_url ?? null,
+      units: 0,
+      revenue: 0,
+      sales: 0,
+      lastSoldAt: null,
+    };
+
+    existing.units += qty;
+    existing.revenue += qty * Number(sale.sale_price || 0);
+    existing.sales += 1;
+
+    if (sale.sold_at && (!existing.lastSoldAt || new Date(sale.sold_at) > new Date(existing.lastSoldAt))) {
+      existing.lastSoldAt = sale.sold_at;
+    }
+
+    map.set(sale.book_id, existing);
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => b.units - a.units || b.revenue - a.revenue || b.sales - a.sales)
+    .slice(0, 10);
+}
+
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
@@ -57,6 +113,7 @@ export async function GET(request: Request) {
       inventoryResult,
       salesMapResult,
       adminStockResult,
+      topBookSalesResult,
     ] = await Promise.all([
       adminClient.from("books")
         .select("id, title, author, cover_url, price_physical, stock_physical")
@@ -103,6 +160,13 @@ export async function GET(request: Request) {
       adminClient.from("admin_stock")
         .select("book_id, quantity")
         .eq("admin_id", adminId),
+
+      adminClient.from("seller_sales")
+        .select("book_id, quantity, sale_price, sold_at, books(id, title, author, cover_url)")
+        .or(`admin_id.eq.${adminId},and(admin_id.is.null,seller_id.in.(${sellerIds.join(',')}))`)
+        .not("book_id", "is", null)
+        .order("sold_at", { ascending: false })
+        .limit(2000),
     ]);
 
     const salesMap: Record<string, number> = {};
@@ -110,6 +174,11 @@ export async function GET(request: Request) {
       const key = `${s.seller_id}:${s.book_id}`;
       salesMap[key] = (salesMap[key] || 0) + (s.quantity || 0);
     }
+
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const topBookSales = topBookSalesResult.data ?? [];
 
     return NextResponse.json({
       adminUserId: adminId,
@@ -136,6 +205,11 @@ export async function GET(request: Request) {
         perPage: inventoryPerPage,
       },
       salesMap,
+      topBooks: {
+        currentMonth: buildTopBooks(topBookSales, currentMonthStart),
+        last30Days: buildTopBooks(topBookSales, last30Days),
+        all: buildTopBooks(topBookSales),
+      },
     });
   } catch (error) {
     console.error('[api/admin/dashboard] Error:', error);

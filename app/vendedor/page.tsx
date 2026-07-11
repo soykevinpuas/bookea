@@ -73,6 +73,8 @@ const STATUS_TABS = [
 ];
 
 const STOCK_EXIT_ANIMATION_MS = 320;
+const VENDEDOR_DASHBOARD_STALE_MS = 60 * 1000;
+const VENDEDOR_BACKGROUND_REFRESH_MS = 60 * 1000;
 
 const ChartTooltip = ({ active, payload, label }: UntypedValue) => {
   if (!active || !payload?.length) return null;
@@ -134,7 +136,7 @@ export default function VendedorDashboard() {
       if (stockWriteInFlight.current) return;
       queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"], refetchType: "all" });
     };
-    const interval = setInterval(refetch, 5000);
+    const interval = setInterval(refetch, VENDEDOR_BACKGROUND_REFRESH_MS);
     const onVisible = () => { if (document.visibilityState === "visible") refetch(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
@@ -161,18 +163,20 @@ export default function VendedorDashboard() {
     queryKey: dashboardQueryKey,
     queryFn: () => fetchVendedorJson<DashboardData>("/api/vendedor/dashboard", "Error al cargar dashboard"),
     enabled: authReady && !!userId,
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    staleTime: VENDEDOR_DASHBOARD_STALE_MS,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
   });
 
   const { data: requestableData, isLoading: requestableLoading } = useQuery<RequestableBooksResponse>({
     queryKey: ["requestable-books", userId],
     queryFn: () => fetchVendedorJson<RequestableBooksResponse>("/api/vendedor/requestable-books", "No se pudieron cargar los libros"),
     enabled: authReady && !!userId && activeSection === "stock",
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    staleTime: VENDEDOR_DASHBOARD_STALE_MS,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
   });
 
   const inventory = useMemo(() => data?.inventory ?? [], [data?.inventory]);

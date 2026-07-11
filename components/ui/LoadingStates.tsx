@@ -205,7 +205,7 @@ export function LoadingButton({
 // PrefetchLink: Link con prefetching automático (Rutas + Datos)
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getBook, getBooks } from "@/lib/books";
 import { createClientClient } from "@/lib/supabase";
@@ -234,9 +234,12 @@ export function PrefetchLink({
   const router = useRouter();
   const queryClient = useQueryClient();
   const supabase = createClientClient();
+  const prefetchedRef = useRef(false);
 
-  const handleMouseEnter = useCallback(() => {
+  const warmLink = useCallback(() => {
     if (!prefetch) return;
+    if (prefetchedRef.current) return;
+    prefetchedRef.current = true;
 
     // Prefetch de la ruta de Next.js
     router.prefetch(href);
@@ -253,8 +256,8 @@ export function PrefetchLink({
     // Si es el catálogo o dashboard, precargar sus listas base
     if (href === "/catalog") {
       queryClient.prefetchQuery({
-        queryKey: ["books", "", "all", ""],
-        queryFn: () => getBooks(supabase),
+        queryKey: ["books", "", "all", undefined, undefined],
+        queryFn: () => getBooks(supabase, { search: "", category: "all" }),
         staleTime: 5 * 60 * 1000,
       });
     }
@@ -265,7 +268,10 @@ export function PrefetchLink({
       href={href}
       className={className}
       style={style}
-      onMouseEnter={handleMouseEnter}
+      onFocus={warmLink}
+      onMouseEnter={warmLink}
+      onPointerEnter={warmLink}
+      onTouchStart={warmLink}
       onClick={onClick}
     >
       {children}

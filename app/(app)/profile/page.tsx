@@ -67,7 +67,8 @@ export default function ProfilePage() {
     isUpdatingAvatar
   } = useProfile(userId);
   const { data: subscription, isLoading: subLoading } = useSubscription(userId);
-  const { data: profileData } = useProfileData(userId);
+  const [activeSection, setActiveSection] = useState<Section>("personalizar");
+  const { data: profileData, isLoading: profileDataLoading } = useProfileData(activeSection === "referidos" ? userId : undefined);
 
   const referralLink = profileData?.referralLink || '';
   const referralCount = profileData?.referralCount || 0;
@@ -78,7 +79,6 @@ export default function ProfilePage() {
     [allUserBooks]
   );
 
-  const [activeSection, setActiveSection] = useState<Section>("personalizar");
   const [portalLoading, setPortalLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
@@ -88,6 +88,7 @@ export default function ProfilePage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [purchasedBooks, setPurchasedBooks] = useState<UntypedValue[]>([]);
   const [purchasedLoading, setPurchasedLoading] = useState(false);
+  const [purchasedLoaded, setPurchasedLoaded] = useState(false);
   const [purchasedOpen, setPurchasedOpen] = useState(false);
 
   const parsedAvatar = useMemo(() =>
@@ -98,6 +99,12 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile?.name) setTempName(profile.name);
   }, [profile]);
+
+  useEffect(() => {
+    setPurchasedBooks([]);
+    setPurchasedLoaded(false);
+    setPurchasedOpen(false);
+  }, [userId]);
 
   const handlePortal = async () => {
     setPortalLoading(true);
@@ -150,13 +157,19 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!userId) return;
+    if (activeSection !== "biblioteca" || !purchasedOpen || purchasedLoaded) return;
+
+    let cancelled = false;
     const supabase = createClientClient();
     setPurchasedLoading(true);
-    supabase.from('user_books')
-      .select('book_id, books!inner(id, title, cover_url, author)')
-      .eq('user_id', userId)
-      .eq('access_type', 'permanent')
-      .then(async ({ data: digitalData }) => {
+
+    const loadPurchasedBooks = async () => {
+      try {
+        const { data: digitalData } = await supabase.from('user_books')
+          .select('book_id, books!inner(id, title, cover_url, author)')
+          .eq('user_id', userId)
+          .eq('access_type', 'permanent');
+
         const bookMap = new Map<string, UntypedValue>();
         (digitalData || []).forEach((item: UntypedValue) => {
           const book = item.books;
@@ -177,10 +190,22 @@ export default function ProfilePage() {
             else bookMap.set(book.id, { ...book, types: ['physical'] });
           });
         }
-        setPurchasedBooks(Array.from(bookMap.values()));
-        setPurchasedLoading(false);
-      });
-  }, [userId]);
+
+        if (!cancelled) setPurchasedBooks(Array.from(bookMap.values()));
+      } finally {
+        if (!cancelled) {
+          setPurchasedLoaded(true);
+          setPurchasedLoading(false);
+        }
+      }
+    };
+
+    void loadPurchasedBooks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection, purchasedLoaded, purchasedOpen, userId]);
 
   const isSubscriber = subscription?.isActive;
 
@@ -197,7 +222,9 @@ export default function ProfilePage() {
       if (error) throw error;
       return (data ?? []) as Order[];
     },
-    enabled: !!userId,
+    enabled: !!userId && activeSection === "ordenes",
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
   });
 
   if (authLoading || (profileLoading && !profile)) return <ProfileSkeleton />;
@@ -424,13 +451,21 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {activeSection === "referidos" && referralLink && (
+            {activeSection === "referidos" && (
               <>
                 <h3 className="text-xl font-black flex items-center gap-2.5 mb-6">
                   <Gift className="w-5 h-5 text-green-400" />
                   Invita a un Amigo
                 </h3>
-                <ReferralQR referralLink={referralLink} referralCount={referralCount} />
+                {profileDataLoading && !referralLink ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                  </div>
+                ) : referralLink ? (
+                  <ReferralQR referralLink={referralLink} referralCount={referralCount} />
+                ) : (
+                  <p className="text-sm text-gray-400 text-center py-8">No se pudo cargar tu enlace de referido.</p>
+                )}
               </>
             )}
 

@@ -4,6 +4,58 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-11-A] — Top libros vendidos y header estable en landing
+
+### Problema
+La barra de iniciar sesion/registro en la landing se empalmaba visualmente con el hero por estar fija encima del contenido. En el panel de admin, la vista de "Vendidos" no tenia una lectura directa de los libros mas vendidos ni una forma rapida de alternar entre lista y grafica.
+
+### Cambios
+1. **`components/LandingHero.tsx`** — La barra superior de auth ahora vive dentro del primer viewport y el hero reserva espacio superior, evitando que los botones se monten sobre el contenido.
+2. **`app/api/admin/dashboard/route.ts`** — El dashboard agrega `topBooks` calculado desde `seller_sales` para este mes, ultimos 30 dias y todo el historial consultado; no requiere cambios de base de datos.
+3. **`app/admin/page.tsx`** — La seccion "Vendidos" ahora muestra una cuarta tarjeta con el libro top y un bloque de "Libros mas vendidos" con selector de periodo y switch lista/grafica.
+
+### Verificacion
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Archivos modificados
+- `components/LandingHero.tsx`
+- `app/api/admin/dashboard/route.ts`
+- `app/admin/page.tsx`
+
+---
+
+## [2026-07-10-A] — Navegacion cache-first y prefetch movil
+
+### Problema
+Cambiar entre opciones de la bottom nav podia sentirse lento porque varias pantallas volvian a pedir datos al montar, aunque React Query y cache local ya tuvieran informacion util. En movil el prefetch dependia de `onMouseEnter`, por lo que normalmente no se activaba antes del tap.
+
+### Cambios
+1. **`hooks/useNavigationWarmup.ts`** — Nuevo hook que precalienta rutas y datos principales de bottom nav en tiempo libre del navegador: catalogo, biblioteca, perfil y, segun rol, admin/vendedor.
+2. **`components/BottomNav.tsx` y `components/ui/LoadingStates.tsx`** — La bottom nav usa warmup global y `PrefetchLink` ahora precarga con pointer/touch/focus; tambien se corrigio la queryKey del prefetch de catalogo para que coincida con la query real.
+3. **`hooks/useBooks.ts`, `hooks/useSubscription.ts`, `hooks/useProfileData.ts`** — Cache mas durable y sin refetch automatico agresivo al montar/foco; se prioriza mostrar datos cacheados y refrescar por invalidaciones reales.
+4. **`app/(app)/profile/page.tsx`** — Ordenes, libros comprados y referidos cargan solo cuando el usuario abre esas secciones, reduciendo trabajo al entrar a Perfil.
+5. **`app/admin/page.tsx` y `app/vendedor/page.tsx`** — El polling de dashboards operativos baja de 5s a 60s y las queries conservan datos previos mientras refrescan.
+
+### Verificacion
+- `npm run lint`: pasa con 0 errores y 0 warnings.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Archivos modificados
+- `hooks/useNavigationWarmup.ts`
+- `components/BottomNav.tsx`
+- `components/ui/LoadingStates.tsx`
+- `hooks/useBooks.ts`
+- `hooks/useSubscription.ts`
+- `hooks/useProfileData.ts`
+- `app/(app)/profile/page.tsx`
+- `app/admin/page.tsx`
+- `app/vendedor/page.tsx`
+
+---
+
 ## [2026-07-09-B] — Limpieza de warnings ESLint legacy
 
 ### Problema
