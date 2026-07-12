@@ -37,6 +37,7 @@ Roles actuales: `free`, `subscriber`, `admin`, `vendedor`.
 - `admin_stock`: stock fisico en almacen por admin/libro. Su suma sincroniza `books.stock_physical`.
 - `seller_inventory`: stock activo asignado a vendedores. Para vistas operativas de admin, el stock total disponible es `admin_stock + seller_inventory` de sus vendedores.
 - `seller_sales`: ventas reportadas por vendedor, con `sale_price`, `paid_at` y `admin_id`.
+- `stock_events`: bitacora/sync de movimientos de stock con `snapshot_after` para actualizar UI en tiempo real sin esperar refetch.
 - `stock_requests`: solicitudes de stock del vendedor.
 - `stock_request_items`: items de cada solicitud.
 - `webhook_events`: idempotencia de Stripe.
@@ -61,9 +62,9 @@ Reglas vigentes:
 | `is_admin()` | Evita recursion RLS al validar admins. |
 | `is_active_subscriber(user_uuid)` | Valida suscripcion activa y roles privilegiados. |
 | `admin_change_user_role(target_user_id, new_role)` | Cambia roles y asigna vendedor al admin caller. |
-| `assign_stock`, `assign_stock_batch` | Mueve stock de admin a vendedor. |
-| `revert_assign_stock`, `remove_seller_stock` | Regresa o retira stock vendedor. |
-| `sell_book` | Registra venta vendedor con bloqueo `FOR UPDATE` y elimina inventario en cero. |
+| `assign_stock`, `assign_stock_batch` | Mueve stock de admin a vendedor y devuelve snapshots/eventos de stock. |
+| `revert_assign_stock`, `remove_seller_stock` | Regresa o retira stock vendedor y devuelve snapshots/eventos de stock. |
+| `sell_book` | Registra venta vendedor con bloqueo `FOR UPDATE`, elimina inventario en cero y devuelve snapshot confirmado. |
 | `create_stock_request` | Crea solicitud e items desde flujo vendedor. |
 | `deliver_stock_request`, `cancel_stock_request` | Gestiona solicitudes de stock. |
 | `adjust_admin_stock` | Ajusta stock del admin propietario. |
@@ -91,6 +92,7 @@ Reglas vigentes:
 - `062_harden_stripe_physical_fulfillment.sql`: fulfillment fisico transaccional.
 - `063_remove_zero_seller_inventory_on_sale.sql`: elimina filas de inventario vendedor en cero.
 - `064_enable_realtime_stock_catalog.sql`: publica `books` y `admin_stock` en Realtime para refrescar stock en cliente.
+- `065_stock_events_snapshots.sql`: agrega `stock_events` y snapshots transaccionales para stock instantaneo en UI.
 
 ## 5. Reglas para Cambios de Schema
 

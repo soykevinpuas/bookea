@@ -6,6 +6,7 @@ import { createClientClient } from "@/lib/supabase";
 import { fetchJsonWithSessionRetry } from "@/lib/auth-fetch";
 import { markAsSold, COST_PER_BOOK, ADMIN_COST_BOOK } from "@/lib/sellers";
 import { createStockRequestAction, receiveStockItemAction } from "@/lib/actions/sellers";
+import { applyStockMutationResult, getStockSnapshots, stockMutationResultFromRealtime } from "@/lib/stock-cache";
 import { useAuth } from "@/lib/auth-provider";
 import { Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X, Search, Store, Info, Send, LayoutGrid, List, type LucideIcon } from "lucide-react";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
@@ -16,6 +17,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import StockRequestItemsModal from "@/components/StockRequestItemsModal";
 import BookPreviewModal from "@/components/BookPreviewModal";
 import type { SellerInventory, SellerSale, StockRequest } from "@/types/seller";
+import type { StockMutationResult, StockSnapshot } from "@/types/stock";
 
 type Section = "stock" | "vendidos" | "ingresos" | "solicitudes";
 
@@ -50,6 +52,12 @@ interface RequestableBooksResponse {
   books: RequestableBook[];
   reason: "ok" | "no_admin" | "no_stock";
 }
+
+type LocalStockLock = {
+  quantity: number;
+  version: string;
+  expiresAt: number;
+};
 
 const sections: { key: Section; label: string; icon: LucideIcon }[] = [
   { key: "ingresos", label: "Ingresos", icon: BarChart3 },
@@ -177,6 +185,7 @@ export default function VendedorDashboard() {
   const [saleQtys, setSaleQtys] = useState<Record<string, number>>({});
   const [selling, setSelling] = useState<string | null>(null);
   const [exitingSoldBooks, setExitingSoldBooks] = useState<Set<string>>(() => new Set());
+  const [stockLocks, setStockLocks] = useState<Record<string, LocalStockLock>>({});
   const [receiving, setReceiving] = useState<string | null>(null);
   const [modalItems, setModalItems] = useState<UntypedValue[] | null>(null);
   const [solicitudFilter, setSolicitudFilter] = useState("all");
@@ -188,6 +197,58 @@ export default function VendedorDashboard() {
       fetchJsonWithSessionRetry<T>(supabase, url, { cache: "no-store" }, fallbackError),
     [supabase]
   );
+
+  const lockStockQuantity = useCallback((snapshot: StockSnapshot, ttlMs = 15_000) => {
+    if (!userId || snapshot.seller_id !== userId) return;
+    setStockLocks((prev) => ({
+      ...prev,
+      [snapshot.book_id]: {
+        quantity: snapshot.seller_quantity,
+        version: snapshot.version || snapshot.updated_at || new Date().toISOString(),
+        expiresAt: Date.now() + ttlMs,
+      },
+    }));
+  }, [userId]);
+
+  const releaseStockLock = useCallback((bookId: string) => {
+    setStockLocks((prev) => {
+      if (!prev[bookId]) return prev;
+      const next = { ...prev };
+      delete next[bookId];
+      return next;
+    });
+  }, []);
+
+  const applyRealtimeStockResult = useCallback((result: StockMutationResult | null) => {
+    if (!result || !userId) return;
+    applyStockMutationResult(queryClient, result, { sellerId: userId });
+    for (const snapshot of getStockSnapshots(result)) {
+      if (snapshot.seller_id !== userId) continue;
+      if (snapshot.seller_quantity > 0) releaseStockLock(snapshot.book_id);
+      else lockStockQuantity(snapshot);
+    }
+  }, [lockStockQuantity, queryClient, releaseStockLock, userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`vendedor-stock-events-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "stock_events", filter: `seller_id=eq.${userId}` },
+        (payload) => {
+          if (stockWriteInFlight.current) return;
+          const result = stockMutationResultFromRealtime(payload);
+          if (result) applyRealtimeStockResult(result);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [applyRealtimeStockResult, supabase, userId]);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<DashboardData, Error>({
     queryKey: dashboardQueryKey,
@@ -249,9 +310,46 @@ export default function VendedorDashboard() {
   const totalChartProfit = chartData.reduce((s, d) => s + d.ganancia, 0);
   const totalChartCost = chartData.reduce((s, d) => s + d.ahorro, 0);
 
-  const activeInventory = inventory.filter((i) => i.quantity > 0);
+  useEffect(() => {
+    const entries = Object.entries(stockLocks);
+    if (entries.length === 0) return;
 
-  const inventoryByBookId = new Map(inventory.map((i) => [i.book_id, i.quantity]));
+    const now = Date.now();
+    const nextExpiry = Math.min(...entries.map(([, lock]) => lock.expiresAt));
+    const delay = Math.max(250, nextExpiry - now);
+    const timer = setTimeout(() => {
+      setStockLocks((prev) => {
+        const current = Date.now();
+        const next = { ...prev };
+        let changed = false;
+        for (const [bookId, lock] of Object.entries(prev)) {
+          if (lock.expiresAt <= current) {
+            delete next[bookId];
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [stockLocks]);
+
+  const activeInventory = useMemo(() => {
+    return inventory
+      .map((item) => {
+        const lock = stockLocks[item.book_id];
+        if (!lock) return item;
+        return {
+          ...item,
+          quantity: lock.quantity,
+          stock_version: lock.version,
+        };
+      })
+      .filter((i) => i.quantity > 0);
+  }, [inventory, stockLocks]);
+
+  const inventoryByBookId = new Map(activeInventory.map((i) => [i.book_id, i.quantity]));
   const requestableBooks = useMemo(
     () => (requestableData?.books ?? []).filter((book) => book.stock_physical >= 1),
     [requestableData?.books]
@@ -377,20 +475,41 @@ export default function VendedorDashboard() {
     };
 
     try {
-      await markAsSold(supabase, userId, bookId, qty, price);
+      const result = await markAsSold(supabase, userId, bookId, qty, price);
+      const snapshots = getStockSnapshots(result);
+      const stockSnapshot = snapshots.find((snapshot) => snapshot.seller_id === userId && snapshot.book_id === bookId);
+      const nextQty = stockSnapshot?.seller_quantity ?? Math.max(0, currentQty - qty);
+      const confirmedSale = result.sale ?? saleData;
+
       toast.success(`Vendido${qty > 1 ? `s ${qty}` : ""} por $${(price * qty).toLocaleString("es-MX")}`);
-      if (qty >= currentQty) await playSoldOutExit(bookId);
+      if (nextQty <= 0) await playSoldOutExit(bookId);
+
+      if (stockSnapshot) {
+        lockStockQuantity(stockSnapshot);
+        applyStockMutationResult(queryClient, result, { sellerId: userId });
+      } else {
+        setStockLocks((prev) => ({
+          ...prev,
+          [bookId]: {
+            quantity: nextQty,
+            version: new Date().toISOString(),
+            expiresAt: Date.now() + 15_000,
+          },
+        }));
+      }
+
       queryClient.setQueryData<DashboardData>(dashboardQueryKey, (old) => {
         if (!old) return old;
+        const saleExists = old.sales.some((sale) => sale.id === confirmedSale.id);
         return {
           ...old,
-          sales: [{ ...saleData }, ...old.sales],
+          sales: saleExists ? old.sales : [{ ...confirmedSale }, ...old.sales],
           inventory: old.inventory.map((i) =>
             i.book_id === bookId
-              ? { ...i, quantity: Math.max(0, i.quantity - qty) }
+              ? { ...i, quantity: nextQty }
               : i
-          ),
-          pendingPayment: old.pendingPayment + price * qty,
+          ).filter((i) => i.quantity > 0),
+          pendingPayment: saleExists ? old.pendingPayment : old.pendingPayment + price * qty,
         };
       });
       setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
@@ -405,12 +524,6 @@ export default function VendedorDashboard() {
       });
       setSelling(null);
       stockWriteInFlight.current = false;
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
-        queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
-        queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
-        queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      }, 400);
     }
   };
 

@@ -128,6 +128,7 @@ export async function deleteSaleAction(saleId: string) {
 
   revalidatePath("/admin");
   revalidatePath("/admin/vendedores");
+  return result;
 }
 
 export async function removeSellerInventoryAction(sellerId: string, bookId: string) {
@@ -146,4 +147,5 @@ export async function removeSellerInventoryAction(sellerId: string, bookId: stri
   if (!result.success) throw new Error(result.error || "Error al remover stock");
 
   revalidatePath("/admin");
+  return result;
 }

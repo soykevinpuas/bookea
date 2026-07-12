@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { updateStockRequestStatus, COST_PER_BOOK, ADMIN_COST_BOOK, markSalesAsPaid, assignStock } from "@/lib/sellers";
 import { deleteStockRequestAction, deleteSaleAction, removeSellerInventoryAction } from "@/lib/actions/sellers";
+import { applyStockMutationResult, stockMutationResultFromRealtime } from "@/lib/stock-cache";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 
@@ -276,6 +277,26 @@ export default function AdminDashboard() {
   }, [scheduleAdminRefresh, supabase]);
 
   useEffect(() => {
+    if (!adminUserId) return;
+
+    const channel = supabase
+      .channel(`admin-stock-events-${adminUserId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "stock_events", filter: `admin_id=eq.${adminUserId}` },
+        (payload) => {
+          const result = stockMutationResultFromRealtime(payload);
+          if (result) applyStockMutationResult(queryClient, result, { adminId: adminUserId });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [adminUserId, queryClient, supabase]);
+
+  useEffect(() => {
     const refetch = () => {
       if (stockWriteInFlight.current) return;
       queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
@@ -346,7 +367,7 @@ export default function AdminDashboard() {
     mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
-      await assignStock(supabase, user.id, assignSelfBookId, assignSelfQty);
+      return assignStock(supabase, user.id, assignSelfBookId, assignSelfQty);
     },
     onMutate: () => {
       stockWriteInFlight.current = true;
@@ -354,12 +375,8 @@ export default function AdminDashboard() {
         applyAssignedStockToDashboard(adminUserId, [{ book_id: assignSelfBookId, quantity: assignSelfQty }]);
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
-      queryClient.invalidateQueries({ queryKey: ["books"] });
-      queryClient.invalidateQueries({ queryKey: ["book"] });
+    onSuccess: (result) => {
+      applyStockMutationResult(queryClient, result, { sellerId: adminUserId, adminId: adminUserId });
       setAssignSelfBookId("");
       setAssignSelfQty(1);
       toast.success("Stock asignado a tu perfil de vendedor");
@@ -386,6 +403,7 @@ export default function AdminDashboard() {
       if (error) throw new Error(error.message);
       const result = (data as UntypedValue) || {};
       if (!result.success) throw new Error(result.error || "Error al asignar stock");
+      return result;
     },
     onMutate: () => {
       stockWriteInFlight.current = true;
@@ -396,13 +414,8 @@ export default function AdminDashboard() {
         );
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
-      queryClient.invalidateQueries({ queryKey: ["books"] });
-      queryClient.invalidateQueries({ queryKey: ["book"] });
-      queryClient.invalidateQueries({ queryKey: ["requestable-books"] });
+    onSuccess: (result) => {
+      applyStockMutationResult(queryClient, result, { sellerId: assignSellerId, adminId: adminUserId });
       setAssignSellerQtys({});
       toast.success("Stock asignado al vendedor");
     },
@@ -421,8 +434,8 @@ export default function AdminDashboard() {
     onMutate: ({ sellerId, bookId }) => {
       setPendingOps(prev => new Set(prev).add(`del-inv-${sellerId}-${bookId}`));
     },
-    onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
+    onSuccess: (result) => {
+      applyStockMutationResult(queryClient, result, { adminId: adminUserId });
       toast.success("Stock removido del vendedor");
     },
     onError: (err: UntypedValue) => toast.error(err?.message || "Error al remover stock"),
@@ -436,9 +449,20 @@ export default function AdminDashboard() {
     onMutate: (saleId) => {
       setPendingOps(prev => new Set(prev).add(`del-sale-${saleId}`));
     },
-    onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
-      queryClient.refetchQueries({ queryKey: ["admin-sellers"] });
+    onSuccess: (result, saleId) => {
+      applyStockMutationResult(queryClient, result, { adminId: adminUserId });
+      queryClient.setQueriesData<DashboardData>({ queryKey: ["admin-dashboard"] }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pendingSales: old.pendingSales.filter((sale: UntypedValue) => sale.id !== saleId),
+          sales: {
+            ...old.sales,
+            data: old.sales.data.filter((sale: UntypedValue) => sale.id !== saleId),
+            total: Math.max(0, old.sales.total - 1),
+          },
+        };
+      });
       toast.success("Venta eliminada y stock revertido");
     },
     onError: (err: UntypedValue) => toast.error(err?.message || "Error al eliminar venta"),

@@ -13,9 +13,8 @@ import { useUserBooks } from "@/hooks/useBooks";
 import { useProfile } from "@/hooks/useAvatars";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useProfileData } from "@/hooks/useProfileData";
-import { parseAvatarConfig } from "@/lib/avatars-v2";
-import { AnimalEngine } from "@/components/avatars/AnimalEngine";
 import AvatarSelector from "@/components/profile/AvatarSelector";
+import { AvatarBadge } from "@/components/profile/AvatarBadge";
 import { ProfileSkeleton } from "@/components/ui/SkeletonBox";
 import { ReferralQR } from "@/components/profile/ReferralQR";
 
@@ -90,11 +89,6 @@ export default function ProfilePage() {
   const [purchasedLoading, setPurchasedLoading] = useState(false);
   const [purchasedLoaded, setPurchasedLoaded] = useState(false);
   const [purchasedOpen, setPurchasedOpen] = useState(false);
-
-  const parsedAvatar = useMemo(() =>
-    profile?.avatar_url ? parseAvatarConfig(profile.avatar_url) : null,
-    [profile?.avatar_url]
-  );
 
   useEffect(() => {
     if (profile?.name) setTempName(profile.name);
@@ -238,16 +232,14 @@ export default function ProfilePage() {
             {/* Profile card compacta */}
             <div className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-5">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full border-2 border-gray-200 dark:border-white/5 overflow-hidden bg-white dark:bg-[#111] flex-shrink-0 relative">
-                  {profile?.avatar_url && parsedAvatar ? (
-                    <AnimalEngine type={parsedAvatar.type} color={parsedAvatar.color} seed={parsedAvatar.seed} size="100%" />
-                  ) : (
-                    <div className={`w-full h-full flex items-center justify-center ${isSubscriber ? 'bg-amber-500' : 'bg-blue-600'} text-lg font-black text-white`}>
-                      {(profile?.name || userEmail || "U").charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  {isSubscriber && <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-amber-500 rounded-full border-2 border-gray-100 dark:border-[#070708]" />}
-                </div>
+                <AvatarBadge
+                  avatarUrl={profile?.avatar_url}
+                  fallbackText={profile?.name || userEmail || "U"}
+                  premium={isSubscriber}
+                  className="w-14 h-14 border-2 border-gray-200 dark:border-white/5 flex-shrink-0"
+                  fallbackClassName={`${isSubscriber ? "bg-amber-500" : "bg-blue-600"} text-lg font-black text-white`}
+                  badgeClassName="border-gray-100 dark:border-[#070708]"
+                />
                 <div className="min-w-0 flex-1">
                   {isEditingName ? (
                     <div className="flex gap-1.5">

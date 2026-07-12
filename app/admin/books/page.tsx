@@ -3,6 +3,7 @@
 import AppImage from "@/components/ui/AppImage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
+import { applyStockMutationResult } from "@/lib/stock-cache";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
@@ -169,13 +170,13 @@ export default function AdminBooksPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error al ajustar stock");
-      return json as { stock_total: number; stock_warehouse: number; stock_assigned: number };
+      return json;
     },
     onMutate: ({ id }) => {
       setStockLoading((prev) => new Set(prev).add(id));
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+    onSuccess: (result) => {
+      applyStockMutationResult(queryClient, result);
     },
     onError: (err: UntypedValue, vars) => {
       setStockLoading((prev) => { const next = new Set(prev); next.delete(vars.id); return next; });

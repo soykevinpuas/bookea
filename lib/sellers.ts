@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { SellerInventory, SellerSale, StockRequest } from "@/types/seller";
+import type { StockMutationResult } from "@/types/stock";
 
 // ─── Inventory ──────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ export async function assignStock(
   sellerId: string,
   bookId: string,
   quantity: number
-) {
+): Promise<StockMutationResult> {
   if (quantity <= 0) throw new Error("La cantidad debe ser mayor a 0");
   const { data, error } = await supabase.rpc("assign_stock", {
     p_seller_id: sellerId,
@@ -36,8 +37,9 @@ export async function assignStock(
   });
 
   if (error) throw error;
-  const result = (data as UntypedValue) || {};
+  const result = ((data as StockMutationResult | null) || {}) as StockMutationResult;
   if (!result.success) throw new Error(result.error || "Error al asignar stock");
+  return result;
 }
 
 export const COST_PER_BOOK = 200;
@@ -51,7 +53,7 @@ export async function markAsSold(
   bookId: string,
   quantity: number = 1,
   salePrice: number = COST_PER_BOOK
-) {
+): Promise<StockMutationResult> {
   if (salePrice <= 0) throw new Error("El precio de venta debe ser mayor a 0");
   if (!sellerId) throw new Error("Vendedor no autenticado");
 
@@ -64,8 +66,9 @@ export async function markAsSold(
 
   if (rpcErr) throw new Error(`Error al registrar venta: ${rpcErr.message}`);
 
-  const result = (data as UntypedValue) || {};
+  const result = ((data as StockMutationResult | null) || {}) as StockMutationResult;
   if (!result.success) throw new Error(result.error || "Error al registrar venta");
+  return result;
 }
 
 export async function getSellerSales(
@@ -381,7 +384,7 @@ export async function revertAssignStock(
   sellerId: string,
   bookId: string,
   quantity: number
-) {
+): Promise<StockMutationResult> {
   const { data, error } = await supabase.rpc("revert_assign_stock", {
     p_seller_id: sellerId,
     p_book_id: bookId,
@@ -389,6 +392,7 @@ export async function revertAssignStock(
   });
 
   if (error) throw error;
-  const result = (data as UntypedValue) || {};
+  const result = ((data as StockMutationResult | null) || {}) as StockMutationResult;
   if (!result.success) throw new Error(result.error || "Error al revertir asignación");
+  return result;
 }

@@ -1,14 +1,17 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { getAdminSellers } from "@/lib/sellers";
+import { applyStockMutationResult, stockMutationResultFromRealtime } from "@/lib/stock-cache";
 import { useUserId } from "@/hooks/useUser";
 import { Store, Loader2, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminVendedoresPage() {
-  const supabase = createClientClient();
+  const supabase = useMemo(() => createClientClient(), []);
+  const queryClient = useQueryClient();
   const { userId } = useUserId();
 
   const { data: sellers = [], isLoading } = useQuery({
@@ -16,6 +19,26 @@ export default function AdminVendedoresPage() {
     queryFn: () => getAdminSellers(supabase, userId || undefined),
     enabled: !!userId,
   });
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`admin-sellers-stock-events-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "stock_events", filter: `admin_id=eq.${userId}` },
+        (payload) => {
+          const result = stockMutationResultFromRealtime(payload);
+          if (result) applyStockMutationResult(queryClient, result, { adminId: userId });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, supabase, userId]);
 
   return (
     <div>

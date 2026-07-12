@@ -4,6 +4,42 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-12-A] — Stock instantaneo con snapshots y venta sin parpadeo
+
+### Problema
+El inventario de admin y vendedor podia mostrar cantidades distintas por varios segundos porque cada panel leia y refrescaba stock desde rutas/cache diferentes. En la venta del vendedor, una invalidacion posterior podia traer datos viejos y hacer que la card vendida reapareciera antes de desaparecer definitivamente.
+
+### Cambios
+1. **`supabase/migrations/065_stock_events_snapshots.sql`** — Nueva tabla `stock_events`, helper de snapshot canonico y RPCs de stock que devuelven `snapshots/events` junto con los campos legacy.
+2. **`lib/stock-cache.ts` y `types/stock.ts`** — Helper central para aplicar snapshots en caches de vendedor, admin, libros, detalle de vendedor y solicitudes.
+3. **`app/vendedor/page.tsx`** — La venta aplica el snapshot confirmado, mantiene un lock local anti-parpadeo y elimina el refetch inmediato que reinsertaba cards viejas.
+4. **`app/admin/page.tsx`, `app/admin/vendedores/*`, `app/admin/books/page.tsx`** — Asignaciones, reversiones, remociones y ajustes aplican snapshots y escuchan `stock_events`.
+5. **`components/profile/AvatarBadge.tsx`** — Avatar compartido para perfil/menu con fallback estable cuando no hay `avatar_url`.
+
+### Verificacion
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Archivos modificados
+- `supabase/migrations/065_stock_events_snapshots.sql`
+- `types/stock.ts`
+- `lib/stock-cache.ts`
+- `lib/sellers.ts`
+- `lib/actions/sellers.ts`
+- `app/vendedor/page.tsx`
+- `app/admin/page.tsx`
+- `app/admin/books/page.tsx`
+- `app/admin/vendedores/page.tsx`
+- `app/admin/vendedores/[id]/page.tsx`
+- `app/api/admin/books-stock/route.ts`
+- `components/profile/AvatarBadge.tsx`
+- `components/UserMenu.tsx`
+- `app/(app)/profile/page.tsx`
+- `docs/DATABASE.md`
+
+---
+
 ## [2026-07-11-D] — Stock total estable en Admin Libros
 
 ### Problema

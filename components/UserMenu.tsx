@@ -11,8 +11,7 @@ import { useProfile } from "@/hooks/useAvatars";
 import { useIsClient } from "@/hooks/useIsClient";
 
 import { useCartStore } from "@/stores/cart";
-import { AnimalEngine } from "./avatars/AnimalEngine";
-import { parseAvatarConfig } from "@/lib/avatars-v2";
+import { AvatarBadge } from "@/components/profile/AvatarBadge";
 
 export function UserMenu({ email, userId: propUserId }: { email?: string; userId?: string }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -60,22 +59,12 @@ export function UserMenu({ email, userId: propUserId }: { email?: string; userId
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-white/5 transition-all"
       >
-        <div className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] overflow-hidden flex items-center justify-center relative">
-           {profile?.avatar_url ? (
-              <AnimalEngine
-               config={parseAvatarConfig(profile.avatar_url)}
-               size="100%"
-              />
-           ) : (
-            <span className="text-sm font-bold uppercase text-gray-400">
-              {email?.charAt(0) || "U"}
-            </span>
-          )}
-
-          {mounted && isPremium && (
-            <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white dark:border-black" />
-          )}
-        </div>
+        <AvatarBadge
+          avatarUrl={profile?.avatar_url}
+          fallbackText={profile?.name || email || "U"}
+          premium={mounted && isPremium}
+          className="w-8 h-8"
+        />
       </button>
 
       {isOpen && (

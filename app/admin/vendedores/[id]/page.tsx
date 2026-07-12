@@ -4,6 +4,7 @@ import AppImage from "@/components/ui/AppImage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { getAdminSellerDetail, assignStock, getPhysicalBooks, revertAssignStock } from "@/lib/sellers";
+import { applyStockMutationResult, stockMutationResultFromRealtime } from "@/lib/stock-cache";
 import {
   Store,
   Package,
@@ -72,15 +73,8 @@ export default function AdminSellerDetailPage() {
         );
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-seller-detail", id] });
-      queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["physical-books", adminSession?.id] });
-      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
-      queryClient.invalidateQueries({ queryKey: ["books"] });
-      queryClient.invalidateQueries({ queryKey: ["book"] });
-      queryClient.invalidateQueries({ queryKey: ["requestable-books"] });
+    onSuccess: (result) => {
+      applyStockMutationResult(queryClient, result, { sellerId: id, adminId: adminSession?.id });
       setShowAssign(false);
       setAssignBookId("");
       setAssignQty(1);
@@ -95,15 +89,8 @@ export default function AdminSellerDetailPage() {
   const revertMutation = useMutation({
     mutationFn: ({ bookId, qty }: { bookId: string; qty: number }) =>
       revertAssignStock(supabase, id, bookId, qty),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-seller-detail", id] });
-      queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["physical-books", adminSession?.id] });
-      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
-      queryClient.invalidateQueries({ queryKey: ["books"] });
-      queryClient.invalidateQueries({ queryKey: ["book"] });
-      queryClient.invalidateQueries({ queryKey: ["requestable-books"] });
+    onSuccess: (result) => {
+      applyStockMutationResult(queryClient, result, { sellerId: id, adminId: adminSession?.id });
       toast.success("Stock revertido");
     },
     onError: (err) => toast.error(err.message),
@@ -142,6 +129,26 @@ export default function AdminSellerDetailPage() {
 
     return () => {
       if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [adminSession?.id, id, queryClient, supabase]);
+
+  useEffect(() => {
+    if (!id || !adminSession?.id) return;
+
+    const channel = supabase
+      .channel(`admin-seller-stock-events-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "stock_events", filter: `seller_id=eq.${id}` },
+        (payload) => {
+          const result = stockMutationResultFromRealtime(payload);
+          if (result) applyStockMutationResult(queryClient, result, { sellerId: id, adminId: adminSession.id });
+        }
+      )
+      .subscribe();
+
+    return () => {
       supabase.removeChannel(channel);
     };
   }, [adminSession?.id, id, queryClient, supabase]);

@@ -159,6 +159,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const delta = desiredWarehouseStock - warehouseStock;
+    let stockMutationResult: UntypedValue = null;
     if (delta !== 0) {
       const { data, error } = await context.supabase!.rpc("adjust_admin_stock", {
         p_book_id: bookId,
@@ -170,6 +171,7 @@ export async function PATCH(request: NextRequest) {
       if (!result.success) {
         return NextResponse.json({ error: result.error || "No se pudo ajustar el stock" }, { status: 400 });
       }
+      stockMutationResult = result;
     }
 
     return NextResponse.json({
@@ -177,6 +179,9 @@ export async function PATCH(request: NextRequest) {
       stock_total: totalStock,
       stock_warehouse: desiredWarehouseStock,
       stock_assigned: assignedStock,
+      mutation_id: stockMutationResult?.mutation_id,
+      snapshots: stockMutationResult?.snapshots ?? [],
+      events: stockMutationResult?.events ?? [],
     });
   } catch (error: UntypedValue) {
     console.error("[api/admin/books-stock] PATCH error:", error);
