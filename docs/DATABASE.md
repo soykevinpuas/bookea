@@ -34,8 +34,8 @@ Roles actuales: `free`, `subscriber`, `admin`, `vendedor`.
 
 - `cart_items`: carrito por usuario.
 - `orders_physical`: ordenes fisicas confirmadas por Stripe, con `quantity`, `stripe_payment_id` y `stock_decremented_at`.
-- `admin_stock`: stock fisico por admin/libro. Su suma sincroniza `books.stock_physical`.
-- `seller_inventory`: stock activo asignado a vendedores.
+- `admin_stock`: stock fisico en almacen por admin/libro. Su suma sincroniza `books.stock_physical`.
+- `seller_inventory`: stock activo asignado a vendedores. Para vistas operativas de admin, el stock total disponible es `admin_stock + seller_inventory` de sus vendedores.
 - `seller_sales`: ventas reportadas por vendedor, con `sale_price`, `paid_at` y `admin_id`.
 - `stock_requests`: solicitudes de stock del vendedor.
 - `stock_request_items`: items de cada solicitud.

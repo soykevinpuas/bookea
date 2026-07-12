@@ -34,14 +34,12 @@ interface Book {
   price_physical: number;
   price_bundle: number | null;
   stock_physical: number;
+  stock_total: number;
+  stock_warehouse: number;
+  stock_assigned: number;
   is_active: boolean;
   is_premium: boolean;
   created_at: string;
-}
-
-interface AdminStock {
-  book_id: string;
-  quantity: number;
 }
 
 type FormData = Omit<Book, "id" | "created_at"> & { id?: string; newAuthor?: string };
@@ -59,6 +57,9 @@ const EMPTY_FORM: FormData = {
   price_physical: 199,
   price_bundle: null,
   stock_physical: 0,
+  stock_total: 0,
+  stock_warehouse: 0,
+  stock_assigned: 0,
   is_active: true,
   is_premium: true,
 };
@@ -89,29 +90,10 @@ export default function AdminBooksPage() {
   const { data: books = [], isLoading } = useQuery({
     queryKey: ["admin-books"],
     queryFn: async () => {
-      const supabase = createClientClient();
-      const [booksResult, stockResult] = await Promise.all([
-        supabase
-          .from("books")
-          .select("*")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("admin_stock")
-          .select("book_id, quantity"),
-      ]);
-
-      if (booksResult.error) throw booksResult.error;
-      if (stockResult.error) throw stockResult.error;
-
-      const stockByBook = new Map<string, number>();
-      for (const item of (stockResult.data ?? []) as AdminStock[]) {
-        stockByBook.set(item.book_id, item.quantity);
-      }
-
-      return ((booksResult.data ?? []) as Book[]).map((book) => ({
-        ...book,
-        stock_physical: stockByBook.get(book.id) ?? 0,
-      }));
+      const res = await fetch("/api/admin/books-stock", { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error al cargar libros");
+      return json.books as Book[];
     },
   });
 
@@ -179,15 +161,15 @@ export default function AdminBooksPage() {
   });
 
   const adjustStockMutation = useMutation({
-    mutationFn: async ({ id, delta }: { id: string; delta: number }) => {
-      const supabase = createClientClient();
-      const { data, error } = await supabase.rpc("adjust_admin_stock", {
-        p_book_id: id,
-        p_delta: delta,
+    mutationFn: async ({ id, totalStock }: { id: string; totalStock: number }) => {
+      const res = await fetch("/api/admin/books-stock", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookId: id, totalStock }),
       });
-      if (error) throw error;
-      const result = (data as UntypedValue) || {};
-      if (!result.success) throw new Error(result.error || "Error al ajustar stock");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error al ajustar stock");
+      return json as { stock_total: number; stock_warehouse: number; stock_assigned: number };
     },
     onMutate: ({ id }) => {
       setStockLoading((prev) => new Set(prev).add(id));
@@ -195,9 +177,9 @@ export default function AdminBooksPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-books"] });
     },
-    onError: (_err, vars) => {
+    onError: (err: UntypedValue, vars) => {
       setStockLoading((prev) => { const next = new Set(prev); next.delete(vars.id); return next; });
-      toast.error("Error al ajustar stock");
+      toast.error(err?.message || "Error al ajustar stock");
     },
     onSettled: () => {
       setStockLoading(new Set());
@@ -275,7 +257,10 @@ export default function AdminBooksPage() {
       return;
     }
 
-    const desiredStock = Math.max(0, Math.floor(Number(editingBook.stock_physical) || 0));
+    const desiredStock = Math.max(
+      editingBook.stock_assigned || 0,
+      Math.floor(Number(editingBook.stock_physical) || 0)
+    );
     const stockDelta = desiredStock - initialStockPhysical;
 
     setSaving(true);
@@ -332,13 +317,13 @@ export default function AdminBooksPage() {
         const { error } = await supabase.from("books").update(payload).eq("id", editingBook.id);
         if (error) throw error;
         if (stockDelta !== 0) {
-          const { data: stockResult, error: stockError } = await supabase.rpc("adjust_admin_stock", {
-            p_book_id: editingBook.id,
-            p_delta: stockDelta,
+          const stockRes = await fetch("/api/admin/books-stock", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bookId: editingBook.id, totalStock: desiredStock }),
           });
-          if (stockError) throw stockError;
-          const result = (stockResult as UntypedValue) || {};
-          if (!result.success) throw new Error(result.error || "No se pudo ajustar el stock");
+          const stockJson = await stockRes.json();
+          if (!stockRes.ok) throw new Error(stockJson.error || "No se pudo ajustar el stock");
         }
         toast.success("Libro actualizado con éxito");
       } else {
@@ -346,13 +331,13 @@ export default function AdminBooksPage() {
         if (error) throw error;
         const initialStock = desiredStock;
         if (createdBook?.id && initialStock > 0) {
-          const { data: stockResult, error: stockError } = await supabase.rpc("adjust_admin_stock", {
-            p_book_id: createdBook.id,
-            p_delta: initialStock,
+          const stockRes = await fetch("/api/admin/books-stock", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bookId: createdBook.id, totalStock: initialStock }),
           });
-          if (stockError) throw stockError;
-          const result = (stockResult as UntypedValue) || {};
-          if (!result.success) throw new Error(result.error || "No se pudo asignar stock inicial");
+          const stockJson = await stockRes.json();
+          if (!stockRes.ok) throw new Error(stockJson.error || "No se pudo asignar stock inicial");
         }
         toast.success("Libro creado con éxito");
       }
@@ -489,17 +474,24 @@ export default function AdminBooksPage() {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => adjustStockMutation.mutate({ id: book.id, delta: -1 })}
-                        disabled={stockLoading.has(book.id) || book.stock_physical <= 0}
+                        onClick={() => adjustStockMutation.mutate({ id: book.id, totalStock: book.stock_physical - 1 })}
+                        disabled={stockLoading.has(book.id) || book.stock_warehouse <= 0}
                         className="p-0.5 bg-white/5 hover:bg-red-500/20 rounded transition-colors disabled:opacity-30"
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="text-white/70 min-w-[2ch] text-center text-sm font-medium tabular-nums">
-                        {stockLoading.has(book.id) ? <Loader2 className="w-3 h-3 animate-spin inline" /> : book.stock_physical}
-                      </span>
+                      <div className="min-w-[6ch] text-center">
+                        <span className="text-white/70 text-sm font-medium tabular-nums">
+                          {stockLoading.has(book.id) ? <Loader2 className="w-3 h-3 animate-spin inline" /> : book.stock_physical}
+                        </span>
+                        {book.stock_assigned > 0 && (
+                          <p className="text-[9px] leading-none text-white/30">
+                            {book.stock_warehouse} alm. + {book.stock_assigned} vend.
+                          </p>
+                        )}
+                      </div>
                       <button
-                        onClick={() => adjustStockMutation.mutate({ id: book.id, delta: 1 })}
+                        onClick={() => adjustStockMutation.mutate({ id: book.id, totalStock: book.stock_physical + 1 })}
                         disabled={stockLoading.has(book.id)}
                         className="p-0.5 bg-white/5 hover:bg-green-500/20 rounded transition-colors disabled:opacity-30"
                       >
@@ -672,14 +664,22 @@ export default function AdminBooksPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 font-medium mb-1.5 block">Stock físico</label>
+                  <label className="text-xs text-white/40 font-medium mb-1.5 block">Stock total</label>
                   <input
                     type="number"
-                    min="0"
+                    min={editingBook.stock_assigned}
                     value={editingBook.stock_physical}
-                    onChange={(e) => setEditingBook((p) => ({ ...p, stock_physical: Math.max(0, Number(e.target.value) || 0) }))}
+                    onChange={(e) => setEditingBook((p) => ({
+                      ...p,
+                      stock_physical: Math.max(p.stock_assigned || 0, Number(e.target.value) || 0),
+                    }))}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
                   />
+                  {editingBook.stock_assigned > 0 && (
+                    <p className="text-[10px] text-white/25 mt-1">
+                      {editingBook.stock_warehouse} en almacén · {editingBook.stock_assigned} con vendedores
+                    </p>
+                  )}
                 </div>
               </div>
 

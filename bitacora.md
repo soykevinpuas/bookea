@@ -4,6 +4,29 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-11-D] — Stock total estable en Admin Libros
+
+### Problema
+`Admin > Libros` estaba mostrando y editando solo `admin_stock`, que representa el stock en almacen del admin. Cuando parte del inventario estaba asignado a vendedores, el numero se veia inconsistente: el admin acomodaba un total, pero al recargar parecia cambiar porque no incluia `seller_inventory`.
+
+### Cambios
+1. **`app/api/admin/books-stock/route.ts`** — Nuevo endpoint admin que calcula por libro `stock_total`, `stock_warehouse` y `stock_assigned` con service role despues de validar rol admin.
+2. **`app/api/admin/books-stock/route.ts`** — El guardado de stock ahora es absoluto sobre el total disponible: total deseado menos stock asignado = almacen admin.
+3. **`app/admin/books/page.tsx`** — La tabla muestra stock total y desglosa almacen/vendedores cuando aplica; el modal edita "Stock total".
+4. **`docs/DATABASE.md`** — Aclarada la diferencia entre stock en almacen (`admin_stock`) y stock total operativo (`admin_stock + seller_inventory`).
+
+### Verificacion
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Archivos modificados
+- `app/api/admin/books-stock/route.ts`
+- `app/admin/books/page.tsx`
+- `docs/DATABASE.md`
+
+---
+
 ## [2026-07-11-C] — Stock en tiempo real al asignar
 
 ### Problema
