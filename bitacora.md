@@ -4,6 +4,26 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-11-B] — Stock cero editable en Libros admin
+
+### Problema
+En `Admin > Libros`, cambiar el campo "Stock fisico" a `0` desde el modal de edicion no modificaba el inventario real. El formulario guardaba datos del libro, pero no aplicaba ningun ajuste sobre `admin_stock`.
+
+### Cambios
+1. **`app/admin/books/page.tsx`** — La tabla de libros ahora combina `books` con `admin_stock` del admin actual, por lo que muestra el stock propio que realmente se puede mover.
+2. **`app/admin/books/page.tsx`** — Al guardar un libro existente, el stock deseado se convierte en delta contra el stock inicial y se manda por `adjust_admin_stock`; ahora `0` es valido y descuenta todo el stock propio disponible.
+3. **`app/admin/books/page.tsx`** — El boton de restar stock queda deshabilitado cuando el libro ya esta en cero.
+
+### Verificacion
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Archivos modificados
+- `app/admin/books/page.tsx`
+
+---
+
 ## [2026-07-11-A] — Top libros vendidos y header estable en landing
 
 ### Problema

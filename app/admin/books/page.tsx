@@ -39,6 +39,11 @@ interface Book {
   created_at: string;
 }
 
+interface AdminStock {
+  book_id: string;
+  quantity: number;
+}
+
 type FormData = Omit<Book, "id" | "created_at"> & { id?: string; newAuthor?: string };
 
 const EMPTY_FORM: FormData = {
@@ -68,6 +73,7 @@ export default function AdminBooksPage() {
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [editingBook, setEditingBook] = useState<FormData>(EMPTY_FORM);
+  const [initialStockPhysical, setInitialStockPhysical] = useState(0);
   const [uploading, setUploading] = useState<"cover" | "epub" | null>(null);
   const [saving, setSaving] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -84,12 +90,28 @@ export default function AdminBooksPage() {
     queryKey: ["admin-books"],
     queryFn: async () => {
       const supabase = createClientClient();
-      const { data, error } = await supabase
-        .from("books")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as Book[];
+      const [booksResult, stockResult] = await Promise.all([
+        supabase
+          .from("books")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("admin_stock")
+          .select("book_id, quantity"),
+      ]);
+
+      if (booksResult.error) throw booksResult.error;
+      if (stockResult.error) throw stockResult.error;
+
+      const stockByBook = new Map<string, number>();
+      for (const item of (stockResult.data ?? []) as AdminStock[]) {
+        stockByBook.set(item.book_id, item.quantity);
+      }
+
+      return ((booksResult.data ?? []) as Book[]).map((book) => ({
+        ...book,
+        stock_physical: stockByBook.get(book.id) ?? 0,
+      }));
     },
   });
 
@@ -162,11 +184,13 @@ export default function AdminBooksPage() {
 
   const openNew = () => {
     setEditingBook(EMPTY_FORM);
+    setInitialStockPhysical(0);
     setShowModal(true);
   };
 
   const openEdit = (book: Book) => {
     setEditingBook({ ...book });
+    setInitialStockPhysical(book.stock_physical);
     setShowModal(true);
   };
 
@@ -229,6 +253,9 @@ export default function AdminBooksPage() {
       return;
     }
 
+    const desiredStock = Math.max(0, Math.floor(Number(editingBook.stock_physical) || 0));
+    const stockDelta = desiredStock - initialStockPhysical;
+
     setSaving(true);
     try {
       const supabase = createClientClient();
@@ -282,11 +309,20 @@ export default function AdminBooksPage() {
       if (editingBook.id) {
         const { error } = await supabase.from("books").update(payload).eq("id", editingBook.id);
         if (error) throw error;
+        if (stockDelta !== 0) {
+          const { data: stockResult, error: stockError } = await supabase.rpc("adjust_admin_stock", {
+            p_book_id: editingBook.id,
+            p_delta: stockDelta,
+          });
+          if (stockError) throw stockError;
+          const result = (stockResult as UntypedValue) || {};
+          if (!result.success) throw new Error(result.error || "No se pudo ajustar el stock");
+        }
         toast.success("Libro actualizado con éxito");
       } else {
         const { data: createdBook, error } = await supabase.from("books").insert(payload).select("id").single();
         if (error) throw error;
-        const initialStock = Number(editingBook.stock_physical || 0);
+        const initialStock = desiredStock;
         if (createdBook?.id && initialStock > 0) {
           const { data: stockResult, error: stockError } = await supabase.rpc("adjust_admin_stock", {
             p_book_id: createdBook.id,
@@ -432,7 +468,7 @@ export default function AdminBooksPage() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => adjustStockMutation.mutate({ id: book.id, delta: -1 })}
-                        disabled={stockLoading.has(book.id)}
+                        disabled={stockLoading.has(book.id) || book.stock_physical <= 0}
                         className="p-0.5 bg-white/5 hover:bg-red-500/20 rounded transition-colors disabled:opacity-30"
                       >
                         <Minus className="w-3 h-3" />
@@ -619,7 +655,7 @@ export default function AdminBooksPage() {
                     type="number"
                     min="0"
                     value={editingBook.stock_physical}
-                    onChange={(e) => setEditingBook((p) => ({ ...p, stock_physical: Number(e.target.value) }))}
+                    onChange={(e) => setEditingBook((p) => ({ ...p, stock_physical: Math.max(0, Number(e.target.value) || 0) }))}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
                   />
                 </div>
