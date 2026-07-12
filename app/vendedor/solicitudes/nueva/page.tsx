@@ -7,7 +7,7 @@ import { getSellerInventory } from "@/lib/sellers";
 import { createStockRequestAction } from "@/lib/actions/sellers";
 import { useUserId } from "@/hooks/useUser";
 import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store, ChevronLeft, Info } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,6 +29,7 @@ export default function NuevaSolicitudPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [notes, setNotes] = useState("");
   const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
+  const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: requestableData, isLoading: booksLoading } = useQuery({
     queryKey: ["requestable-books", userId],
@@ -52,6 +53,33 @@ export default function NuevaSolicitudPage() {
     queryFn: () => getSellerInventory(supabase, userId!),
     enabled: !!userId,
   });
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const refreshStock = () => {
+      if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      realtimeRefreshTimer.current = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["requestable-books", userId] });
+        queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
+      }, 120);
+    };
+
+    const channel = supabase
+      .channel(`requestable-stock-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "books" }, refreshStock)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "seller_inventory", filter: `seller_id=eq.${userId}` },
+        refreshStock
+      )
+      .subscribe();
+
+    return () => {
+      if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, supabase, userId]);
 
   const inventoryMap = new Map(inventory.map(i => [i.book_id, i.quantity]));
   const booksMap = new Map(books.map((b: UntypedValue) => [b.id, b]));

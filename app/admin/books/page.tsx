@@ -131,6 +131,28 @@ export default function AdminBooksPage() {
   });
 
   useEffect(() => {
+    const supabase = createClientClient();
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const refreshBooks = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+      }, 120);
+    };
+
+    const channel = supabase
+      .channel("admin-books-stock-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "books" }, refreshBooks)
+      .on("postgres_changes", { event: "*", schema: "public", table: "admin_stock" }, refreshBooks)
+      .subscribe();
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  useEffect(() => {
     if (editingBook.author_id) {
       const author = authors.find(a => a.id === editingBook.author_id);
       if (author) {

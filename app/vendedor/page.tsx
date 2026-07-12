@@ -101,6 +101,24 @@ export default function VendedorDashboard() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
   const stockWriteInFlight = useRef(false);
+  const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dashboardQueryKey = useMemo(() => ["vendedor-dashboard", userId] as const, [userId]);
+
+  const scheduleRealtimeRefresh = useCallback((includeRequestableBooks = false) => {
+    if (!userId || stockWriteInFlight.current) return;
+    if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+
+    realtimeRefreshTimer.current = setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
+      queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
+      queryClient.refetchQueries({ queryKey: dashboardQueryKey, type: "active" });
+
+      if (includeRequestableBooks) {
+        queryClient.invalidateQueries({ queryKey: ["requestable-books", userId] });
+        queryClient.refetchQueries({ queryKey: ["requestable-books", userId], type: "active" });
+      }
+    }, 120);
+  }, [dashboardQueryKey, queryClient, userId]);
 
   useEffect(() => {
     const seccion = searchParams?.get("seccion");
@@ -110,26 +128,39 @@ export default function VendedorDashboard() {
   }, [searchParams]);
 
   useEffect(() => {
+    if (!userId) return;
+
     const channel = supabase
-      .channel("vendedor-dashboard-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "stock_requests" }, () => {
-        if (stockWriteInFlight.current) return;
-        queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
-        queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "seller_sales" }, () => {
-        if (stockWriteInFlight.current) return;
-        queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
-        queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "seller_inventory" }, () => {
-        if (stockWriteInFlight.current) return;
-        queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
-        queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
-      })
+      .channel(`vendedor-dashboard-changes-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "stock_requests", filter: `seller_id=eq.${userId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
+          scheduleRealtimeRefresh();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "seller_sales", filter: `seller_id=eq.${userId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["seller-sales", userId] });
+          scheduleRealtimeRefresh();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "seller_inventory", filter: `seller_id=eq.${userId}` },
+        () => {
+          scheduleRealtimeRefresh(true);
+        }
+      )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [supabase, queryClient, userId]);
+    return () => {
+      if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [scheduleRealtimeRefresh, supabase, queryClient, userId]);
 
   useEffect(() => {
     const refetch = () => {
@@ -152,7 +183,6 @@ export default function VendedorDashboard() {
   const [requestSearch, setRequestSearch] = useState("");
   const [requestCart, setRequestCart] = useState<RequestCartItem[]>([]);
   const [requestNotes, setRequestNotes] = useState("");
-  const dashboardQueryKey = useMemo(() => ["vendedor-dashboard", userId] as const, [userId]);
   const fetchVendedorJson = useCallback(
     <T,>(url: string, fallbackError: string) =>
       fetchJsonWithSessionRetry<T>(supabase, url, { cache: "no-store" }, fallbackError),

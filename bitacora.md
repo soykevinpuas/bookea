@@ -4,6 +4,35 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-11-C] — Stock en tiempo real al asignar
+
+### Problema
+Al asignar stock desde admin, algunas vistas cliente seguian mostrando cantidades viejas hasta que pasaba el polling o se navegaba de nuevo. El catalogo tampoco escuchaba cambios de `books/admin_stock`, y algunas pantallas de vendedor refrescaban solo el dashboard pero no los libros disponibles para solicitar.
+
+### Cambios
+1. **`supabase/migrations/064_enable_realtime_stock_catalog.sql`** — `books` y `admin_stock` quedan publicados en Supabase Realtime para emitir cambios de stock fisico.
+2. **`hooks/useBooks.ts`** — El catalogo y detalle de libro escuchan cambios de stock/catalogo, limpian cache local y refrescan queries activas.
+3. **`app/admin/page.tsx`** — La asignacion de stock actualiza cache de dashboard de forma optimista y escucha `admin_stock` con refresco debounced.
+4. **`app/vendedor/page.tsx` y `app/vendedor/solicitudes/nueva/page.tsx`** — Las vistas de vendedor refrescan inventario y libros solicitables cuando cambia su stock o el catalogo.
+5. **`app/admin/books/page.tsx` y `app/admin/vendedores/[id]/page.tsx`** — Paneles de stock admin escuchan cambios realtime y refrescan cantidades relacionadas.
+
+### Verificacion
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Archivos modificados
+- `supabase/migrations/064_enable_realtime_stock_catalog.sql`
+- `hooks/useBooks.ts`
+- `app/admin/page.tsx`
+- `app/admin/books/page.tsx`
+- `app/admin/vendedores/[id]/page.tsx`
+- `app/vendedor/page.tsx`
+- `app/vendedor/solicitudes/nueva/page.tsx`
+- `docs/DATABASE.md`
+
+---
+
 ## [2026-07-11-B] — Stock cero editable en Libros admin
 
 ### Problema

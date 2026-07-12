@@ -57,6 +57,16 @@ function writeCatalogCache(cacheKey: string, data: Book[]) {
   } catch {}
 }
 
+// Limpia cache persistida cuando Realtime avisa que stock/catalogo cambio.
+function clearCatalogCache(cacheKey: string) {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.removeItem(cacheKey);
+    window.dispatchEvent(new Event("bookea-catalog-cache"));
+  } catch {}
+}
+
 // useSyncExternalStore necesita una suscripcion estable a localStorage/evento custom.
 function subscribeCatalogCache(onStoreChange: () => void) {
   if (typeof window === "undefined") return () => {};
@@ -91,7 +101,9 @@ function applyBookFilters(data: Book[], options?: BookFilters) {
 // Hook de catalogo general con persistencia local y filtros.
 export function useBooks(options?: BookFilters) {
   const supabase = createClientClient();
+  const queryClient = useQueryClient();
   const cacheKey = getCatalogCacheKey(options?.adminId);
+  const channelRef = useRef<UntypedValue>(null);
   const noCategoryFilter = !options?.category || options?.category === 'all';
   const cachedCatalogRaw = useSyncExternalStore(
     subscribeCatalogCache,
@@ -103,7 +115,7 @@ export function useBooks(options?: BookFilters) {
     [cachedCatalogRaw]
   );
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ["books", options?.search, options?.category, options?.author, options?.adminId],
     queryFn: async () => {
       const data = await getBooks(supabase, options);
@@ -118,17 +130,82 @@ export function useBooks(options?: BookFilters) {
     },
     ...BOOK_QUERY_OPTIONS,
   });
+
+  useEffect(() => {
+    if (channelRef.current) return;
+
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const refreshCatalog = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        clearCatalogCache(cacheKey);
+        queryClient.invalidateQueries({ queryKey: ["books"] });
+        queryClient.invalidateQueries({ queryKey: ["book"] });
+      }, 120);
+    };
+
+    let channel = supabase
+      .channel(`catalog-stock-${options?.adminId || "public"}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "books" }, refreshCatalog);
+
+    if (options?.adminId) {
+      channel = channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "admin_stock", filter: `admin_id=eq.${options.adminId}` },
+        refreshCatalog
+      );
+    }
+
+    channel = channel.subscribe();
+    channelRef.current = channel;
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [cacheKey, options?.adminId, queryClient, supabase]);
+
+  return query;
 }
 
 // Hook de detalle de libro por UUID.
 export function useBook(id: string) {
   const supabase = createClientClient();
-  return useQuery({
+  const queryClient = useQueryClient();
+  const channelRef = useRef<UntypedValue>(null);
+
+  const query = useQuery({
     queryKey: ["book", id],
     queryFn: () => getBook(supabase, id),
     enabled: !!id,
     ...BOOK_QUERY_OPTIONS,
   });
+
+  useEffect(() => {
+    if (!id || channelRef.current) return;
+
+    const channel = supabase
+      .channel(`book-stock-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "books", filter: `id=eq.${id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["book", id] });
+          queryClient.invalidateQueries({ queryKey: ["books"] });
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [id, queryClient, supabase]);
+
+  return query;
 }
 
 // Hook de biblioteca del usuario con cache local y realtime sobre user_books.

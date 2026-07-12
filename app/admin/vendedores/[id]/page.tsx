@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import StockRequestItemsModal from "@/components/StockRequestItemsModal";
@@ -46,6 +46,7 @@ export default function AdminSellerDetailPage() {
   const [assignQty, setAssignQty] = useState(1);
   const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
   const [bookSearch, setBookSearch] = useState("");
+  const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-seller-detail", id],
@@ -61,16 +62,34 @@ export default function AdminSellerDetailPage() {
 
   const assignMutation = useMutation({
     mutationFn: () => assignStock(supabase, id, assignBookId, assignQty),
+    onMutate: () => {
+      queryClient.setQueryData<UntypedValue[]>(["physical-books", adminSession?.id], (old) => {
+        if (!old) return old;
+        return old.map((book) =>
+          book.id === assignBookId
+            ? { ...book, stock_physical: Math.max(0, (book.stock_physical || 0) - assignQty) }
+            : book
+        );
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-seller-detail", id] });
       queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["physical-books", adminSession?.id] });
+      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+      queryClient.invalidateQueries({ queryKey: ["books"] });
+      queryClient.invalidateQueries({ queryKey: ["book"] });
+      queryClient.invalidateQueries({ queryKey: ["requestable-books"] });
       setShowAssign(false);
       setAssignBookId("");
       setAssignQty(1);
       toast.success("Stock asignado correctamente");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      queryClient.invalidateQueries({ queryKey: ["physical-books", adminSession?.id] });
+      toast.error(err.message);
+    },
   });
 
   const revertMutation = useMutation({
@@ -80,11 +99,52 @@ export default function AdminSellerDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-seller-detail", id] });
       queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["physical-books", adminSession?.id] });
+      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+      queryClient.invalidateQueries({ queryKey: ["books"] });
+      queryClient.invalidateQueries({ queryKey: ["book"] });
+      queryClient.invalidateQueries({ queryKey: ["requestable-books"] });
       toast.success("Stock revertido");
     },
     onError: (err) => toast.error(err.message),
   });
   const revertingBookId = revertMutation.isPending ? revertMutation.variables?.bookId : null;
+
+  useEffect(() => {
+    if (!id) return;
+
+    const refreshDetail = () => {
+      if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      realtimeRefreshTimer.current = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["admin-seller-detail", id] });
+        queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
+        queryClient.invalidateQueries({ queryKey: ["physical-books", adminSession?.id] });
+      }, 120);
+    };
+
+    let channel = supabase
+      .channel(`admin-seller-detail-stock-${id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "books" }, refreshDetail)
+      .on("postgres_changes", { event: "*", schema: "public", table: "seller_inventory", filter: `seller_id=eq.${id}` }, refreshDetail)
+      .on("postgres_changes", { event: "*", schema: "public", table: "seller_sales", filter: `seller_id=eq.${id}` }, refreshDetail)
+      .on("postgres_changes", { event: "*", schema: "public", table: "stock_requests", filter: `seller_id=eq.${id}` }, refreshDetail);
+
+    if (adminSession?.id) {
+      channel = channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "admin_stock", filter: `admin_id=eq.${adminSession.id}` },
+        refreshDetail
+      );
+    }
+
+    channel = channel.subscribe();
+
+    return () => {
+      if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [adminSession?.id, id, queryClient, supabase]);
 
   const salesMap = useMemo(() => {
     try {

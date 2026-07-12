@@ -90,6 +90,7 @@ Reglas vigentes:
 - `060_harden_stock_admin_ownership.sql`: ownership de stock por admin.
 - `062_harden_stripe_physical_fulfillment.sql`: fulfillment fisico transaccional.
 - `063_remove_zero_seller_inventory_on_sale.sql`: elimina filas de inventario vendedor en cero.
+- `064_enable_realtime_stock_catalog.sql`: publica `books` y `admin_stock` en Realtime para refrescar stock en cliente.
 
 ## 5. Reglas para Cambios de Schema
 

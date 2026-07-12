@@ -6,7 +6,7 @@ import { createClientClient } from "@/lib/supabase";
 import { updateStockRequestStatus, COST_PER_BOOK, ADMIN_COST_BOOK, markSalesAsPaid, assignStock } from "@/lib/sellers";
 import { deleteStockRequestAction, deleteSaleAction, removeSellerInventoryAction } from "@/lib/actions/sellers";
 import type { StockRequest } from "@/types/seller";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 
 import Link from "next/link";
 import {
@@ -103,6 +103,7 @@ export default function AdminDashboard() {
   const [stockModalSeller, setStockModalSeller] = useState<{sellerId: string; email: string; items: UntypedValue[]} | null>(null);
   const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
   const stockWriteInFlight = useRef(false);
+  const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   interface PaginatedResponse<T> {
     data: T[];
     total: number;
@@ -181,20 +182,98 @@ export default function AdminDashboard() {
     [assignSellerEntries]
   );
 
+  const scheduleAdminRefresh = useCallback(() => {
+    if (stockWriteInFlight.current) return;
+    if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+
+    realtimeRefreshTimer.current = setTimeout(() => {
+      queryClient.refetchQueries({ queryKey: ["admin-dashboard"], type: "active" });
+      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+      queryClient.invalidateQueries({ queryKey: ["books"] });
+      queryClient.invalidateQueries({ queryKey: ["book"] });
+    }, 120);
+  }, [queryClient]);
+
+  const applyAssignedStockToDashboard = useCallback((
+    sellerId: string,
+    items: { book_id: string; quantity: number }[]
+  ) => {
+    const seller = allSellers.find((s: UntypedValue) => s.id === sellerId);
+    const sellerEmail = seller?.email || (sellerId === adminUserId ? "Tú" : "Desconocido");
+
+    queryClient.setQueriesData<DashboardData>({ queryKey: ["admin-dashboard"] }, (old) => {
+      if (!old) return old;
+
+      const assigned = new Map(items.map((item) => [item.book_id, item.quantity]));
+      const touchedBooks = new Set<string>();
+      const now = new Date().toISOString();
+      let addedRows = 0;
+
+      const nextAdminStock = old.adminStock.map((stockItem) => {
+        const qty = assigned.get(stockItem.book_id);
+        if (!qty) return stockItem;
+        return { ...stockItem, quantity: Math.max(0, stockItem.quantity - qty) };
+      });
+
+      const nextInventory = old.inventory.data.map((item: UntypedValue) => {
+        const qty = assigned.get(item.book_id);
+        if (!qty || item.seller_id !== sellerId) return item;
+
+        touchedBooks.add(item.book_id);
+        return {
+          ...item,
+          quantity: (item.quantity || 0) + qty,
+          updated_at: now,
+        };
+      });
+
+      for (const item of items) {
+        if (touchedBooks.has(item.book_id)) continue;
+        const book = old.physicalBooks.find((b: UntypedValue) => b.id === item.book_id);
+        nextInventory.unshift({
+          id: `local-${sellerId}-${item.book_id}`,
+          seller_id: sellerId,
+          book_id: item.book_id,
+          quantity: item.quantity,
+          updated_at: now,
+          books: book
+            ? { id: book.id, title: book.title, author: book.author, cover_url: book.cover_url }
+            : null,
+          seller: { id: sellerId, email: sellerEmail },
+        });
+        addedRows += 1;
+      }
+
+      return {
+        ...old,
+        adminStock: nextAdminStock,
+        inventory: {
+          ...old.inventory,
+          data: nextInventory,
+          total: old.inventory.total + addedRows,
+        },
+      };
+    });
+  }, [adminUserId, allSellers, queryClient]);
+
   useEffect(() => {
     const channel = supabase
       .channel("admin-dashboard-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "seller_sales" }, () => {
-        if (stockWriteInFlight.current) return;
-        queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
+        scheduleAdminRefresh();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "seller_inventory" }, () => {
-        if (stockWriteInFlight.current) return;
-        queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
+        scheduleAdminRefresh();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "admin_stock" }, () => {
+        scheduleAdminRefresh();
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [supabase, queryClient]);
+    return () => {
+      if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [scheduleAdminRefresh, supabase]);
 
   useEffect(() => {
     const refetch = () => {
@@ -271,15 +350,24 @@ export default function AdminDashboard() {
     },
     onMutate: () => {
       stockWriteInFlight.current = true;
+      if (adminUserId && assignSelfBookId && assignSelfQty > 0) {
+        applyAssignedStockToDashboard(adminUserId, [{ book_id: assignSelfBookId, quantity: assignSelfQty }]);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+      queryClient.invalidateQueries({ queryKey: ["books"] });
+      queryClient.invalidateQueries({ queryKey: ["book"] });
       setAssignSelfBookId("");
       setAssignSelfQty(1);
       toast.success("Stock asignado a tu perfil de vendedor");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      queryClient.refetchQueries({ queryKey: ["admin-dashboard"], type: "active" });
+      toast.error(err.message);
+    },
     onSettled: () => {
       stockWriteInFlight.current = false;
     },
@@ -301,14 +389,27 @@ export default function AdminDashboard() {
     },
     onMutate: () => {
       stockWriteInFlight.current = true;
+      if (assignSellerId) {
+        applyAssignedStockToDashboard(
+          assignSellerId,
+          assignSellerEntries.map(([bookId, qty]) => ({ book_id: bookId, quantity: qty }))
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+      queryClient.invalidateQueries({ queryKey: ["books"] });
+      queryClient.invalidateQueries({ queryKey: ["book"] });
+      queryClient.invalidateQueries({ queryKey: ["requestable-books"] });
       setAssignSellerQtys({});
       toast.success("Stock asignado al vendedor");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      queryClient.refetchQueries({ queryKey: ["admin-dashboard"], type: "active" });
+      toast.error(err.message);
+    },
     onSettled: () => {
       stockWriteInFlight.current = false;
     },
