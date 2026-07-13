@@ -20,6 +20,24 @@ interface CartItem {
   max_stock: number;
 }
 
+interface RequestableBook {
+  id: string;
+  title: string;
+  author: string;
+  cover_url: string | null;
+  price_physical: number | null;
+  stock_physical: number;
+}
+
+interface RequestableBooksResponse {
+  books: RequestableBook[];
+  reason: "ok" | "no_admin" | "no_stock";
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Error inesperado";
+}
+
 export default function NuevaSolicitudPage() {
   const supabase = createClientClient();
   const { userId } = useUserId();
@@ -28,7 +46,7 @@ export default function NuevaSolicitudPage() {
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [notes, setNotes] = useState("");
-  const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
+  const [previewBook, setPreviewBook] = useState<RequestableBook | null>(null);
   const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: requestableData, isLoading: booksLoading } = useQuery({
@@ -37,10 +55,7 @@ export default function NuevaSolicitudPage() {
       const res = await fetch("/api/vendedor/requestable-books", { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudieron cargar los libros");
-      return json as {
-        books: UntypedValue[];
-        reason: "ok" | "no_admin" | "no_stock";
-      };
+      return json as RequestableBooksResponse;
     },
     enabled: !!userId,
   });
@@ -82,9 +97,9 @@ export default function NuevaSolicitudPage() {
   }, [queryClient, supabase, userId]);
 
   const inventoryMap = new Map(inventory.map(i => [i.book_id, i.quantity]));
-  const booksMap = new Map(books.map((b: UntypedValue) => [b.id, b]));
+  const booksMap = new Map(books.map((b) => [b.id, b]));
 
-  const addToCart = (book: UntypedValue) => {
+  const addToCart = (book: RequestableBook) => {
     setCart((prev) => {
       const existing = prev.find((c) => c.book_id === book.id);
       if (existing) {
@@ -109,7 +124,7 @@ export default function NuevaSolicitudPage() {
       prev
         .map((c) => {
           if (c.book_id !== bookId) return c;
-          const book = booksMap.get(bookId) as UntypedValue;
+          const book = booksMap.get(bookId);
           const maxAllowed = book?.stock_physical ?? Infinity;
           return { ...c, quantity: Math.max(1, Math.min(maxAllowed, c.quantity + delta)) };
         })
@@ -140,15 +155,15 @@ export default function NuevaSolicitudPage() {
     },
     onError: (err) => {
       console.error("Error creando solicitud:", err);
-      toast.error(err.message);
+      toast.error(getErrorMessage(err));
     },
   });
 
   const isFormValid = cart.length > 0;
 
-  const booksInStock = books.filter((b: UntypedValue) => b.stock_physical > 0);
+  const booksInStock = books.filter((b) => b.stock_physical > 0);
   const filteredBooks = booksInStock.filter(
-    (b: UntypedValue) =>
+    (b) =>
       b.title.toLowerCase().includes(search.toLowerCase()) ||
       b.author.toLowerCase().includes(search.toLowerCase())
   );
@@ -210,7 +225,7 @@ export default function NuevaSolicitudPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredBooks.map((book: UntypedValue) => {
+              {filteredBooks.map((book) => {
                 const inCart = cart.find((c) => c.book_id === book.id);
                 return (
                   <div

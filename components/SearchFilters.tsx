@@ -17,6 +17,13 @@ interface SearchFiltersProps {
   initialView?: "grid" | "list" | "compact";
 }
 
+const FILTER_CATEGORIES = [
+  "all", "Ficción", "No Ficción", "Novela", "Clásicos",
+  "Misterio y Suspenso", "Fantasía", "Ciencia Ficción",
+  "Romance", "Terror", "Autoayuda", "Negocios y Finanzas",
+  "Historia", "Biografías", "Cuentos", "Poesía", "Otros",
+];
+
 // Componente de filtros con valores iniciales desde URL
 export function SearchFilters({
   initialSearch = "",
@@ -192,12 +199,7 @@ export function SearchFilters({
 
               <div className="max-h-[70vh] overflow-y-auto pr-1 -mr-1">
                 <div className="grid grid-cols-2 gap-2.5">
-                  {[
-                    "all", "Ficción", "No Ficción", "Novela", "Clásicos",
-                    "Misterio y Suspenso", "Fantasía", "Ciencia Ficción",
-                    "Romance", "Terror", "Autoayuda", "Negocios y Finanzas",
-                    "Historia", "Biografías", "Cuentos", "Poesía", "Otros"
-                  ].map((cat: UntypedValue) => (
+                  {FILTER_CATEGORIES.map((cat) => (
                     <button
                       key={cat}
                       onClick={() => {

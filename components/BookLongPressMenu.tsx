@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { Download, Eye, Trash2, X, Loader2, CheckCircle, MoreVertical, BookmarkPlus } from "lucide-react";
 import { isBookDownloaded, downloadBook, removeBookDownload } from "@/lib/downloads";
@@ -11,15 +12,22 @@ import { addToLibraryAction, removeFromLibraryAction } from "@/lib/actions/libra
 import { useQueryClient } from "@tanstack/react-query";
 import { useUserBooks } from "@/hooks/useBooks";
 import { useSubscription } from "@/hooks/useSubscription";
+import type { Book } from "@/types/book";
+import type { LibraryAccessType } from "@/lib/books";
 
 /**
  * BookLongPressMenu: Menú contextual que aparece al mantener presionado un libro
  * Opciones: Ver Detalles, Descargar, Eliminar Descarga, Añadir/Quitar de Biblioteca
  */
 interface BookLongPressMenuProps {
-  book: import("@/types/book").Book;
+  book: Book;
   children: React.ReactNode;
 }
+
+const touchBlockStyle: CSSProperties = {
+  WebkitTouchCallout: "none",
+  WebkitUserSelect: "none",
+};
 
 export default function BookLongPressMenu({ book, children }: BookLongPressMenuProps) {
   const { id: bookId, title: bookTitle, epub_url: epubUrl } = book;
@@ -36,7 +44,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   // Obtener estado de biblioteca y suscripción
   const { data: userBooks } = useUserBooks(userId || "");
   const { data: subscription } = useSubscription(userId);
-  const isInLibrary = userBooks?.some((b: import("@/types/book").Book) => b.id === bookId);
+  const isInLibrary = userBooks?.some((b) => b.id === bookId);
 
   // Verificar estado de descarga al montar
   useEffect(() => {
@@ -65,16 +73,16 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   // Cerrar menú al hacer click fuera
   useEffect(() => {
     if (!showMenu) return;
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMenu(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside as UntypedValue);
+    document.addEventListener("touchstart", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside as UntypedValue);
+      document.removeEventListener("touchstart", handleClickOutside);
     };
   }, [showMenu]);
 
@@ -164,26 +172,26 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   const handleAddToLibrary = async () => {
     if (!userId) return;
     setIsLibraryProcessing(true);
-    queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
+    queryClient.setQueryData<Book[]>(["userBooks", userId], (old) => {
       if (!old) return old;
       return [{ ...book, id: bookId }, ...old];
     });
     try {
-      const accessType = subscription?.isActive ? 'subscription' : 'permanent';
-      const result = await addToLibraryAction(bookId, accessType as UntypedValue);
+      const accessType: LibraryAccessType = subscription?.isActive ? "subscription" : "permanent";
+      const result = await addToLibraryAction(bookId, accessType);
       if (result.success) {
         toast.success(`"${bookTitle}" añadido a tu biblioteca`);
       } else {
-        queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
+        queryClient.setQueryData<Book[]>(["userBooks", userId], (old) => {
           if (!old) return old;
-          return old.filter((b: UntypedValue) => b.id !== bookId);
+          return old.filter((b) => b.id !== bookId);
         });
         toast.error(result.error || "No se pudo añadir a la biblioteca");
       }
     } catch {
-      queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
+      queryClient.setQueryData<Book[]>(["userBooks", userId], (old) => {
         if (!old) return old;
-        return old.filter((b: UntypedValue) => b.id !== bookId);
+        return old.filter((b) => b.id !== bookId);
       });
       toast.error("Error al conectar con el servidor");
     } finally {
@@ -196,10 +204,10 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
   const handleRemoveFromLibrary = async () => {
     if (!userId) return;
     setIsLibraryProcessing(true);
-    const oldData = queryClient.getQueryData(["userBooks", userId]);
-    queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
+    const oldData = queryClient.getQueryData<Book[]>(["userBooks", userId]);
+    queryClient.setQueryData<Book[]>(["userBooks", userId], (old) => {
       if (!old) return old;
-      return old.filter((b: UntypedValue) => b.id !== bookId);
+      return old.filter((b) => b.id !== bookId);
     });
     try {
       const result = await removeFromLibraryAction(bookId);
@@ -223,7 +231,7 @@ export default function BookLongPressMenu({ book, children }: BookLongPressMenuP
     <div
       ref={containerRef}
       className={`relative select-none transition-transform duration-150 ${isPressing ? 'scale-[0.97]' : ''}`}
-      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' } as UntypedValue}
+      style={touchBlockStyle}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchMove}

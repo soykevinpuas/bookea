@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/server';
 import { fetchAuthorFromWikipedia } from '@/lib/wikipedia';
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Error inesperado';
+}
+
 export async function POST() {
   try {
     const supabase = await createClient();
@@ -58,7 +62,7 @@ export async function POST() {
     }
 
     return NextResponse.json({ updated, failed, skipped, total: authors.length });
-  } catch (err: UntypedValue) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }

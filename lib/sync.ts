@@ -1,6 +1,14 @@
 import { createClientClient } from "@/lib/supabase";
+import type { Bookmark } from "@/types/bookmark";
+import type { Highlight, ReadingProgress } from "@/types/reading";
+
 const PROGRESS_KEY = "bookea-offline-progress";
 const HIGHLIGHTS_KEY = "bookea-offline-highlights";
+const BOOKMARKS_KEY = "bookea-offline-bookmarks";
+
+type OfflineProgressCache = Record<string, ReadingProgress>;
+type OfflineHighlightsCache = Record<string, Highlight[]>;
+type OfflineBookmarksCache = Record<string, Bookmark[]>;
 
 /**
  * Sincronizador de Progreso Offline
@@ -13,7 +21,7 @@ export async function syncOfflineProgress() {
   try {
     const raw = localStorage.getItem(PROGRESS_KEY);
     if (raw) {
-      const allProgress = JSON.parse(raw);
+      const allProgress = JSON.parse(raw) as OfflineProgressCache;
       const bookIds = Object.keys(allProgress);
       for (const bookId of bookIds) {
         const item = allProgress[bookId];
@@ -36,9 +44,9 @@ export async function syncOfflineProgress() {
   try {
     const rawH = localStorage.getItem(HIGHLIGHTS_KEY);
     if (rawH) {
-      const allHighlights = JSON.parse(rawH);
+      const allHighlights = JSON.parse(rawH) as OfflineHighlightsCache;
       for (const bookId in allHighlights) {
-        const highlights = allHighlights[bookId] as UntypedValue[];
+        const highlights = allHighlights[bookId];
         for (const h of highlights) {
           if (!h.synced && h.user_id) {
             // Nota: Usamos upsert para manejar actualizaciones de color/nota offline
@@ -61,11 +69,11 @@ export async function syncOfflineProgress() {
 
   // SINCRONIZAR MARCADORES
   try {
-    const rawB = localStorage.getItem("bookea-offline-bookmarks");
+    const rawB = localStorage.getItem(BOOKMARKS_KEY);
     if (rawB) {
-      const allBookmarks = JSON.parse(rawB);
+      const allBookmarks = JSON.parse(rawB) as OfflineBookmarksCache;
       for (const bookId in allBookmarks) {
-        const bookmarks = allBookmarks[bookId] as UntypedValue[];
+        const bookmarks = allBookmarks[bookId];
         for (const b of bookmarks) {
           if (!b.synced && b.user_id) {
             const { error } = await supabase.from("bookmarks").upsert({
@@ -82,7 +90,7 @@ export async function syncOfflineProgress() {
           }
         }
       }
-      localStorage.setItem("bookea-offline-bookmarks", JSON.stringify(allBookmarks));
+      localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(allBookmarks));
     }
   } catch (err) { console.error("Sync bookmarks error:", err); }
 

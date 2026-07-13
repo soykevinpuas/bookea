@@ -1,6 +1,35 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/server'
 import { getStripeClient } from '@/lib/stripe'
+import type Stripe from 'stripe'
+
+type CartItemType = 'digital' | 'physical'
+
+type CheckoutCartBook = {
+  title: string | null
+  price_digital: number | null
+  price_physical: number | null
+  stock_physical: number | null
+}
+
+type CheckoutCartRow = {
+  id: string
+  book_id: string
+  type: CartItemType
+  quantity: number | null
+  books: CheckoutCartBook | CheckoutCartBook[] | null
+}
+
+type CheckoutItemMeta = {
+  book_id: string
+  type: CartItemType
+  cart_item_id: string
+  quantity: number
+}
+
+function pickCheckoutBook(books: CheckoutCartRow['books']) {
+  return Array.isArray(books) ? books[0] ?? null : books ?? null
+}
 
 export async function POST(req: Request) {
   try {
@@ -22,12 +51,15 @@ export async function POST(req: Request) {
     const stripe = getStripeClient()
     const baseUrl = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
-    const lineItems: UntypedValue[] = []
-    const itemsMeta: UntypedValue[] = []
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = []
+    const itemsMeta: CheckoutItemMeta[] = []
     let hasPhysical = false
 
-    for (const item of cartItems) {
-      const book = item.books as UntypedValue
+    for (const item of cartItems as CheckoutCartRow[]) {
+      const book = pickCheckoutBook(item.books)
+      if (!book) {
+        return NextResponse.json({ error: 'Libro no encontrado en el carrito' }, { status: 400 })
+      }
       const quantity = item.quantity || 1
       const price = item.type === 'digital' ? (book.price_digital || 29) : (book.price_physical || 299)
 

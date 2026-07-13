@@ -24,6 +24,25 @@ import { toast } from "sonner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import StockRequestItemsModal from "@/components/StockRequestItemsModal";
 import BookPreviewModal from "@/components/BookPreviewModal";
+import type { StockRequest } from "@/types/seller";
+
+type PhysicalBook = {
+  id: string;
+  title: string;
+  author: string;
+  cover_url: string | null;
+  price_physical?: number | null;
+  stock_physical: number;
+};
+
+type PreviewBook = {
+  id: string;
+  title: string;
+  author?: string | null;
+  cover_url?: string | null;
+  price_physical?: number | null;
+  stock_physical?: number | null;
+};
 
 export default function AdminSellerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -39,13 +58,13 @@ export default function AdminSellerDetailPage() {
   });
 
   const [showAssign, setShowAssign] = useState(false);
-  const [modalItems, setModalItems] = useState<UntypedValue[] | null>(null);
+  const [modalItems, setModalItems] = useState<StockRequest["items"] | null>(null);
   const [showAllInventory, setShowAllInventory] = useState(false);
   const [showAllSales, setShowAllSales] = useState(false);
   const [showAllRequests, setShowAllRequests] = useState(false);
   const [assignBookId, setAssignBookId] = useState("");
   const [assignQty, setAssignQty] = useState(1);
-  const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
+  const [previewBook, setPreviewBook] = useState<PreviewBook | null>(null);
   const [bookSearch, setBookSearch] = useState("");
   const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -55,7 +74,7 @@ export default function AdminSellerDetailPage() {
     enabled: !!id,
   });
 
-  const { data: physicalBooks = [] } = useQuery({
+  const { data: physicalBooks = [] } = useQuery<PhysicalBook[]>({
     queryKey: ["physical-books", adminSession?.id],
     queryFn: () => getPhysicalBooks(supabase, adminSession?.id),
     enabled: !!adminSession?.id,
@@ -64,7 +83,7 @@ export default function AdminSellerDetailPage() {
   const assignMutation = useMutation({
     mutationFn: () => assignStock(supabase, id, assignBookId, assignQty),
     onMutate: () => {
-      queryClient.setQueryData<UntypedValue[]>(["physical-books", adminSession?.id], (old) => {
+      queryClient.setQueryData<PhysicalBook[]>(["physical-books", adminSession?.id], (old) => {
         if (!old) return old;
         return old.map((book) =>
           book.id === assignBookId
@@ -96,6 +115,7 @@ export default function AdminSellerDetailPage() {
     onError: (err) => toast.error(err.message),
   });
   const revertingBookId = revertMutation.isPending ? revertMutation.variables?.bookId : null;
+  const openPreviewBook = (book: PreviewBook | null | undefined) => setPreviewBook(book ?? null);
 
   useEffect(() => {
     if (!id) return;
@@ -171,7 +191,7 @@ export default function AdminSellerDetailPage() {
   const totalRevenue = (data?.sales || []).reduce((s, i) => s + (i.sale_price || 0) * (i.quantity || 0), 0);
 
   const filteredBooks = physicalBooks.filter(
-    (b: UntypedValue) =>
+    (b) =>
       b.title.toLowerCase().includes(bookSearch.toLowerCase()) ||
       b.author.toLowerCase().includes(bookSearch.toLowerCase())
   );
@@ -266,7 +286,7 @@ export default function AdminSellerDetailPage() {
               />
             </div>
             <div className="max-h-48 overflow-y-auto mb-3 space-y-1">
-              {filteredBooks.map((book: UntypedValue) => {
+              {filteredBooks.map((book) => {
                 const isAssigningBook = assignMutation.isPending && assignBookId === book.id;
                 return (
                   <button
@@ -343,7 +363,7 @@ export default function AdminSellerDetailPage() {
                 >
                   <div className="flex gap-3">
                     {item.books?.cover_url && (
-                      <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                      <button onClick={() => openPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
                         <AppImage
                           src={item.books.cover_url}
                           alt=""
@@ -403,7 +423,7 @@ export default function AdminSellerDetailPage() {
               >
                 <div className="flex items-center gap-3">
                   {sale.books?.cover_url && (
-                    <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                    <button onClick={() => openPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
                       <AppImage
                         src={sale.books.cover_url}
                         alt=""
@@ -479,7 +499,7 @@ export default function AdminSellerDetailPage() {
                       <div key={item.id} className="flex items-center justify-between text-sm">
                         <span className="flex items-center gap-2 min-w-0 flex-1">
                           {item.books?.cover_url && (
-                            <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                            <button onClick={() => openPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
                               <AppImage src={item.books.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                             </button>
                           )}
@@ -545,7 +565,7 @@ export default function AdminSellerDetailPage() {
               {inventory.map((item) => (
                 <div key={item.id} className="flex items-center gap-3">
                   {item.books?.cover_url && (
-                    <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                    <button onClick={() => openPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
                       <AppImage src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                     </button>
                   )}
@@ -576,7 +596,7 @@ export default function AdminSellerDetailPage() {
               {sales.map((sale) => (
                 <div key={sale.id} className="flex items-center gap-3">
                   {sale.books?.cover_url && (
-                    <button onClick={() => setPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                    <button onClick={() => openPreviewBook(sale.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
                       <AppImage src={sale.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                     </button>
                   )}
@@ -623,14 +643,14 @@ export default function AdminSellerDetailPage() {
                     )}
                   </div>
                   <div className="space-y-1">
-                    {(req.items ?? []).slice(0, 3).map((item: UntypedValue) => {
+                    {(req.items ?? []).slice(0, 3).map((item) => {
                       const soldQty = salesMap.get(item.book_id) || 0;
                       const isReceived = !!item.received_at;
                       return (
                         <div key={item.id} className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-2 min-w-0 flex-1">
                             {item.books?.cover_url && (
-                              <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                              <button onClick={() => openPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
                                 <AppImage src={item.books.cover_url} alt="" className="w-5 h-7 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                               </button>
                             )}
@@ -671,13 +691,13 @@ export default function AdminSellerDetailPage() {
         items={modalItems ?? []}
         title="Libros en solicitud"
       >
-        {(item: UntypedValue) => {
+        {(item) => {
           const soldQty = salesMap.get(item.book_id) || 0;
           const isReceived = !!item.received_at;
           return (
             <div key={item.id} className="flex items-center gap-3">
               {item.books?.cover_url && (
-                <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                <button onClick={() => openPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
                   <AppImage src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                 </button>
               )}

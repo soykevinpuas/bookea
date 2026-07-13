@@ -1,6 +1,45 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/server'
 
+type CartItemType = 'digital' | 'physical'
+
+type CartBook = {
+  title: string | null
+  author: string | null
+  cover_url: string | null
+  price_digital: number | null
+  price_physical: number | null
+  stock_physical: number | null
+}
+
+type CartRow = {
+  id: string
+  book_id: string
+  type: CartItemType
+  quantity: number | null
+  books: CartBook | CartBook[] | null
+}
+
+function pickCartBook(books: CartRow['books']) {
+  return Array.isArray(books) ? books[0] ?? null : books ?? null
+}
+
+function mapCartItems(rows: CartRow[]) {
+  return rows.map((item) => {
+    const book = pickCartBook(item.books)
+    return {
+      id: item.id,
+      book_id: item.book_id,
+      type: item.type,
+      title: book?.title || '',
+      author: book?.author || '',
+      cover_url: book?.cover_url || null,
+      price: item.type === 'digital' ? book?.price_digital || 29 : book?.price_physical || 299,
+      stock_physical: book?.stock_physical || 0,
+    }
+  })
+}
+
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -13,16 +52,7 @@ export async function GET() {
 
   if (error) return NextResponse.json({ items: [] })
 
-  const items = data.map((item: UntypedValue) => ({
-    id: item.id,
-    book_id: item.book_id,
-    type: item.type,
-    title: item.books?.title || '',
-    author: item.books?.author || '',
-    cover_url: item.books?.cover_url || null,
-    price: item.type === 'digital' ? item.books?.price_digital || 29 : item.books?.price_physical || 299,
-    stock_physical: item.books?.stock_physical || 0,
-  }))
+  const items = mapCartItems((data ?? []) as CartRow[])
 
   return NextResponse.json({ items })
 }
@@ -55,16 +85,7 @@ export async function POST(req: Request) {
     .select('id, book_id, type, quantity, books(title, author, cover_url, price_digital, price_physical, stock_physical)')
     .eq('user_id', user.id)
 
-  const items = (data || []).map((item: UntypedValue) => ({
-    id: item.id,
-    book_id: item.book_id,
-    type: item.type,
-    title: item.books?.title || '',
-    author: item.books?.author || '',
-    cover_url: item.books?.cover_url || null,
-    price: item.type === 'digital' ? item.books?.price_digital || 29 : item.books?.price_physical || 299,
-    stock_physical: item.books?.stock_physical || 0,
-  }))
+  const items = mapCartItems((data ?? []) as CartRow[])
 
   return NextResponse.json({ items })
 }
@@ -88,16 +109,7 @@ export async function DELETE(req: Request) {
     .select('id, book_id, type, quantity, books(title, author, cover_url, price_digital, price_physical, stock_physical)')
     .eq('user_id', user.id)
 
-  const items = (data || []).map((item: UntypedValue) => ({
-    id: item.id,
-    book_id: item.book_id,
-    type: item.type,
-    title: item.books?.title || '',
-    author: item.books?.author || '',
-    cover_url: item.books?.cover_url || null,
-    price: item.type === 'digital' ? item.books?.price_digital || 29 : item.books?.price_physical || 299,
-    stock_physical: item.books?.stock_physical || 0,
-  }))
+  const items = mapCartItems((data ?? []) as CartRow[])
 
   return NextResponse.json({ items })
 }

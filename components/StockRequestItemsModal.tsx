@@ -5,9 +5,10 @@ import { X } from "lucide-react";
 
 export interface StockRequestItem {
   id: string;
+  book_id: string;
   quantity: number;
   received_at: string | null;
-  books: { title: string; cover_url?: string | null } | null;
+  books?: { id: string; title: string; author?: string | null; cover_url?: string | null; price_physical?: number | null } | null;
 }
 
 interface StockRequestItemsModalProps {

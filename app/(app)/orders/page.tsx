@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { useUserId } from "@/hooks/useUser";
 import { Package, Truck, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 
 interface Order {
@@ -24,7 +25,7 @@ interface Order {
   books?: { id: string; title: string; cover_url: string | null; author: string } | null;
 }
 
-const STATUS_CONFIG: Record<Order["status"], { label: string; color: string; icon: UntypedValue; msg: string }> = {
+const STATUS_CONFIG: Record<Order["status"], { label: string; color: string; icon: LucideIcon; msg: string }> = {
   pending: {
     label: "Pendiente",
     color: "bg-amber-500/10 text-amber-400 border border-amber-500/20",

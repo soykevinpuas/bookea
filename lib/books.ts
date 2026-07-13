@@ -1,10 +1,17 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { Book } from "@/types/book";
+import type { Book, BookAccessType } from "@/types/book";
 import { getCachedBookMetadata, getAllCachedBooks, isBookDownloaded, saveBookMetadata } from "./downloads";
 
 // Modulo central de catalogo, biblioteca y reglas de acceso digital.
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isValidUUID = (id: string) => UUID_REGEX.test(id);
+const VALID_LIBRARY_ACCESS_TYPES: BookAccessType[] = ["subscription", "permanent", "gift", "coin_redemption"];
+
+function normalizeLibraryAccessType(accessType: string | null | undefined): BookAccessType | null {
+  return VALID_LIBRARY_ACCESS_TYPES.includes(accessType as BookAccessType)
+    ? accessType as BookAccessType
+    : null;
+}
 
 // Lista libros activos aplicando filtros de catalogo y visibilidad fisica/digital.
 export async function getBooks(
@@ -121,7 +128,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
     });
 
     const books = (await Promise.all(
-      userBooksData.map(async (item: { access_type: string; expires_at?: string | null; book_id: string; books: Book | Book[] }) => {
+      userBooksData.map(async (item: { access_type: string | null; expires_at?: string | null; book_id: string; books: Book | Book[] }) => {
         const bookData = item.books;
         const book = Array.isArray(bookData) ? bookData[0] : bookData;
 
@@ -163,7 +170,7 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
           ...book,
           last_read_at: finalLastRead,
           percent_complete: finalPercent,
-          access_type: item.access_type,
+          access_type: normalizeLibraryAccessType(item.access_type),
           expires_at: item.expires_at ?? null,
           isOfflineReady
         };
@@ -327,7 +334,7 @@ export async function hasBookAccess(supabase: SupabaseClient, userId: string, bo
 /**
  * Tipos de acceso guardados en user_books y usados por lector/catalogo.
  */
-export type LibraryAccessType = 'subscription' | 'permanent' | 'gift' | 'coin_redemption';
+export type LibraryAccessType = BookAccessType;
 
 const ACCESS_STRENGTH: Record<LibraryAccessType, number> = {
   subscription: 1,

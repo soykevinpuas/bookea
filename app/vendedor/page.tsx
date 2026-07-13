@@ -59,6 +59,17 @@ type LocalStockLock = {
   expiresAt: number;
 };
 
+type PreviewBook = {
+  id: string;
+  title: string;
+  author?: string | null;
+  cover_url?: string | null;
+  description?: string | null;
+  category?: string | null;
+  price_physical?: number | null;
+  stock_physical?: number | null;
+};
+
 const sections: { key: Section; label: string; icon: LucideIcon }[] = [
   { key: "ingresos", label: "Ingresos", icon: BarChart3 },
   { key: "stock", label: "Stock", icon: Package },
@@ -84,12 +95,24 @@ const STOCK_EXIT_ANIMATION_MS = 320;
 const VENDEDOR_DASHBOARD_STALE_MS = 60 * 1000;
 const VENDEDOR_BACKGROUND_REFRESH_MS = 60 * 1000;
 
-const ChartTooltip = ({ active, payload, label }: UntypedValue) => {
+type ChartTooltipPayload = {
+  color?: string;
+  name?: string;
+  value: number;
+};
+
+type ChartTooltipProps = {
+  active?: boolean;
+  payload?: ChartTooltipPayload[];
+  label?: string | number;
+};
+
+const ChartTooltip = ({ active, payload, label }: ChartTooltipProps) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-[#1a1a1a] border border-white/10 rounded-xl px-3 py-2 text-xs shadow-xl">
       <p className="text-white/50 mb-1">{label}</p>
-      {payload.map((entry: UntypedValue, i: number) => (
+      {payload.map((entry, i) => (
         <p key={i} className="font-medium" style={{ color: entry.color }}>
           {entry.name}: ${entry.value.toLocaleString("es-MX")}
         </p>
@@ -107,7 +130,7 @@ export default function VendedorDashboard() {
   const [stockTab, setStockTab] = useState<StockTab>("inventory");
   const [requestViewMode, setRequestViewMode] = useState<RequestViewMode>("grid");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
-  const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
+  const [previewBook, setPreviewBook] = useState<PreviewBook | null>(null);
   const stockWriteInFlight = useRef(false);
   const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dashboardQueryKey = useMemo(() => ["vendedor-dashboard", userId] as const, [userId]);
@@ -187,7 +210,7 @@ export default function VendedorDashboard() {
   const [exitingSoldBooks, setExitingSoldBooks] = useState<Set<string>>(() => new Set());
   const [stockLocks, setStockLocks] = useState<Record<string, LocalStockLock>>({});
   const [receiving, setReceiving] = useState<string | null>(null);
-  const [modalItems, setModalItems] = useState<UntypedValue[] | null>(null);
+  const [modalItems, setModalItems] = useState<StockRequest["items"] | null>(null);
   const [solicitudFilter, setSolicitudFilter] = useState("all");
   const [requestSearch, setRequestSearch] = useState("");
   const [requestCart, setRequestCart] = useState<RequestCartItem[]>([]);
@@ -1057,7 +1080,7 @@ export default function VendedorDashboard() {
                 <div className="text-center py-8 text-white/30 text-sm">Aún no hay ventas.</div>
               ) : (
                 <div className="divide-y divide-white/5">
-                   {sales.map((sale: UntypedValue) => {
+                   {sales.map((sale) => {
                     const book = sale.books;
                     return (
                       <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
@@ -1146,10 +1169,10 @@ export default function VendedorDashboard() {
                       <YAxis domain={[0, 'auto']} tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
                       <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                       <Bar dataKey="venta" name="Venta" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={20}>
-                        <LabelList dataKey="venta" position="top" fill="#22c55e" fontSize={10} fontWeight={700} formatter={(v: UntypedValue) => `$${(v || 0).toLocaleString("es-MX")}`} />
+                        <LabelList dataKey="venta" position="top" fill="#22c55e" fontSize={10} fontWeight={700} formatter={(v) => `$${Number(v || 0).toLocaleString("es-MX")}`} />
                       </Bar>
                       <Bar dataKey="ganancia" name="Ganancia" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={20}>
-                        <LabelList dataKey="ganancia" position="top" fill="#60a5fa" fontSize={10} fontWeight={600} formatter={(v: UntypedValue) => `$${(v || 0).toLocaleString("es-MX")}`} />
+                        <LabelList dataKey="ganancia" position="top" fill="#60a5fa" fontSize={10} fontWeight={600} formatter={(v) => `$${Number(v || 0).toLocaleString("es-MX")}`} />
                       </Bar>
                       <Bar dataKey="ahorro" name="Inversión ahorrada" fill="#a78bfa" radius={[4, 4, 0, 0]} maxBarSize={20} />
                     </BarChart>
@@ -1214,9 +1237,9 @@ export default function VendedorDashboard() {
                   </div>
                 ) : (
                   <div className="divide-y divide-white/5">
-                    {filteredRequests.map((req: UntypedValue) => {
+                    {filteredRequests.map((req) => {
                       const statusInfo = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending;
-                      const totalItems = (req as UntypedValue).items?.reduce((s: number, i: UntypedValue) => s + i.quantity, 0) ?? 0;
+                      const totalItems = req.items?.reduce((s, i) => s + i.quantity, 0) ?? 0;
                       return (
                         <div key={req.id} className="px-5 py-3">
                           <div className="flex items-center justify-between mb-2">
@@ -1232,8 +1255,8 @@ export default function VendedorDashboard() {
                           </div>
 
                           <div className="space-y-1">
-                            {((req as UntypedValue).items || []).slice(0, 3).map((item: UntypedValue) => {
-                              const book = item.books as UntypedValue;
+                            {(req.items || []).slice(0, 3).map((item) => {
+                              const book = item.books;
                               const isReceived = !!item.received_at;
                               const soldQty = soldByBook.get(item.book_id) || 0;
                               return (
@@ -1288,12 +1311,12 @@ export default function VendedorDashboard() {
                                 </div>
                               );
                             })}
-                            {((req as UntypedValue).items?.length ?? 0) > 3 && (
+                            {(req.items?.length ?? 0) > 3 && (
                               <button
-                                onClick={() => setModalItems((req as UntypedValue).items ?? [])}
+                                onClick={() => setModalItems(req.items ?? [])}
                                 className="text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1"
                               >
-                                +{(req as UntypedValue).items!.length - 3} libros más
+                                +{req.items!.length - 3} libros más
                               </button>
                             )}
                           </div>
@@ -1320,17 +1343,18 @@ export default function VendedorDashboard() {
         items={modalItems ?? []}
         title="Libros en solicitud"
       >
-        {(item: UntypedValue) => {
+        {(item) => {
           const soldQty = soldByBook.get(item.book_id) || 0;
+          const book = item.books;
           return (
             <div key={item.id} className="flex items-center gap-3">
-              {item.books?.cover_url && (
-                <button onClick={() => setPreviewBook(item.books)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                  <AppImage src={item.books.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+              {book?.cover_url && (
+                <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                  <AppImage src={book.cover_url} alt="" className="w-8 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
                 </button>
               )}
               <span className="text-white/80 text-sm flex-1 min-w-0 truncate">
-                {item.books?.title ?? "Libro"}
+                {book?.title ?? "Libro"}
               </span>
               <span className="text-white font-medium text-sm shrink-0">x{item.quantity}</span>
               <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${

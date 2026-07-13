@@ -11,6 +11,8 @@ export interface ReadingProgress {
   percent_complete: number;
   last_read_at: string;
   created_at: string;
+  updated_at?: string;
+  synced?: boolean;
 }
 
 // Subrayado o nota dentro de un EPUB.
@@ -26,4 +28,5 @@ export interface Highlight {
   color: string;
   note: string | null;
   created_at: string;
+  synced?: boolean;
 }

@@ -1,3 +1,6 @@
+// Tipos validos de acceso digital registrados en user_books.
+export type BookAccessType = "subscription" | "permanent" | "gift" | "coin_redemption";
+
 // Contrato compartido de libro usado por catalogo, biblioteca, admin y carrito.
 export interface Book {
   // Identidad editorial principal del libro.
@@ -22,6 +25,7 @@ export interface Book {
   // Campos derivados cuando el libro viene desde la biblioteca del usuario.
   percent_complete?: number;
   last_read_at?: string | null;
-  access_type?: string | null;
+  access_type?: BookAccessType | null;
   expires_at?: string | null;
+  isOfflineReady?: boolean;
 }

@@ -19,17 +19,39 @@ type TopBook = {
   lastSoldAt: string | null;
 };
 
-function pickJoinedBook(books: UntypedValue) {
+type JoinedBook = {
+  id?: string;
+  title?: string | null;
+  author?: string | null;
+  cover_url?: string | null;
+} | null;
+
+type TopBookSaleRow = {
+  book_id: string | null;
+  quantity: number | null;
+  sale_price: number | null;
+  sold_at: string | null;
+  books?: JoinedBook | JoinedBook[] | null;
+};
+
+type SalesMapRow = {
+  seller_id: string | null;
+  book_id: string | null;
+  quantity: number | null;
+};
+
+function pickJoinedBook(books: TopBookSaleRow["books"]): JoinedBook {
   if (Array.isArray(books)) return books[0] ?? null;
   return books ?? null;
 }
 
-function buildTopBooks(sales: UntypedValue[], since?: Date): TopBook[] {
+function buildTopBooks(sales: TopBookSaleRow[], since?: Date): TopBook[] {
   const map = new Map<string, TopBook>();
   const sinceMs = since?.getTime() ?? null;
 
   for (const sale of sales) {
-    if (!sale?.book_id) continue;
+    const bookId = sale.book_id;
+    if (!bookId) continue;
     const soldAt = sale.sold_at ? new Date(sale.sold_at) : null;
     if (sinceMs !== null && (!soldAt || soldAt.getTime() < sinceMs)) continue;
 
@@ -37,8 +59,8 @@ function buildTopBooks(sales: UntypedValue[], since?: Date): TopBook[] {
     if (qty <= 0) continue;
 
     const book = pickJoinedBook(sale.books);
-    const existing = map.get(sale.book_id) ?? {
-      book_id: sale.book_id,
+    const existing = map.get(bookId) ?? {
+      book_id: bookId,
       title: book?.title || "Libro",
       author: book?.author ?? null,
       cover_url: book?.cover_url ?? null,
@@ -56,7 +78,7 @@ function buildTopBooks(sales: UntypedValue[], since?: Date): TopBook[] {
       existing.lastSoldAt = sale.sold_at;
     }
 
-    map.set(sale.book_id, existing);
+    map.set(bookId, existing);
   }
 
   return Array.from(map.values())
@@ -170,7 +192,8 @@ export async function GET(request: Request) {
     ]);
 
     const salesMap: Record<string, number> = {};
-    for (const s of (salesMapResult.data ?? [])) {
+    for (const s of (salesMapResult.data ?? []) as SalesMapRow[]) {
+      if (!s.seller_id || !s.book_id) continue;
       const key = `${s.seller_id}:${s.book_id}`;
       salesMap[key] = (salesMap[key] || 0) + (s.quantity || 0);
     }
@@ -178,7 +201,7 @@ export async function GET(request: Request) {
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const topBookSales = topBookSalesResult.data ?? [];
+    const topBookSales = (topBookSalesResult.data ?? []) as TopBookSaleRow[];
 
     return NextResponse.json({
       adminUserId: adminId,

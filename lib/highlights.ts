@@ -2,6 +2,7 @@ import { createClientClient } from "@/lib/supabase";
 import { Highlight } from "@/types/reading";
 
 const HIGHLIGHTS_KEY = "bookea-offline-highlights";
+type HighlightsCache = Record<string, Highlight[]>;
 
 // Las claves por usuario evitan mezclar subrayados entre sesiones locales.
 function getScopedBookKey(bookId: string, userId?: string | null): string {
@@ -29,7 +30,7 @@ export function getLocalHighlights(bookId: string, userId?: string | null): High
   try {
     const raw = localStorage.getItem(HIGHLIGHTS_KEY);
     if (!raw) return [];
-    const all = JSON.parse(raw);
+    const all = JSON.parse(raw) as HighlightsCache;
     const scoped = all[getScopedBookKey(bookId, userId)];
     if (scoped) return scoped;
     const legacy = all[bookId] || [];
@@ -44,16 +45,16 @@ export function saveLocalHighlight(bookId: string, highlight: Highlight) {
   if (typeof window === 'undefined') return;
   try {
     const raw = localStorage.getItem(HIGHLIGHTS_KEY);
-    const all = raw ? JSON.parse(raw) : {};
+    const all = (raw ? JSON.parse(raw) : {}) as HighlightsCache;
     const key = getScopedBookKey(bookId, highlight.user_id);
     if (!all[key]) all[key] = [];
 
-    const current = all[key] as UntypedValue[];
+    const current = all[key];
     const exists = current.findIndex(h => h.id === highlight.id);
     if (exists >= 0) {
       current[exists] = { ...current[exists], ...highlight, synced: false };
     } else {
-      current.unshift({ ...highlight, synced: false } as UntypedValue);
+      current.unshift({ ...highlight, synced: false });
     }
 
     localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(all));
@@ -85,15 +86,16 @@ export async function getHighlights(
 
     if (data && typeof window !== 'undefined') {
       const raw = localStorage.getItem(HIGHLIGHTS_KEY);
-      const all = raw ? JSON.parse(raw) : {};
+      const all = (raw ? JSON.parse(raw) : {}) as HighlightsCache;
       const key = getScopedBookKey(bookId, userId);
-      const localUnsynced = (all[key] || []).filter((h: UntypedValue) => h.synced === false);
+      const localUnsynced = (all[key] || []).filter((h) => h.synced === false);
 
-      const remoteIds = new Set(data.map(h => h.id));
+      const remote = data as Highlight[];
+      const remoteIds = new Set(remote.map(h => h.id));
       const filteredLocal = localUnsynced.filter((h: Highlight) => !remoteIds.has(h.id));
 
       const merged = [
-        ...data.map(h => ({ ...h, synced: true })),
+        ...remote.map(h => ({ ...h, synced: true })),
         ...filteredLocal
       ];
 
@@ -129,7 +131,7 @@ export async function saveHighlight(
     color,
     note: note || null,
     created_at: new Date().toISOString()
-  } as UntypedValue;
+  };
 
   saveLocalHighlight(bookId, newHighlight);
 
@@ -160,9 +162,9 @@ export async function saveHighlight(
 
     if (data) {
       const raw = localStorage.getItem(HIGHLIGHTS_KEY);
-      const all = raw ? JSON.parse(raw) : {};
+      const all = (raw ? JSON.parse(raw) : {}) as HighlightsCache;
       const key = getScopedBookKey(bookId, userId);
-      all[key] = (all[key] || []).filter((h: UntypedValue) => h.id !== tempId);
+      all[key] = (all[key] || []).filter((h) => h.id !== tempId);
       all[key].unshift({ ...data, synced: true });
       localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(all));
     }
@@ -181,9 +183,9 @@ export async function updateHighlightNote(
   if (typeof window !== 'undefined') {
     const raw = localStorage.getItem(HIGHLIGHTS_KEY);
     if (raw) {
-      const all = JSON.parse(raw);
+      const all = JSON.parse(raw) as HighlightsCache;
       for (const bookId in all) {
-        const idx = all[bookId].findIndex((h: UntypedValue) => h.id === highlightId);
+        const idx = all[bookId].findIndex((h) => h.id === highlightId);
         if (idx >= 0) {
           all[bookId][idx].note = note;
           all[bookId][idx].synced = false;
@@ -216,9 +218,9 @@ export async function updateHighlightColor(
   if (typeof window !== 'undefined') {
     const raw = localStorage.getItem(HIGHLIGHTS_KEY);
     if (raw) {
-      const all = JSON.parse(raw);
+      const all = JSON.parse(raw) as HighlightsCache;
       for (const bookId in all) {
-        const idx = all[bookId].findIndex((h: UntypedValue) => h.id === highlightId);
+        const idx = all[bookId].findIndex((h) => h.id === highlightId);
         if (idx >= 0) {
           all[bookId][idx].color = color;
           all[bookId][idx].synced = false;
@@ -250,9 +252,9 @@ export async function deleteHighlight(
   if (typeof window !== 'undefined') {
     const raw = localStorage.getItem(HIGHLIGHTS_KEY);
     if (raw) {
-      const all = JSON.parse(raw);
+      const all = JSON.parse(raw) as HighlightsCache;
       for (const bookId in all) {
-        all[bookId] = all[bookId].filter((h: UntypedValue) => h.id !== highlightId);
+        all[bookId] = all[bookId].filter((h) => h.id !== highlightId);
       }
       localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(all));
     }

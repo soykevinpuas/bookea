@@ -4,7 +4,8 @@ import AppImage from "@/components/ui/AppImage";
 import { createClientClient } from "@/lib/supabase";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { User, CreditCard, Shield, Zap, Loader2, BookOpen, Gift, BookOpenCheck, Trophy, Key, Trash2, AlertTriangle, Paintbrush, ChevronRight, Package, Clock, Truck, CheckCircle2 } from "lucide-react";
+import { CreditCard, Shield, Zap, Loader2, BookOpen, Gift, BookOpenCheck, Trophy, Key, Trash2, AlertTriangle, Paintbrush, ChevronRight, Package, Clock, Truck, CheckCircle2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useUserId } from "@/hooks/useUser";
@@ -35,7 +36,30 @@ interface Order {
   books?: { id: string; title: string; cover_url: string | null; author: string } | null;
 }
 
-const STATUS_CONFIG: Record<Order["status"], { label: string; color: string; icon: UntypedValue; msg: string }> = {
+interface PurchasedBook {
+  id: string;
+  title: string;
+  cover_url: string | null;
+  author: string | null;
+  types: ("digital" | "physical")[];
+}
+
+type PurchasedBookJoin = Omit<PurchasedBook, "types">;
+
+type DigitalPurchaseRow = {
+  book_id: string;
+  books: PurchasedBookJoin | PurchasedBookJoin[] | null;
+};
+
+type PhysicalOrderRow = {
+  book_id: string | null;
+};
+
+function pickPurchasedBook(books: DigitalPurchaseRow["books"]) {
+  return Array.isArray(books) ? books[0] ?? null : books ?? null;
+}
+
+const STATUS_CONFIG: Record<Order["status"], { label: string; color: string; icon: LucideIcon; msg: string }> = {
   pending: { label: "Pendiente", color: "bg-amber-500/10 text-amber-400 border border-amber-500/20", icon: Clock, msg: "El administrador procesará tu envío pronto." },
   shipped: { label: "Enviado", color: "bg-blue-500/10 text-blue-400 border border-blue-500/20", icon: Truck, msg: "Tu pedido está en camino." },
   delivered: { label: "Entregado", color: "bg-green-500/10 text-green-400 border border-green-500/20", icon: CheckCircle2, msg: "Entregado — gracias por tu compra." },
@@ -44,7 +68,7 @@ const STATUS_CONFIG: Record<Order["status"], { label: string; color: string; ico
 
 type Section = "personalizar" | "facturacion" | "biblioteca" | "ordenes" | "progreso" | "referidos" | "seguridad";
 
-const sections: { key: Section; icon: typeof User; label: string }[] = [
+const sections: { key: Section; icon: LucideIcon; label: string }[] = [
   { key: "personalizar", icon: Paintbrush, label: "Personalizar" },
   { key: "facturacion", icon: CreditCard, label: "Facturación" },
   { key: "biblioteca", icon: BookOpen, label: "Biblioteca" },
@@ -74,7 +98,7 @@ export default function ProfilePage() {
 
   const { data: allUserBooks } = useUserBooks(userId);
   const completedBooks = useMemo(
-    () => (allUserBooks || []).filter((b: UntypedValue) => (b.percent_complete || 0) >= 100).length,
+    () => (allUserBooks || []).filter((b) => (b.percent_complete || 0) >= 100).length,
     [allUserBooks]
   );
 
@@ -85,7 +109,7 @@ export default function ProfilePage() {
   const [deleteStep, setDeleteStep] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [purchasedBooks, setPurchasedBooks] = useState<UntypedValue[]>([]);
+  const [purchasedBooks, setPurchasedBooks] = useState<PurchasedBook[]>([]);
   const [purchasedLoading, setPurchasedLoading] = useState(false);
   const [purchasedLoaded, setPurchasedLoaded] = useState(false);
   const [purchasedOpen, setPurchasedOpen] = useState(false);
@@ -164,23 +188,23 @@ export default function ProfilePage() {
           .eq('user_id', userId)
           .eq('access_type', 'permanent');
 
-        const bookMap = new Map<string, UntypedValue>();
-        (digitalData || []).forEach((item: UntypedValue) => {
-          const book = item.books;
+        const bookMap = new Map<string, PurchasedBook>();
+        ((digitalData || []) as DigitalPurchaseRow[]).forEach((item) => {
+          const book = pickPurchasedBook(item.books);
           if (book?.id) bookMap.set(book.id, { ...book, types: ['digital'] });
         });
         const { data: physicalOrders } = await supabase
           .from('orders_physical')
           .select('book_id')
           .eq('user_id', userId);
-        const physicalBookIds = [...new Set((physicalOrders || []).map((o: UntypedValue) => o.book_id))];
+        const physicalBookIds = [...new Set(((physicalOrders || []) as PhysicalOrderRow[]).map((o) => o.book_id).filter((bookId): bookId is string => !!bookId))];
         if (physicalBookIds.length > 0) {
           const { data: physicalBooks } = await supabase
             .from('books')
             .select('id, title, cover_url, author')
             .in('id', physicalBookIds);
-          (physicalBooks || []).forEach((book: UntypedValue) => {
-            if (bookMap.has(book.id)) bookMap.get(book.id).types.push('physical');
+          ((physicalBooks || []) as PurchasedBookJoin[]).forEach((book) => {
+            if (bookMap.has(book.id)) bookMap.get(book.id)?.types.push('physical');
             else bookMap.set(book.id, { ...book, types: ['physical'] });
           });
         }
@@ -407,7 +431,7 @@ export default function ProfilePage() {
                     ) : purchasedBooks.length === 0 ? (
                       <p className="text-sm text-white/40 text-center py-6">Aún no has comprado ningún libro.</p>
                     ) : (
-                      purchasedBooks.map((book: UntypedValue) => (
+                      purchasedBooks.map((book) => (
                         <Link key={book.id} href={`/book/${book.id}`}
                           className="flex items-center gap-3 px-4 py-3 bg-gray-200 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 rounded-xl transition-all group">
                           {book.cover_url ? (

@@ -2,6 +2,16 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { SellerInventory, SellerSale, StockRequest } from "@/types/seller";
 import type { StockMutationResult } from "@/types/stock";
 
+type SellerRpcResult = {
+  success?: boolean;
+  error?: string;
+};
+
+function normalizeSellerRpcResult(data: unknown): SellerRpcResult {
+  const raw = Array.isArray(data) ? data[0] : data;
+  return ((raw as SellerRpcResult | null) || {}) as SellerRpcResult;
+}
+
 // ─── Inventory ──────────────────────────────────────────────
 
 export async function getSellerInventory(
@@ -175,8 +185,7 @@ export async function updateStockRequestStatus(
       console.error("[updateStockRequestStatus] rpc error:", rpcErr);
       throw new Error(`Error al entregar solicitud: ${rpcErr.message}`);
     }
-    const raw = (data as UntypedValue) || {};
-    const result = raw.success !== undefined ? raw : (Array.isArray(raw) ? raw[0] : raw);
+    const result = normalizeSellerRpcResult(data);
     if (!result?.success) throw new Error(result?.error || "Error al entregar solicitud");
     return;
   }
@@ -197,14 +206,13 @@ export async function updateStockRequestStatus(
         console.error("[updateStockRequestStatus] cancel rpc error:", rpcErr);
         throw new Error(`Error al cancelar solicitud: ${rpcErr.message}`);
       }
-      const raw = (data as UntypedValue) || {};
-      const result = raw.success !== undefined ? raw : (Array.isArray(raw) ? raw[0] : raw);
+      const result = normalizeSellerRpcResult(data);
       if (!result?.success) throw new Error(result?.error || "Error al cancelar solicitud");
       return;
     }
   }
 
-  const update: Record<string, UntypedValue> = {
+  const update: Record<string, string> = {
     status,
     updated_at: new Date().toISOString(),
   };

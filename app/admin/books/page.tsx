@@ -44,6 +44,11 @@ interface Book {
 }
 
 type FormData = Omit<Book, "id" | "created_at"> & { id?: string; newAuthor?: string };
+type BookPayload = Record<string, string | number | boolean | null | undefined>;
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Error inesperado";
+}
 
 const EMPTY_FORM: FormData = {
   title: "",
@@ -86,7 +91,7 @@ export default function AdminBooksPage() {
   const authorPhotoInputRef = useRef<HTMLInputElement>(null);
   const [filterTab, setFilterTab] = useState<"all" | "physical" | "no-epub">("all");
   const [stockLoading, setStockLoading] = useState<Set<string>>(new Set());
-  const [previewBook, setPreviewBook] = useState<UntypedValue>(null);
+  const [previewBook, setPreviewBook] = useState<Book | null>(null);
 
   const { data: books = [], isLoading } = useQuery({
     queryKey: ["admin-books"],
@@ -158,7 +163,7 @@ export default function AdminBooksPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-books"] });
       toast.success("Estado del libro actualizado");
     },
-    onError: (err: UntypedValue) => toast.error(`Error: ${err.message}`),
+    onError: (err: unknown) => toast.error(`Error: ${getErrorMessage(err)}`),
   });
 
   const adjustStockMutation = useMutation({
@@ -178,9 +183,9 @@ export default function AdminBooksPage() {
     onSuccess: (result) => {
       applyStockMutationResult(queryClient, result);
     },
-    onError: (err: UntypedValue, vars) => {
+    onError: (err: unknown, vars) => {
       setStockLoading((prev) => { const next = new Set(prev); next.delete(vars.id); return next; });
-      toast.error(err?.message || "Error al ajustar stock");
+      toast.error(getErrorMessage(err) || "Error al ajustar stock");
     },
     onSettled: () => {
       setStockLoading(new Set());
@@ -227,8 +232,8 @@ export default function AdminBooksPage() {
         setEditingBook((prev) => ({ ...prev, epub_url: publicUrl }));
         toast.success("Archivo EPUB subido");
       }
-    } catch (err: UntypedValue) {
-      toast.error(`Error al subir ${type === "cover" ? "portada" : "EPUB"}: ${err.message}`);
+    } catch (err: unknown) {
+      toast.error(`Error al subir ${type === "cover" ? "portada" : "EPUB"}: ${getErrorMessage(err)}`);
     } finally {
       setUploading(null);
     }
@@ -245,8 +250,8 @@ export default function AdminBooksPage() {
       const publicUrl = await uploadFile(file, "covers", uniqueName);
       setAuthorPhotoUrl(publicUrl);
       toast.success("Foto del autor subida");
-    } catch (err: UntypedValue) {
-      toast.error(`Error al subir foto: ${err.message}`);
+    } catch (err: unknown) {
+      toast.error(`Error al subir foto: ${getErrorMessage(err)}`);
     } finally {
       setAuthorPhotoUploading(false);
     }
@@ -299,7 +304,7 @@ export default function AdminBooksPage() {
         if (updateAuthorError) throw updateAuthorError;
       }
 
-      const payload: Record<string, UntypedValue> = {
+      const payload: BookPayload = {
         title: editingBook.title,
         author: editingBook.author,
         author_id: authorId,
@@ -345,8 +350,8 @@ export default function AdminBooksPage() {
 
       queryClient.invalidateQueries({ queryKey: ["admin-books"] });
       setShowModal(false);
-    } catch (err: UntypedValue) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setSaving(false);
     }

@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { SellerInventory, SellerSale } from "@/types/seller";
+import type { AdminSellerInfo, BookInventoryInfo, SellerInventory, SellerSale } from "@/types/seller";
 import type { StockMutationResult, StockSnapshot } from "@/types/stock";
 
 type StockCacheOptions = {
@@ -7,24 +7,90 @@ type StockCacheOptions = {
   adminId?: string | null;
 };
 
+type VersionedCacheRow = {
+  updated_at?: string | null;
+  stock_version?: string | null;
+};
+
+type InventoryCacheItem = SellerInventory & VersionedCacheRow & {
+  seller?: { id: string; email: string } | null;
+};
+
+type AdminStockCacheRow = VersionedCacheRow & {
+  book_id: string;
+  quantity: number;
+};
+
+type BookStockCacheRow = VersionedCacheRow & {
+  id: string;
+  title?: string;
+  author?: string | null;
+  cover_url?: string | null;
+  price_physical?: number | null;
+  stock_physical?: number;
+  stock_total?: number;
+  stock_warehouse?: number;
+  stock_assigned?: number;
+};
+
+type PaginatedCache<T> = {
+  data: T[];
+  total: number;
+  page?: number;
+  perPage?: number;
+};
+
+type VendedorDashboardCache = {
+  inventory: InventoryCacheItem[];
+  sales: SellerSale[];
+  pendingPayment: number;
+  role?: string;
+};
+
+type AdminDashboardCache = {
+  adminStock: AdminStockCacheRow[];
+  physicalBooks: BookStockCacheRow[];
+  inventory: PaginatedCache<InventoryCacheItem>;
+};
+
+type AdminSellerDetailCache = {
+  inventory: InventoryCacheItem[];
+};
+
+type AdminBooksResponseCache = {
+  books: BookStockCacheRow[];
+};
+
+type RequestableBooksResponseCache = {
+  books: BookStockCacheRow[];
+};
+
+type StockRealtimePayload = {
+  new?: {
+    id?: string;
+    action?: string;
+    snapshot_after?: StockSnapshot | null;
+  };
+};
+
 function snapshotTime(snapshot: StockSnapshot) {
   const parsed = Date.parse(snapshot.version || snapshot.updated_at || "");
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function rowTime(row: UntypedValue) {
-  const raw = row?.stock_version || row?.updated_at;
+function rowTime(row: VersionedCacheRow) {
+  const raw = row.stock_version || row.updated_at;
   const parsed = Date.parse(raw || "");
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function shouldApplySnapshot(row: UntypedValue, snapshot: StockSnapshot) {
+function shouldApplySnapshot(row: VersionedCacheRow, snapshot: StockSnapshot) {
   const current = rowTime(row);
   const next = snapshotTime(snapshot);
   return current === 0 || next === 0 || next >= current;
 }
 
-function inventoryBook(snapshot: StockSnapshot, previous?: UntypedValue) {
+function inventoryBook(snapshot: StockSnapshot, previous?: InventoryCacheItem | null): BookInventoryInfo | null {
   if (previous?.books) return previous.books;
   if (!snapshot.book) return null;
 
@@ -38,11 +104,11 @@ function inventoryBook(snapshot: StockSnapshot, previous?: UntypedValue) {
 }
 
 function updateSellerInventoryList(
-  inventory: SellerInventory[] | undefined,
+  inventory: InventoryCacheItem[] | undefined,
   snapshots: StockSnapshot[],
   sellerId?: string | null
 ) {
-  let next = [...(inventory ?? [])] as UntypedValue[];
+  let next = [...(inventory ?? [])];
 
   for (const snapshot of snapshots) {
     if (!snapshot.seller_id) continue;
@@ -62,11 +128,12 @@ function updateSellerInventoryList(
       continue;
     }
 
-    const updated = {
+    const updated: InventoryCacheItem = {
       ...(existing ?? {
         id: `snapshot-${snapshot.seller_id}-${snapshot.book_id}`,
         seller_id: snapshot.seller_id,
         book_id: snapshot.book_id,
+        updated_at: snapshot.updated_at,
       }),
       quantity: snapshot.seller_quantity,
       updated_at: snapshot.updated_at,
@@ -81,16 +148,16 @@ function updateSellerInventoryList(
     else next.unshift(updated);
   }
 
-  return next as SellerInventory[];
+  return next;
 }
 
-function updateAdminStockRows(rows: UntypedValue[] | undefined, snapshots: StockSnapshot[]) {
+function updateAdminStockRows(rows: AdminStockCacheRow[] | undefined, snapshots: StockSnapshot[]) {
   const next = [...(rows ?? [])];
 
   for (const snapshot of snapshots) {
     if (!snapshot.admin_id) continue;
     const index = next.findIndex((row) => row.book_id === snapshot.book_id);
-    const updated = {
+    const updated: AdminStockCacheRow = {
       ...(index >= 0 ? next[index] : { book_id: snapshot.book_id }),
       quantity: snapshot.warehouse_quantity,
       updated_at: snapshot.updated_at,
@@ -107,7 +174,11 @@ function updateAdminStockRows(rows: UntypedValue[] | undefined, snapshots: Stock
   return next;
 }
 
-function updateBookStockRows(rows: UntypedValue[] | undefined, snapshots: StockSnapshot[], mode: "total" | "warehouse") {
+function updateBookStockRows(
+  rows: BookStockCacheRow[] | undefined,
+  snapshots: StockSnapshot[],
+  mode: "total" | "warehouse"
+) {
   let next = [...(rows ?? [])];
 
   for (const snapshot of snapshots) {
@@ -124,7 +195,7 @@ function updateBookStockRows(rows: UntypedValue[] | undefined, snapshots: StockS
     if (!baseBook) continue;
     if (existing && !shouldApplySnapshot(existing, snapshot)) continue;
 
-    const updated = {
+    const updated: BookStockCacheRow = {
       ...baseBook,
       stock_physical: quantity,
       stock_total: snapshot.total_physical,
@@ -141,16 +212,21 @@ function updateBookStockRows(rows: UntypedValue[] | undefined, snapshots: StockS
   return next;
 }
 
-function updateVendedorDashboard(old: UntypedValue, snapshots: StockSnapshot[], result?: StockMutationResult, sellerId?: string | null) {
+function updateVendedorDashboard(
+  old: VendedorDashboardCache | undefined,
+  snapshots: StockSnapshot[],
+  result?: StockMutationResult,
+  sellerId?: string | null
+) {
   if (!old) return old;
 
   const nextInventory = updateSellerInventoryList(old.inventory, snapshots, sellerId);
   let nextSales = old.sales ?? [];
   let pendingPayment = old.pendingPayment ?? 0;
-  const sale = result?.sale as SellerSale | undefined;
+  const sale = result?.sale;
 
   if (sale && (!sellerId || sale.seller_id === sellerId)) {
-    const exists = nextSales.some((item: SellerSale) => item.id === sale.id);
+    const exists = nextSales.some((item) => item.id === sale.id);
     if (!exists) {
       nextSales = [sale, ...nextSales];
       if (old.role !== "admin") pendingPayment += sale.sale_price * sale.quantity;
@@ -165,7 +241,7 @@ function updateVendedorDashboard(old: UntypedValue, snapshots: StockSnapshot[], 
   };
 }
 
-function updateAdminDashboard(old: UntypedValue, snapshots: StockSnapshot[]) {
+function updateAdminDashboard(old: AdminDashboardCache | undefined, snapshots: StockSnapshot[]) {
   if (!old) return old;
 
   const previousInventory = old.inventory?.data ?? [];
@@ -186,7 +262,11 @@ function updateAdminDashboard(old: UntypedValue, snapshots: StockSnapshot[]) {
   };
 }
 
-function updateAdminSellerDetail(old: UntypedValue, snapshots: StockSnapshot[], sellerId: string | null) {
+function updateAdminSellerDetail(
+  old: AdminSellerDetailCache | undefined,
+  snapshots: StockSnapshot[],
+  sellerId: string | null
+) {
   if (!old || !sellerId) return old;
   return {
     ...old,
@@ -194,8 +274,8 @@ function updateAdminSellerDetail(old: UntypedValue, snapshots: StockSnapshot[], 
   };
 }
 
-function updateAdminSellers(old: UntypedValue, snapshots: StockSnapshot[]) {
-  if (!Array.isArray(old)) return old;
+function updateAdminSellers(old: AdminSellerInfo[] | undefined, snapshots: StockSnapshot[]) {
+  if (!old) return old;
 
   return old.map((seller) => {
     const snapshot = snapshots.find((item) => item.seller_id === seller.id);
@@ -209,7 +289,7 @@ function updateAdminSellers(old: UntypedValue, snapshots: StockSnapshot[]) {
   });
 }
 
-function updateAdminBooksResponse(old: UntypedValue, snapshots: StockSnapshot[]) {
+function updateAdminBooksResponse(old: AdminBooksResponseCache | undefined, snapshots: StockSnapshot[]) {
   if (!old?.books) return old;
   return {
     ...old,
@@ -217,7 +297,7 @@ function updateAdminBooksResponse(old: UntypedValue, snapshots: StockSnapshot[])
   };
 }
 
-function updateRequestableBooksResponse(old: UntypedValue, snapshots: StockSnapshot[]) {
+function updateRequestableBooksResponse(old: RequestableBooksResponseCache | undefined, snapshots: StockSnapshot[]) {
   if (!old?.books) return old;
   return {
     ...old,
@@ -231,7 +311,7 @@ export function getStockSnapshots(result: StockMutationResult | null | undefined
 
   const direct = Array.isArray(result.snapshots) ? result.snapshots : [];
   const fromEvents = Array.isArray(result.events)
-    ? result.events.map((event) => event.snapshot_after).filter(Boolean) as StockSnapshot[]
+    ? result.events.flatMap((event) => event.snapshot_after ? [event.snapshot_after] : [])
     : [];
 
   const byKey = new Map<string, StockSnapshot>();
@@ -252,43 +332,49 @@ export function applyStockMutationResult(
   if (snapshots.length === 0) return;
 
   if (options.sellerId) {
-    queryClient.setQueryData(["vendedor-dashboard", options.sellerId], (old: UntypedValue) =>
+    queryClient.setQueryData<VendedorDashboardCache | undefined>(["vendedor-dashboard", options.sellerId], (old) =>
       updateVendedorDashboard(old, snapshots, result ?? undefined, options.sellerId)
     );
   }
 
-  queryClient.setQueriesData({ queryKey: ["admin-dashboard"] }, (old: UntypedValue) =>
+  queryClient.setQueriesData<AdminDashboardCache | undefined>({ queryKey: ["admin-dashboard"] }, (old) =>
     updateAdminDashboard(old, snapshots)
   );
 
-  queryClient.setQueriesData({ queryKey: ["admin-books"] }, (old: UntypedValue) =>
+  queryClient.setQueriesData<AdminBooksResponseCache | undefined>({ queryKey: ["admin-books"] }, (old) =>
     updateAdminBooksResponse(old, snapshots)
   );
 
-  queryClient.setQueriesData({ queryKey: ["physical-books"] }, (old: UntypedValue) =>
+  queryClient.setQueriesData<BookStockCacheRow[] | undefined>({ queryKey: ["physical-books"] }, (old) =>
     updateBookStockRows(old, snapshots, "warehouse")
   );
 
-  queryClient.setQueriesData({ queryKey: ["requestable-books"] }, (old: UntypedValue) =>
+  queryClient.setQueriesData<RequestableBooksResponseCache | undefined>({ queryKey: ["requestable-books"] }, (old) =>
     updateRequestableBooksResponse(old, snapshots)
   );
 
-  queryClient.setQueriesData({ queryKey: ["admin-sellers"] }, (old: UntypedValue) =>
+  queryClient.setQueriesData<AdminSellerInfo[] | undefined>({ queryKey: ["admin-sellers"] }, (old) =>
     updateAdminSellers(old, snapshots)
   );
 
   for (const snapshot of snapshots) {
     if (!snapshot.seller_id) continue;
-    queryClient.setQueryData(["admin-seller-detail", snapshot.seller_id], (old: UntypedValue) =>
+    queryClient.setQueryData<AdminSellerDetailCache | undefined>(["admin-seller-detail", snapshot.seller_id], (old) =>
       updateAdminSellerDetail(old, snapshots, snapshot.seller_id)
     );
   }
 }
 
+function isStockRealtimePayload(payload: unknown): payload is StockRealtimePayload {
+  return typeof payload === "object" && payload !== null && "new" in payload;
+}
+
 // Convierte el payload crudo de Supabase Realtime en un resultado compatible.
-export function stockMutationResultFromRealtime(payload: UntypedValue): StockMutationResult | null {
-  const row = payload?.new;
-  const snapshot = row?.snapshot_after as StockSnapshot | undefined;
+export function stockMutationResultFromRealtime(payload: unknown): StockMutationResult | null {
+  if (!isStockRealtimePayload(payload)) return null;
+
+  const row = payload.new;
+  const snapshot = row?.snapshot_after;
   if (!snapshot) return null;
 
   return {
@@ -296,8 +382,8 @@ export function stockMutationResultFromRealtime(payload: UntypedValue): StockMut
     mutation_id: row.id,
     snapshots: [snapshot],
     events: [{
-      id: row.id,
-      action: row.action,
+      id: row.id ?? "",
+      action: row.action ?? "stock_event",
       snapshot_after: snapshot,
     }],
   };

@@ -3,8 +3,6 @@
 import { useBooks, useUserBooks } from "@/hooks/useBooks";
 import { useUserId } from "@/hooks/useUser";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useQuery } from "@tanstack/react-query";
-import { createClientClient } from "@/lib/supabase";
 import Book3D from "@/components/Book3D";
 import CatalogBookCard from "@/components/CatalogBookCard";
 import Card from "@/components/ui/Card";
@@ -26,25 +24,14 @@ function CatalogContent() {
   const isInCart = (bookId: string, type: string) => cartItems.some(i => i.book_id === bookId && i.type === type);
   const { userId } = useUserId();
   const { data: subscription } = useSubscription(userId);
-
-  // El rol cambia reglas comerciales visibles: admin ve stock asignado y vendedor no compra.
-  const { data: userRoleData } = useQuery({
-    queryKey: ["user-role", userId],
-    queryFn: async () => {
-      const supabase = createClientClient();
-      const { data } = await supabase.from("users").select("role, assigned_admin_id").eq("id", userId).maybeSingle();
-      return data || { role: 'free', assigned_admin_id: null };
-    },
-    enabled: !!userId,
-  });
   // Solo admin filtra por su admin_stock; vendedor/free/subscriber ven catálogo completo
-  const adminId = userRoleData?.role === 'admin' ? userId : undefined;
+  const adminId = subscription?.role === 'admin' ? userId : undefined;
   const { data: userBooks } = useUserBooks(userId || '');
 
   // Evita ofrecer compra digital cuando el usuario ya posee acceso permanente.
   const ownedDigitalIds = useMemo(() => {
     if (!userBooks) return new Set<string>();
-    return new Set(userBooks.filter((b: UntypedValue) => b.access_type === 'permanent').map((b: UntypedValue) => b.id));
+    return new Set(userBooks.filter((b) => b.access_type === 'permanent').map((b) => b.id));
   }, [userBooks]);
 
   const showDigital = !subscription || (!subscription.isActive && subscription.role !== 'vendedor' && subscription.role !== 'admin');
@@ -102,8 +89,8 @@ function CatalogContent() {
       await addItem(book.id, type)
       useCartStore.getState().setOpen(true)
       toast.success(`${book.title} agregado (${type === 'digital' ? 'Digital' : 'Físico'})`)
-    } catch (e: UntypedValue) {
-      toast.error(e.message || 'Error al agregar al carrito')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Error al agregar al carrito')
     } finally {
       setAdding(null)
     }

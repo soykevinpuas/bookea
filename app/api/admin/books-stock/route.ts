@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/server";
+import type { StockMutationResult } from "@/types/stock";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,21 @@ type StockRow = {
   book_id: string;
   quantity: number;
 };
+
+type AdminBookRow = {
+  id: string;
+  stock_physical?: number | null;
+  [key: string]: unknown;
+};
+
+type StockPatchBody = {
+  bookId?: string;
+  totalStock?: number | string;
+};
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Error del servidor";
+}
 
 async function getAdminContext() {
   const supabase = await createClient();
@@ -76,7 +92,7 @@ export async function GET() {
     const warehouseByBook = sumStock(adminStockResult.data as StockRow[]);
     const assignedByBook = sumStock(sellerStockResult.data as StockRow[]);
 
-    const books = (booksResult.data ?? []).map((book: UntypedValue) => {
+    const books = ((booksResult.data ?? []) as AdminBookRow[]).map((book) => {
       const stockWarehouse = warehouseByBook.get(book.id) ?? 0;
       const stockAssigned = assignedByBook.get(book.id) ?? 0;
       const stockTotal = stockWarehouse + stockAssigned;
@@ -91,9 +107,9 @@ export async function GET() {
     });
 
     return NextResponse.json({ books });
-  } catch (error: UntypedValue) {
+  } catch (error: unknown) {
     console.error("[api/admin/books-stock] GET error:", error);
-    return NextResponse.json({ error: error.message || "Error del servidor" }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
 
@@ -103,7 +119,7 @@ export async function PATCH(request: NextRequest) {
     if (context.error) return context.error;
 
     const { adminId } = context;
-    const body = await request.json();
+    const body = await request.json() as StockPatchBody;
     const bookId = String(body.bookId || "");
     const totalStock = Math.max(0, Math.floor(Number(body.totalStock) || 0));
 
@@ -142,10 +158,8 @@ export async function PATCH(request: NextRequest) {
     if (warehouseResult.error) throw warehouseResult.error;
     if (assignedResult.error) throw assignedResult.error;
 
-    const assignedStock = (assignedResult.data ?? []).reduce(
-      (sum: number, row: UntypedValue) => sum + (row.quantity || 0),
-      0
-    );
+    const assignedStock = ((assignedResult.data ?? []) as Pick<StockRow, "quantity">[])
+      .reduce((sum, row) => sum + (row.quantity || 0), 0);
     const warehouseStock = warehouseResult.data?.quantity ?? 0;
     const desiredWarehouseStock = totalStock - assignedStock;
 
@@ -159,7 +173,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const delta = desiredWarehouseStock - warehouseStock;
-    let stockMutationResult: UntypedValue = null;
+    let stockMutationResult: StockMutationResult | null = null;
     if (delta !== 0) {
       const { data, error } = await context.supabase!.rpc("adjust_admin_stock", {
         p_book_id: bookId,
@@ -167,7 +181,7 @@ export async function PATCH(request: NextRequest) {
       });
 
       if (error) throw error;
-      const result = (data as UntypedValue) || {};
+      const result = ((data as StockMutationResult | null) || {}) as StockMutationResult;
       if (!result.success) {
         return NextResponse.json({ error: result.error || "No se pudo ajustar el stock" }, { status: 400 });
       }
@@ -183,8 +197,8 @@ export async function PATCH(request: NextRequest) {
       snapshots: stockMutationResult?.snapshots ?? [],
       events: stockMutationResult?.events ?? [],
     });
-  } catch (error: UntypedValue) {
+  } catch (error: unknown) {
     console.error("[api/admin/books-stock] PATCH error:", error);
-    return NextResponse.json({ error: error.message || "Error del servidor" }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

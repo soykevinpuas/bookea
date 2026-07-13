@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getBooks, getBook, getUserBooks } from "@/lib/books";
 import { createClientClient } from "@/lib/supabase";
 import type { Book } from "@/types/book";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 const BOOK_QUERY_OPTIONS = {
   staleTime: 5 * 60 * 1000,
@@ -103,7 +104,7 @@ export function useBooks(options?: BookFilters) {
   const supabase = createClientClient();
   const queryClient = useQueryClient();
   const cacheKey = getCatalogCacheKey(options?.adminId);
-  const channelRef = useRef<UntypedValue>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const noCategoryFilter = !options?.category || options?.category === 'all';
   const cachedCatalogRaw = useSyncExternalStore(
     subscribeCatalogCache,
@@ -115,7 +116,7 @@ export function useBooks(options?: BookFilters) {
     [cachedCatalogRaw]
   );
 
-  const query = useQuery({
+  const query = useQuery<Book[]>({
     queryKey: ["books", options?.search, options?.category, options?.author, options?.adminId],
     queryFn: async () => {
       const data = await getBooks(supabase, options);
@@ -173,9 +174,9 @@ export function useBooks(options?: BookFilters) {
 export function useBook(id: string) {
   const supabase = createClientClient();
   const queryClient = useQueryClient();
-  const channelRef = useRef<UntypedValue>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  const query = useQuery({
+  const query = useQuery<Book | null>({
     queryKey: ["book", id],
     queryFn: () => getBook(supabase, id),
     enabled: !!id,
@@ -212,9 +213,9 @@ export function useBook(id: string) {
 export function useUserBooks(userId: string, options?: { search?: string; category?: string }) {
   const supabase = createClientClient();
   const queryClient = useQueryClient();
-  const channelRef = useRef<UntypedValue>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  const query = useQuery({
+  const query = useQuery<Book[]>({
     queryKey: ["userBooks", userId, options?.search, options?.category],
     queryFn: async () => {
       const data = await getUserBooks(supabase, userId!, options);
@@ -224,12 +225,13 @@ export function useUserBooks(userId: string, options?: { search?: string; catego
       }
       return data;
     },
-    initialData: () => {
+    initialData: (): Book[] | undefined => {
       if (typeof window !== 'undefined' && userId && !options?.search && !options?.category) {
         const cached = localStorage.getItem(`bookea-library-${userId}`);
         if (cached) {
           try {
-            return JSON.parse(cached);
+            const parsed = JSON.parse(cached);
+            return Array.isArray(parsed) ? (parsed as Book[]) : undefined;
           } catch {
             return undefined;
           }

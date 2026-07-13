@@ -43,6 +43,7 @@ export interface EpubContents {
   window?: Window | null;
   href?: string;
   location?: { start?: { cfi?: string } };
+  range?: (cfi: string) => Range | null;
   beforeLongPress?: { call?: (data: EpubGestureData) => void };
   on?: (event: string, callback: (...args: unknown[]) => void) => EpubContents;
   off?: (event: string, callback: (...args: unknown[]) => void) => EpubContents;

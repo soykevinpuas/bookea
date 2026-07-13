@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@/lib/server';
 
+function isMissingStripeCustomer(error: unknown) {
+  if (typeof error !== 'object' || error === null) return false;
+  const stripeError = error as { type?: unknown; code?: unknown };
+  return stripeError.type === 'StripeInvalidRequestError' && stripeError.code === 'resource_missing';
+}
+
 export async function POST() {
   try {
     const supabase = await createClient();
@@ -40,10 +46,10 @@ export async function POST() {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (error: UntypedValue) {
+  } catch (error: unknown) {
     // Si el customer no existe en Stripe (ej. test vs live mismatch),
     // crear uno nuevo y actualizar la DB
-    if (error?.type === 'StripeInvalidRequestError' && error?.code === 'resource_missing') {
+    if (isMissingStripeCustomer(error)) {
       try {
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -57,7 +63,7 @@ export async function POST() {
           return_url: `${baseUrl}/profile`,
         });
         return NextResponse.json({ url: session.url });
-      } catch (retryError: UntypedValue) {
+      } catch (retryError: unknown) {
         console.error('Error creating portal session after retry:', retryError);
         return NextResponse.json(
           { error: 'Error al crear la sesión del portal de cliente' },

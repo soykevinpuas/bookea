@@ -4,6 +4,57 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-13-A] — Arranque ligero, sesión tolerante y navegación móvil rápida
+
+### Problema
+En arranque frío, especialmente en iPad sin cache reciente, la app podía sentirse bloqueada: avatar tardío, tabs de bottom nav con spinner, catálogo/admin sin datos y falsos indicios de sesión perdida. La causa más probable era una mezcla de Supabase frío, validación de sesión en red y demasiadas precargas compitiendo con la pantalla visible.
+
+### Cambios
+1. **`proxy.ts`** — Evita tocar Supabase en rutas públicas, agrega timeout a `getUser()` y conserva la ruta protegida cuando hay cookie de sesión pero la validación remota está lenta.
+2. **`lib/auth-provider.tsx`** — `getSession()` queda como camino rápido local y `getUser()` se retrasa ligeramente para no competir con el primer render; al volver a primer plano ya no duplica verificación si el refresh confirma sesión.
+3. **`hooks/useNavigationWarmup.ts`** — El warmup global precalienta solo rutas, no datos de catálogo, biblioteca, perfil, vendedor ni admin.
+4. **`components/ui/LoadingStates.tsx`** — `PrefetchLink` deja de precargar datos en touch; los datos solo se precargan con hover real de escritorio.
+5. **`app/(app)/catalog/page.tsx`** — El catálogo deja de consultar el rol dos veces y usa `useSubscription()` como fuente única.
+6. **`app/admin/page.tsx`** — El dashboard admin usa `fetchJsonWithSessionRetry()` para recuperarse de un 401 transitorio.
+7. **`app/vendedor/layout.tsx`** — El enlace "Ver catálogo" apunta directo a `/catalog`, evitando rebotes por `/`.
+
+### Verificación
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Nota operativa
+- `supabase migration list` se revisó antes de tocar auth/datos: local y remoto estaban sincronizados hasta la migración `065`.
+- Supabase Free puede pausar proyectos por baja actividad; si la app entra en operación real, conviene mover el proyecto a Pro para evitar pausas por inactividad y reducir arranques fríos.
+
+---
+
+## [2026-07-12-B] — Primera pasada de tipado en stock admin/vendedor y lector
+
+### Problema
+La deuda tipada de la zona admin/vendedor/stock y pantallas legacy estaba concentrada en `UntypedValue` y casts amplios, aunque ESLint ya no reportaba warnings activos. Eso hacia mas dificil revisar cambios de stock, biblioteca y lector sin tocar datos con forma implicita.
+
+### Cambios
+1. **`lib/stock-cache.ts`** — Reemplazado `UntypedValue` por tipos de cache, snapshots y payloads Realtime con guard sobre `unknown`.
+2. **`app/api/admin/books-stock/route.ts`, `lib/sellers.ts`, `lib/actions/sellers.ts`** — Tipadas respuestas RPC, errores y payloads de stock.
+3. **Paneles admin/vendedor chicos** — Tipados `admin/books`, `admin/orders`, detalle de vendedor y solicitud de stock vendedor.
+4. **`components/StockRequestItemsModal.tsx`** — Ampliado el tipo de item para reflejar `book_id` y datos de libro usados por los paneles.
+5. **`app/admin/page.tsx` y `app/api/admin/dashboard/route.ts`** — Tipados dashboard admin, ranking de libros, ventas, solicitudes, inventario y tooltips.
+6. **Biblioteca/catalogo/perfil/carrito** — Tipado de `BookAccessType`, cache `userBooks`, compras digitales/fisicas y rutas de carrito/checkout sin casts amplios.
+7. **Offline/lector** — Tipados cache de progreso, highlights, sync offline y superficie parcial de `epubjs` usada por el lector.
+8. **`types/global.d.ts`** — Eliminado el alias global `UntypedValue`; ya no hay consumidores activos en codigo fuente.
+
+### Verificacion
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+### Resultado
+- Deuda activa `UntypedValue/any/ts-ignore/eslint-disable` en `app`, `lib`, `components`, `hooks`, `types` y `stores`: queda en 0 coincidencias.
+- Las menciones restantes de `UntypedValue` viven solo como historial en documentos de auditoria/bitacora.
+
+---
+
 ## [2026-07-12-A] — Stock instantaneo con snapshots y venta sin parpadeo
 
 ### Problema

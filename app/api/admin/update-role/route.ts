@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/server';
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Error inesperado';
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -72,8 +76,8 @@ export async function POST(request: NextRequest) {
       updatedUser: updateResult,
     });
 
-  } catch (err: UntypedValue) {
+  } catch (err: unknown) {
     console.error('[admin/update-role] Error inesperado:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }

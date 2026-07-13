@@ -6,7 +6,7 @@ Lee esto antes de tocar codigo.
 
 1. Revisa `git status --short`.
 2. Lee `README.md`, `rules.md` y el archivo especifico que vas a cambiar.
-3. Si tocas DB, lee `docs/DATABASE.md` y las migraciones recientes.
+3. Si tocas DB, stock, roles, RLS, auth o Realtime, lee `docs/DATABASE.md`, revisa migraciones recientes y corre `supabase migration list` para confirmar que local y remoto no esten desincronizados.
 4. Si tocas pagos, lee `app/api/stripe/webhook/route.ts`, `app/api/stripe/checkout/route.ts` y `lib/actions/subscriptions.ts`.
 5. Si tocas lector/offline, lee `app/(app)/reader/[id]/page.tsx`, `lib/reading.ts`, `lib/highlights.ts`, `lib/bookmarks.ts`, `lib/downloads.ts` y `public/sw.js`.
 

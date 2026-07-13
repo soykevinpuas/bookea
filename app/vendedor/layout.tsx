@@ -125,7 +125,7 @@ export default function VendedorLayout({
 
         <div className="p-4 border-t border-gray-200 dark:border-white/5 space-y-2 bg-gray-50/50 dark:bg-[#0d0d0d]/50">
           <Link
-            href="/"
+            href="/catalog"
             className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium text-gray-500 dark:text-white/40 hover:text-gray-950 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
           >
             <ExternalLink className="w-4 h-4" />

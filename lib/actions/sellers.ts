@@ -2,6 +2,20 @@
 
 import { createClient, createAdminClient } from "@/lib/server";
 import { revalidatePath } from "next/cache";
+import type { StockMutationResult } from "@/types/stock";
+
+type RpcResult = {
+  success?: boolean;
+  error?: string;
+};
+
+type StockRequestItemWithRequest = {
+  received_at: string | null;
+  stock_requests: {
+    seller_id: string;
+    status: string;
+  };
+};
 
 export async function createStockRequestAction(
   sellerId: string,
@@ -26,7 +40,7 @@ export async function createStockRequestAction(
 
   if (error) throw new Error(error.message);
 
-  const result = (data as UntypedValue) || {};
+  const result = ((data as RpcResult | null) || {}) as RpcResult;
   if (!result.success) throw new Error(result.error || "Error al crear solicitud");
 
   revalidatePath("/vendedor");
@@ -54,10 +68,11 @@ export async function receiveStockItemAction(itemId: string) {
   if (itemErr) throw new Error(`Error al obtener item: ${itemErr.message}`);
   if (!item) throw new Error("Item no encontrado");
 
-  const req = (item as UntypedValue).stock_requests;
+  const requestItem = item as StockRequestItemWithRequest;
+  const req = requestItem.stock_requests;
   if (req.seller_id !== user.id) throw new Error("Esta solicitud no te pertenece");
   if (req.status !== "delivered") throw new Error("La solicitud debe estar entregada para recibir libros");
-  if ((item as UntypedValue).received_at) throw new Error("Este libro ya fue recibido");
+  if (requestItem.received_at) throw new Error("Este libro ya fue recibido");
 
   const { error: updateErr } = await adminDb
     .from("stock_request_items")
@@ -123,7 +138,7 @@ export async function deleteSaleAction(saleId: string) {
   });
 
   if (error) throw new Error(error.message);
-  const result = (data as UntypedValue) || {};
+  const result = ((data as StockMutationResult | null) || {}) as StockMutationResult;
   if (!result.success) throw new Error(result.error || "Error al eliminar venta");
 
   revalidatePath("/admin");
@@ -143,7 +158,7 @@ export async function removeSellerInventoryAction(sellerId: string, bookId: stri
   });
 
   if (error) throw new Error(error.message);
-  const result = (data as UntypedValue) || {};
+  const result = ((data as StockMutationResult | null) || {}) as StockMutationResult;
   if (!result.success) throw new Error(result.error || "Error al remover stock");
 
   revalidatePath("/admin");

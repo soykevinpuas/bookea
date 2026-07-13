@@ -67,7 +67,7 @@ export async function GET(
     }
 
     return NextResponse.json(quizData)
-  } catch (error: UntypedValue) {
+  } catch (error: unknown) {
     console.error('[Quiz API] Error:', error)
     return NextResponse.json({ error: 'Error al generar el quiz' }, { status: 500 })
   }

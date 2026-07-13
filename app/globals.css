@@ -234,7 +234,7 @@
     background-color: #161b22 !important;
   }
 
-  /* Override any remaining bright backgrounds */
+  /* Override remaining bright backgrounds */
   .retro [class*="bg-white"],
   .retro [class*="bg-gray-"] {
     background-color: #161b22 !important;
@@ -276,7 +276,7 @@
     color: #c9d1d9 !important;
   }
 
-  /* Catch-all for any gradient backgrounds - exclude color picker dots */
+  /* Catch-all for gradient backgrounds - exclude color picker dots */
   .retro [style*="background"]:not(.no-retro-override):not(.preserve-gradient),
   .retro [class*="gradient"]:not(.no-retro-override):not(.preserve-gradient) {
     background-color: #0d1117 !important;

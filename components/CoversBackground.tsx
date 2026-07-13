@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { createClientClient } from "@/lib/supabase";
 
+type CoverRow = { cover_url: string | null };
+
 export default function CoversBackground() {
   const [covers, setCovers] = useState<string[]>([]);
 
@@ -17,8 +19,8 @@ export default function CoversBackground() {
       .not("cover_url", "is", null)
       .limit(24)
       .then(({ data }) => {
-        const urls = (data ?? [])
-          .map((b: UntypedValue) => b.cover_url)
+        const urls = ((data ?? []) as CoverRow[])
+          .map((b) => b.cover_url)
           .filter((url: string | null): url is string => !!url);
         setCovers([...urls, ...urls, ...urls].slice(0, 24));
       });

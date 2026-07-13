@@ -65,6 +65,7 @@ Reglas:
 ## 4. Base de Datos
 
 - Toda modificacion de DB va en `supabase/migrations/`.
+- Antes de diagnosticar fallos de DB, stock, auth, roles, RLS o Realtime, compara el arbol local/remoto con `supabase migration list`; si hay migraciones locales pendientes en remoto, aplicalas o reporta la desincronizacion antes de buscar bugs en codigo.
 - RLS debe mantenerse activo en tablas publicas.
 - Las tablas sensibles no deben aceptar escrituras directas del cliente si existe un flujo server/RPC.
 - `public.user_books` solo permite SELECT del usuario/admin; altas y cambios de acceso pasan por server actions, webhooks o RPCs validados.

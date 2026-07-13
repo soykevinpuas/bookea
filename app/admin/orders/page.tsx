@@ -50,7 +50,7 @@ export default function AdminOrdersPage() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status, tracking_number }: { id: string; status: Order["status"]; tracking_number?: string }) => {
-      const update: Record<string, UntypedValue> = { status };
+      const update: { status: Order["status"]; tracking_number?: string } = { status };
       if (tracking_number !== undefined) update.tracking_number = tracking_number;
       const { error } = await supabase
         .from("orders_physical")
@@ -121,7 +121,7 @@ export default function AdminOrdersPage() {
                     </div>
 
                     <p className="font-semibold text-white truncate">
-                      {(order.books as UntypedValue)?.title ?? "Libro desconocido"}
+                      {order.books?.title ?? "Libro desconocido"}
                     </p>
                     <p className="text-sm text-white/50 mt-0.5">
                       {order.name} — {order.city}, {order.state} {order.zip}

@@ -1,14 +1,16 @@
 "use client";
 
+import type { BookAccessType } from "@/types/book";
+
 interface AccessBadgeProps {
-  accessType: 'permanent' | 'subscription' | 'gift' | null;
+  accessType: BookAccessType | null;
   daysRemaining?: number | null;
 }
 
 export default function AccessBadge({ accessType, daysRemaining }: AccessBadgeProps) {
   if (!accessType) return null;
 
-  const config = {
+  const config: Record<BookAccessType, { label: string; class: string }> = {
     permanent: {
       label: 'Compra Permanente',
       class: 'bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400',
@@ -18,6 +20,10 @@ export default function AccessBadge({ accessType, daysRemaining }: AccessBadgePr
       class: 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400',
     },
     gift: {
+      label: `Canje (${daysRemaining ?? '?'} días)`,
+      class: 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400',
+    },
+    coin_redemption: {
       label: `Canje (${daysRemaining ?? '?'} días)`,
       class: 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400',
     },

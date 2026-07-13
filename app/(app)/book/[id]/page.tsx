@@ -24,6 +24,8 @@ import AccessBadge from "@/components/ui/AccessBadge";
 import BookLoading from "./loading";
 import { downloadBook, isBookDownloaded } from "@/lib/downloads";
 import { useCartStore } from "@/stores/cart";
+import type { Book } from "@/types/book";
+import type { LibraryAccessType } from "@/lib/books";
 
 function DescriptionText({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -65,7 +67,7 @@ function BookDetailContent() {
   // Determinación del tipo de acceso
   const isPremiumBook = book?.is_premium !== false;
   const hasPremiumAccess = subscription?.isActive || subscription?.role === 'admin';
-  const ownedBook = userBooks?.find((b: UntypedValue) => b.id.toLowerCase() === id.toLowerCase());
+  const ownedBook = userBooks?.find((b) => b.id.toLowerCase() === id.toLowerCase());
   const hasPermanentAccess = ownedBook?.access_type === 'permanent' || ownedBook?.access_type === 'gift';
   const coinExpiresAt = ownedBook?.expires_at ? new Date(ownedBook.expires_at) : null;
   const hasCoinAccess = ownedBook?.access_type === 'coin_redemption' && !!coinExpiresAt && coinExpiresAt > new Date();
@@ -116,7 +118,7 @@ function BookDetailContent() {
   const [addingToLib, setAddingToLib] = useState(false);
   const [addingDigital, setAddingDigital] = useState(false);
 
-  const isInLibrary = userBooks?.some((b: UntypedValue) => b.id.toLowerCase() === id.toLowerCase());
+  const isInLibrary = userBooks?.some((b) => b.id.toLowerCase() === id.toLowerCase());
   const isCurrentlyInLibrary = !!isInLibrary; // Booleano estable
 
   useEffect(() => {
@@ -170,28 +172,28 @@ function BookDetailContent() {
   };
 
   const handleAddToLibrary = async () => {
-    if (!userId) return;
+    if (!userId || !book) return;
     setAddingToLib(true);
-    queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
+    queryClient.setQueryData<Book[]>(["userBooks", userId], (old) => {
       if (!old) return old;
       return [{ ...book, id }, ...old];
     });
     try {
-      const accessType = subscription?.isActive ? 'subscription' : 'permanent';
-      const result = await addToLibraryAction(id, accessType as UntypedValue);
+      const accessType: LibraryAccessType = subscription?.isActive ? "subscription" : "permanent";
+      const result = await addToLibraryAction(id, accessType);
       if (result.success) {
         toast.success("¡Libro añadido a tu biblioteca!");
       } else {
-        queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
+        queryClient.setQueryData<Book[]>(["userBooks", userId], (old) => {
           if (!old) return old;
-          return old.filter((b: UntypedValue) => b.id !== id);
+          return old.filter((b) => b.id !== id);
         });
         toast.error(result.error || "No se pudo añadir el libro");
       }
     } catch {
-      queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
+      queryClient.setQueryData<Book[]>(["userBooks", userId], (old) => {
         if (!old) return old;
-        return old.filter((b: UntypedValue) => b.id !== id);
+        return old.filter((b) => b.id !== id);
       });
       toast.error("Error al conectar con el servidor");
     } finally {
@@ -203,10 +205,10 @@ function BookDetailContent() {
   const handleRemoveFromLibrary = async () => {
     if (!userId) return;
     setAddingToLib(true);
-    const oldData = queryClient.getQueryData(["userBooks", userId]);
-    queryClient.setQueryData(["userBooks", userId], (old: UntypedValue) => {
+    const oldData = queryClient.getQueryData<Book[]>(["userBooks", userId]);
+    queryClient.setQueryData<Book[]>(["userBooks", userId], (old) => {
       if (!old) return old;
-      return old.filter((b: UntypedValue) => b.id !== id);
+      return old.filter((b) => b.id !== id);
     });
     try {
       const result = await removeFromLibraryAction(id);
@@ -318,6 +320,9 @@ function BookDetailContent() {
                           )}
                           {ownedBook?.access_type === 'gift' && (
                             <AccessBadge accessType="gift" daysRemaining={subscription?.daysRemaining} />
+                          )}
+                          {ownedBook?.access_type === 'coin_redemption' && (
+                            <AccessBadge accessType="coin_redemption" />
                           )}
                         </div>
                         <span className="text-xl font-bold text-green-900 dark:text-green-300">

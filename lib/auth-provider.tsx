@@ -14,6 +14,7 @@ const CACHE_KEY = "bookea-auth-id";
 const EMAIL_CACHE_KEY = "bookea-auth-email";
 const AUTH_RECOVERY_GRACE_MS = 10000;
 const SESSION_KEEPALIVE_MS = 5 * 60 * 1000;
+const INITIAL_SERVER_VERIFY_DELAY_MS = 900;
 type SessionUser = { id: string; email?: string | null } | null | undefined;
 
 const AuthContext = createContext<AuthState>({
@@ -171,13 +172,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applySessionUser, handleMissingSession, keepLastKnownAuth, refreshSession]);
 
   useEffect(() => {
+    let cancelled = false;
     // Fast path: getSession() lee cookies localmente, SIN request de red
     queueMicrotask(() => {
-      loadInitialSession();
+      if (!cancelled) loadInitialSession();
     });
 
-    // Slow path: getUser() verifica con el server (refresca token si expiró)
-    syncUser();
+    // Slow path: getUser() verifica con el server sin competir con el primer render.
+    const verifyTimer = setTimeout(() => {
+      if (!cancelled) void syncUser();
+    }, INITIAL_SERVER_VERIFY_DELAY_MS);
 
     const { data: listener } = supabase.current.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
@@ -198,6 +202,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      cancelled = true;
+      clearTimeout(verifyTimer);
       listener?.subscription?.unsubscribe();
       clearRecoveryTimer();
     };
@@ -207,9 +213,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handle = () => {
       if (document.visibilityState === "visible") {
-        void refreshSession().finally(() => {
-          loadInitialSession();
-          syncUser();
+        void refreshSession().then(async (recovered) => {
+          await loadInitialSession();
+          if (!recovered) await syncUser();
         });
       }
     };

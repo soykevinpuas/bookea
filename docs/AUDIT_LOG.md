@@ -15,10 +15,34 @@ Este documento registra todas las auditorías de código realizadas en el proyec
 | 2026-07-08 | Sesion + Vendedor | 1 | GPT-5 Codex | Default | Codex | ✅ OK con nota | Sesion reforzada, dashboard vendedor no cachea 401/stock vacio falso. `THREE.Clock` confirmado como warning externo de React Three Fiber. |
 | 2026-07-08 | Biblioteca offline + Landing auth | 1 | GPT-5 Codex | Default | Codex | ✅ OK | El sello de descargado ahora requiere descarga explicita; landing agrega accesos a login/registro. |
 | 2026-07-09 | ESLint legacy | 1 | GPT-5 Codex | Default | Codex | ✅ OK con deuda tipada | ESLint queda en 0 warnings. `UntypedValue` se usa como puente para datos legacy no tipados; pendiente tipado fuerte por dominio. |
+| 2026-07-13 | Arranque/auth/navigation + Supabase Free | 1 | GPT-5 Codex | Default | Codex | ⚠️ Riesgo operativo mitigado | Migraciones local/remoto sincronizadas hasta 065. Supabase Free puede pausarse por baja actividad; conviene Pro para operación real. |
 
 ---
 
 ## Reportes de Auditoría Detallados
+
+### [2026-07-13] - Arranque, Sesión y Riesgo Supabase Free
+**Módulo:** `proxy.ts`, `lib/auth-provider.tsx`, `hooks/useNavigationWarmup.ts`, `components/ui/LoadingStates.tsx`, `app/(app)/catalog/page.tsx`, `app/admin/page.tsx`.
+**Estado:** ⚠️ Mitigado en código, requiere decisión operativa de infraestructura.
+
+#### Hallazgos
+- Las migraciones estaban sincronizadas local/remoto hasta `065`, por lo que el problema observado no venía de una migración pendiente.
+- El arranque hacía validación remota de sesión y precargas de datos pesados en paralelo con la pantalla visible.
+- Links touch podían disparar prefetch de datos antes de navegar, generando sensación de bottom nav lenta en iPad.
+- Supabase Free puede pausar proyectos por baja actividad; si el proyecto queda frío, la primera experiencia puede sufrir aunque el código esté correcto.
+
+#### Decisión
+- Se redujo el trabajo de arranque a sesión local + pantalla visible.
+- `proxy.ts` evita falsos logout cuando hay cookie de sesión y `getUser()` está lento.
+- El warmup global quedó solo para rutas; los datos se cargan al entrar a cada pantalla.
+- El prefetch de datos quedó reservado a hover real de escritorio.
+
+#### Resultado de verificación
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+---
 
 ### [2026-07-09] - Limpieza de Warnings ESLint
 **Módulo:** pantallas admin/vendedor, componentes con imagenes, modulos legacy con datos sin contrato fuerte.

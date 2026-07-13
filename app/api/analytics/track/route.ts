@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+type AnalyticsEventRow = {
+  event_name: string;
+  event_data: unknown;
+  created_at: string;
+};
+
+function analyticsUserId(eventData: unknown) {
+  if (typeof eventData !== 'object' || eventData === null || !('user_id' in eventData)) return null;
+  const userId = (eventData as { user_id?: unknown }).user_id;
+  return typeof userId === 'string' && userId ? userId : null;
+}
+
 /**
  * Analytics Track API: Recibe eventos y los guarda en Supabase
  */
@@ -70,14 +82,15 @@ export async function GET(request: NextRequest) {
   }
 
   // Agregar métricas
+  const rows = (data ?? []) as AnalyticsEventRow[];
   const metrics = {
-    total_events: data?.length || 0,
+    total_events: rows.length,
     events_by_type: {} as Record<string, number>,
-    unique_users: new Set(data?.map((e: UntypedValue) => e.event_data?.user_id).filter(Boolean)).size,
+    unique_users: new Set(rows.map((e) => analyticsUserId(e.event_data)).filter((userId): userId is string => !!userId)).size,
     period,
   };
 
-  data?.forEach((event: UntypedValue) => {
+  rows.forEach((event) => {
     const name = event.event_name;
     metrics.events_by_type[name] = (metrics.events_by_type[name] || 0) + 1;
   });

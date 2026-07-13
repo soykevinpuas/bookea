@@ -202,13 +202,14 @@ export function LoadingButton({
   );
 }
 
-// PrefetchLink: Link con prefetching automático (Rutas + Datos)
+// PrefetchLink: precalienta rutas siempre y datos solo con hover real de escritorio.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getBook, getBooks } from "@/lib/books";
 import { createClientClient } from "@/lib/supabase";
+import type { QueryKey } from "@tanstack/react-query";
 
 interface PrefetchLinkProps {
   href: string;
@@ -218,7 +219,7 @@ interface PrefetchLinkProps {
   prefetch?: boolean;
   onClick?: () => void;
   // Opcional: datos específicos para precargar en React Query
-  queryKey?: UntypedValue[];
+  queryKey?: QueryKey;
   bookId?: string;
 }
 
@@ -236,13 +237,17 @@ export function PrefetchLink({
   const supabase = createClientClient();
   const prefetchedRef = useRef(false);
 
-  const warmLink = useCallback(() => {
+  const warmRoute = useCallback(() => {
+    if (!prefetch) return;
+    router.prefetch(href);
+  }, [href, prefetch, router]);
+
+  const warmData = useCallback(() => {
     if (!prefetch) return;
     if (prefetchedRef.current) return;
     prefetchedRef.current = true;
 
-    // Prefetch de la ruta de Next.js
-    router.prefetch(href);
+    warmRoute();
 
     // Prefetch inteligente de datos en React Query
     if (bookId) {
@@ -261,17 +266,20 @@ export function PrefetchLink({
         staleTime: 5 * 60 * 1000,
       });
     }
-  }, [href, prefetch, router, bookId, queryClient, supabase]);
+  }, [href, prefetch, bookId, queryClient, supabase, warmRoute]);
+
+  const handlePointerEnter = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
+    if (event.pointerType === "mouse") warmData();
+  }, [warmData]);
 
   return (
     <Link
       href={href}
+      prefetch={prefetch}
       className={className}
       style={style}
-      onFocus={warmLink}
-      onMouseEnter={warmLink}
-      onPointerEnter={warmLink}
-      onTouchStart={warmLink}
+      onFocus={warmRoute}
+      onPointerEnter={handlePointerEnter}
       onClick={onClick}
     >
       {children}
