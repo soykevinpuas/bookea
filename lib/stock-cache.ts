@@ -48,6 +48,11 @@ type VendedorDashboardCache = {
 };
 
 type AdminDashboardCache = {
+  adminUserId?: string;
+  sales?: PaginatedCache<StockSale>;
+  pendingSales?: StockSale[];
+  salesMap?: Record<string, number>;
+  topBooks?: Record<TopBooksPeriod, TopBook[]>;
   adminStock: AdminStockCacheRow[];
   physicalBooks: BookStockCacheRow[];
   inventory: PaginatedCache<InventoryCacheItem>;
@@ -69,8 +74,22 @@ type StockRealtimePayload = {
   new?: {
     id?: string;
     action?: string;
+    sale_id?: string | null;
     snapshot_after?: StockSnapshot | null;
   };
+};
+
+type StockSale = SellerSale & { admin_id?: string | null };
+type TopBooksPeriod = "currentMonth" | "last30Days" | "all";
+type TopBook = {
+  book_id: string;
+  title: string;
+  author: string | null;
+  cover_url: string | null;
+  units: number;
+  revenue: number;
+  sales: number;
+  lastSoldAt: string | null;
 };
 
 function snapshotTime(snapshot: StockSnapshot) {
@@ -241,17 +260,102 @@ function updateVendedorDashboard(
   };
 }
 
-function updateAdminDashboard(old: AdminDashboardCache | undefined, snapshots: StockSnapshot[]) {
+function saleBelongsToAdminDashboard(old: AdminDashboardCache, sale: StockSale) {
+  if (!old.adminUserId) return true;
+  return sale.admin_id === old.adminUserId || sale.seller_id === old.adminUserId || sale.admin_id === null;
+}
+
+function addSaleToTopBooks(topBooks: TopBook[] | undefined, sale: StockSale, since?: Date) {
+  if (!sale.book_id) return topBooks ?? [];
+  const soldAt = sale.sold_at ? new Date(sale.sold_at) : null;
+  if (since && (!soldAt || soldAt < since)) return topBooks ?? [];
+
+  const rows = [...(topBooks ?? [])];
+  const index = rows.findIndex((book) => book.book_id === sale.book_id);
+  const book = sale.books;
+  const quantity = Number(sale.quantity || 0);
+  const revenue = quantity * Number(sale.sale_price || 0);
+
+  if (index >= 0) {
+    rows[index] = {
+      ...rows[index],
+      units: rows[index].units + quantity,
+      revenue: rows[index].revenue + revenue,
+      sales: rows[index].sales + 1,
+      lastSoldAt: !rows[index].lastSoldAt || new Date(sale.sold_at) > new Date(rows[index].lastSoldAt)
+        ? sale.sold_at
+        : rows[index].lastSoldAt,
+    };
+  } else {
+    rows.push({
+      book_id: sale.book_id,
+      title: book?.title || "Libro",
+      author: book?.author ?? null,
+      cover_url: book?.cover_url ?? null,
+      units: quantity,
+      revenue,
+      sales: 1,
+      lastSoldAt: sale.sold_at,
+    });
+  }
+
+  return rows
+    .sort((a, b) => b.units - a.units || b.revenue - a.revenue || b.sales - a.sales)
+    .slice(0, 10);
+}
+
+function addSaleToAdminTopBooks(topBooks: AdminDashboardCache["topBooks"], sale: StockSale) {
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  return {
+    currentMonth: addSaleToTopBooks(topBooks?.currentMonth, sale, currentMonthStart),
+    last30Days: addSaleToTopBooks(topBooks?.last30Days, sale, last30Days),
+    all: addSaleToTopBooks(topBooks?.all, sale),
+  };
+}
+
+function updateAdminDashboard(
+  old: AdminDashboardCache | undefined,
+  snapshots: StockSnapshot[],
+  result?: StockMutationResult
+) {
   if (!old) return old;
 
   const previousInventory = old.inventory?.data ?? [];
   const nextInventory = updateSellerInventoryList(previousInventory, snapshots);
   const totalDelta = nextInventory.length - previousInventory.length;
+  const sale = result?.sale as StockSale | undefined;
+  const shouldAddSale = !!sale && saleBelongsToAdminDashboard(old, sale);
+  const saleExists = shouldAddSale
+    ? old.sales?.data?.some((item) => item.id === sale.id)
+    : true;
+  const salesMapKey = shouldAddSale && sale?.book_id ? `${sale.seller_id}:${sale.book_id}` : null;
 
   return {
     ...old,
     adminStock: updateAdminStockRows(old.adminStock, snapshots),
     physicalBooks: updateBookStockRows(old.physicalBooks, snapshots, "total"),
+    sales: old.sales && shouldAddSale && !saleExists
+      ? {
+          ...old.sales,
+          data: [sale, ...old.sales.data].slice(0, old.sales.perPage ?? old.sales.data.length + 1),
+          total: old.sales.total + 1,
+        }
+      : old.sales,
+    pendingSales: shouldAddSale && !saleExists && !sale?.paid_at
+      ? [sale, ...(old.pendingSales ?? [])]
+      : old.pendingSales,
+    salesMap: salesMapKey
+      ? {
+          ...(old.salesMap ?? {}),
+          [salesMapKey]: (old.salesMap?.[salesMapKey] ?? 0) + (sale?.quantity ?? 0),
+        }
+      : old.salesMap,
+    topBooks: shouldAddSale && !saleExists && sale
+      ? addSaleToAdminTopBooks(old.topBooks, sale)
+      : old.topBooks,
     inventory: old.inventory
       ? {
           ...old.inventory,
@@ -338,7 +442,7 @@ export function applyStockMutationResult(
   }
 
   queryClient.setQueriesData<AdminDashboardCache | undefined>({ queryKey: ["admin-dashboard"] }, (old) =>
-    updateAdminDashboard(old, snapshots)
+    updateAdminDashboard(old, snapshots, result ?? undefined)
   );
 
   queryClient.setQueriesData<AdminBooksResponseCache | undefined>({ queryKey: ["admin-books"] }, (old) =>

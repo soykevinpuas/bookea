@@ -20,6 +20,9 @@ import type { SellerInventory, SellerSale, StockRequest } from "@/types/seller";
 import type { StockMutationResult, StockSnapshot } from "@/types/stock";
 
 type Section = "stock" | "vendidos" | "ingresos" | "solicitudes";
+type SoldPanelTab = "historial" | "top";
+type TopBooksPeriod = "currentMonth" | "last30Days" | "all";
+type TopBooksView = "list" | "chart";
 
 interface DashboardData {
   inventory: SellerInventory[];
@@ -51,6 +54,17 @@ interface RequestableBook {
 interface RequestableBooksResponse {
   books: RequestableBook[];
   reason: "ok" | "no_admin" | "no_stock";
+}
+
+interface TopBook {
+  book_id: string;
+  title: string;
+  author: string | null;
+  cover_url: string | null;
+  units: number;
+  revenue: number;
+  sales: number;
+  lastSoldAt: string | null;
 }
 
 type LocalStockLock = {
@@ -91,6 +105,18 @@ const STATUS_TABS = [
   { key: "cancelled", label: "Canceladas" },
 ];
 
+const TOP_BOOK_PERIODS: { key: TopBooksPeriod; label: string }[] = [
+  { key: "currentMonth", label: "Este mes" },
+  { key: "last30Days", label: "30 días" },
+  { key: "all", label: "Todo" },
+];
+
+const EMPTY_TOP_BOOKS: Record<TopBooksPeriod, TopBook[]> = {
+  currentMonth: [],
+  last30Days: [],
+  all: [],
+};
+
 const STOCK_EXIT_ANIMATION_MS = 320;
 const VENDEDOR_DASHBOARD_STALE_MS = 60 * 1000;
 const VENDEDOR_BACKGROUND_REFRESH_MS = 60 * 1000;
@@ -112,14 +138,57 @@ const ChartTooltip = ({ active, payload, label }: ChartTooltipProps) => {
   return (
     <div className="bg-[#1a1a1a] border border-white/10 rounded-xl px-3 py-2 text-xs shadow-xl">
       <p className="text-white/50 mb-1">{label}</p>
-      {payload.map((entry, i) => (
-        <p key={i} className="font-medium" style={{ color: entry.color }}>
-          {entry.name}: ${entry.value.toLocaleString("es-MX")}
-        </p>
-      ))}
+      {payload.map((entry, i) => {
+        const value = Number(entry.value || 0);
+        return (
+          <p key={i} className="font-medium" style={{ color: entry.color }}>
+            {entry.name}: {entry.name === "Unidades"
+              ? `${value.toLocaleString("es-MX")} uds.`
+              : `$${value.toLocaleString("es-MX")}`}
+          </p>
+        );
+      })}
     </div>
   );
 };
+
+function buildTopBooks(sales: SellerSale[], since?: Date): TopBook[] {
+  const map = new Map<string, TopBook>();
+  const sinceMs = since?.getTime() ?? null;
+
+  for (const sale of sales) {
+    if (!sale.book_id) continue;
+    const soldAt = sale.sold_at ? new Date(sale.sold_at) : null;
+    if (sinceMs !== null && (!soldAt || soldAt.getTime() < sinceMs)) continue;
+
+    const quantity = Number(sale.quantity || 0);
+    if (quantity <= 0) continue;
+
+    const book = sale.books;
+    const existing = map.get(sale.book_id) ?? {
+      book_id: sale.book_id,
+      title: book?.title || "Libro",
+      author: book?.author ?? null,
+      cover_url: book?.cover_url ?? null,
+      units: 0,
+      revenue: 0,
+      sales: 0,
+      lastSoldAt: null,
+    };
+
+    existing.units += quantity;
+    existing.revenue += quantity * Number(sale.sale_price || 0);
+    existing.sales += 1;
+    if (sale.sold_at && (!existing.lastSoldAt || new Date(sale.sold_at) > new Date(existing.lastSoldAt))) {
+      existing.lastSoldAt = sale.sold_at;
+    }
+    map.set(sale.book_id, existing);
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => b.units - a.units || b.revenue - a.revenue || b.sales - a.sales)
+    .slice(0, 10);
+}
 
 export default function VendedorDashboard() {
   const supabase = useMemo(() => createClientClient(), []);
@@ -127,6 +196,9 @@ export default function VendedorDashboard() {
   const { userId, isLoading: authLoading, isReady: authReady } = useAuth();
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<Section>("ingresos");
+  const [soldTab, setSoldTab] = useState<SoldPanelTab>("historial");
+  const [topBooksPeriod, setTopBooksPeriod] = useState<TopBooksPeriod>("currentMonth");
+  const [topBooksView, setTopBooksView] = useState<TopBooksView>("list");
   const [stockTab, setStockTab] = useState<StockTab>("inventory");
   const [requestViewMode, setRequestViewMode] = useState<RequestViewMode>("grid");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
@@ -365,6 +437,27 @@ export default function VendedorDashboard() {
   const totalChartRevenue = chartData.reduce((s, d) => s + d.venta, 0);
   const totalChartProfit = chartData.reduce((s, d) => s + d.ganancia, 0);
   const totalChartCost = chartData.reduce((s, d) => s + d.ahorro, 0);
+  const topBooks = useMemo(() => {
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    return {
+      currentMonth: buildTopBooks(sales, currentMonthStart),
+      last30Days: buildTopBooks(sales, last30Days),
+      all: buildTopBooks(sales),
+    };
+  }, [sales]);
+  const currentTopBooks = topBooks[topBooksPeriod] ?? EMPTY_TOP_BOOKS[topBooksPeriod];
+  const bestSellingBook = currentTopBooks[0] ?? null;
+  const topBooksChartData = useMemo(
+    () => currentTopBooks.slice(0, 8).map((book, index) => ({
+      ...book,
+      rank: index + 1,
+      shortTitle: book.title.length > 18 ? `${book.title.slice(0, 18)}...` : book.title,
+    })),
+    [currentTopBooks]
+  );
 
   useEffect(() => {
     const entries = Object.entries(stockLocks);
@@ -535,11 +628,13 @@ export default function VendedorDashboard() {
     let exitingBookId: string | null = null;
 
     try {
+      await queryClient.cancelQueries({ queryKey: dashboardQueryKey });
       const result = await markAsSold(supabase, userId, bookId, qty, price);
       const snapshots = getStockSnapshots(result);
       const stockSnapshot = snapshots.find((snapshot) => snapshot.seller_id === userId && snapshot.book_id === bookId);
       const nextQty = stockSnapshot?.seller_quantity ?? Math.max(0, currentQty - qty);
       const confirmedSale = result.sale ?? saleData;
+      const resultWithSale: StockMutationResult = { ...result, sale: confirmedSale };
       const shouldExit = nextQty <= 0;
       const lockTtl = shouldExit ? 60_000 : 15_000;
 
@@ -550,7 +645,7 @@ export default function VendedorDashboard() {
 
       if (stockSnapshot) {
         lockStockQuantity(stockSnapshot, lockTtl);
-        applyStockMutationResult(queryClient, result, { sellerId: userId });
+        applyStockMutationResult(queryClient, resultWithSale, { sellerId: userId, adminId: isAdmin ? userId : undefined });
       } else {
         setLocalStockLock(bookId, nextQty, new Date().toISOString(), lockTtl);
       }
@@ -1103,41 +1198,207 @@ export default function VendedorDashboard() {
 
           {/* ── VENDIDOS ── */}
           {activeSection === "vendidos" && (
-            <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-white/8">
-                <h2 className="font-semibold text-sm flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-amber-400" />
-                  Vendidos ({sales.length} ventas)
-                </h2>
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button
+                  onClick={() => setSoldTab("historial")}
+                  className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors"
+                >
+                  <p className="text-lg font-bold text-white">{sales.length}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ventas</p>
+                </button>
+                <button
+                  onClick={() => setSoldTab("historial")}
+                  className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors"
+                >
+                  <p className="text-lg font-bold text-white/70">{sales.reduce((sum, sale) => sum + sale.quantity, 0)}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Unidades</p>
+                </button>
+                <button
+                  onClick={() => setActiveSection("ingresos")}
+                  className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors"
+                >
+                  <p className="text-lg font-bold text-green-400">${sales.reduce((sum, sale) => sum + sale.sale_price * sale.quantity, 0).toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ingresos</p>
+                </button>
+                <button
+                  onClick={() => setSoldTab("top")}
+                  className="bg-white/5 border border-amber-500/15 rounded-xl p-4 text-left hover:bg-white/10 transition-colors"
+                >
+                  <p className="text-lg font-bold text-amber-400">{bestSellingBook ? `${bestSellingBook.units} uds.` : "0"}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5 truncate">{bestSellingBook?.title || "Libro top"}</p>
+                </button>
               </div>
-              {sales.length === 0 ? (
-                <div className="text-center py-8 text-white/30 text-sm">Aún no hay ventas.</div>
-              ) : (
-                <div className="divide-y divide-white/5">
-                   {sales.map((sale) => {
-                    const book = sale.books;
-                    return (
-                      <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
-                        {book?.cover_url && (
-                          <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                            <AppImage src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+
+              <div className="flex rounded-xl bg-white/5 p-1 border border-white/10 w-fit">
+                <button
+                  onClick={() => setSoldTab("historial")}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                    soldTab === "historial" ? "bg-white text-gray-950" : "text-white/50 hover:text-white"
+                  }`}
+                >
+                  Historial
+                </button>
+                <button
+                  onClick={() => setSoldTab("top")}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                    soldTab === "top" ? "bg-white text-gray-950" : "text-white/50 hover:text-white"
+                  }`}
+                >
+                  Más vendidos
+                </button>
+              </div>
+
+              {soldTab === "top" ? (
+                <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-white/8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <h2 className="font-semibold text-sm flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-amber-400" />
+                        Libros más vendidos
+                      </h2>
+                      <p className="text-xs text-white/35 mt-1">Ranking de tu inventario vendido.</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex rounded-lg bg-white/5 p-0.5 border border-white/10">
+                        {TOP_BOOK_PERIODS.map((period) => (
+                          <button
+                            key={period.key}
+                            onClick={() => setTopBooksPeriod(period.key)}
+                            className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors ${
+                              topBooksPeriod === period.key
+                                ? "bg-white text-gray-950"
+                                : "text-white/50 hover:text-white"
+                            }`}
+                          >
+                            {period.label}
                           </button>
-                        )}
-                        <span className="text-sm flex-1 min-w-0 truncate text-white/80">
-                          {book?.title || "Libro"}
-                        </span>
-                        <span className="text-[10px] text-white/30 shrink-0">
-                          {new Date(sale.sold_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
-                        </span>
-                        <span className="text-sm font-bold text-white shrink-0">
-                          x{sale.quantity}
-                        </span>
-                        <span className="text-xs font-bold text-green-400 shrink-0">
-                          ${(sale.sale_price * sale.quantity).toLocaleString("es-MX")}
-                        </span>
+                        ))}
                       </div>
-                    );
-                  })}
+                      <div className="flex rounded-lg bg-white/5 p-0.5 border border-white/10">
+                        <button
+                          onClick={() => setTopBooksView("list")}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors ${
+                            topBooksView === "list"
+                              ? "bg-amber-600 text-white"
+                              : "text-white/50 hover:text-white"
+                          }`}
+                        >
+                          <List className="w-3.5 h-3.5" />
+                          Lista
+                        </button>
+                        <button
+                          onClick={() => setTopBooksView("chart")}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors ${
+                            topBooksView === "chart"
+                              ? "bg-amber-600 text-white"
+                              : "text-white/50 hover:text-white"
+                          }`}
+                        >
+                          <BarChart3 className="w-3.5 h-3.5" />
+                          Gráfica
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {currentTopBooks.length === 0 ? (
+                    <div className="text-center py-12 text-white/30 text-sm">Sin ventas en este periodo.</div>
+                  ) : topBooksView === "chart" ? (
+                    <div className="h-72 p-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={topBooksChartData} layout="vertical" margin={{ top: 8, right: 28, bottom: 8, left: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                          <XAxis type="number" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                          <YAxis type="category" dataKey="shortTitle" width={126} tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                          <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                          <Bar dataKey="units" name="Unidades" fill="#f59e0b" radius={[0, 4, 4, 0]} maxBarSize={24}>
+                            <LabelList dataKey="units" position="right" fill="#f59e0b" fontSize={11} fontWeight={700} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-white/5">
+                      {currentTopBooks.map((book, index) => (
+                        <div key={book.book_id} className="px-5 py-3 flex items-center gap-3">
+                          <span className="w-7 text-xs font-black text-white/30 shrink-0">#{index + 1}</span>
+                          {book.cover_url ? (
+                            <button
+                              onClick={() => setPreviewBook({
+                                id: book.book_id,
+                                title: book.title,
+                                author: book.author,
+                                cover_url: book.cover_url,
+                              })}
+                              className="shrink-0 p-0 border-0 bg-transparent cursor-pointer"
+                            >
+                              <AppImage src={book.cover_url} alt="" className="w-9 h-12 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                            </button>
+                          ) : (
+                            <div className="w-9 h-12 rounded bg-white/5 border border-white/8 flex items-center justify-center text-xs font-bold text-white/30 shrink-0">
+                              {book.title.charAt(0)}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white/80 truncate">{book.title}</p>
+                            <p className="text-xs text-white/35 truncate">{book.author || "Autor no registrado"}</p>
+                            <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] text-white/35">
+                              <span className="rounded-full bg-white/5 px-2 py-0.5 border border-white/8">{book.sales} ventas</span>
+                              {book.lastSoldAt && (
+                                <span className="rounded-full bg-white/5 px-2 py-0.5 border border-white/8">
+                                  Última {new Date(book.lastSoldAt).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-black text-amber-400">{book.units} uds.</p>
+                            <p className="text-[10px] font-semibold text-white/35">${book.revenue.toLocaleString("es-MX")}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-white/8">
+                    <h2 className="font-semibold text-sm flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-amber-400" />
+                      Vendidos ({sales.length} ventas)
+                    </h2>
+                  </div>
+                  {sales.length === 0 ? (
+                    <div className="text-center py-8 text-white/30 text-sm">Aún no hay ventas.</div>
+                  ) : (
+                    <div className="divide-y divide-white/5">
+                      {sales.map((sale) => {
+                        const book = sale.books;
+                        return (
+                          <div key={sale.id} className="px-5 py-3 flex items-center gap-3">
+                            {book?.cover_url && (
+                              <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
+                                <AppImage src={book.cover_url} alt="" className="w-7 h-10 rounded object-cover bg-white/5 hover:ring-2 hover:ring-blue-500/50 transition-all" />
+                              </button>
+                            )}
+                            <span className="text-sm flex-1 min-w-0 truncate text-white/80">
+                              {book?.title || "Libro"}
+                            </span>
+                            <span className="text-[10px] text-white/30 shrink-0">
+                              {new Date(sale.sold_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
+                            </span>
+                            <span className="text-sm font-bold text-white shrink-0">
+                              x{sale.quantity}
+                            </span>
+                            <span className="text-xs font-bold text-green-400 shrink-0">
+                              ${(sale.sale_price * sale.quantity).toLocaleString("es-MX")}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

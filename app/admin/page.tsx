@@ -26,6 +26,7 @@ import BookPreviewModal from "@/components/BookPreviewModal";
 import type { StockMutationResult } from "@/types/stock";
 
 type Section = "ingresos" | "stock" | "vendidos" | "solicitudes" | "pagos";
+type SoldPanelTab = "historial" | "top";
 type TopBooksPeriod = "currentMonth" | "last30Days" | "all";
 type TopBooksView = "list" | "chart";
 
@@ -185,6 +186,7 @@ export default function AdminDashboard() {
   const supabase = createClientClient();
   const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState<Section>("ingresos");
+  const [soldTab, setSoldTab] = useState<SoldPanelTab>("historial");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [topBooksPeriod, setTopBooksPeriod] = useState<TopBooksPeriod>("currentMonth");
   const [topBooksView, setTopBooksView] = useState<TopBooksView>("list");
@@ -390,6 +392,7 @@ export default function AdminDashboard() {
         (payload) => {
           const result = stockMutationResultFromRealtime(payload);
           if (result) applyStockMutationResult(queryClient, result, { adminId: adminUserId });
+          scheduleAdminRefresh();
         }
       )
       .subscribe();
@@ -397,7 +400,7 @@ export default function AdminDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [adminUserId, queryClient, supabase]);
+  }, [adminUserId, queryClient, scheduleAdminRefresh, supabase]);
 
   useEffect(() => {
     const refetch = () => {
@@ -1147,7 +1150,10 @@ export default function AdminDashboard() {
                   <p className="text-[10px] text-white/40 mt-0.5">Vendedores activos</p>
                 </Link>
                 <button
-                  onClick={() => setTopBooksView("list")}
+                  onClick={() => {
+                    setSoldTab("top");
+                    setTopBooksView("list");
+                  }}
                   className="bg-white/5 border border-blue-500/15 rounded-xl p-4 text-left hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <p className="text-lg font-bold text-blue-400">
@@ -1159,6 +1165,26 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
+              <div className="flex rounded-xl bg-white/5 p-1 border border-white/10 w-fit">
+                <button
+                  onClick={() => setSoldTab("historial")}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                    soldTab === "historial" ? "bg-white text-gray-950" : "text-white/50 hover:text-white"
+                  }`}
+                >
+                  Historial
+                </button>
+                <button
+                  onClick={() => setSoldTab("top")}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                    soldTab === "top" ? "bg-white text-gray-950" : "text-white/50 hover:text-white"
+                  }`}
+                >
+                  Más vendidos
+                </button>
+              </div>
+
+              {soldTab === "top" ? (
               <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-white/8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
@@ -1291,8 +1317,8 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
-
-              {allSales.length === 0 ? (
+              ) : (
+              allSales.length === 0 ? (
                 <div className="text-center py-12 text-white/30 text-sm">Aún no hay ventas.</div>
               ) : (
                 <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
@@ -1358,6 +1384,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
+              )
               )}
             </div>
           )}

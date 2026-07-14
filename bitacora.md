@@ -4,6 +4,25 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-13-C] — Ventas visibles al instante y tabs de más vendidos
+
+### Problema
+Después de vender, la card ya desaparecía correctamente, pero la venta podía tardar 20-30 segundos en verse en `Vendidos`, gráficas e indicadores. El admin también dependía demasiado de refetch/realtime para ver ventas nuevas. Además, el ranking de libros más vendidos estaba mezclado con el historial en admin y no existía en vendedor.
+
+### Cambios
+1. **`app/vendedor/page.tsx`** — Antes de vender se cancelan refetches viejos del dashboard y la venta confirmada se escribe de inmediato en el cache local, alimentando `Vendidos`, métricas y gráficas.
+2. **`lib/stock-cache.ts`** — Las ventas confirmadas por RPC pueden actualizar caches de admin: historial, pendientes, `salesMap` y ranking de libros.
+3. **`app/admin/page.tsx`** — Los eventos de `stock_events` también disparan refresco del dashboard admin para que ventas externas aparezcan rápido aunque Realtime de `seller_sales` tarde.
+4. **`app/vendedor/page.tsx`** — Agregada tab `Más vendidos` en la sección `Vendidos`, con filtros por periodo y modo lista/gráfica.
+5. **`app/admin/page.tsx`** — El bloque `Libros más vendidos` ahora vive en una tab interna junto a `Historial`, no como bloque fijo encima de la lista.
+
+### Verificación
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+---
+
 ## [2026-07-13-B] — Landing auth desktop y venta sin reaparición visual
 
 ### Problema
