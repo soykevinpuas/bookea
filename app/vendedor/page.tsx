@@ -208,6 +208,7 @@ export default function VendedorDashboard() {
   const [saleQtys, setSaleQtys] = useState<Record<string, number>>({});
   const [selling, setSelling] = useState<string | null>(null);
   const [exitingSoldBooks, setExitingSoldBooks] = useState<Set<string>>(() => new Set());
+  const [exitingInventoryHold, setExitingInventoryHold] = useState<Record<string, SellerInventory>>({});
   const [stockLocks, setStockLocks] = useState<Record<string, LocalStockLock>>({});
   const [receiving, setReceiving] = useState<string | null>(null);
   const [modalItems, setModalItems] = useState<StockRequest["items"] | null>(null);
@@ -221,17 +222,49 @@ export default function VendedorDashboard() {
     [supabase]
   );
 
-  const lockStockQuantity = useCallback((snapshot: StockSnapshot, ttlMs = 15_000) => {
-    if (!userId || snapshot.seller_id !== userId) return;
+  const setLocalStockLock = useCallback((bookId: string, quantity: number, version?: string, ttlMs = 15_000) => {
     setStockLocks((prev) => ({
       ...prev,
-      [snapshot.book_id]: {
-        quantity: snapshot.seller_quantity,
-        version: snapshot.version || snapshot.updated_at || new Date().toISOString(),
+      [bookId]: {
+        quantity,
+        version: version || new Date().toISOString(),
         expiresAt: Date.now() + ttlMs,
       },
     }));
-  }, [userId]);
+  }, []);
+
+  const lockStockQuantity = useCallback((snapshot: StockSnapshot, ttlMs = 15_000) => {
+    if (!userId || snapshot.seller_id !== userId) return;
+    setLocalStockLock(
+      snapshot.book_id,
+      snapshot.seller_quantity,
+      snapshot.version || snapshot.updated_at,
+      ttlMs
+    );
+  }, [setLocalStockLock, userId]);
+
+  const startSoldOutExit = useCallback((item: SellerInventory) => {
+    setExitingInventoryHold((prev) => ({ ...prev, [item.book_id]: item }));
+    setExitingSoldBooks((prev) => {
+      const next = new Set(prev);
+      next.add(item.book_id);
+      return next;
+    });
+  }, []);
+
+  const clearSoldOutExit = useCallback((bookId: string) => {
+    setExitingSoldBooks((prev) => {
+      const next = new Set(prev);
+      next.delete(bookId);
+      return next;
+    });
+    setExitingInventoryHold((prev) => {
+      if (!prev[bookId]) return prev;
+      const next = { ...prev };
+      delete next[bookId];
+      return next;
+    });
+  }, []);
 
   const releaseStockLock = useCallback((bookId: string) => {
     setStockLocks((prev) => {
@@ -359,7 +392,13 @@ export default function VendedorDashboard() {
   }, [stockLocks]);
 
   const activeInventory = useMemo(() => {
-    return inventory
+    const rowsByBook = new Map(inventory.map((item) => [item.book_id, item]));
+
+    for (const hold of Object.values(exitingInventoryHold)) {
+      if (!rowsByBook.has(hold.book_id)) rowsByBook.set(hold.book_id, hold);
+    }
+
+    return Array.from(rowsByBook.values())
       .map((item) => {
         const lock = stockLocks[item.book_id];
         if (!lock) return item;
@@ -369,8 +408,8 @@ export default function VendedorDashboard() {
           stock_version: lock.version,
         };
       })
-      .filter((i) => i.quantity > 0);
-  }, [inventory, stockLocks]);
+      .filter((i) => i.quantity > 0 || exitingSoldBooks.has(i.book_id));
+  }, [exitingInventoryHold, exitingSoldBooks, inventory, stockLocks]);
 
   const inventoryByBookId = new Map(activeInventory.map((i) => [i.book_id, i.quantity]));
   const requestableBooks = useMemo(
@@ -466,18 +505,15 @@ export default function VendedorDashboard() {
     },
   });
 
-  const playSoldOutExit = useCallback(async (bookId: string) => {
-    setExitingSoldBooks((prev) => {
-      const next = new Set(prev);
-      next.add(bookId);
-      return next;
-    });
+  const waitForSoldOutExit = useCallback(async () => {
     await new Promise<void>((resolve) => setTimeout(resolve, STOCK_EXIT_ANIMATION_MS));
   }, []);
 
-  const handleSell = async (bookId: string, currentQty: number) => {
+  const handleSell = async (item: SellerInventory) => {
     if (!userId) { toast.error("Sesion no lista. Espera unos segundos e intenta de nuevo."); return; }
     if (stockWriteInFlight.current) return;
+    const bookId = item.book_id;
+    const currentQty = item.quantity;
     const qty = saleQtys[bookId] || 1;
     const price = salePrices[bookId];
     if (!price || price <= 0) { toast.error("Agrega un precio de venta"); return; }
@@ -493,9 +529,10 @@ export default function VendedorDashboard() {
       quantity: qty,
       sale_price: price,
       sold_at: new Date().toISOString(),
-      books: inventory.find((i) => i.book_id === bookId)?.books ?? null,
+      books: item.books ?? null,
       paid_at: null,
     };
+    let exitingBookId: string | null = null;
 
     try {
       const result = await markAsSold(supabase, userId, bookId, qty, price);
@@ -503,23 +540,22 @@ export default function VendedorDashboard() {
       const stockSnapshot = snapshots.find((snapshot) => snapshot.seller_id === userId && snapshot.book_id === bookId);
       const nextQty = stockSnapshot?.seller_quantity ?? Math.max(0, currentQty - qty);
       const confirmedSale = result.sale ?? saleData;
+      const shouldExit = nextQty <= 0;
+      const lockTtl = shouldExit ? 60_000 : 15_000;
 
-      toast.success(`Vendido${qty > 1 ? `s ${qty}` : ""} por $${(price * qty).toLocaleString("es-MX")}`);
-      if (nextQty <= 0) await playSoldOutExit(bookId);
+      if (shouldExit) {
+        exitingBookId = bookId;
+        startSoldOutExit(item);
+      }
 
       if (stockSnapshot) {
-        lockStockQuantity(stockSnapshot);
+        lockStockQuantity(stockSnapshot, lockTtl);
         applyStockMutationResult(queryClient, result, { sellerId: userId });
       } else {
-        setStockLocks((prev) => ({
-          ...prev,
-          [bookId]: {
-            quantity: nextQty,
-            version: new Date().toISOString(),
-            expiresAt: Date.now() + 15_000,
-          },
-        }));
+        setLocalStockLock(bookId, nextQty, new Date().toISOString(), lockTtl);
       }
+
+      toast.success(`Vendido${qty > 1 ? `s ${qty}` : ""} por $${(price * qty).toLocaleString("es-MX")}`);
 
       queryClient.setQueryData<DashboardData>(dashboardQueryKey, (old) => {
         if (!old) return old;
@@ -537,14 +573,12 @@ export default function VendedorDashboard() {
       });
       setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
       setSalePrices(prev => { const copy = { ...prev }; delete copy[bookId]; return copy; });
+
+      if (shouldExit) await waitForSoldOutExit();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al registrar venta");
     } finally {
-      setExitingSoldBooks((prev) => {
-        const next = new Set(prev);
-        next.delete(bookId);
-        return next;
-      });
+      if (exitingBookId) clearSoldOutExit(exitingBookId);
       setSelling(null);
       stockWriteInFlight.current = false;
     }
@@ -735,7 +769,7 @@ export default function VendedorDashboard() {
                                 />
                               </div>
                               <button
-                                onClick={() => handleSell(item.book_id, item.quantity)}
+                                onClick={() => handleSell(item)}
                                 disabled={saleControlsLocked}
                                 className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-all disabled:opacity-50"
                               >

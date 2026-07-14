@@ -4,6 +4,22 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-13-B] — Landing auth desktop y venta sin reaparición visual
+
+### Problema
+En desktop, los accesos de login/registro del landing no se sentían igual de claros que en móvil. En el panel vendedor, al vender el último stock de un libro, la card podía iniciar la salida, volver a aparecer una fracción y desaparecer después, porque la animación y el cache confirmado no quedaban sellados al mismo tiempo.
+
+### Cambios
+1. **`components/LandingHero.tsx`** — El pill de "Iniciar sesión / Registrarse" queda fijo arriba a la derecha también en desktop, manteniendo el formato compacto de móvil.
+2. **`app/vendedor/page.tsx`** — La venta ahora conserva una copia temporal de la card solo para animar el slide-out, aplica un lock local de stock confirmado y evita que refetches viejos la revivan durante la transición.
+
+### Verificación
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+---
+
 ## [2026-07-13-A] — Arranque ligero, sesión tolerante y navegación móvil rápida
 
 ### Problema

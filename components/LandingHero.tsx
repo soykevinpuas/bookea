@@ -88,19 +88,20 @@ export default function LandingHero({ covers }: { covers: string[] }) {
         className="fixed inset-0 pointer-events-none -z-10 opacity-20 mix-blend-overlay"
         style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
 
-      <header className="absolute inset-x-0 top-0 z-30 pt-safe">
-        <div className="mx-auto flex min-h-20 max-w-7xl items-start justify-end px-4 pt-3 sm:px-6 sm:pt-4">
-          <nav className="flex max-w-[calc(100vw-2rem)] items-center gap-1.5 rounded-full border border-white/10 bg-black/55 p-1 shadow-2xl backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-0 z-30 pt-safe">
+        <div className="mx-auto flex min-h-20 max-w-7xl items-start justify-end px-4 pt-3 sm:px-6 sm:pt-4 lg:px-8">
+          <nav className="flex max-w-[calc(100vw-2rem)] items-center gap-1.5 rounded-full border border-white/10 bg-black/65 p-1 shadow-2xl backdrop-blur-xl">
             <Link
               href="/login"
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white sm:px-4"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white sm:px-4"
             >
               <LogIn className="h-4 w-4" />
-              <span>Iniciar</span>
+              <span className="sm:hidden">Iniciar</span>
+              <span className="hidden sm:inline">Iniciar sesión</span>
             </Link>
             <Link
               href="/register"
-              className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-2 text-xs font-black text-gray-950 transition-colors hover:bg-purple-100 sm:px-4"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-black text-gray-950 transition-colors hover:bg-purple-100 sm:px-4"
             >
               <UserPlus className="h-4 w-4" />
               <span>Registrarse</span>
