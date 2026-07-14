@@ -262,6 +262,8 @@ function updateVendedorDashboard(
 
 function saleBelongsToAdminDashboard(old: AdminDashboardCache, sale: StockSale) {
   if (!old.adminUserId) return true;
+  // Algunos resultados legacy no incluyen admin_id; en ese caso el refetch confirmado decide el filtro final.
+  if (sale.admin_id === undefined) return true;
   return sale.admin_id === old.adminUserId || sale.seller_id === old.adminUserId || sale.admin_id === null;
 }
 

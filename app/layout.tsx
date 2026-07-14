@@ -50,23 +50,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <head>
-        {/* Evita flash del splash screen en navegacion secundaria. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var shown = sessionStorage.getItem('bookea-splash-shown');
-                  if (shown) {
-                    document.documentElement.classList.add('splash-ready');
-                  }
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
-      </head>
       <body
         suppressHydrationWarning
         className="antialiased min-h-screen bg-gray-50 transition-colors duration-300 dark:bg-[#0a0a0a] retro:bg-[#0d1117] navy:bg-[#0a0f1e] text-gray-900 dark:text-gray-100 retro:text-white navy:text-[#e8eaf6] flex flex-col"

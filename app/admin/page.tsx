@@ -143,8 +143,8 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Cancelado", color: "bg-red-500/10 text-red-400 border border-red-500/20" },
 };
 
-const ADMIN_DASHBOARD_STALE_MS = 60 * 1000;
-const ADMIN_BACKGROUND_REFRESH_MS = 60 * 1000;
+const ADMIN_DASHBOARD_STALE_MS = 10 * 1000;
+const ADMIN_BACKGROUND_REFRESH_MS = 10 * 1000;
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message;
@@ -293,7 +293,7 @@ export default function AdminDashboard() {
     if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
 
     realtimeRefreshTimer.current = setTimeout(() => {
-      queryClient.refetchQueries({ queryKey: ["admin-dashboard"], type: "active" });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"], refetchType: "all" });
       queryClient.invalidateQueries({ queryKey: ["admin-books"] });
       queryClient.invalidateQueries({ queryKey: ["books"] });
       queryClient.invalidateQueries({ queryKey: ["book"] });
@@ -405,7 +405,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const refetch = () => {
       if (stockWriteInFlight.current) return;
-      queryClient.refetchQueries({ queryKey: ["admin-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"], refetchType: "active" });
     };
     const interval = setInterval(refetch, ADMIN_BACKGROUND_REFRESH_MS);
     const onVisible = () => {

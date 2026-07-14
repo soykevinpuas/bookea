@@ -13,6 +13,7 @@ interface AuthState {
 const CACHE_KEY = "bookea-auth-id";
 const EMAIL_CACHE_KEY = "bookea-auth-email";
 const AUTH_RECOVERY_GRACE_MS = 10000;
+const AUTH_COOKIE_RECOVERY_GRACE_MS = 1500;
 const SESSION_KEEPALIVE_MS = 5 * 60 * 1000;
 const INITIAL_SERVER_VERIFY_DELAY_MS = 900;
 type SessionUser = { id: string; email?: string | null } | null | undefined;
@@ -60,6 +61,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const keepLastKnownAuth = useCallback(() => {
     setState((prev) => ({ ...prev, isLoading: false, isReady: true }));
+  }, []);
+
+  const waitForCookieRecovery = useCallback(() => {
+    setState({ userId: "", email: "", isLoading: true, isReady: false });
   }, []);
 
   const applySessionUser = useCallback((sessionUser: SessionUser) => {
@@ -122,7 +127,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleMissingSession = useCallback(() => {
     const cachedUserId = localStorage.getItem(CACHE_KEY);
     if (!cachedUserId) {
-      clearAuthState();
+      waitForCookieRecovery();
+      if (!recoveryTimer.current) {
+        recoveryTimer.current = setTimeout(() => {
+          confirmMissingSession();
+        }, AUTH_COOKIE_RECOVERY_GRACE_MS);
+      }
       return;
     }
 
@@ -133,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         confirmMissingSession();
       }, AUTH_RECOVERY_GRACE_MS);
     }
-  }, [clearAuthState, confirmMissingSession, keepLastKnownAuth]);
+  }, [confirmMissingSession, keepLastKnownAuth, waitForCookieRecovery]);
 
   const loadInitialSession = useCallback(async () => {
     try {

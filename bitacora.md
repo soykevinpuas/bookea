@@ -4,6 +4,44 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-13-E] — Reconciliación de ventas, dashboard admin y splash de arranque
+
+### Problema
+Al vender, Supabase podía devolver un error ambiguo de schema cache aunque la venta ya hubiera quedado aplicada; el cliente dejaba la card en inventario y el segundo intento marcaba stock inexistente. Además, el dashboard de admin dependía demasiado del Realtime/refetch lento para reflejar ventas externas, el splash podía esconder el nombre por `sessionStorage` y las primeras cards de `Vendidos` en vendedor se sentían repetidas.
+
+### Cambios
+1. **`app/vendedor/page.tsx`** — Si `sell_book` falla, el vendedor consulta inmediatamente `/api/vendedor/dashboard`; si el servidor ya descontó stock, sincroniza la venta, bloquea el stock local y desliza la card sin revivirla.
+2. **`app/admin/page.tsx`** — El dashboard admin baja su ventana de stale/polling a 10s y los eventos de stock invalidan/refrescan todas las queries admin relacionadas sin esperar el minuto anterior.
+3. **`lib/stock-cache.ts`** — La cache admin acepta ventas confirmadas sin `admin_id` en resultados legacy y deja que el refetch filtre el estado definitivo.
+4. **`components/SplashScreen.tsx`, `app/layout.tsx`, `app/globals.css`** — El splash vuelve a mostrar Bookea en cada arranque completo y se elimina el script/clase que lo ocultaba por sesión.
+5. **`app/vendedor/page.tsx`** — La segunda card de `Vendidos` ahora muestra títulos vendidos únicos en vez de repetir una métrica muy parecida a ventas/unidades.
+
+### Verificación
+- `supabase migration list`: local y remoto sincronizados hasta `065`.
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+---
+
+## [2026-07-13-D] — Recuperación breve de sesión tras limpiar cache local
+
+### Problema
+Si el navegador perdía el cache local (`localStorage`) pero todavía conservaba cookies de Supabase, la app podía declarar sesión vacía demasiado rápido y redirigir a login antes de que `refreshSession/getUser` alcanzaran a recuperar la sesión real.
+
+### Cambios
+1. **`lib/auth-provider.tsx`** — Cuando no existe `bookea-auth-id`, la app mantiene auth en estado de recuperación breve durante 1.5s antes de limpiar sesión. Esto evita falsos logout cuando se borra cache local pero no cookies.
+
+### Nota
+- Si el usuario borra datos del sitio/cookies, el refresh token también desaparece y debe iniciar sesión otra vez. Eso es comportamiento esperado y seguro del navegador.
+
+### Verificación
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+---
+
 ## [2026-07-13-C] — Ventas visibles al instante y tabs de más vendidos
 
 ### Problema

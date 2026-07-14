@@ -152,6 +152,15 @@ const ChartTooltip = ({ active, payload, label }: ChartTooltipProps) => {
   );
 };
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return fallback;
+}
+
 function buildTopBooks(sales: SellerSale[], since?: Date): TopBook[] {
   const map = new Map<string, TopBook>();
   const sinceMs = since?.getTime() ?? null;
@@ -437,6 +446,10 @@ export default function VendedorDashboard() {
   const totalChartRevenue = chartData.reduce((s, d) => s + d.venta, 0);
   const totalChartProfit = chartData.reduce((s, d) => s + d.ganancia, 0);
   const totalChartCost = chartData.reduce((s, d) => s + d.ahorro, 0);
+  const soldTitleCount = useMemo(
+    () => new Set(sales.map((sale) => sale.book_id).filter(Boolean)).size,
+    [sales]
+  );
   const topBooks = useMemo(() => {
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -668,10 +681,42 @@ export default function VendedorDashboard() {
       });
       setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
       setSalePrices(prev => { const copy = { ...prev }; delete copy[bookId]; return copy; });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"], refetchType: "active" });
 
       if (shouldExit) await waitForSoldOutExit();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error al registrar venta");
+      const message = getErrorMessage(e, "Error al registrar venta");
+
+      try {
+        const fresh = await fetchVendedorJson<DashboardData>(
+          "/api/vendedor/dashboard",
+          "Error al sincronizar dashboard"
+        );
+        const freshQty = fresh.inventory.find((row) => row.book_id === bookId)?.quantity ?? 0;
+        const saleWasApplied = freshQty < currentQty;
+        const shouldExit = saleWasApplied && freshQty <= 0;
+
+        if (saleWasApplied) {
+          if (shouldExit) {
+            exitingBookId = bookId;
+            startSoldOutExit(item);
+          }
+
+          setLocalStockLock(bookId, freshQty, new Date().toISOString(), shouldExit ? 60_000 : 15_000);
+          queryClient.setQueryData<DashboardData>(dashboardQueryKey, fresh);
+          queryClient.invalidateQueries({ queryKey: ["admin-dashboard"], refetchType: "active" });
+          setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
+          setSalePrices(prev => { const copy = { ...prev }; delete copy[bookId]; return copy; });
+          toast.success("Venta sincronizada con el servidor");
+
+          if (shouldExit) await waitForSoldOutExit();
+        } else {
+          queryClient.setQueryData<DashboardData>(dashboardQueryKey, fresh);
+          toast.error(message);
+        }
+      } catch {
+        toast.error(message);
+      }
     } finally {
       if (exitingBookId) clearSoldOutExit(exitingBookId);
       setSelling(null);
@@ -1211,8 +1256,8 @@ export default function VendedorDashboard() {
                   onClick={() => setSoldTab("historial")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors"
                 >
-                  <p className="text-lg font-bold text-white/70">{sales.reduce((sum, sale) => sum + sale.quantity, 0)}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Unidades</p>
+                  <p className="text-lg font-bold text-white/70">{soldTitleCount}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Títulos vendidos</p>
                 </button>
                 <button
                   onClick={() => setActiveSection("ingresos")}

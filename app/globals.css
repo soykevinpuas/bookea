@@ -899,13 +899,6 @@ main {
   overflow: visible !important;
 }
 
-/* Ocultar splash inmediatamente si ya se mostró en la sesión (Head Script support) */
-html.splash-ready #bookea-splash {
-  display: none !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
 /* Mobile Menu Stacking Context Fix */
 body.mobile-menu-open main {
   position: relative;
