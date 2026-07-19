@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { getSellerInventory } from "@/lib/sellers";
 import { createStockRequestAction } from "@/lib/actions/sellers";
+import { refreshStockQueries, STOCK_QUERY_OPTIONS } from "@/lib/stock-cache";
 import { useUserId } from "@/hooks/useUser";
 import { ShoppingCart, Loader2, Plus, Minus, Search, X, Store, ChevronLeft, Info } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -58,6 +59,7 @@ export default function NuevaSolicitudPage() {
       return json as RequestableBooksResponse;
     },
     enabled: !!userId,
+    ...STOCK_QUERY_OPTIONS,
   });
 
   const books = requestableData?.books ?? [];
@@ -67,6 +69,7 @@ export default function NuevaSolicitudPage() {
     queryKey: ["seller-inventory", userId],
     queryFn: () => getSellerInventory(supabase, userId!),
     enabled: !!userId,
+    ...STOCK_QUERY_OPTIONS,
   });
 
   useEffect(() => {
@@ -75,8 +78,7 @@ export default function NuevaSolicitudPage() {
     const refreshStock = () => {
       if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
       realtimeRefreshTimer.current = setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["requestable-books", userId] });
-        queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
+        refreshStockQueries(queryClient);
       }, 120);
     };
 
@@ -147,7 +149,7 @@ export default function NuevaSolicitudPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
-      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
+      refreshStockQueries(queryClient);
       setCart([]);
       setNotes("");
       toast.success("Solicitud creada correctamente");

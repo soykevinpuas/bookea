@@ -4,7 +4,12 @@ import AppImage from "@/components/ui/AppImage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { getAdminSellerDetail, assignStock, getPhysicalBooks, revertAssignStock } from "@/lib/sellers";
-import { applyStockMutationResult, stockMutationResultFromRealtime } from "@/lib/stock-cache";
+import {
+  applyStockMutationResult,
+  refreshStockQueries,
+  STOCK_QUERY_OPTIONS,
+  stockMutationResultFromRealtime,
+} from "@/lib/stock-cache";
 import {
   Store,
   Package,
@@ -72,28 +77,41 @@ export default function AdminSellerDetailPage() {
     queryKey: ["admin-seller-detail", id],
     queryFn: () => getAdminSellerDetail(supabase, id),
     enabled: !!id,
+    ...STOCK_QUERY_OPTIONS,
   });
 
   const { data: physicalBooks = [] } = useQuery<PhysicalBook[]>({
     queryKey: ["physical-books", adminSession?.id],
     queryFn: () => getPhysicalBooks(supabase, adminSession?.id),
     enabled: !!adminSession?.id,
+    ...STOCK_QUERY_OPTIONS,
   });
+  const selectedAssignBook = physicalBooks.find((book) => book.id === assignBookId);
+  const selectedAssignStock = selectedAssignBook?.stock_physical ?? 0;
+  const effectiveAssignQty = assignBookId
+    ? Math.min(Math.max(1, assignQty), Math.max(1, selectedAssignStock))
+    : assignQty;
 
   const assignMutation = useMutation({
-    mutationFn: () => assignStock(supabase, id, assignBookId, assignQty),
+    mutationFn: () => {
+      const book = physicalBooks.find((item) => item.id === assignBookId);
+      if (!book || book.stock_physical <= 0) throw new Error("Este libro no tiene stock disponible");
+      if (effectiveAssignQty > book.stock_physical) throw new Error("La cantidad supera el stock disponible");
+      return assignStock(supabase, id, assignBookId, effectiveAssignQty);
+    },
     onMutate: () => {
       queryClient.setQueryData<PhysicalBook[]>(["physical-books", adminSession?.id], (old) => {
         if (!old) return old;
         return old.map((book) =>
           book.id === assignBookId
-            ? { ...book, stock_physical: Math.max(0, (book.stock_physical || 0) - assignQty) }
+            ? { ...book, stock_physical: Math.max(0, (book.stock_physical || 0) - effectiveAssignQty) }
             : book
         );
       });
     },
     onSuccess: (result) => {
       applyStockMutationResult(queryClient, result, { sellerId: id, adminId: adminSession?.id });
+      refreshStockQueries(queryClient);
       setShowAssign(false);
       setAssignBookId("");
       setAssignQty(1);
@@ -110,6 +128,7 @@ export default function AdminSellerDetailPage() {
       revertAssignStock(supabase, id, bookId, qty),
     onSuccess: (result) => {
       applyStockMutationResult(queryClient, result, { sellerId: id, adminId: adminSession?.id });
+      refreshStockQueries(queryClient);
       toast.success("Stock revertido");
     },
     onError: (err) => toast.error(err.message),
@@ -127,6 +146,7 @@ export default function AdminSellerDetailPage() {
         queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
         queryClient.invalidateQueries({ queryKey: ["admin-sellers"] });
         queryClient.invalidateQueries({ queryKey: ["physical-books", adminSession?.id] });
+        refreshStockQueries(queryClient);
       }, 120);
     };
 
@@ -163,7 +183,10 @@ export default function AdminSellerDetailPage() {
         { event: "INSERT", schema: "public", table: "stock_events", filter: `seller_id=eq.${id}` },
         (payload) => {
           const result = stockMutationResultFromRealtime(payload);
-          if (result) applyStockMutationResult(queryClient, result, { sellerId: id, adminId: adminSession.id });
+          if (result) {
+            applyStockMutationResult(queryClient, result, { sellerId: id, adminId: adminSession.id });
+            refreshStockQueries(queryClient);
+          }
         }
       )
       .subscribe();
@@ -288,14 +311,20 @@ export default function AdminSellerDetailPage() {
             <div className="max-h-48 overflow-y-auto mb-3 space-y-1">
               {filteredBooks.map((book) => {
                 const isAssigningBook = assignMutation.isPending && assignBookId === book.id;
+                const outOfStock = book.stock_physical <= 0;
                 return (
                   <button
                     key={book.id}
-                    onClick={() => setAssignBookId(book.id)}
-                    disabled={assignMutation.isPending}
+                    onClick={() => {
+                      setAssignBookId(book.id);
+                      setAssignQty((qty) => Math.min(Math.max(1, qty), Math.max(1, book.stock_physical)));
+                    }}
+                    disabled={assignMutation.isPending || outOfStock}
                     className={`relative overflow-hidden w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                       isAssigningBook
                         ? "bg-green-500/10 text-green-300 border border-green-500/30"
+                        : outOfStock
+                          ? "text-red-400/50 cursor-not-allowed border border-transparent"
                         : assignBookId === book.id
                           ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
                           : "text-white/60 hover:bg-white/5 border border-transparent"
@@ -315,16 +344,16 @@ export default function AdminSellerDetailPage() {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setAssignQty(Math.max(1, assignQty - 1))}
+                  onClick={() => setAssignQty(Math.max(1, effectiveAssignQty - 1))}
                   disabled={assignMutation.isPending}
                   className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none"
                 >
                   <Minus className="w-3.5 h-3.5" />
                 </button>
-                <span className="w-8 text-center font-medium">{assignQty}</span>
+                <span className="w-8 text-center font-medium">{effectiveAssignQty}</span>
                 <button
-                  onClick={() => setAssignQty(assignQty + 1)}
-                  disabled={assignMutation.isPending}
+                  onClick={() => setAssignQty(Math.min(selectedAssignStock || 1, effectiveAssignQty + 1))}
+                  disabled={assignMutation.isPending || !assignBookId || effectiveAssignQty >= selectedAssignStock}
                   className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -332,7 +361,12 @@ export default function AdminSellerDetailPage() {
               </div>
               <button
                 onClick={() => assignMutation.mutate()}
-                disabled={!assignBookId || assignMutation.isPending}
+                disabled={
+                  !assignBookId ||
+                  assignMutation.isPending ||
+                  selectedAssignStock <= 0 ||
+                  effectiveAssignQty > selectedAssignStock
+                }
                 className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 {assignMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

@@ -6,7 +6,12 @@ import { createClientClient } from "@/lib/supabase";
 import { fetchJsonWithSessionRetry } from "@/lib/auth-fetch";
 import { updateStockRequestStatus, COST_PER_BOOK, ADMIN_COST_BOOK, markSalesAsPaid, assignStock } from "@/lib/sellers";
 import { deleteStockRequestAction, deleteSaleAction, removeSellerInventoryAction } from "@/lib/actions/sellers";
-import { applyStockMutationResult, stockMutationResultFromRealtime } from "@/lib/stock-cache";
+import {
+  applyStockMutationResult,
+  refreshStockQueries,
+  STOCK_QUERY_OPTIONS,
+  stockMutationResultFromRealtime,
+} from "@/lib/stock-cache";
 import type { StockRequest } from "@/types/seller";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 
@@ -143,7 +148,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Cancelado", color: "bg-red-500/10 text-red-400 border border-red-500/20" },
 };
 
-const ADMIN_DASHBOARD_STALE_MS = 10 * 1000;
 const ADMIN_BACKGROUND_REFRESH_MS = 10 * 1000;
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -243,7 +247,7 @@ export default function AdminDashboard() {
         "Error al cargar dashboard"
       );
     },
-    staleTime: ADMIN_DASHBOARD_STALE_MS,
+    ...STOCK_QUERY_OPTIONS,
     placeholderData: (previousData) => previousData,
   });
 
@@ -276,14 +280,21 @@ export default function AdminDashboard() {
     for (const s of adminStock) m.set(s.book_id, s.quantity);
     return m;
   }, [adminStock]);
+
   const assignSellerEntries = useMemo(
-    () => Object.entries(assignSellerQtys).filter(([, qty]) => qty > 0),
-    [assignSellerQtys]
+    () => Object.entries(assignSellerQtys)
+      .map(([bookId, qty]) => [bookId, Math.min(qty, adminStockMap.get(bookId) || 0)] as [string, number])
+      .filter(([, qty]) => qty > 0),
+    [adminStockMap, assignSellerQtys]
   );
   const assignSellerUnits = useMemo(
     () => assignSellerEntries.reduce((sum, [, qty]) => sum + qty, 0),
     [assignSellerEntries]
   );
+  const assignSelfAvailableStock = adminStockMap.get(assignSelfBookId) || 0;
+  const assignSelfEffectiveQty = assignSelfBookId
+    ? Math.min(Math.max(1, assignSelfQty), Math.max(1, assignSelfAvailableStock))
+    : assignSelfQty;
   const openPreviewBook = useCallback((book: DashboardBookInfo | null | undefined) => {
     if (book) setPreviewBook(book);
   }, []);
@@ -293,10 +304,7 @@ export default function AdminDashboard() {
     if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
 
     realtimeRefreshTimer.current = setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"], refetchType: "all" });
-      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
-      queryClient.invalidateQueries({ queryKey: ["books"] });
-      queryClient.invalidateQueries({ queryKey: ["book"] });
+      refreshStockQueries(queryClient);
     }, 120);
   }, [queryClient]);
 
@@ -405,7 +413,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const refetch = () => {
       if (stockWriteInFlight.current) return;
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"], refetchType: "active" });
+      refreshStockQueries(queryClient);
     };
     const interval = setInterval(refetch, ADMIN_BACKGROUND_REFRESH_MS);
     const onVisible = () => {
@@ -473,16 +481,20 @@ export default function AdminDashboard() {
     mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
-      return assignStock(supabase, user.id, assignSelfBookId, assignSelfQty);
+      const available = adminStockMap.get(assignSelfBookId) || 0;
+      if (available <= 0) throw new Error("Este libro no tiene stock disponible");
+      if (assignSelfEffectiveQty > available) throw new Error("La cantidad supera el stock disponible");
+      return assignStock(supabase, user.id, assignSelfBookId, assignSelfEffectiveQty);
     },
     onMutate: () => {
       stockWriteInFlight.current = true;
-      if (adminUserId && assignSelfBookId && assignSelfQty > 0) {
-        applyAssignedStockToDashboard(adminUserId, [{ book_id: assignSelfBookId, quantity: assignSelfQty }]);
+      if (adminUserId && assignSelfBookId && assignSelfEffectiveQty > 0) {
+        applyAssignedStockToDashboard(adminUserId, [{ book_id: assignSelfBookId, quantity: assignSelfEffectiveQty }]);
       }
     },
     onSuccess: (result) => {
       applyStockMutationResult(queryClient, result, { sellerId: adminUserId, adminId: adminUserId });
+      refreshStockQueries(queryClient);
       setAssignSelfBookId("");
       setAssignSelfQty(1);
       toast.success("Stock asignado a tu perfil de vendedor");
@@ -501,6 +513,12 @@ export default function AdminDashboard() {
       if (!assignSellerId) throw new Error("Selecciona un vendedor");
       const entries = assignSellerEntries;
       if (entries.length === 0) throw new Error("No hay cantidades asignadas");
+      for (const [bookId, qty] of entries) {
+        const available = adminStockMap.get(bookId) || 0;
+        if (available <= 0 || qty > available) {
+          throw new Error("Una cantidad seleccionada supera el stock disponible");
+        }
+      }
       const items = entries.map(([bookId, qty]) => ({ book_id: bookId, quantity: qty }));
       const { data, error } = await supabase.rpc("assign_stock_batch", {
         p_seller_id: assignSellerId,
@@ -522,6 +540,7 @@ export default function AdminDashboard() {
     },
     onSuccess: (result) => {
       applyStockMutationResult(queryClient, result, { sellerId: assignSellerId, adminId: adminUserId });
+      refreshStockQueries(queryClient);
       setAssignSellerQtys({});
       toast.success("Stock asignado al vendedor");
     },
@@ -542,6 +561,7 @@ export default function AdminDashboard() {
     },
     onSuccess: (result) => {
       applyStockMutationResult(queryClient, result, { adminId: adminUserId });
+      refreshStockQueries(queryClient);
       toast.success("Stock removido del vendedor");
     },
     onError: (err: unknown) => toast.error(getErrorMessage(err, "Error al remover stock")),
@@ -569,6 +589,7 @@ export default function AdminDashboard() {
           },
         };
       });
+      refreshStockQueries(queryClient);
       toast.success("Venta eliminada y stock revertido");
     },
     onError: (err: unknown) => toast.error(getErrorMessage(err, "Error al eliminar venta")),
@@ -876,8 +897,8 @@ export default function AdminDashboard() {
                             (b.author ?? "").toLowerCase().includes(assignSellerSearch.toLowerCase())
                           )
                           .map((book) => {
-                            const qty = assignSellerQtys[book.id] || 0;
                             const myStock = adminStockMap.get(book.id) || 0;
+                            const qty = Math.min(assignSellerQtys[book.id] || 0, myStock);
                             const lowStock = myStock > 0 && myStock <= 3;
                             const outOfStock = myStock <= 0;
                             const isAssigningSelected = assignSellerMutation.isPending && qty > 0;
@@ -908,7 +929,7 @@ export default function AdminDashboard() {
                                       <button
                                         onClick={() =>
                                           setAssignSellerQtys((prev) => {
-                                            const current = prev[book.id] || 0;
+                                            const current = Math.min(prev[book.id] || 0, myStock);
                                             const next = Math.max(0, current - 1);
                                             const copy = { ...prev };
                                             if (next <= 0) delete copy[book.id];
@@ -926,7 +947,7 @@ export default function AdminDashboard() {
                                         onClick={() =>
                                           setAssignSellerQtys((prev) => ({
                                             ...prev,
-                                            [book.id]: Math.min(myStock, (prev[book.id] || 0) + 1),
+                                            [book.id]: Math.min(myStock, Math.min(prev[book.id] || 0, myStock) + 1),
                                           }))
                                         }
                                         disabled={assignSellerMutation.isPending || qty >= myStock}
@@ -1041,16 +1062,20 @@ export default function AdminDashboard() {
                   <div className="relative overflow-hidden flex items-center gap-3 rounded-xl">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setAssignSelfQty(Math.max(1, assignSelfQty - 1))}
+                        onClick={() => setAssignSelfQty(Math.max(1, assignSelfEffectiveQty - 1))}
                         disabled={assignSelfMutation.isPending}
                         className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className="w-8 text-center font-medium">{assignSelfQty}</span>
+                      <span className="w-8 text-center font-medium">{assignSelfEffectiveQty}</span>
                       <button
-                        onClick={() => setAssignSelfQty(prev => Math.min(prev + 1, adminStockMap.get(assignSelfBookId) || 1))}
-                        disabled={assignSelfMutation.isPending}
+                        onClick={() => setAssignSelfQty(Math.min(assignSelfEffectiveQty + 1, assignSelfAvailableStock || 1))}
+                        disabled={
+                          assignSelfMutation.isPending ||
+                          !assignSelfBookId ||
+                          assignSelfEffectiveQty >= assignSelfAvailableStock
+                        }
                         className="p-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -1058,7 +1083,12 @@ export default function AdminDashboard() {
                     </div>
                     <button
                       onClick={() => assignSelfMutation.mutate()}
-                      disabled={!assignSelfBookId || assignSelfMutation.isPending}
+                      disabled={
+                        !assignSelfBookId ||
+                        assignSelfMutation.isPending ||
+                        assignSelfAvailableStock <= 0 ||
+                        assignSelfEffectiveQty > assignSelfAvailableStock
+                      }
                       className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                     >
                       {assignSelfMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

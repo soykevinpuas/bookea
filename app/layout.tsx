@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PwaListener } from "@/components/PwaListener";
 import { SplashScreen } from "@/components/SplashScreen";
+import { StockRealtimeSync } from "@/components/StockRealtimeSync";
 import { Suspense } from "react";
 import BottomNavWrapper from "@/components/BottomNavWrapper";
 
@@ -75,6 +76,7 @@ export default function RootLayout({
           <SplashScreen />
           <QueryProvider>
             <AuthProvider>
+              <StockRealtimeSync />
               <Header />
               <main className="flex-1 pb-[max(5rem,env(safe-area-inset-bottom))] px-safe flex flex-col">
                 <Suspense fallback={null}>

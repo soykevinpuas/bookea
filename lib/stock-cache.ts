@@ -7,6 +7,29 @@ type StockCacheOptions = {
   adminId?: string | null;
 };
 
+export const STOCK_QUERY_OPTIONS = {
+  staleTime: 0,
+  gcTime: 60 * 60 * 1000,
+  refetchOnMount: "always" as const,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+  retry: 1,
+};
+
+const STOCK_REFRESH_QUERY_KEYS = [
+  ["admin-dashboard"],
+  ["admin-books"],
+  ["physical-books"],
+  ["requestable-books"],
+  ["books"],
+  ["book"],
+  ["admin-sellers"],
+  ["admin-seller-detail"],
+  ["vendedor-dashboard"],
+  ["seller-inventory"],
+  ["seller-requests"],
+] as const;
+
 type VersionedCacheRow = {
   updated_at?: string | null;
   stock_version?: string | null;
@@ -229,6 +252,50 @@ function updateBookStockRows(
   }
 
   return next;
+}
+
+function updateExistingBookStockRows<T extends BookStockCacheRow>(
+  rows: T[] | undefined,
+  snapshots: StockSnapshot[],
+  mode: "total" | "warehouse"
+) {
+  if (!rows) return rows;
+
+  return rows.map((book) => {
+    const snapshot = snapshots.find((item) => item.book_id === book.id);
+    if (!snapshot || !shouldApplySnapshot(book, snapshot)) return book;
+
+    const quantity = mode === "warehouse" ? snapshot.warehouse_quantity : snapshot.total_physical;
+    return {
+      ...book,
+      stock_physical: quantity,
+      stock_total: snapshot.total_physical,
+      stock_warehouse: snapshot.warehouse_quantity,
+      stock_assigned: snapshot.assigned_quantity,
+      updated_at: snapshot.updated_at,
+      stock_version: snapshot.version,
+    } as T;
+  });
+}
+
+function updateBookDetailStock<T extends BookStockCacheRow>(
+  book: T | null | undefined,
+  snapshots: StockSnapshot[]
+) {
+  if (!book) return book;
+
+  const snapshot = snapshots.find((item) => item.book_id === book.id);
+  if (!snapshot || !shouldApplySnapshot(book, snapshot)) return book;
+
+  return {
+    ...book,
+    stock_physical: snapshot.total_physical,
+    stock_total: snapshot.total_physical,
+    stock_warehouse: snapshot.warehouse_quantity,
+    stock_assigned: snapshot.assigned_quantity,
+    updated_at: snapshot.updated_at,
+    stock_version: snapshot.version,
+  } as T;
 }
 
 function updateVendedorDashboard(
@@ -455,6 +522,14 @@ export function applyStockMutationResult(
     updateAdminBooksResponse(old, snapshots)
   );
 
+  queryClient.setQueriesData<BookStockCacheRow[] | undefined>({ queryKey: ["books"] }, (old) =>
+    updateExistingBookStockRows(old, snapshots, "total")
+  );
+
+  queryClient.setQueriesData<BookStockCacheRow | null | undefined>({ queryKey: ["book"] }, (old) =>
+    updateBookDetailStock(old, snapshots)
+  );
+
   queryClient.setQueriesData<BookStockCacheRow[] | undefined>({ queryKey: ["physical-books"] }, (old) =>
     updateBookStockRows(old, snapshots, "warehouse")
   );
@@ -472,6 +547,14 @@ export function applyStockMutationResult(
     queryClient.setQueryData<AdminSellerDetailCache | undefined>(["admin-seller-detail", snapshot.seller_id], (old) =>
       updateAdminSellerDetail(old, snapshots, snapshot.seller_id)
     );
+  }
+}
+
+// Marca y refresca todas las vistas que dependen de inventario para que cada pantalla reciba el mismo cambio.
+export function refreshStockQueries(queryClient: QueryClient) {
+  for (const queryKey of STOCK_REFRESH_QUERY_KEYS) {
+    queryClient.invalidateQueries({ queryKey, refetchType: "none" });
+    void queryClient.refetchQueries({ queryKey, type: "active" });
   }
 }
 

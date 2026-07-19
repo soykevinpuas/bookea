@@ -3,7 +3,7 @@
 import AppImage from "@/components/ui/AppImage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { applyStockMutationResult } from "@/lib/stock-cache";
+import { applyStockMutationResult, refreshStockQueries, STOCK_QUERY_OPTIONS } from "@/lib/stock-cache";
 import type { StockMutationResult } from "@/types/stock";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
@@ -122,6 +122,7 @@ export default function AdminBooksPage() {
       if (!res.ok) throw new Error(json.error || "Error al cargar libros");
       return json.books as Book[];
     },
+    ...STOCK_QUERY_OPTIONS,
   });
 
   const { data: authors = [] } = useQuery({
@@ -145,7 +146,7 @@ export default function AdminBooksPage() {
     const refreshBooks = () => {
       if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+        refreshStockQueries(queryClient);
       }, 120);
     };
 
@@ -182,6 +183,7 @@ export default function AdminBooksPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+      refreshStockQueries(queryClient);
       toast.success("Estado del libro actualizado");
     },
     onError: (err: unknown) => toast.error(`Error: ${getErrorMessage(err)}`),
@@ -207,7 +209,7 @@ export default function AdminBooksPage() {
     },
     onSuccess: (result) => {
       applyStockMutationResult(queryClient, result);
-      void queryClient.refetchQueries({ queryKey: ["admin-books"], type: "active" });
+      refreshStockQueries(queryClient);
     },
     onError: (err: unknown, vars, context) => {
       if (context?.previousBooks) queryClient.setQueryData(["admin-books"], context.previousBooks);
@@ -299,6 +301,7 @@ export default function AdminBooksPage() {
     setSaving(true);
     try {
       const supabase = createClientClient();
+      let stockResult: StockMutationResult | null = null;
 
       // Crear nuevo autor si es necesario
       let authorId = editingBook.author_id;
@@ -357,6 +360,7 @@ export default function AdminBooksPage() {
           });
           const stockJson = await stockRes.json();
           if (!stockRes.ok) throw new Error(stockJson.error || "No se pudo ajustar el stock");
+          stockResult = stockJson as StockMutationResult;
         }
         toast.success("Libro actualizado con éxito");
       } else {
@@ -371,11 +375,13 @@ export default function AdminBooksPage() {
           });
           const stockJson = await stockRes.json();
           if (!stockRes.ok) throw new Error(stockJson.error || "No se pudo asignar stock inicial");
+          stockResult = stockJson as StockMutationResult;
         }
         toast.success("Libro creado con éxito");
       }
 
-      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+      applyStockMutationResult(queryClient, stockResult);
+      refreshStockQueries(queryClient);
       setShowModal(false);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err));

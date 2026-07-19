@@ -6,7 +6,13 @@ import { createClientClient } from "@/lib/supabase";
 import { fetchJsonWithSessionRetry } from "@/lib/auth-fetch";
 import { markAsSold, COST_PER_BOOK, ADMIN_COST_BOOK } from "@/lib/sellers";
 import { createStockRequestAction, receiveStockItemAction } from "@/lib/actions/sellers";
-import { applyStockMutationResult, getStockSnapshots, stockMutationResultFromRealtime } from "@/lib/stock-cache";
+import {
+  applyStockMutationResult,
+  getStockSnapshots,
+  refreshStockQueries,
+  STOCK_QUERY_OPTIONS,
+  stockMutationResultFromRealtime,
+} from "@/lib/stock-cache";
 import { useAuth } from "@/lib/auth-provider";
 import { Package, TrendingUp, Loader2, BarChart3, Check, DollarSign, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, X, Search, Store, Info, Send, LayoutGrid, List, type LucideIcon } from "lucide-react";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
@@ -118,7 +124,6 @@ const EMPTY_TOP_BOOKS: Record<TopBooksPeriod, TopBook[]> = {
 };
 
 const STOCK_EXIT_ANIMATION_MS = 320;
-const VENDEDOR_DASHBOARD_STALE_MS = 60 * 1000;
 const VENDEDOR_BACKGROUND_REFRESH_MS = 60 * 1000;
 
 type ChartTooltipPayload = {
@@ -216,21 +221,14 @@ export default function VendedorDashboard() {
   const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dashboardQueryKey = useMemo(() => ["vendedor-dashboard", userId] as const, [userId]);
 
-  const scheduleRealtimeRefresh = useCallback((includeRequestableBooks = false) => {
+  const scheduleRealtimeRefresh = useCallback(() => {
     if (!userId || stockWriteInFlight.current) return;
     if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
 
     realtimeRefreshTimer.current = setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
-      queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
-      queryClient.refetchQueries({ queryKey: dashboardQueryKey, type: "active" });
-
-      if (includeRequestableBooks) {
-        queryClient.invalidateQueries({ queryKey: ["requestable-books", userId] });
-        queryClient.refetchQueries({ queryKey: ["requestable-books", userId], type: "active" });
-      }
+      refreshStockQueries(queryClient);
     }, 120);
-  }, [dashboardQueryKey, queryClient, userId]);
+  }, [queryClient, userId]);
 
   useEffect(() => {
     const seccion = searchParams?.get("seccion");
@@ -264,7 +262,7 @@ export default function VendedorDashboard() {
         "postgres_changes",
         { event: "*", schema: "public", table: "seller_inventory", filter: `seller_id=eq.${userId}` },
         () => {
-          scheduleRealtimeRefresh(true);
+          scheduleRealtimeRefresh();
         }
       )
       .subscribe();
@@ -277,7 +275,7 @@ export default function VendedorDashboard() {
   useEffect(() => {
     const refetch = () => {
       if (stockWriteInFlight.current) return;
-      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"], refetchType: "all" });
+      refreshStockQueries(queryClient);
     };
     const interval = setInterval(refetch, VENDEDOR_BACKGROUND_REFRESH_MS);
     const onVisible = () => { if (document.visibilityState === "visible") refetch(); };
@@ -359,6 +357,7 @@ export default function VendedorDashboard() {
   const applyRealtimeStockResult = useCallback((result: StockMutationResult | null) => {
     if (!result || !userId) return;
     applyStockMutationResult(queryClient, result, { sellerId: userId });
+    refreshStockQueries(queryClient);
     for (const snapshot of getStockSnapshots(result)) {
       if (snapshot.seller_id !== userId) continue;
       if (snapshot.seller_quantity > 0) releaseStockLock(snapshot.book_id);
@@ -391,9 +390,7 @@ export default function VendedorDashboard() {
     queryKey: dashboardQueryKey,
     queryFn: () => fetchVendedorJson<DashboardData>("/api/vendedor/dashboard", "Error al cargar dashboard"),
     enabled: authReady && !!userId,
-    staleTime: VENDEDOR_DASHBOARD_STALE_MS,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    ...STOCK_QUERY_OPTIONS,
     placeholderData: (previousData) => previousData,
   });
 
@@ -401,9 +398,7 @@ export default function VendedorDashboard() {
     queryKey: ["requestable-books", userId],
     queryFn: () => fetchVendedorJson<RequestableBooksResponse>("/api/vendedor/requestable-books", "No se pudieron cargar los libros"),
     enabled: authReady && !!userId && activeSection === "stock",
-    staleTime: VENDEDOR_DASHBOARD_STALE_MS,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    ...STOCK_QUERY_OPTIONS,
     placeholderData: (previousData) => previousData,
   });
 
@@ -601,10 +596,7 @@ export default function VendedorDashboard() {
       setRequestCart([]);
       setRequestNotes("");
       toast.success("Solicitud creada correctamente");
-      queryClient.invalidateQueries({ queryKey: ["requestable-books", userId] });
-      queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
-      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      refreshStockQueries(queryClient);
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Error al crear solicitud");
@@ -659,6 +651,7 @@ export default function VendedorDashboard() {
       if (stockSnapshot) {
         lockStockQuantity(stockSnapshot, lockTtl);
         applyStockMutationResult(queryClient, resultWithSale, { sellerId: userId, adminId: isAdmin ? userId : undefined });
+        refreshStockQueries(queryClient);
       } else {
         setLocalStockLock(bookId, nextQty, new Date().toISOString(), lockTtl);
       }
@@ -681,7 +674,7 @@ export default function VendedorDashboard() {
       });
       setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
       setSalePrices(prev => { const copy = { ...prev }; delete copy[bookId]; return copy; });
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"], refetchType: "active" });
+      refreshStockQueries(queryClient);
 
       if (shouldExit) await waitForSoldOutExit();
     } catch (e) {
@@ -704,7 +697,7 @@ export default function VendedorDashboard() {
 
           setLocalStockLock(bookId, freshQty, new Date().toISOString(), shouldExit ? 60_000 : 15_000);
           queryClient.setQueryData<DashboardData>(dashboardQueryKey, fresh);
-          queryClient.invalidateQueries({ queryKey: ["admin-dashboard"], refetchType: "active" });
+          refreshStockQueries(queryClient);
           setSaleQtys(prev => ({ ...prev, [bookId]: 1 }));
           setSalePrices(prev => { const copy = { ...prev }; delete copy[bookId]; return copy; });
           toast.success("Venta sincronizada con el servidor");
@@ -729,9 +722,7 @@ export default function VendedorDashboard() {
     try {
       await receiveStockItemAction(itemId);
       toast.success("Libro recibido");
-      queryClient.invalidateQueries({ queryKey: ["seller-requests", userId] });
-      queryClient.invalidateQueries({ queryKey: ["seller-inventory", userId] });
-      queryClient.invalidateQueries({ queryKey: ["vendedor-dashboard"] });
+      refreshStockQueries(queryClient);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al recibir");
     } finally {

@@ -4,7 +4,12 @@ import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { getAdminSellers } from "@/lib/sellers";
-import { applyStockMutationResult, stockMutationResultFromRealtime } from "@/lib/stock-cache";
+import {
+  applyStockMutationResult,
+  refreshStockQueries,
+  STOCK_QUERY_OPTIONS,
+  stockMutationResultFromRealtime,
+} from "@/lib/stock-cache";
 import { useUserId } from "@/hooks/useUser";
 import { Store, Loader2, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -18,6 +23,7 @@ export default function AdminVendedoresPage() {
     queryKey: ["admin-sellers", userId],
     queryFn: () => getAdminSellers(supabase, userId || undefined),
     enabled: !!userId,
+    ...STOCK_QUERY_OPTIONS,
   });
 
   useEffect(() => {
@@ -30,7 +36,10 @@ export default function AdminVendedoresPage() {
         { event: "INSERT", schema: "public", table: "stock_events", filter: `admin_id=eq.${userId}` },
         (payload) => {
           const result = stockMutationResultFromRealtime(payload);
-          if (result) applyStockMutationResult(queryClient, result, { adminId: userId });
+          if (result) {
+            applyStockMutationResult(queryClient, result, { adminId: userId });
+            refreshStockQueries(queryClient);
+          }
         }
       )
       .subscribe();

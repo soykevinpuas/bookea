@@ -4,6 +4,26 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-19-B] — Sincronización dominó de inventario entre secciones
+
+### Problema
+Los cambios de stock ya se guardaban en base de datos y Supabase Realtime emitía eventos, pero cada sección mantenía caches aisladas. `admin-books` podía actualizarse mientras `admin-dashboard`, `physical-books`, `requestable-books`, `vendedor-dashboard`, `books` y `book` conservaban datos viejos por el cache global de React Query (`refetchOnMount: false`). Por eso al subir stock de 0 a N, la pantalla de asignar seguía viendo 0 hasta remount/reinicio.
+
+### Cambios
+1. **`components/StockRealtimeSync.tsx`** — Nuevo listener global montado en el layout para escuchar `books` y `stock_events` durante toda la sesión, no solo dentro de una pantalla.
+2. **`lib/stock-cache.ts`** — `applyStockMutationResult` ahora actualiza también caches de catálogo (`books`) y detalle (`book`), y se agrega `refreshStockQueries` para invalidar/refetchear todas las vistas dependientes de inventario.
+3. **Admin/Vendedor** — `admin-dashboard`, `admin-books`, `admin-sellers`, `admin-seller-detail`, `physical-books`, `vendedor-dashboard` y `requestable-books` usan opciones de stock frescas (`refetchOnMount: always`, foco/reconnect activo).
+4. **Asignación de stock** — Las cantidades seleccionadas se derivan del stock disponible actual y se validan antes de llamar a la RPC para evitar UI con cantidades imposibles.
+
+### Verificación
+- Realtime remoto confirmado previamente: `books UPDATE` llega al cliente y la ruta `admin_stock -> trigger -> books` emite evento.
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+- `supabase migration list`: local y remoto sincronizados hasta `065`.
+
+---
+
 ## [2026-07-19-A] — Disponibilidad fisica visible y fallback de sincronizacion
 
 ### Problema
