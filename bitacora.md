@@ -4,6 +4,26 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-19-A] — Disponibilidad fisica visible y fallback de sincronizacion
+
+### Problema
+Realtime remoto si emitia eventos `books UPDATE` incluso cuando el cambio venia por `admin_stock`, pero el catalogo no mostraba un numero de unidades fisicas en la lista. El contador superior era cantidad de titulos, no stock; por eso podia no cambiar aunque el inventario si cambiara. Ademas, si el websocket fallaba en una PWA/dispositivo, faltaba un fallback corto de reconciliacion.
+
+### Cambios
+1. **`app/(app)/catalog/page.tsx`** — El resumen del catalogo ahora muestra titulos fisicos y unidades fisicas disponibles.
+2. **`app/(app)/catalog/page.tsx`** — Las cards fisicas muestran `N disp.` tanto en grid como en lista, incluso si el libro ya esta en carrito.
+3. **`hooks/useBooks.ts`** — El catalogo conserva Realtime y agrega polling de respaldo cada 5s solo mientras la pestaña esta visible.
+
+### Verificación
+- Realtime remoto probado: `books UPDATE` llega al cliente.
+- Ruta real probada: `admin_stock` dispara trigger, actualiza `books` y llega evento Realtime al cliente.
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+- `supabase migration list`: local y remoto sincronizados hasta `065`.
+
+---
+
 ## [2026-07-18-D] — Bust de cache PWA para stock cliente
 
 ### Problema

@@ -79,6 +79,19 @@ function CatalogContent() {
     });
   }, [booksData, tab, isVendedor]);
 
+  const physicalAvailability = useMemo(() => {
+    if (!showPhysical) return { titles: 0, units: 0 };
+
+    return filteredByTab.reduce((totals, book: Book) => {
+      if (book.price_physical <= 0 || book.stock_physical <= 0) return totals;
+
+      return {
+        titles: totals.titles + 1,
+        units: totals.units + book.stock_physical,
+      };
+    }, { titles: 0, units: 0 });
+  }, [filteredByTab, showPhysical]);
+
   const categories = ["Ficción", "No Ficción", "Novela", "Clásicos", "Misterio y Suspenso", "Fantasía", "Ciencia Ficción", "Romance", "Terror", "Autoayuda", "Negocios y Finanzas", "Historia", "Biografías", "Cuentos", "Poesía", "Otros"];
 
   // Agrega al carrito y abre el panel para confirmar visualmente la accion.
@@ -164,7 +177,12 @@ function CatalogContent() {
             <button onClick={() => setViewMode("list")} className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white dark:bg-zinc-700 shadow-sm" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`} title="Lista"><List className="w-4 h-4" /></button>
           </div>
         </div>
-        <p className="text-xs text-zinc-400 mb-2">Mostrando {filteredByTab.length} de {booksData?.length || 0} libros</p>
+        <p className="text-xs text-zinc-400 mb-2">
+          Mostrando {filteredByTab.length} de {booksData?.length || 0} libros
+          {showPhysical && (
+            <span> · {physicalAvailability.titles} físicos · {physicalAvailability.units} uds.</span>
+          )}
+        </p>
         {filteredByTab.length === 0 ? (
           <Card className="text-center py-20">
             <span className="text-4xl block mb-4">🔍</span>
@@ -227,9 +245,12 @@ function CatalogContent() {
                       )}
                       {showPhysical && book.price_physical > 0 && book.stock_physical > 0 && (
                         isInCart(book.id, 'physical') ? (
-                          <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap">
-                            <ShoppingCart className="w-3 h-3" /> En carrito
-                          </span>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap">
+                              <ShoppingCart className="w-3 h-3" /> En carrito
+                            </span>
+                            <span className="text-[9px] text-gray-400 dark:text-zinc-500">{book.stock_physical} disp.</span>
+                          </div>
                         ) : (
                           <div className="flex flex-col items-center gap-0.5">
                             <button onClick={() => handleAddToCart(book, 'physical')} disabled={adding === `${book.id}-physical`}
@@ -237,7 +258,7 @@ function CatalogContent() {
                             >
                               {adding === `${book.id}-physical` ? <Loader2 className="w-3 h-3 animate-spin" /> : `$${book.price_physical}`}
                             </button>
-                            <span className="text-[9px] text-gray-400 dark:text-zinc-500">Físico</span>
+                            <span className="text-[9px] text-gray-400 dark:text-zinc-500">Físico · {book.stock_physical} disp.</span>
                           </div>
                         )
                       )}
@@ -297,9 +318,12 @@ function CatalogContent() {
                     )}
                     {showPhysical && book.price_physical > 0 && book.stock_physical > 0 && (
                       isInCart(book.id, 'physical') ? (
-                        <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 border border-blue-500/20 px-2 py-1.5 rounded-lg flex items-center gap-1 whitespace-nowrap">
-                          <ShoppingCart className="w-3 h-3" /> En carrito
-                        </span>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 border border-blue-500/20 px-2 py-1.5 rounded-lg flex items-center gap-1 whitespace-nowrap">
+                            <ShoppingCart className="w-3 h-3" /> En carrito
+                          </span>
+                          <span className="text-[9px] text-gray-400 dark:text-zinc-500">{book.stock_physical} disp.</span>
+                        </div>
                       ) : (
                         <div className="flex flex-col items-center gap-0.5">
                           <button onClick={() => handleAddToCart(book, 'physical')} disabled={adding === `${book.id}-physical`}
@@ -307,7 +331,7 @@ function CatalogContent() {
                           >
                             {adding === `${book.id}-physical` ? <Loader2 className="w-3 h-3 animate-spin" /> : `$${book.price_physical}`}
                           </button>
-                          <span className="text-[9px] text-gray-400 dark:text-zinc-500">Físico</span>
+                          <span className="text-[9px] text-gray-400 dark:text-zinc-500">Físico · {book.stock_physical} disp.</span>
                         </div>
                       )
                     )}

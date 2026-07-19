@@ -130,6 +130,10 @@ function sortBooksByCreatedAt(books: Book[]) {
   return [...books].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
+function refetchVisibleCatalog() {
+  return typeof document === "undefined" || document.visibilityState === "visible" ? 5000 : false;
+}
+
 // Aplica el row de Realtime en memoria para que el catalogo cliente cambie antes del refetch.
 function applyBookRealtimeRow(data: Book[] | undefined, payload: unknown, options?: BookFilters) {
   if (!data || !isBookRealtimePayload(payload)) return data;
@@ -193,6 +197,7 @@ export function useBooks(options?: BookFilters) {
       return applyBookFilters(cachedCatalog.data, options);
     },
     ...BOOK_QUERY_OPTIONS,
+    refetchInterval: refetchVisibleCatalog,
   });
 
   useEffect(() => {
