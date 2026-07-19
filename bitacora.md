@@ -4,6 +4,24 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-18-C] — Stock de catalogo cliente por payload Realtime
+
+### Problema
+Aunque `books` estaba publicado en Realtime y `books.stock_physical` ya coincidia con `admin_stock`, el catalogo cliente solo invalidaba/refetcheaba cuando llegaba el evento. Mientras el refetch ocurria, la UI podia seguir mostrando cache local vieja, por eso el cambio de stock no se veia al instante en cliente.
+
+### Cambios
+1. **`hooks/useBooks.ts`** — Los eventos Realtime de `books` ahora actualizan directamente la cache activa de `books` antes del refetch.
+2. **`hooks/useBooks.ts`** — El cache persistido del catalogo publico tambien se actualiza con el payload recibido para no repintar datos viejos.
+3. **`hooks/useBooks.ts`** — El detalle `book/[id]` aplica el row nuevo en memoria y luego reconcilia con refetch activo.
+
+### Verificación
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+- Remoto revisado: `books`, `admin_stock` y `stock_events` estan en `supabase_realtime`; `books.stock_physical` no tiene desfaces contra `admin_stock`.
+
+---
+
 ## [2026-07-18-B] — Botones de stock por delta en Admin Libros
 
 ### Problema

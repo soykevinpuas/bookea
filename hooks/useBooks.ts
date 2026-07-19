@@ -17,6 +17,12 @@ const BOOK_QUERY_OPTIONS = {
 
 type BookFilters = { search?: string; category?: string; author?: string; adminId?: string };
 type CatalogCachePayload = { cachedAt: number; data: Book[] };
+type BookRealtimeRow = Partial<Book> & { id?: string };
+type BookRealtimePayload = {
+  eventType?: "INSERT" | "UPDATE" | "DELETE";
+  new?: BookRealtimeRow;
+  old?: BookRealtimeRow;
+};
 
 const CATALOG_CACHE_PREFIX = "bookea-catalog-cache-v2";
 
@@ -99,6 +105,57 @@ function applyBookFilters(data: Book[], options?: BookFilters) {
   return filtered;
 }
 
+function isBookRealtimePayload(payload: unknown): payload is BookRealtimePayload {
+  return typeof payload === "object" && payload !== null && ("new" in payload || "old" in payload);
+}
+
+function isBookRow(row: BookRealtimeRow | undefined): row is BookRealtimeRow & { id: string } {
+  return typeof row?.id === "string" && row.id.length > 0;
+}
+
+function bookMatchesQuery(book: Book, options?: BookFilters) {
+  if (!book.is_active) return false;
+
+  if (options?.adminId) {
+    // El stock fisico admin depende de admin_stock; el refetch confirmado calcula esa vista.
+    if (!book.epub_url) return false;
+  } else if (!book.epub_url && book.stock_physical <= 0) {
+    return false;
+  }
+
+  return applyBookFilters([book], options).length > 0;
+}
+
+function sortBooksByCreatedAt(books: Book[]) {
+  return [...books].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+}
+
+// Aplica el row de Realtime en memoria para que el catalogo cliente cambie antes del refetch.
+function applyBookRealtimeRow(data: Book[] | undefined, payload: unknown, options?: BookFilters) {
+  if (!data || !isBookRealtimePayload(payload)) return data;
+
+  const row = isBookRow(payload.new) ? payload.new : payload.old;
+  if (!isBookRow(row)) return data;
+
+  if (payload.eventType === "DELETE") {
+    return data.filter((book) => book.id !== row.id);
+  }
+
+  const existing = data.find((book) => book.id === row.id);
+  const nextBook = { ...(existing ?? {}), ...row } as Book;
+
+  if (!bookMatchesQuery(nextBook, options)) {
+    return data.filter((book) => book.id !== row.id);
+  }
+
+  const found = data.some((book) => book.id === row.id);
+  const next = found
+    ? data.map((book) => book.id === row.id ? nextBook : book)
+    : [nextBook, ...data];
+
+  return sortBooksByCreatedAt(next);
+}
+
 // Hook de catalogo general con persistencia local y filtros.
 export function useBooks(options?: BookFilters) {
   const supabase = createClientClient();
@@ -106,6 +163,12 @@ export function useBooks(options?: BookFilters) {
   const cacheKey = getCatalogCacheKey(options?.adminId);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const noCategoryFilter = !options?.category || options?.category === 'all';
+  const realtimeOptions = useMemo<BookFilters>(() => ({
+    search: options?.search,
+    category: options?.category,
+    author: options?.author,
+    adminId: options?.adminId,
+  }), [options?.search, options?.category, options?.author, options?.adminId]);
   const cachedCatalogRaw = useSyncExternalStore(
     subscribeCatalogCache,
     () => readCatalogCacheRaw(cacheKey),
@@ -136,23 +199,36 @@ export function useBooks(options?: BookFilters) {
     if (channelRef.current) return;
 
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-    const refreshCatalog = () => {
+    const refreshCatalog = (payload?: unknown) => {
       if (refreshTimer) clearTimeout(refreshTimer);
+
+      if (!realtimeOptions.adminId && payload) {
+        queryClient.setQueryData<Book[]>(
+          ["books", realtimeOptions.search, realtimeOptions.category, realtimeOptions.author, realtimeOptions.adminId],
+          (old) => applyBookRealtimeRow(old, payload, realtimeOptions)
+        );
+
+        if (!realtimeOptions.search && noCategoryFilter && !realtimeOptions.author) {
+          const cached = parseCatalogCache(readCatalogCacheRaw(cacheKey));
+          if (cached) writeCatalogCache(cacheKey, applyBookRealtimeRow(cached.data, payload, realtimeOptions) ?? cached.data);
+        }
+      }
+
       refreshTimer = setTimeout(() => {
         clearCatalogCache(cacheKey);
-        queryClient.invalidateQueries({ queryKey: ["books"] });
-        queryClient.invalidateQueries({ queryKey: ["book"] });
+        void queryClient.refetchQueries({ queryKey: ["books"], type: "active" });
+        void queryClient.refetchQueries({ queryKey: ["book"], type: "active" });
       }, 120);
     };
 
     let channel = supabase
-      .channel(`catalog-stock-${options?.adminId || "public"}`)
+      .channel(`catalog-stock-${realtimeOptions.adminId || "public"}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "books" }, refreshCatalog);
 
-    if (options?.adminId) {
+    if (realtimeOptions.adminId) {
       channel = channel.on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "admin_stock", filter: `admin_id=eq.${options.adminId}` },
+        { event: "*", schema: "public", table: "admin_stock", filter: `admin_id=eq.${realtimeOptions.adminId}` },
         refreshCatalog
       );
     }
@@ -165,7 +241,7 @@ export function useBooks(options?: BookFilters) {
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [cacheKey, options?.adminId, queryClient, supabase]);
+  }, [cacheKey, noCategoryFilter, queryClient, realtimeOptions, supabase]);
 
   return query;
 }
@@ -186,15 +262,24 @@ export function useBook(id: string) {
   useEffect(() => {
     if (!id || channelRef.current) return;
 
+    const applyBookChange = (payload: unknown) => {
+      if (isBookRealtimePayload(payload) && isBookRow(payload.new)) {
+        queryClient.setQueryData<Book | null>(["book", id], (old) => {
+          if (payload.new?.id !== id) return old;
+          return { ...(old ?? {}), ...payload.new } as Book;
+        });
+      }
+
+      void queryClient.refetchQueries({ queryKey: ["book", id], type: "active" });
+      void queryClient.refetchQueries({ queryKey: ["books"], type: "active" });
+    };
+
     const channel = supabase
       .channel(`book-stock-${id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "books", filter: `id=eq.${id}` },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["book", id] });
-          queryClient.invalidateQueries({ queryKey: ["books"] });
-        }
+        applyBookChange
       )
       .subscribe();
 
