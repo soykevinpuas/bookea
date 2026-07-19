@@ -4,6 +4,23 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-18-A] — Ajuste inmediato de stock en Admin Libros
+
+### Problema
+En `Admin > Libros`, los botones `+` y `-` de stock llamaban correctamente al endpoint de ajuste, pero la pantalla guardaba `admin-books` como un arreglo directo de libros y el helper compartido de snapshots esperaba una respuesta con forma `{ books: [...] }`. Por eso la mutación confirmada no actualizaba la tabla y la UI dependía de Realtime o de un refetch posterior, causando cambios visibles solo al salir/volver o de forma intermitente.
+
+### Cambios
+1. **`lib/stock-cache.ts`** — `admin-books` y `requestable-books` aceptan tanto arreglos directos como respuestas con `books`, aplicando los snapshots confirmados en ambas formas.
+2. **`app/admin/books/page.tsx`** — Después de aplicar el snapshot del ajuste, la tabla invalida `admin-books` para reconciliar con el endpoint completo aunque Realtime no llegue a tiempo.
+
+### Verificación
+- `supabase migration list`: local y remoto sincronizados hasta `065`.
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+
+---
+
 ## [2026-07-13-E] — Reconciliación de ventas, dashboard admin y splash de arranque
 
 ### Problema
