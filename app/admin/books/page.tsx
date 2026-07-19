@@ -4,6 +4,7 @@ import AppImage from "@/components/ui/AppImage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { applyStockMutationResult } from "@/lib/stock-cache";
+import type { StockMutationResult } from "@/types/stock";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
@@ -45,6 +46,8 @@ interface Book {
 
 type FormData = Omit<Book, "id" | "created_at"> & { id?: string; newAuthor?: string };
 type BookPayload = Record<string, string | number | boolean | null | undefined>;
+type StockAdjustmentVariables = { id: string; stockDelta: number };
+type StockAdjustmentContext = { previousBooks?: Book[] };
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Error inesperado";
@@ -75,6 +78,24 @@ const CATEGORIES = [
   "Fantasía", "Ciencia Ficción", "Romance", "Terror", "Autoayuda",
   "Negocios y Finanzas", "Historia", "Biografías", "Cuentos", "Poesía", "Otros"
 ];
+
+function previewStockAdjustment(books: Book[] | undefined, bookId: string, delta: number) {
+  if (!books) return books;
+
+  return books.map((book) => {
+    if (book.id !== bookId) return book;
+
+    const nextWarehouse = Math.max(0, book.stock_warehouse + delta);
+    const nextTotal = nextWarehouse + book.stock_assigned;
+
+    return {
+      ...book,
+      stock_physical: nextTotal,
+      stock_total: nextTotal,
+      stock_warehouse: nextWarehouse,
+    };
+  });
+}
 
 export default function AdminBooksPage() {
   const queryClient = useQueryClient();
@@ -166,30 +187,35 @@ export default function AdminBooksPage() {
     onError: (err: unknown) => toast.error(`Error: ${getErrorMessage(err)}`),
   });
 
-  const adjustStockMutation = useMutation({
-    mutationFn: async ({ id, totalStock }: { id: string; totalStock: number }) => {
+  const adjustStockMutation = useMutation<StockMutationResult, Error, StockAdjustmentVariables, StockAdjustmentContext>({
+    mutationFn: async ({ id, stockDelta }) => {
       const res = await fetch("/api/admin/books-stock", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookId: id, totalStock }),
+        body: JSON.stringify({ bookId: id, delta: stockDelta }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error al ajustar stock");
-      return json;
+      return json as StockMutationResult;
     },
-    onMutate: ({ id }) => {
+    onMutate: async ({ id, stockDelta }) => {
+      await queryClient.cancelQueries({ queryKey: ["admin-books"] });
+      const previousBooks = queryClient.getQueryData<Book[]>(["admin-books"]);
+      queryClient.setQueryData<Book[]>(["admin-books"], (old) => previewStockAdjustment(old, id, stockDelta));
       setStockLoading((prev) => new Set(prev).add(id));
+      return { previousBooks };
     },
     onSuccess: (result) => {
       applyStockMutationResult(queryClient, result);
-      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+      void queryClient.refetchQueries({ queryKey: ["admin-books"], type: "active" });
     },
-    onError: (err: unknown, vars) => {
+    onError: (err: unknown, vars, context) => {
+      if (context?.previousBooks) queryClient.setQueryData(["admin-books"], context.previousBooks);
       setStockLoading((prev) => { const next = new Set(prev); next.delete(vars.id); return next; });
       toast.error(getErrorMessage(err) || "Error al ajustar stock");
     },
-    onSettled: () => {
-      setStockLoading(new Set());
+    onSettled: (_result, _error, vars) => {
+      setStockLoading((prev) => { const next = new Set(prev); next.delete(vars.id); return next; });
     },
   });
 
@@ -481,7 +507,7 @@ export default function AdminBooksPage() {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => adjustStockMutation.mutate({ id: book.id, totalStock: book.stock_physical - 1 })}
+                        onClick={() => adjustStockMutation.mutate({ id: book.id, stockDelta: -1 })}
                         disabled={stockLoading.has(book.id) || book.stock_warehouse <= 0}
                         className="p-0.5 bg-white/5 hover:bg-red-500/20 rounded transition-colors disabled:opacity-30"
                       >
@@ -498,7 +524,7 @@ export default function AdminBooksPage() {
                         )}
                       </div>
                       <button
-                        onClick={() => adjustStockMutation.mutate({ id: book.id, totalStock: book.stock_physical + 1 })}
+                        onClick={() => adjustStockMutation.mutate({ id: book.id, stockDelta: 1 })}
                         disabled={stockLoading.has(book.id)}
                         className="p-0.5 bg-white/5 hover:bg-green-500/20 rounded transition-colors disabled:opacity-30"
                       >

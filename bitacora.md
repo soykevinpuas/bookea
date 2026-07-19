@@ -4,6 +4,24 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-18-B] — Botones de stock por delta en Admin Libros
+
+### Problema
+El arreglo anterior solo permitia que la pantalla aplicara snapshots cuando llegaban, pero los botones `+` y `-` seguian enviando un stock total calculado desde el valor visible en la fila. Si la fila no se repintaba despues del primer click, los siguientes clicks reenviaban el mismo total viejo; cuando el servidor calculaba delta `0`, la API regresaba sin snapshot y la UI seguia pareciendo congelada.
+
+### Cambios
+1. **`app/api/admin/books-stock/route.ts`** — `PATCH` acepta `delta` para ajustes incrementales, valida cantidades invalidas y siempre llama `adjust_admin_stock` para devolver snapshot confirmado aunque el delta final sea `0`.
+2. **`app/admin/books/page.tsx`** — Los botones `+` y `-` mandan `+1`/`-1`, pintan el cambio de forma optimista y hacen rollback si el servidor rechaza el ajuste.
+3. **`app/admin/books/page.tsx`** — La reconciliacion posterior usa refetch activo de `admin-books` para cerrar cualquier diferencia con el endpoint completo.
+
+### Verificación
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+- `supabase migration list`: local y remoto sincronizados hasta `065`.
+
+---
+
 ## [2026-07-18-A] — Ajuste inmediato de stock en Admin Libros
 
 ### Problema

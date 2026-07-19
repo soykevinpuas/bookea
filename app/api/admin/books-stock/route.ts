@@ -17,6 +17,7 @@ type AdminBookRow = {
 
 type StockPatchBody = {
   bookId?: string;
+  delta?: number | string;
   totalStock?: number | string;
 };
 
@@ -121,10 +122,20 @@ export async function PATCH(request: NextRequest) {
     const { adminId } = context;
     const body = await request.json() as StockPatchBody;
     const bookId = String(body.bookId || "");
-    const totalStock = Math.max(0, Math.floor(Number(body.totalStock) || 0));
+    const hasDelta = body.delta !== undefined && body.delta !== null;
+    const hasTotalStock = body.totalStock !== undefined && body.totalStock !== null;
 
     if (!bookId) {
       return NextResponse.json({ error: "Falta bookId" }, { status: 400 });
+    }
+    if (!hasDelta && !hasTotalStock) {
+      return NextResponse.json({ error: "Falta delta o totalStock" }, { status: 400 });
+    }
+
+    const rawDelta = hasDelta ? Number(body.delta) : null;
+    const rawTotalStock = hasTotalStock ? Number(body.totalStock) : null;
+    if ((hasDelta && !Number.isFinite(rawDelta)) || (hasTotalStock && !Number.isFinite(rawTotalStock))) {
+      return NextResponse.json({ error: "Cantidad de stock inválida" }, { status: 400 });
     }
 
     const adminDb = createAdminClient();
@@ -161,41 +172,43 @@ export async function PATCH(request: NextRequest) {
     const assignedStock = ((assignedResult.data ?? []) as Pick<StockRow, "quantity">[])
       .reduce((sum, row) => sum + (row.quantity || 0), 0);
     const warehouseStock = warehouseResult.data?.quantity ?? 0;
-    const desiredWarehouseStock = totalStock - assignedStock;
+    const requestedDelta = rawDelta !== null ? Math.trunc(rawDelta) : null;
+    const totalStock = rawTotalStock !== null ? Math.max(0, Math.floor(rawTotalStock)) : null;
+    const desiredWarehouseStock = requestedDelta !== null
+      ? warehouseStock + requestedDelta
+      : (totalStock ?? 0) - assignedStock;
 
     if (desiredWarehouseStock < 0) {
       return NextResponse.json(
         {
-          error: `No puedes bajar el total a ${totalStock}; ya hay ${assignedStock} unidades asignadas a vendedores.`,
+          error: requestedDelta !== null
+            ? "No puedes dejar tu stock en almacén por debajo de cero."
+            : `No puedes bajar el total a ${totalStock}; ya hay ${assignedStock} unidades asignadas a vendedores.`,
         },
         { status: 400 }
       );
     }
 
     const delta = desiredWarehouseStock - warehouseStock;
-    let stockMutationResult: StockMutationResult | null = null;
-    if (delta !== 0) {
-      const { data, error } = await context.supabase!.rpc("adjust_admin_stock", {
-        p_book_id: bookId,
-        p_delta: delta,
-      });
+    const { data, error } = await context.supabase!.rpc("adjust_admin_stock", {
+      p_book_id: bookId,
+      p_delta: delta,
+    });
 
-      if (error) throw error;
-      const result = ((data as StockMutationResult | null) || {}) as StockMutationResult;
-      if (!result.success) {
-        return NextResponse.json({ error: result.error || "No se pudo ajustar el stock" }, { status: 400 });
-      }
-      stockMutationResult = result;
+    if (error) throw error;
+    const stockMutationResult = ((data as StockMutationResult | null) || {}) as StockMutationResult;
+    if (!stockMutationResult.success) {
+      return NextResponse.json({ error: stockMutationResult.error || "No se pudo ajustar el stock" }, { status: 400 });
     }
 
     return NextResponse.json({
       success: true,
-      stock_total: totalStock,
+      stock_total: desiredWarehouseStock + assignedStock,
       stock_warehouse: desiredWarehouseStock,
       stock_assigned: assignedStock,
-      mutation_id: stockMutationResult?.mutation_id,
-      snapshots: stockMutationResult?.snapshots ?? [],
-      events: stockMutationResult?.events ?? [],
+      mutation_id: stockMutationResult.mutation_id,
+      snapshots: stockMutationResult.snapshots ?? [],
+      events: stockMutationResult.events ?? [],
     });
   } catch (error: unknown) {
     console.error("[api/admin/books-stock] PATCH error:", error);
