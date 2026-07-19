@@ -4,6 +4,24 @@ Este documento registra el progreso histórico y lógico de construcción del pr
 
 ---
 
+## [2026-07-18-D] — Bust de cache PWA para stock cliente
+
+### Problema
+La app instalada podia seguir sirviendo assets viejos desde el service worker (`bookea-v4`) y el catalogo seguia leyendo `bookea-catalog-cache-v2`. Despues de un deploy, cerrar y abrir la PWA no garantizaba que el cliente ejecutara el bundle nuevo ni que descartara el snapshot viejo de la lista de libros.
+
+### Cambios
+1. **`hooks/useBooks.ts`** — Cache de catalogo subido a `bookea-catalog-cache-v3`; las queries de libros refetchean al montar y al volver a foco para no quedarse con datos viejos.
+2. **`public/sw.js`** — Cache de app subido a `bookea-v5`, se deja de precachear `/` y `/_next/` pasa a network-first con fallback cacheado.
+3. **`components/PwaListener.tsx`** — El service worker se registra con `updateViaCache: "none"`, fuerza `registration.update()` y activa versiones nuevas con `SKIP_WAITING`; si ya habia SW controlando, recarga una vez al entrar la version nueva.
+
+### Verificación
+- `npm run lint`: pasa sin errores.
+- `npx tsc --noEmit`: pasa sin errores.
+- `npm run build`: pasa sin errores.
+- `supabase migration list`: local y remoto sincronizados hasta `065`.
+
+---
+
 ## [2026-07-18-C] — Stock de catalogo cliente por payload Realtime
 
 ### Problema

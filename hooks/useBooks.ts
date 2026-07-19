@@ -10,8 +10,8 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 const BOOK_QUERY_OPTIONS = {
   staleTime: 5 * 60 * 1000,
   gcTime: 60 * 60 * 1000,
-  refetchOnMount: false,
-  refetchOnWindowFocus: false,
+  refetchOnMount: "always" as const,
+  refetchOnWindowFocus: true,
   retry: 1,
 };
 
@@ -24,7 +24,7 @@ type BookRealtimePayload = {
   old?: BookRealtimeRow;
 };
 
-const CATALOG_CACHE_PREFIX = "bookea-catalog-cache-v2";
+const CATALOG_CACHE_PREFIX = "bookea-catalog-cache-v3";
 
 // Cache por admin/publico para que catalogo cargue rapido y respete stock propio.
 function getCatalogCacheKey(adminId?: string) {

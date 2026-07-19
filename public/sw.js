@@ -1,13 +1,13 @@
 // Service Worker de Bookea PWA: offline-first para EPUBs y fallback seguro para navegacion.
 // Mantener CACHE_NAME/BOOKS_CACHE sincronizados con cambios de estrategia.
-const CACHE_NAME = 'bookea-v4';
+const CACHE_NAME = 'bookea-v5';
 const BOOKS_CACHE = 'bookea-books-v3';
+const LEGACY_APP_CACHES = ['bookea-v4'];
 const LEGACY_BOOKS_CACHES = ['bookea-books', 'bookea-books-v2'];
 
 const PRECACHE = [
   '/icon-192x192.png',
   '/icon-512x512.png',
-  '/',
 ];
 
 // Precachea solo archivos estaticos seguros; no debe cachear manifest en previews con auth.
@@ -18,6 +18,13 @@ self.addEventListener('install', (event) => {
       .catch(() => {}) // No fallar si algún asset no existe
   );
   self.skipWaiting();
+});
+
+// Permite que la app active de inmediato una version nueva del SW al detectar update.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Migra EPUBs de caches legacy y limpia caches de app obsoletos.
@@ -42,6 +49,7 @@ self.addEventListener('activate', (event) => {
           .filter((n) => n !== CACHE_NAME && n !== BOOKS_CACHE)
           .map((n) => caches.delete(n))
       );
+      await Promise.all(LEGACY_APP_CACHES.map((name) => caches.delete(name)));
 
       await self.clients.claim();
     })()
@@ -99,6 +107,25 @@ self.addEventListener('fetch', (event) => {
 
   // API calls a Supabase: no interceptar para no ocultar errores de auth/datos.
   if (url.hostname.includes('supabase')) {
+    return;
+  }
+
+  // Next genera assets versionados en deploy; network-first evita servir bundle viejo en PWA instalada.
+  if (url.pathname.startsWith('/_next/')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) =>
+        fetch(request).then((res) => {
+          if (res.ok && (res.type === 'basic' || res.type === 'cors')) {
+            cache.put(request, res.clone());
+          }
+          return res;
+        }).catch(() =>
+          cache.match(request).then((cached) =>
+            cached || new Response('', { status: 404 })
+          )
+        )
+      )
+    );
     return;
   }
 
