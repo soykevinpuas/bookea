@@ -62,11 +62,11 @@ type AdminSellerDetailCache = {
   inventory: InventoryCacheItem[];
 };
 
-type AdminBooksResponseCache = {
+type AdminBooksResponseCache = BookStockCacheRow[] | {
   books: BookStockCacheRow[];
 };
 
-type RequestableBooksResponseCache = {
+type RequestableBooksResponseCache = BookStockCacheRow[] | {
   books: BookStockCacheRow[];
 };
 
@@ -396,7 +396,9 @@ function updateAdminSellers(old: AdminSellerInfo[] | undefined, snapshots: Stock
 }
 
 function updateAdminBooksResponse(old: AdminBooksResponseCache | undefined, snapshots: StockSnapshot[]) {
-  if (!old?.books) return old;
+  if (!old) return old;
+  if (Array.isArray(old)) return updateBookStockRows(old, snapshots, "total");
+
   return {
     ...old,
     books: updateBookStockRows(old.books, snapshots, "total"),
@@ -404,7 +406,9 @@ function updateAdminBooksResponse(old: AdminBooksResponseCache | undefined, snap
 }
 
 function updateRequestableBooksResponse(old: RequestableBooksResponseCache | undefined, snapshots: StockSnapshot[]) {
-  if (!old?.books) return old;
+  if (!old) return old;
+  if (Array.isArray(old)) return updateBookStockRows(old, snapshots, "warehouse");
+
   return {
     ...old,
     books: updateBookStockRows(old.books, snapshots, "warehouse"),

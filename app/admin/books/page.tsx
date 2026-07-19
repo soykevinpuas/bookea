@@ -182,6 +182,7 @@ export default function AdminBooksPage() {
     },
     onSuccess: (result) => {
       applyStockMutationResult(queryClient, result);
+      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
     },
     onError: (err: unknown, vars) => {
       setStockLoading((prev) => { const next = new Set(prev); next.delete(vars.id); return next; });
