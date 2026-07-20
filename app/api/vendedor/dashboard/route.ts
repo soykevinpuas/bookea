@@ -36,6 +36,9 @@ export async function GET() {
     });
   } catch (error) {
     console.error('[api/vendedor/dashboard] Error:', error);
-    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'No se pudieron cargar los datos de la tienda. Intenta de nuevo.' },
+      { status: 503 }
+    );
   }
 }

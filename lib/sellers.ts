@@ -27,7 +27,7 @@ export async function getSellerInventory(
 
   if (error) {
     console.error("[sellers] getSellerInventory error:", error);
-    return [];
+    throw new Error(`Error al obtener inventario del vendedor: ${error.message}`);
   }
 
   return (data ?? []) as unknown as SellerInventory[];
@@ -93,7 +93,7 @@ export async function getSellerSales(
 
   if (error) {
     console.error("[sellers] getSellerSales error:", error);
-    return [];
+    throw new Error(`Error al obtener ventas del vendedor: ${error.message}`);
   }
 
   return (data ?? []) as unknown as SellerSale[];
@@ -146,7 +146,7 @@ export async function getSellerRequests(
 
   if (error) {
     console.error("[sellers] getSellerRequests error:", error);
-    return [];
+    throw new Error(`Error al obtener solicitudes del vendedor: ${error.message}`);
   }
 
   return (data ?? []) as unknown as StockRequest[];
@@ -359,11 +359,16 @@ export async function getPendingPayments(supabase: SupabaseClient) {
 }
 
 export async function getSellerPendingTotal(supabase: SupabaseClient, sellerId: string) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("seller_sales")
     .select("quantity")
     .eq("seller_id", sellerId)
     .is("paid_at", null);
+
+  if (error) {
+    console.error("[sellers] getSellerPendingTotal error:", error);
+    throw new Error(`Error al obtener saldo pendiente: ${error.message}`);
+  }
 
   return (data ?? []).reduce((sum, s) => sum + s.quantity * COST_PER_BOOK, 0);
 }

@@ -93,6 +93,7 @@ Reglas vigentes:
 - `063_remove_zero_seller_inventory_on_sale.sql`: elimina filas de inventario vendedor en cero.
 - `064_enable_realtime_stock_catalog.sql`: publica `books` y `admin_stock` en Realtime para refrescar stock en cliente.
 - `065_stock_events_snapshots.sql`: agrega `stock_events` y snapshots transaccionales para stock instantaneo en UI.
+- `066_fix_delete_sale_restore_event_fk.sql`: elimina una venta y restaura stock sin conservar una FK al registro borrado en `stock_events`.
 
 ## 5. Reglas para Cambios de Schema
 

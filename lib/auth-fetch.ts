@@ -35,6 +35,13 @@ export async function fetchJsonWithSessionRetry<T>(
     response = await runFetch();
   }
 
+  // Las lecturas GET son idempotentes: un segundo intento evita convertir una
+  // falla transitoria del servidor en un dashboard aparentemente vacio.
+  const method = (init.method || "GET").toUpperCase();
+  if (method === "GET" && response.status >= 500) {
+    response = await runFetch();
+  }
+
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {

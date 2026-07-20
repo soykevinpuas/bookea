@@ -1993,3 +1993,9 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 - `app/(app)/profile/page.tsx`
 - `lib/actions/subscriptions.ts`
 - `app/api/stripe/webhook/route.ts`
+
+# 2026-07-20 - Borrado de ventas y carga confiable del panel vendedor
+
+- Se corrigio `delete_sale_and_restore_stock`: el evento de restauracion ya no referencia la venta eliminada, evitando la violacion de FK que revertia la transaccion.
+- Las consultas del panel vendedor ya no convierten errores de Supabase en listas vacias; ahora conservan cache previa o muestran un estado de error con reintento.
+- Las lecturas GET del panel reintentan una vez ante errores transitorios del servidor.
