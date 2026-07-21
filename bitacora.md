@@ -2019,3 +2019,18 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 - Los cambios de orden, rol, vigencia, nombre, avatar, estado de libro, monedas y reseñas actualizan primero la interfaz y conservan rollback ante error.
 - Los refetch posteriores quedan como confirmacion silenciosa para completar joins, sin bloquear el cambio visible.
 - Se retiro la suscripcion duplicada de `useUserBooks`; la sincronizacion global evita carreras y actualiza tambien la cache persistida.
+
+# 2026-07-21 - Borrado de ventas estable y métricas por período
+
+- El borrado administrativo retira la venta de forma optimista, cancela consultas en vuelo y mantiene un tombstone temporal para impedir que respuestas viejas la hagan reaparecer.
+- El vendedor aplica el mismo tombstone al recibir `delete_sale_restore` y recalcula el saldo pendiente sin la venta eliminada.
+- Los indicadores de vendidos ahora muestran unidades, operaciones e ingresos del período seleccionado, en lugar de mezclar totales históricos.
+- La gráfica diaria deja una sola cifra visible por día; al pulsar la barra de ingresos abre el detalle de ingresos, ganancia e inversión ahorrada.
+
+# 2026-07-21 - Catálogo y biblioteca resilientes a latencia
+
+- Los errores transitorios de Supabase ya no se convierten en listas vacías ni sobrescriben la última biblioteca útil.
+- El catálogo conserva su caché persistida, deja de sondear cada cinco segundos y usa Realtime más revalidación en segundo plano.
+- El detalle reutiliza el libro presente en React Query y el prefetch de datos se activa también al tocar en dispositivos móviles.
+- `AppImage` usa una imagen local segura cuando una portada está vacía o falla; la biblioteca comparte el mismo fallback.
+- La barrera global deja de recargar automáticamente en bucle y ofrece una navegación explícita de regreso al catálogo.

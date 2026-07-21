@@ -62,7 +62,7 @@ function CatalogContent() {
     return () => clearTimeout(timer);
   }, [searchQuery, categoryFilter, viewMode, tab, mounted, router]);
 
-  const { data: booksData, isLoading } = useBooks({ search: debouncedQuery, category: debouncedCategory, adminId });
+  const { data: booksData, isLoading, isError, refetch } = useBooks({ search: debouncedQuery, category: debouncedCategory, adminId });
 
   const isVendedor = subscription?.role === 'vendedor';
 
@@ -113,6 +113,19 @@ function CatalogContent() {
     return (
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <CatalogSkeleton variant={viewMode} />
+      </main>
+    );
+  }
+
+  if (isError && !booksData) {
+    return (
+      <main className="mx-auto flex min-h-[60vh] max-w-3xl flex-col items-center justify-center px-4 text-center">
+        <span className="mb-3 text-4xl">📚</span>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white">No pudimos conectar con el catálogo</h2>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Conservaremos tus libros en pantalla cuando exista una copia local.</p>
+        <button onClick={() => void refetch()} className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-500">
+          Reintentar conexión
+        </button>
       </main>
     );
   }

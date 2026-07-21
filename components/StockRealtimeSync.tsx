@@ -20,19 +20,6 @@ import {
   applyUserRealtime,
 } from "@/lib/realtime-cache";
 
-const CATALOG_CACHE_PREFIX = "bookea-catalog-cache-";
-
-function clearPersistedCatalogCaches() {
-  if (typeof window === "undefined") return;
-
-  try {
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith(CATALOG_CACHE_PREFIX)) localStorage.removeItem(key);
-    }
-    window.dispatchEvent(new Event("bookea-catalog-cache"));
-  } catch {}
-}
-
 // Sync global de inventario: mantiene alineadas las pantallas aunque el cambio nazca en otra sección.
 export function StockRealtimeSync() {
   const { userId, isReady } = useAuth();
@@ -41,7 +28,8 @@ export function StockRealtimeSync() {
 
   useEffect(() => {
     const syncFromBookChange = () => {
-      clearPersistedCatalogCaches();
+      // La cache persistida evita una pantalla vacía si Supabase está lento.
+      // El hook de catálogo aplica el payload y la revalidación confirma después.
       refreshStockQueries(queryClient);
     };
 
@@ -64,7 +52,6 @@ export function StockRealtimeSync() {
         applyStockMutationResult(queryClient, result, { adminId: userId, sellerId: userId });
       }
 
-      clearPersistedCatalogCaches();
       refreshStockQueries(queryClient);
     };
 

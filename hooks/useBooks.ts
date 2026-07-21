@@ -64,16 +64,6 @@ function writeCatalogCache(cacheKey: string, data: Book[]) {
   } catch {}
 }
 
-// Limpia cache persistida cuando Realtime avisa que stock/catalogo cambio.
-function clearCatalogCache(cacheKey: string) {
-  if (typeof window === "undefined") return;
-
-  try {
-    localStorage.removeItem(cacheKey);
-    window.dispatchEvent(new Event("bookea-catalog-cache"));
-  } catch {}
-}
-
 // useSyncExternalStore necesita una suscripcion estable a localStorage/evento custom.
 function subscribeCatalogCache(onStoreChange: () => void) {
   if (typeof window === "undefined") return () => {};
@@ -128,10 +118,6 @@ function bookMatchesQuery(book: Book, options?: BookFilters) {
 
 function sortBooksByCreatedAt(books: Book[]) {
   return [...books].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-}
-
-function refetchVisibleCatalog() {
-  return typeof document === "undefined" || document.visibilityState === "visible" ? 5000 : false;
 }
 
 // Aplica el row de Realtime en memoria para que el catalogo cliente cambie antes del refetch.
@@ -197,7 +183,6 @@ export function useBooks(options?: BookFilters) {
       return applyBookFilters(cachedCatalog.data, options);
     },
     ...BOOK_QUERY_OPTIONS,
-    refetchInterval: refetchVisibleCatalog,
   });
 
   useEffect(() => {
@@ -220,7 +205,6 @@ export function useBooks(options?: BookFilters) {
       }
 
       refreshTimer = setTimeout(() => {
-        clearCatalogCache(cacheKey);
         void queryClient.refetchQueries({ queryKey: ["books"], type: "active" });
         void queryClient.refetchQueries({ queryKey: ["book"], type: "active" });
       }, 120);
@@ -261,6 +245,11 @@ export function useBook(id: string) {
     queryKey: ["book", id],
     queryFn: () => getBook(supabase, id),
     enabled: !!id,
+    initialData: () => queryClient.getQueriesData<Book[]>({ queryKey: ["books"] })
+      .flatMap(([, books]) => books ?? [])
+      .find((book) => book.id === id),
+    initialDataUpdatedAt: 0,
+    placeholderData: (previousData) => previousData,
     ...BOOK_QUERY_OPTIONS,
   });
 

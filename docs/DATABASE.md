@@ -112,5 +112,6 @@ Las pantallas no deben depender de recargar la aplicacion para observar escritur
 3. `components/StockRealtimeSync.tsx` recibe cambios externos y `lib/realtime-cache.ts` aplica `payload.new`/`payload.old` directamente en las claves canonicas.
 4. Una revalidacion activa y silenciosa completa joins que PostgreSQL Realtime no incluye y corrige cualquier divergencia.
 5. Stock usa `stock_events.snapshot_after`, porque una operacion mueve varias tablas y necesita un snapshot transaccional coherente.
+6. Los IDs de ventas eliminadas se conservan temporalmente como tombstones en cliente; así una respuesta iniciada antes del DELETE o servida por una réplica retrasada no puede reinsertar la venta en pantalla.
 
 La actualizacion local puede ser instantanea; entre dispositivos siempre existe la latencia de red hasta recibir el evento Realtime, pero no debe agregarse una segunda espera visible por refetch.

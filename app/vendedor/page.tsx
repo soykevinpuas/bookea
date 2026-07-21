@@ -29,6 +29,7 @@ type Section = "stock" | "vendidos" | "ingresos" | "solicitudes";
 type SoldPanelTab = "historial" | "top";
 type TopBooksPeriod = "currentMonth" | "last30Days" | "all";
 type TopBooksView = "list" | "chart";
+type DailyChartData = { day: number; venta: number; ahorro: number; ganancia: number };
 
 interface DashboardData {
   inventory: SellerInventory[];
@@ -216,9 +217,12 @@ export default function VendedorDashboard() {
   const [stockTab, setStockTab] = useState<StockTab>("inventory");
   const [requestViewMode, setRequestViewMode] = useState<RequestViewMode>("grid");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [selectedChartDay, setSelectedChartDay] = useState<DailyChartData | null>(null);
   const [previewBook, setPreviewBook] = useState<PreviewBook | null>(null);
   const stockWriteInFlight = useRef(false);
   const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deletedSaleIds = useRef(new Set<string>());
+  const deletedSaleTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const dashboardQueryKey = useMemo(() => ["vendedor-dashboard", userId] as const, [userId]);
 
   const scheduleRealtimeRefresh = useCallback(() => {
@@ -356,6 +360,16 @@ export default function VendedorDashboard() {
 
   const applyRealtimeStockResult = useCallback((result: StockMutationResult | null) => {
     if (!result || !userId) return;
+    if (result.deleted_sale_id) {
+      const saleId = result.deleted_sale_id;
+      deletedSaleIds.current.add(saleId);
+      const previousTimer = deletedSaleTimers.current.get(saleId);
+      if (previousTimer) clearTimeout(previousTimer);
+      deletedSaleTimers.current.set(saleId, setTimeout(() => {
+        deletedSaleIds.current.delete(saleId);
+        deletedSaleTimers.current.delete(saleId);
+      }, 30_000));
+    }
     applyStockMutationResult(queryClient, result, { sellerId: userId });
     refreshStockQueries(queryClient);
     for (const snapshot of getStockSnapshots(result)) {
@@ -364,6 +378,11 @@ export default function VendedorDashboard() {
       else lockStockQuantity(snapshot);
     }
   }, [lockStockQuantity, queryClient, releaseStockLock, userId]);
+
+  useEffect(() => () => {
+    for (const timer of deletedSaleTimers.current.values()) clearTimeout(timer);
+    deletedSaleTimers.current.clear();
+  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -388,7 +407,18 @@ export default function VendedorDashboard() {
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<DashboardData, Error>({
     queryKey: dashboardQueryKey,
-    queryFn: () => fetchVendedorJson<DashboardData>("/api/vendedor/dashboard", "Error al cargar dashboard"),
+    queryFn: async () => {
+      const fresh = await fetchVendedorJson<DashboardData>("/api/vendedor/dashboard", "Error al cargar dashboard");
+      if (deletedSaleIds.current.size === 0) return fresh;
+      const visibleSales = fresh.sales.filter((sale) => !deletedSaleIds.current.has(sale.id));
+      return {
+        ...fresh,
+        sales: visibleSales,
+        pendingPayment: fresh.role === "admin"
+          ? 0
+          : visibleSales.filter((sale) => !sale.paid_at).reduce((sum, sale) => sum + sale.quantity * COST_PER_BOOK, 0),
+      };
+    },
     enabled: authReady && !!userId,
     ...STOCK_QUERY_OPTIONS,
     placeholderData: (previousData) => previousData,
@@ -414,7 +444,7 @@ export default function VendedorDashboard() {
     : requests.filter((r) => r.status === solicitudFilter);
 
   const effectiveCost = isAdmin ? ADMIN_COST_BOOK : COST_PER_BOOK;
-  const chartData = useMemo(() => {
+  const chartData = useMemo<DailyChartData[]>(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
 
@@ -441,13 +471,23 @@ export default function VendedorDashboard() {
   const totalChartRevenue = chartData.reduce((s, d) => s + d.venta, 0);
   const totalChartProfit = chartData.reduce((s, d) => s + d.ganancia, 0);
   const totalChartCost = chartData.reduce((s, d) => s + d.ahorro, 0);
-  const soldTitleCount = useMemo(
-    () => new Set(sales.map((sale) => sale.book_id).filter(Boolean)).size,
-    [sales]
+  const periodSales = useMemo(() => {
+    if (topBooksPeriod === "all") return sales;
+    const since = topBooksPeriod === "currentMonth"
+      ? new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    return sales.filter((sale) => {
+      const soldAt = new Date(sale.sold_at);
+      return !Number.isNaN(soldAt.getTime()) && soldAt >= since;
+    });
+  }, [sales, topBooksPeriod]);
+  const periodSoldUnits = useMemo(
+    () => periodSales.reduce((total, sale) => total + Number(sale.quantity || 0), 0),
+    [periodSales]
   );
-  const totalSoldUnits = useMemo(
-    () => sales.reduce((total, sale) => total + Number(sale.quantity || 0), 0),
-    [sales]
+  const periodRevenue = useMemo(
+    () => periodSales.reduce((total, sale) => total + Number(sale.sale_price || 0) * Number(sale.quantity || 0), 0),
+    [periodSales]
   );
   const topBooks = useMemo(() => {
     const now = new Date();
@@ -1244,22 +1284,22 @@ export default function VendedorDashboard() {
                   onClick={() => setSoldTab("historial")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors"
                 >
-                  <p className="text-lg font-bold text-white">{totalSoldUnits}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Libros vendidos</p>
+                  <p className="text-lg font-bold text-white">{periodSoldUnits}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Unidades en período</p>
                 </button>
                 <button
                   onClick={() => setSoldTab("historial")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors"
                 >
-                  <p className="text-lg font-bold text-white/70">{soldTitleCount}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Títulos vendidos</p>
+                  <p className="text-lg font-bold text-white/70">{periodSales.length}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ventas en período</p>
                 </button>
                 <button
                   onClick={() => setActiveSection("ingresos")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors"
                 >
-                  <p className="text-lg font-bold text-green-400">${sales.reduce((sum, sale) => sum + sale.sale_price * sale.quantity, 0).toLocaleString("es-MX")}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Ingresos</p>
+                  <p className="text-lg font-bold text-green-400">${periodRevenue.toLocaleString("es-MX")}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Ingresos del período</p>
                 </button>
                 <button
                   onClick={() => setSoldTab("top")}
@@ -1406,7 +1446,7 @@ export default function VendedorDashboard() {
                   <div className="px-5 py-4 border-b border-white/8">
                     <h2 className="font-semibold text-sm flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-amber-400" />
-                      Vendidos ({totalSoldUnits} libros · {sales.length} ventas)
+                      Vendidos ({periodSoldUnits} unidades · {periodSales.length} ventas en período)
                     </h2>
                   </div>
                   {sales.length === 0 ? (
@@ -1502,16 +1542,44 @@ export default function VendedorDashboard() {
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                       <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 'auto']} tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString("es-MX")}`} />
-                      <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
-                      <Bar dataKey="venta" name="Venta" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                      <Bar
+                        dataKey="venta"
+                        name="Ingreso"
+                        fill="#22c55e"
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={20}
+                        cursor="pointer"
+                        onClick={(data) => setSelectedChartDay(data.payload as DailyChartData)}
+                      >
                         <LabelList dataKey="venta" position="top" fill="#22c55e" fontSize={10} fontWeight={700} formatter={(v) => `$${Number(v || 0).toLocaleString("es-MX")}`} />
                       </Bar>
                       <Bar dataKey="ganancia" name="Ganancia" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={20}>
-                        <LabelList dataKey="ganancia" position="top" fill="#60a5fa" fontSize={10} fontWeight={600} formatter={(v) => `$${Number(v || 0).toLocaleString("es-MX")}`} />
                       </Bar>
                       <Bar dataKey="ahorro" name="Inversión ahorrada" fill="#a78bfa" radius={[4, 4, 0, 0]} maxBarSize={20} />
                     </BarChart>
                   </ResponsiveContainer>
+                </div>
+              )}
+              {selectedChartDay && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setSelectedChartDay(null)}>
+                  <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#171717] p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+                    <div className="mb-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-white/40">Detalle del día</p>
+                        <h3 className="text-lg font-bold text-white">
+                          {selectedChartDay.day} de {currentMonth.toLocaleDateString("es-MX", { month: "long", year: "numeric" })}
+                        </h3>
+                      </div>
+                      <button onClick={() => setSelectedChartDay(null)} className="rounded-lg p-2 text-white/40 hover:bg-white/10 hover:text-white" aria-label="Cerrar detalle">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between rounded-xl bg-green-500/10 px-3 py-2"><span className="text-white/60">Ingresos</span><strong className="text-green-400">${selectedChartDay.venta.toLocaleString("es-MX")}</strong></div>
+                      <div className="flex justify-between rounded-xl bg-blue-500/10 px-3 py-2"><span className="text-white/60">Ganancia</span><strong className="text-blue-400">${selectedChartDay.ganancia.toLocaleString("es-MX")}</strong></div>
+                      <div className="flex justify-between rounded-xl bg-purple-500/10 px-3 py-2"><span className="text-white/60">Inversión ahorrada</span><strong className="text-purple-300">${selectedChartDay.ahorro.toLocaleString("es-MX")}</strong></div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

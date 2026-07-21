@@ -58,14 +58,13 @@ export async function getBooks(
     const { data, error } = await query.order("created_at", { ascending: false });
 
     if (error) {
-      console.warn("Supabase error fetching books:", error.message);
-      return [];
+      throw new Error(`No se pudo cargar el catálogo: ${error.message}`);
     }
 
     return Array.isArray(data) ? (data as Book[]) : [];
   } catch (error) {
     console.error("Exception fetching books:", error);
-    return [];
+    throw error instanceof Error ? error : new Error("No se pudo cargar el catálogo");
   }
 }
 
@@ -110,8 +109,9 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
       .eq("user_id", userId);
 
     if (ubError) {
-      console.warn("Supabase error in user_books fetch:", ubError.message);
-      return getAllCachedBooks();
+      const offlineBooks = await getAllCachedBooks();
+      if (offlineBooks.length > 0) return offlineBooks;
+      throw new Error(`No se pudo cargar la biblioteca: ${ubError.message}`);
     }
 
     if (!userBooksData || !Array.isArray(userBooksData)) return getAllCachedBooks();
@@ -200,8 +200,10 @@ export async function getUserBooks(supabase: SupabaseClient, userId: string, opt
     }
 
     return result as Book[];
-  } catch {
-    return getAllCachedBooks();
+  } catch (error) {
+    const offlineBooks = await getAllCachedBooks();
+    if (offlineBooks.length > 0) return offlineBooks;
+    throw error instanceof Error ? error : new Error("No se pudo cargar la biblioteca");
   }
 }
 

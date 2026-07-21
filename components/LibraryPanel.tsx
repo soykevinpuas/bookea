@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useUserId } from '@/hooks/useUser'
 import { useUserBooks } from '@/hooks/useBooks'
 import { X, BookOpen, Loader2, ChevronRight } from 'lucide-react'
-import Image from 'next/image'
+import AppImage from '@/components/ui/AppImage'
 
 interface LibraryPanelProps {
   open: boolean
@@ -14,7 +14,7 @@ interface LibraryPanelProps {
 
 export default function LibraryPanel({ open, onClose }: LibraryPanelProps) {
   const { userId } = useUserId()
-  const { data: books, isLoading } = useUserBooks(userId || '')
+  const { data: books, isLoading, isError, refetch } = useUserBooks(userId || '')
   const panelRef = useRef<HTMLDivElement>(null)
   const dragState = useRef({ startX: 0, startY: 0, offset: 0, isDragging: false, panelWidth: 0 })
 
@@ -99,6 +99,12 @@ export default function LibraryPanel({ open, onClose }: LibraryPanelProps) {
         <div className="p-4 space-y-3">
           {isLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /></div>
+          ) : isError && (!books || books.length === 0) ? (
+            <div className="py-12 text-center text-gray-400">
+              <BookOpen className="mx-auto mb-3 h-12 w-12 opacity-30" />
+              <p className="mb-1 text-sm font-medium">No pudimos conectar con tu biblioteca</p>
+              <button onClick={() => void refetch()} className="mt-3 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-500">Reintentar conexión</button>
+            </div>
           ) : !books || books.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -116,7 +122,7 @@ export default function LibraryPanel({ open, onClose }: LibraryPanelProps) {
               >
                 {book.cover_url ? (
                   <div className="w-14 h-20 rounded-lg overflow-hidden shrink-0 bg-gray-200 dark:bg-white/10">
-                    <Image src={book.cover_url} alt={book.title} width={56} height={80} className="w-full h-full object-cover" />
+                    <AppImage src={book.cover_url} alt={book.title} width={56} height={80} className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="w-14 h-20 rounded-lg shrink-0 bg-gray-200 dark:bg-white/10 flex items-center justify-center text-xs text-gray-400">

@@ -280,6 +280,7 @@ export function PrefetchLink({
       style={style}
       onFocus={warmRoute}
       onPointerEnter={handlePointerEnter}
+      onPointerDown={warmData}
       onClick={onClick}
     >
       {children}

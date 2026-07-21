@@ -208,6 +208,8 @@ export default function AdminDashboard() {
   const [previewBook, setPreviewBook] = useState<DashboardBookInfo | null>(null);
   const stockWriteInFlight = useRef(false);
   const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deletedSaleIds = useRef(new Set<string>());
+  const deletedSaleTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   interface PaginatedResponse<T> {
     data: T[];
     total: number;
@@ -240,16 +242,34 @@ export default function AdminDashboard() {
         inventoryPage: String(inventoryPage),
         requestsPage: String(requestsPage),
       });
-      return fetchJsonWithSessionRetry<DashboardData>(
+      const data = await fetchJsonWithSessionRetry<DashboardData>(
         supabase,
         `/api/admin/dashboard?${params}`,
         { cache: "no-store" },
         "Error al cargar dashboard"
       );
+      // Una respuesta iniciada antes del DELETE no puede revivir ventas con borrado confirmado.
+      const tombstones = deletedSaleIds.current;
+      if (tombstones.size === 0) return data;
+      const visibleSales = data.sales.data.filter((sale) => !tombstones.has(sale.id));
+      return {
+        ...data,
+        sales: {
+          ...data.sales,
+          data: visibleSales,
+          total: Math.max(0, data.sales.total - (data.sales.data.length - visibleSales.length)),
+        },
+        pendingSales: data.pendingSales.filter((sale) => !tombstones.has(sale.id)),
+      };
     },
     ...STOCK_QUERY_OPTIONS,
     placeholderData: (previousData) => previousData,
   });
+
+  useEffect(() => () => {
+    for (const timer of deletedSaleTimers.current.values()) clearTimeout(timer);
+    deletedSaleTimers.current.clear();
+  }, []);
 
   const allSales = useMemo(() => dash?.sales?.data ?? [], [dash?.sales?.data]);
   const salesTotal = dash?.sales?.total ?? 0;
@@ -572,28 +592,48 @@ export default function AdminDashboard() {
 
   const deleteSale = useMutation({
     mutationFn: (saleId: string) => deleteSaleAction(saleId),
-    onMutate: (saleId) => {
-      setPendingOps(prev => new Set(prev).add(`del-sale-${saleId}`));
-    },
-    onSuccess: (result, saleId) => {
-      applyStockMutationResult(queryClient, result, { adminId: adminUserId });
+    onMutate: async (saleId) => {
+      stockWriteInFlight.current = true;
+      deletedSaleIds.current.add(saleId);
+      await queryClient.cancelQueries({ queryKey: ["admin-dashboard"] });
+      const previousDashboards = queryClient.getQueriesData<DashboardData>({ queryKey: ["admin-dashboard"] });
       queryClient.setQueriesData<DashboardData>({ queryKey: ["admin-dashboard"] }, (old) => {
         if (!old) return old;
+        const existed = old.sales.data.some((sale) => sale.id === saleId);
         return {
           ...old,
           pendingSales: old.pendingSales.filter((sale) => sale.id !== saleId),
           sales: {
             ...old.sales,
             data: old.sales.data.filter((sale) => sale.id !== saleId),
-            total: Math.max(0, old.sales.total - 1),
+            total: Math.max(0, old.sales.total - (existed ? 1 : 0)),
           },
         };
       });
-      refreshStockQueries(queryClient);
+      setPendingOps(prev => new Set(prev).add(`del-sale-${saleId}`));
+      return { previousDashboards };
+    },
+    onSuccess: (result, saleId) => {
+      applyStockMutationResult(queryClient, result, { adminId: adminUserId });
+      const previousTimer = deletedSaleTimers.current.get(saleId);
+      if (previousTimer) clearTimeout(previousTimer);
+      deletedSaleTimers.current.set(saleId, setTimeout(() => {
+        deletedSaleIds.current.delete(saleId);
+        deletedSaleTimers.current.delete(saleId);
+        refreshStockQueries(queryClient);
+      }, 30_000));
+      setTimeout(() => refreshStockQueries(queryClient), 2_500);
       toast.success("Venta eliminada y stock revertido");
     },
-    onError: (err: unknown) => toast.error(getErrorMessage(err, "Error al eliminar venta")),
-    onSettled: (data, error, saleId) => {
+    onError: (err: unknown, saleId, context) => {
+      deletedSaleIds.current.delete(saleId);
+      for (const [queryKey, data] of context?.previousDashboards ?? []) {
+        queryClient.setQueryData(queryKey, data);
+      }
+      toast.error(getErrorMessage(err, "Error al eliminar venta"));
+    },
+    onSettled: (_data, _error, saleId) => {
+      stockWriteInFlight.current = false;
       setPendingOps(prev => { const next = new Set(prev); next.delete(`del-sale-${saleId}`); return next; });
     },
   });

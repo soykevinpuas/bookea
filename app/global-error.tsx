@@ -25,12 +25,6 @@ export default function GlobalError({
       });
     }
 
-    // Intento automático de recuperación después de 1 segundo
-    const timer = setTimeout(() => {
-      window.location.reload(); // Forzar recarga completa en lugar de reset() para limpiar caché
-    }, 1500)
-
-    return () => clearTimeout(timer)
   }, [error, reset])
 
   return (
@@ -55,6 +49,12 @@ export default function GlobalError({
             className="px-4 py-2 bg-blue-600 rounded-lg text-sm"
           >
             Intentar de nuevo
+          </button>
+          <button
+            onClick={() => window.location.assign('/catalog')}
+            style={{ display: 'block', margin: '0.75rem auto 0', color: '#93c5fd', fontSize: '0.875rem' }}
+          >
+            Volver al catálogo
           </button>
         </div>
       </body>
