@@ -45,6 +45,7 @@ Bookea es una app SaaS de lectura y venta de libros para Mexico. Combina catalog
 | --- | --- | --- |
 | Supabase SSR/admin | `lib/server.ts` | Cliente SSR con cookies y cliente service-role. |
 | Supabase cliente | `lib/supabase.ts` | Singleton browser para Auth/Realtime. |
+| Cache reactiva | `lib/providers.tsx`, `lib/query-keys.ts`, `components/StockRealtimeSync.tsx` | React Query revalida al montar, enfocar y reconectar; Realtime invalida dominios con claves canonicas. |
 | Libros/acceso | `lib/books.ts` | Catalogo, biblioteca, acceso premium/free/canje. |
 | Stripe | `lib/stripe.ts` | Cliente lazy, checkout y portal. |
 | Verificacion post-pago | `lib/actions/subscriptions.ts` | Fallback idempotente cuando el webhook aun no corrio. |

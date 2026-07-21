@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { Users, ShieldCheck, Shield, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
 
 // AppUser representa la fila minima necesaria para administrar acceso y suscripciones.
 interface AppUser {
@@ -37,7 +38,7 @@ export default function AdminUsersPage() {
 
   // Tabla principal: lista usuarios ordenados por registro reciente.
   const { data: users = [], isLoading } = useQuery<AppUser[]>({
-    queryKey: ["admin-users"],
+    queryKey: queryKeys.users.admin,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("users")
@@ -73,7 +74,7 @@ export default function AdminUsersPage() {
         throw err;
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.admin }),
   });
 
   // Mutacion de rol: pasa por API propia para evitar bloqueos de RLS desde cliente.
@@ -108,7 +109,7 @@ export default function AdminUsersPage() {
         throw err;
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.admin }),
   });
 
   // Contadores del encabezado calculados en cliente desde la misma query de usuarios.

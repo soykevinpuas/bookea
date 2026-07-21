@@ -24,6 +24,8 @@ export interface StockSnapshot {
   total_physical: number;
   updated_at: string;
   version: string;
+  deleted_sale_id?: string;
+  deleted_sale_total?: number;
 }
 
 // Evento de stock publicado por Realtime y tambien incluido en respuestas RPC.
@@ -45,4 +47,6 @@ export interface StockMutationResult {
   snapshots?: StockSnapshot[];
   events?: StockEventPayload[];
   sale?: SellerSale & { admin_id?: string | null };
+  deleted_sale_id?: string;
+  deleted_sale_total?: number;
 }

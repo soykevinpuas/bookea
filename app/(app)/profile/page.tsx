@@ -18,6 +18,7 @@ import AvatarSelector from "@/components/profile/AvatarSelector";
 import { AvatarBadge } from "@/components/profile/AvatarBadge";
 import { ProfileSkeleton } from "@/components/ui/SkeletonBox";
 import { ReferralQR } from "@/components/profile/ReferralQR";
+import { queryKeys } from "@/lib/query-keys";
 
 interface Order {
   id: string;
@@ -79,6 +80,7 @@ const sections: { key: Section; icon: LucideIcon; label: string }[] = [
 ];
 
 export default function ProfilePage() {
+  const supabase = useMemo(() => createClientClient(), []);
   const { userId, isLoading: authLoading } = useUserId();
   const { email: userEmail } = useAuth();
   const {
@@ -109,9 +111,6 @@ export default function ProfilePage() {
   const [deleteStep, setDeleteStep] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [purchasedBooks, setPurchasedBooks] = useState<PurchasedBook[]>([]);
-  const [purchasedLoading, setPurchasedLoading] = useState(false);
-  const [purchasedLoaded, setPurchasedLoaded] = useState(false);
   const [purchasedOpen, setPurchasedOpen] = useState(false);
 
   useEffect(() => {
@@ -119,8 +118,6 @@ export default function ProfilePage() {
   }, [profile]);
 
   useEffect(() => {
-    setPurchasedBooks([]);
-    setPurchasedLoaded(false);
     setPurchasedOpen(false);
   }, [userId]);
 
@@ -173,63 +170,51 @@ export default function ProfilePage() {
     catch { toast.error("Error al guardar avatar"); }
   };
 
-  useEffect(() => {
-    if (!userId) return;
-    if (activeSection !== "biblioteca" || !purchasedOpen || purchasedLoaded) return;
+  const { data: purchasedBooks = [], isLoading: purchasedLoading } = useQuery<PurchasedBook[]>({
+    queryKey: queryKeys.profile.purchasedBooks(userId || ""),
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data: digitalData, error: digitalError } = await supabase.from('user_books')
+        .select('book_id, books!inner(id, title, cover_url, author)')
+        .eq('user_id', userId)
+        .eq('access_type', 'permanent');
+      if (digitalError) throw digitalError;
 
-    let cancelled = false;
-    const supabase = createClientClient();
-    setPurchasedLoading(true);
+      const bookMap = new Map<string, PurchasedBook>();
+      ((digitalData || []) as DigitalPurchaseRow[]).forEach((item) => {
+        const book = pickPurchasedBook(item.books);
+        if (book?.id) bookMap.set(book.id, { ...book, types: ['digital'] });
+      });
 
-    const loadPurchasedBooks = async () => {
-      try {
-        const { data: digitalData } = await supabase.from('user_books')
-          .select('book_id, books!inner(id, title, cover_url, author)')
-          .eq('user_id', userId)
-          .eq('access_type', 'permanent');
+      const { data: physicalOrders, error: ordersError } = await supabase
+        .from('orders_physical')
+        .select('book_id')
+        .eq('user_id', userId);
+      if (ordersError) throw ordersError;
 
-        const bookMap = new Map<string, PurchasedBook>();
-        ((digitalData || []) as DigitalPurchaseRow[]).forEach((item) => {
-          const book = pickPurchasedBook(item.books);
-          if (book?.id) bookMap.set(book.id, { ...book, types: ['digital'] });
+      const physicalBookIds = [...new Set(((physicalOrders || []) as PhysicalOrderRow[]).map((o) => o.book_id).filter((bookId): bookId is string => !!bookId))];
+      if (physicalBookIds.length > 0) {
+        const { data: physicalBooks, error: booksError } = await supabase
+          .from('books')
+          .select('id, title, cover_url, author')
+          .in('id', physicalBookIds);
+        if (booksError) throw booksError;
+        ((physicalBooks || []) as PurchasedBookJoin[]).forEach((book) => {
+          if (bookMap.has(book.id)) bookMap.get(book.id)?.types.push('physical');
+          else bookMap.set(book.id, { ...book, types: ['physical'] });
         });
-        const { data: physicalOrders } = await supabase
-          .from('orders_physical')
-          .select('book_id')
-          .eq('user_id', userId);
-        const physicalBookIds = [...new Set(((physicalOrders || []) as PhysicalOrderRow[]).map((o) => o.book_id).filter((bookId): bookId is string => !!bookId))];
-        if (physicalBookIds.length > 0) {
-          const { data: physicalBooks } = await supabase
-            .from('books')
-            .select('id, title, cover_url, author')
-            .in('id', physicalBookIds);
-          ((physicalBooks || []) as PurchasedBookJoin[]).forEach((book) => {
-            if (bookMap.has(book.id)) bookMap.get(book.id)?.types.push('physical');
-            else bookMap.set(book.id, { ...book, types: ['physical'] });
-          });
-        }
-
-        if (!cancelled) setPurchasedBooks(Array.from(bookMap.values()));
-      } finally {
-        if (!cancelled) {
-          setPurchasedLoaded(true);
-          setPurchasedLoading(false);
-        }
       }
-    };
 
-    void loadPurchasedBooks();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeSection, purchasedLoaded, purchasedOpen, userId]);
+      return Array.from(bookMap.values());
+    },
+    enabled: !!userId && activeSection === "biblioteca" && purchasedOpen,
+    placeholderData: (previousData) => previousData,
+  });
 
   const isSubscriber = subscription?.isActive;
 
-  const supabase = createClientClient();
   const { data: orders = [], isLoading: ordersLoading } = useQuery<Order[]>({
-    queryKey: ["profile-orders", userId],
+    queryKey: queryKeys.orders.user(userId || ""),
     queryFn: async () => {
       if (!userId) return [];
       const { data, error } = await supabase
@@ -241,7 +226,6 @@ export default function ProfilePage() {
       return (data ?? []) as Order[];
     },
     enabled: !!userId && activeSection === "ordenes",
-    staleTime: 5 * 60 * 1000,
     placeholderData: (previousData) => previousData,
   });
 
@@ -412,7 +396,7 @@ export default function ProfilePage() {
 
             {activeSection === "biblioteca" && (
               <>
-                <button onClick={() => { if (!purchasedLoading) setPurchasedOpen(!purchasedOpen); }}
+                <button onClick={() => setPurchasedOpen(!purchasedOpen)}
                   className="w-full flex items-center justify-between gap-3">
                   <h3 className="text-xl font-black flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-blue-400" />

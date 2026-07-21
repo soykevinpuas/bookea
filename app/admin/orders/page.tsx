@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
 import { Package, CheckCircle2, Truck, Clock, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { queryKeys } from "@/lib/query-keys";
 
 interface Order {
   id: string;
@@ -37,7 +38,7 @@ export default function AdminOrdersPage() {
   const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
 
   const { data: orders = [], isLoading } = useQuery<Order[]>({
-    queryKey: ["admin-orders"],
+    queryKey: queryKeys.orders.admin,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders_physical")
@@ -58,7 +59,7 @@ export default function AdminOrdersPage() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-orders"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.orders.all }),
   });
 
   const handleShipWithTracking = (order: Order) => {

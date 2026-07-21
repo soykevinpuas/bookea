@@ -310,6 +310,16 @@ function updateVendedorDashboard(
   let nextSales = old.sales ?? [];
   let pendingPayment = old.pendingPayment ?? 0;
   const sale = result?.sale;
+  const deletedSaleId = result?.deleted_sale_id
+    ?? snapshots.find((snapshot) => snapshot.deleted_sale_id)?.deleted_sale_id;
+  const deletedSaleTotal = result?.deleted_sale_total
+    ?? snapshots.find((snapshot) => snapshot.deleted_sale_id === deletedSaleId)?.deleted_sale_total
+    ?? 0;
+
+  if (deletedSaleId) {
+    nextSales = nextSales.filter((item) => item.id !== deletedSaleId);
+    if (old.role !== "admin") pendingPayment = Math.max(0, pendingPayment - deletedSaleTotal);
+  }
 
   if (sale && (!sellerId || sale.seller_id === sellerId)) {
     const exists = nextSales.some((item) => item.id === sale.id);
@@ -396,6 +406,8 @@ function updateAdminDashboard(
   const nextInventory = updateSellerInventoryList(previousInventory, snapshots);
   const totalDelta = nextInventory.length - previousInventory.length;
   const sale = result?.sale as StockSale | undefined;
+  const deletedSaleId = result?.deleted_sale_id
+    ?? snapshots.find((snapshot) => snapshot.deleted_sale_id)?.deleted_sale_id;
   const shouldAddSale = !!sale && saleBelongsToAdminDashboard(old, sale);
   const saleExists = shouldAddSale
     ? old.sales?.data?.some((item) => item.id === sale.id)
@@ -406,14 +418,22 @@ function updateAdminDashboard(
     ...old,
     adminStock: updateAdminStockRows(old.adminStock, snapshots),
     physicalBooks: updateBookStockRows(old.physicalBooks, snapshots, "total"),
-    sales: old.sales && shouldAddSale && !saleExists
+    sales: old.sales && deletedSaleId
+      ? {
+          ...old.sales,
+          data: old.sales.data.filter((item) => item.id !== deletedSaleId),
+          total: Math.max(0, old.sales.total - (old.sales.data.some((item) => item.id === deletedSaleId) ? 1 : 0)),
+        }
+      : old.sales && shouldAddSale && !saleExists
       ? {
           ...old.sales,
           data: [sale, ...old.sales.data].slice(0, old.sales.perPage ?? old.sales.data.length + 1),
           total: old.sales.total + 1,
         }
       : old.sales,
-    pendingSales: shouldAddSale && !saleExists && !sale?.paid_at
+    pendingSales: deletedSaleId
+      ? (old.pendingSales ?? []).filter((item) => item.id !== deletedSaleId)
+      : shouldAddSale && !saleExists && !sale?.paid_at
       ? [sale, ...(old.pendingSales ?? [])]
       : old.pendingSales,
     salesMap: salesMapKey
@@ -573,6 +593,8 @@ export function stockMutationResultFromRealtime(payload: unknown): StockMutation
   return {
     success: true,
     mutation_id: row.id,
+    deleted_sale_id: snapshot.deleted_sale_id,
+    deleted_sale_total: snapshot.deleted_sale_total,
     snapshots: [snapshot],
     events: [{
       id: row.id ?? "",

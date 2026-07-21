@@ -94,6 +94,7 @@ Reglas vigentes:
 - `064_enable_realtime_stock_catalog.sql`: publica `books` y `admin_stock` en Realtime para refrescar stock en cliente.
 - `065_stock_events_snapshots.sql`: agrega `stock_events` y snapshots transaccionales para stock instantaneo en UI.
 - `066_fix_delete_sale_restore_event_fk.sql`: elimina una venta y restaura stock sin conservar una FK al registro borrado en `stock_events`.
+- `067_reactive_data_and_deleted_sale_payload.sql`: publica ordenes, accesos y gamificacion en Realtime, y propaga la venta eliminada en el snapshot para retirar datos obsoletos de los dashboards.
 
 ## 5. Reglas para Cambios de Schema
 

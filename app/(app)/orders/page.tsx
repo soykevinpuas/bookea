@@ -7,6 +7,7 @@ import { useUserId } from "@/hooks/useUser";
 import { Package, Truck, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { queryKeys } from "@/lib/query-keys";
 
 interface Order {
   id: string;
@@ -57,7 +58,7 @@ export default function OrdersPage() {
   const supabase = createClientClient();
 
   const { data: orders = [], isLoading } = useQuery<Order[]>({
-    queryKey: ["user-orders", userId],
+    queryKey: queryKeys.orders.user(userId),
     queryFn: async () => {
       if (!userId) return [];
       const { data, error } = await supabase
@@ -69,6 +70,7 @@ export default function OrdersPage() {
       return (data ?? []) as Order[];
     },
     enabled: !!userId,
+    placeholderData: (previousData) => previousData,
   });
 
   if (authLoading) {

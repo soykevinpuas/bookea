@@ -1999,3 +1999,10 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 - Se corrigio `delete_sale_and_restore_stock`: el evento de restauracion ya no referencia la venta eliminada, evitando la violacion de FK que revertia la transaccion.
 - Las consultas del panel vendedor ya no convierten errores de Supabase en listas vacias; ahora conservan cache previa o muestran un estado de error con reintento.
 - Las lecturas GET del panel reintentan una vez ante errores transitorios del servidor.
+# 2026-07-20 - Datos reactivos sin reiniciar la aplicacion
+
+- React Query ahora conserva el contenido visible, pero revalida datos operativos al montar, volver al primer plano y recuperar conexion.
+- Se centralizaron claves de ordenes, usuarios, perfil y monedas para que pantallas distintas compartan invalidaciones.
+- Perfil y suscripcion tratan localStorage como contenido provisional y vuelven a consultar el servidor inmediatamente.
+- Ordenes, accesos digitales y gamificacion invalidan sus dominios mediante Realtime; la biblioteca comprada ya no queda bloqueada por una bandera de sesion.
+- El evento de restauracion de stock incluye la venta eliminada para retirarla de los dashboards sin esperar una recarga completa.

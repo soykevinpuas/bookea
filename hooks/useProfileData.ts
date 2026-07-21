@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getProfileDataAction } from '@/lib/actions/profile'
 import { CoinBalance } from '@/types/coins'
+import { queryKeys } from '@/lib/query-keys'
 
 export interface ProfileData {
   coins: CoinBalance
@@ -27,7 +28,7 @@ export function useProfileData(userId: string | undefined) {
   const cacheKey = `bookea-profile-data-${userId || 'anon'}`
 
   return useQuery({
-    queryKey: ['profile-data', userId],
+    queryKey: queryKeys.profile.summary(userId || ''),
     // La server action ya empaqueta monedas, racha y referidos para una sola ida al servidor.
     queryFn: async (): Promise<ProfileData> => {
       const result = await getProfileDataAction()
@@ -46,8 +47,8 @@ export function useProfileData(userId: string | undefined) {
     enabled: !!userId,
     initialData: () => readCachedProfileData(cacheKey),
     placeholderData: (previousData) => previousData,
-    staleTime: 5 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }

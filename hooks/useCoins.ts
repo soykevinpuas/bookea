@@ -10,12 +10,13 @@ import {
   getUserCoinRedemptionsAction,
 } from '@/lib/actions/coins'
 import { CoinType, CoinBalance } from '@/types/coins'
+import { queryKeys } from '@/lib/query-keys'
 
 export function useCoins(userId: string | undefined) {
   const queryClient = useQueryClient()
 
   const query = useQuery({
-    queryKey: ['user-coins', userId],
+    queryKey: queryKeys.coins.all(userId || ''),
     queryFn: async (): Promise<CoinBalance> => {
       if (!userId) return { bronze: 0, silver: 0, gold: 0, diamond: 0 }
 
@@ -23,8 +24,8 @@ export function useCoins(userId: string | undefined) {
       return (result.coins || { bronze: 0, silver: 0, gold: 0, diamond: 0 }) as CoinBalance
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   })
 
   const redeemMutation = useMutation({
@@ -32,9 +33,9 @@ export function useCoins(userId: string | undefined) {
       return redeemCoinAction(bookId, coinType)
     },
     onMutate: async ({ coinType }) => {
-      await queryClient.cancelQueries({ queryKey: ['user-coins', userId] })
-      const previous = queryClient.getQueryData<CoinBalance>(['user-coins', userId])
-      queryClient.setQueryData(['user-coins', userId], (old: CoinBalance | undefined) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.coins.all(userId || '') })
+      const previous = queryClient.getQueryData<CoinBalance>(queryKeys.coins.all(userId || ''))
+      queryClient.setQueryData(queryKeys.coins.all(userId || ''), (old: CoinBalance | undefined) => {
         if (!old) return old
         return { ...old, [coinType]: Math.max(0, (old[coinType] || 0) - 1) }
       })
@@ -42,11 +43,11 @@ export function useCoins(userId: string | undefined) {
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(['user-coins', userId], context.previous)
+        queryClient.setQueryData(queryKeys.coins.all(userId || ''), context.previous)
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-coins', userId] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.coins.all(userId || '') })
     },
   })
 
@@ -67,7 +68,7 @@ export function useStreak(userId: string | undefined) {
       return result.streak || 0
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
   })
 }
 
@@ -91,7 +92,7 @@ export function useReferral(userId: string | undefined) {
       return result.count || 0
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
   })
 
   return {
@@ -103,7 +104,7 @@ export function useReferral(userId: string | undefined) {
 
 export function useCoinTransactions(userId: string | undefined) {
   return useQuery({
-    queryKey: ['user-coin-transactions', userId],
+    queryKey: queryKeys.coins.transactions(userId || ''),
     queryFn: async () => {
       if (!userId) return []
       const result = await getUserCoinTransactionsAction()
@@ -116,7 +117,7 @@ export function useCoinTransactions(userId: string | undefined) {
 
 export function useCoinRedemptions(userId: string | undefined) {
   return useQuery({
-    queryKey: ['user-coin-redemptions', userId],
+    queryKey: queryKeys.coins.redemptions(userId || ''),
     queryFn: async () => {
       if (!userId) return []
       const result = await getUserCoinRedemptionsAction()
