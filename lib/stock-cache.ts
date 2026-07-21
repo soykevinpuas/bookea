@@ -280,7 +280,8 @@ function updateExistingBookStockRows<T extends BookStockCacheRow>(
 
 function updateBookDetailStock<T extends BookStockCacheRow>(
   book: T | null | undefined,
-  snapshots: StockSnapshot[]
+  snapshots: StockSnapshot[],
+  mode: "total" | "warehouse"
 ) {
   if (!book) return book;
 
@@ -289,7 +290,7 @@ function updateBookDetailStock<T extends BookStockCacheRow>(
 
   return {
     ...book,
-    stock_physical: snapshot.total_physical,
+    stock_physical: mode === "warehouse" ? snapshot.warehouse_quantity : snapshot.total_physical,
     stock_total: snapshot.total_physical,
     stock_warehouse: snapshot.warehouse_quantity,
     stock_assigned: snapshot.assigned_quantity,
@@ -543,11 +544,13 @@ export function applyStockMutationResult(
   );
 
   queryClient.setQueriesData<BookStockCacheRow[] | undefined>({ queryKey: ["books"] }, (old) =>
-    updateExistingBookStockRows(old, snapshots, "total")
+    // El catalogo publico solo puede vender existencias de almacen; el inventario
+    // ya asignado a vendedores no debe reactivar el boton de compra fisica.
+    updateExistingBookStockRows(old, snapshots, "warehouse")
   );
 
   queryClient.setQueriesData<BookStockCacheRow | null | undefined>({ queryKey: ["book"] }, (old) =>
-    updateBookDetailStock(old, snapshots)
+    updateBookDetailStock(old, snapshots, "warehouse")
   );
 
   queryClient.setQueriesData<BookStockCacheRow[] | undefined>({ queryKey: ["physical-books"] }, (old) =>

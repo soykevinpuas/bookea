@@ -2006,3 +2006,16 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 - Perfil y suscripcion tratan localStorage como contenido provisional y vuelven a consultar el servidor inmediatamente.
 - Ordenes, accesos digitales y gamificacion invalidan sus dominios mediante Realtime; la biblioteca comprada ya no queda bloqueada por una bandera de sesion.
 - El evento de restauracion de stock incluye la venta eliminada para retirarla de los dashboards sin esperar una recarga completa.
+
+# 2026-07-20 - Stock publico y unidades vendidas consistentes
+
+- Los snapshots de stock actualizan el catalogo y el detalle con existencias de almacen, sin sumar inventario ya asignado a vendedores.
+- El panel vendedor muestra unidades vendidas reales y conserva por separado el numero de operaciones.
+- La vista previa oculta el precio fisico cuando el libro no tiene stock comprable.
+
+# 2026-07-20 - Aplicacion inmediata de cambios en cache cliente
+
+- Se agrego `lib/realtime-cache.ts` para aplicar directamente eventos confirmados de ordenes, usuarios, perfiles, monedas, historiales, canjes, referidos, solicitudes de stock y accesos digitales.
+- Los cambios de orden, rol, vigencia, nombre, avatar, estado de libro, monedas y reseñas actualizan primero la interfaz y conservan rollback ante error.
+- Los refetch posteriores quedan como confirmacion silenciosa para completar joins, sin bloquear el cambio visible.
+- Se retiro la suscripcion duplicada de `useUserBooks`; la sincronizacion global evita carreras y actualiza tambien la cache persistida.

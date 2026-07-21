@@ -302,8 +302,6 @@ export function useBook(id: string) {
 // Hook de biblioteca del usuario con cache local y realtime sobre user_books.
 export function useUserBooks(userId: string, options?: { search?: string; category?: string }) {
   const supabase = createClientClient();
-  const queryClient = useQueryClient();
-  const channelRef = useRef<RealtimeChannel | null>(null);
 
   const query = useQuery<Book[]>({
     queryKey: ["userBooks", userId, options?.search, options?.category],
@@ -333,35 +331,6 @@ export function useUserBooks(userId: string, options?: { search?: string; catego
     enabled: !!userId || (typeof window !== 'undefined' && !navigator.onLine),
     ...BOOK_QUERY_OPTIONS,
   });
-
-  // Realtime invalida biblioteca cuando Stripe/admin/canjes modifican user_books.
-  useEffect(() => {
-    if (!userId) return;
-    if (channelRef.current) return;
-
-    const channel = supabase
-      .channel(`user-books-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_books',
-          filter: `user_id=eq.${userId}`
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["userBooks", userId] });
-        }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    return () => {
-      supabase.removeChannel(channel);
-      channelRef.current = null;
-    };
-  }, [userId, queryClient, supabase]);
 
   return query;
 }

@@ -102,3 +102,15 @@ Reglas vigentes:
 2. Incluye RLS, indices y grants en la misma migracion cuando aplique.
 3. Si agregas una tabla sensible, decide desde el inicio si el cliente puede escribir o si debe pasar por RPC/server action.
 4. Actualiza `types/*`, `docs/DATABASE.md`, `docs/PROJECT_MASTER.md` y `bitacora.md`.
+
+## 6. Viaje Reactivo de Datos
+
+Las pantallas no deben depender de recargar la aplicacion para observar escrituras confirmadas:
+
+1. Una mutacion iniciada en el cliente actualiza React Query de forma optimista y conserva un snapshot para rollback.
+2. La escritura sensible se valida en RPC, server action o API; nunca se relajan RLS ni las reglas de negocio para ganar velocidad visual.
+3. `components/StockRealtimeSync.tsx` recibe cambios externos y `lib/realtime-cache.ts` aplica `payload.new`/`payload.old` directamente en las claves canonicas.
+4. Una revalidacion activa y silenciosa completa joins que PostgreSQL Realtime no incluye y corrige cualquier divergencia.
+5. Stock usa `stock_events.snapshot_after`, porque una operacion mueve varias tablas y necesita un snapshot transaccional coherente.
+
+La actualizacion local puede ser instantanea; entre dispositivos siempre existe la latencia de red hasta recibir el evento Realtime, pero no debe agregarse una segunda espera visible por refetch.

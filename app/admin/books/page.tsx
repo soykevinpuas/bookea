@@ -181,12 +181,23 @@ export default function AdminBooksPage() {
       const { error } = await supabase.from("books").update({ is_active: isActive }).eq("id", id);
       if (error) throw error;
     },
+    onMutate: async ({ id, isActive }) => {
+      await queryClient.cancelQueries({ queryKey: ["admin-books"] });
+      const previous = queryClient.getQueryData<Book[]>(["admin-books"]);
+      queryClient.setQueryData<Book[]>(["admin-books"], (old) => old?.map((book) =>
+        book.id === id ? { ...book, is_active: isActive } : book
+      ));
+      return { previous };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-books"] });
       refreshStockQueries(queryClient);
       toast.success("Estado del libro actualizado");
     },
-    onError: (err: unknown) => toast.error(`Error: ${getErrorMessage(err)}`),
+    onError: (err: unknown, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(["admin-books"], context.previous);
+      toast.error(`Error: ${getErrorMessage(err)}`);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["admin-books"] }),
   });
 
   const adjustStockMutation = useMutation<StockMutationResult, Error, StockAdjustmentVariables, StockAdjustmentContext>({

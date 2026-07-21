@@ -83,10 +83,32 @@ export function useProfile(userId: string | undefined) {
 
   // Mutación para actualizar el nombre público
   const nameMutation = useMutation({
-    mutationFn: (name: string) => updateProfileName(userId!, name),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile", userId] });
-    }
+    mutationFn: async (name: string) => {
+      const success = await updateProfileName(userId!, name);
+      if (!success) throw new Error("No se pudo guardar el nombre");
+      return name;
+    },
+    onMutate: async (name) => {
+      await queryClient.cancelQueries({ queryKey: ["profile", userId] });
+      const previousProfile = queryClient.getQueryData<Profile | null>(["profile", userId]);
+      const optimisticProfile: Profile = {
+        id: previousProfile?.id || "",
+        user_id: previousProfile?.user_id || userId!,
+        name,
+        avatar_url: previousProfile?.avatar_url || null,
+        bio: previousProfile?.bio || null,
+        reading_streak: previousProfile?.reading_streak || 0,
+        total_books_read: previousProfile?.total_books_read || 0,
+      };
+      queryClient.setQueryData(["profile", userId], optimisticProfile);
+      cacheProfile(optimisticProfile);
+      return { previousProfile };
+    },
+    onError: (_error, _name, context) => {
+      queryClient.setQueryData(["profile", userId], context?.previousProfile);
+      cacheProfile(context?.previousProfile);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["profile", userId] }),
   });
 
   return {

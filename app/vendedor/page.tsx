@@ -445,6 +445,10 @@ export default function VendedorDashboard() {
     () => new Set(sales.map((sale) => sale.book_id).filter(Boolean)).size,
     [sales]
   );
+  const totalSoldUnits = useMemo(
+    () => sales.reduce((total, sale) => total + Number(sale.quantity || 0), 0),
+    [sales]
+  );
   const topBooks = useMemo(() => {
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1240,8 +1244,8 @@ export default function VendedorDashboard() {
                   onClick={() => setSoldTab("historial")}
                   className="bg-white/5 border border-white/8 rounded-xl p-4 text-left hover:bg-white/10 transition-colors"
                 >
-                  <p className="text-lg font-bold text-white">{sales.length}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Ventas</p>
+                  <p className="text-lg font-bold text-white">{totalSoldUnits}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Libros vendidos</p>
                 </button>
                 <button
                   onClick={() => setSoldTab("historial")}
@@ -1402,7 +1406,7 @@ export default function VendedorDashboard() {
                   <div className="px-5 py-4 border-b border-white/8">
                     <h2 className="font-semibold text-sm flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-amber-400" />
-                      Vendidos ({sales.length} ventas)
+                      Vendidos ({totalSoldUnits} libros · {sales.length} ventas)
                     </h2>
                   </div>
                   {sales.length === 0 ? (

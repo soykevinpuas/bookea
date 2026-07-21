@@ -74,7 +74,18 @@ export default function AdminUsersPage() {
         throw err;
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.admin }),
+    onMutate: async ({ userId, endsAt }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.users.admin });
+      const previous = queryClient.getQueryData<AppUser[]>(queryKeys.users.admin);
+      queryClient.setQueryData<AppUser[]>(queryKeys.users.admin, (old) => old?.map((user) =>
+        user.id === userId ? { ...user, subscription_ends_at: endsAt } : user
+      ));
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKeys.users.admin, context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.admin }),
   });
 
   // Mutacion de rol: pasa por API propia para evitar bloqueos de RLS desde cliente.
@@ -109,7 +120,18 @@ export default function AdminUsersPage() {
         throw err;
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.admin }),
+    onMutate: async ({ id, role }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.users.admin });
+      const previous = queryClient.getQueryData<AppUser[]>(queryKeys.users.admin);
+      queryClient.setQueryData<AppUser[]>(queryKeys.users.admin, (old) => old?.map((user) =>
+        user.id === id ? { ...user, role } : user
+      ));
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKeys.users.admin, context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.admin }),
   });
 
   // Contadores del encabezado calculados en cliente desde la misma query de usuarios.

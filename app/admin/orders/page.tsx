@@ -59,7 +59,20 @@ export default function AdminOrdersPage() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.orders.all }),
+    onMutate: async ({ id, status, tracking_number }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.orders.admin });
+      const previous = queryClient.getQueryData<Order[]>(queryKeys.orders.admin);
+      queryClient.setQueryData<Order[]>(queryKeys.orders.admin, (old) => old?.map((order) =>
+        order.id === id
+          ? { ...order, status, ...(tracking_number !== undefined ? { tracking_number } : {}) }
+          : order
+      ));
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKeys.orders.admin, context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.orders.all }),
   });
 
   const handleShipWithTracking = (order: Order) => {

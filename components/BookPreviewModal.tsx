@@ -56,7 +56,7 @@ export default function BookPreviewModal({ book, onClose }: BookPreviewModalProp
                   {book.category}
                 </span>
               )}
-              {(book.price_physical ?? 0) > 0 && (
+              {(book.price_physical ?? 0) > 0 && (book.stock_physical ?? 0) > 0 && (
                 <div className="flex items-center gap-2 pt-1">
                   <BookOpen className="w-3.5 h-3.5 text-amber-400" />
                   <span className="text-sm font-semibold text-amber-400">${book.price_physical} MXN</span>
