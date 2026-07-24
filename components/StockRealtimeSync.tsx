@@ -51,8 +51,8 @@ export function StockRealtimeSync() {
       if (result) {
         applyStockMutationResult(queryClient, result, { adminId: userId, sellerId: userId });
       }
-
-      refreshStockQueries(queryClient);
+      // El snapshot del evento ya es transaccional y canónico. Refetchear aquí puede
+      // permitir que una respuesta iniciada antes del evento pise el valor confirmado.
     };
 
     const channel = supabase

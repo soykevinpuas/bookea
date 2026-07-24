@@ -2041,3 +2041,11 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 - El modal de libros permite configurar un costo desde $0, con $100 como valor predeterminado.
 - Cada venta conserva un snapshot del costo aplicado para que los cambios futuros no alteren su utilidad histórica.
 - El modal mantiene sus acciones visibles por encima de la navegación inferior y limita el scroll al contenido.
+
+# 2026-07-23 - Gestión de libros y stock inmediato
+
+- La tabla administrativa se reemplazó por tarjetas que priorizan portada, estado y un contador de stock grande.
+- Los botones de stock conservan visible el valor optimista mientras el servidor confirma y bloquean escrituras duplicadas por libro.
+- Los snapshots transaccionales dejan de provocar un refetch inmediato que podía reintroducir temporalmente un valor anterior.
+- Una protección breve impide que respuestas iniciadas antes de la mutación pisen el stock confirmado.
+- El modal se renderiza fuera del layout animado, cubre toda la pantalla móvil y mantiene siempre visible el botón de guardar sobre el bottom nav.

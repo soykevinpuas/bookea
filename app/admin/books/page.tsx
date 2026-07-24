@@ -3,9 +3,10 @@
 import AppImage from "@/components/ui/AppImage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClientClient } from "@/lib/supabase";
-import { applyStockMutationResult, refreshStockQueries, STOCK_QUERY_OPTIONS } from "@/lib/stock-cache";
+import { applyStockMutationResult, getStockSnapshots, STOCK_QUERY_OPTIONS } from "@/lib/stock-cache";
 import type { StockMutationResult } from "@/types/stock";
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import {
   X,
@@ -49,6 +50,9 @@ type FormData = Omit<Book, "id" | "created_at"> & { id?: string; newAuthor?: str
 type BookPayload = Record<string, string | number | boolean | null | undefined>;
 type StockAdjustmentVariables = { id: string; stockDelta: number };
 type StockAdjustmentContext = { previousBooks?: Book[] };
+type StockLock = Pick<Book, "stock_physical" | "stock_total" | "stock_warehouse" | "stock_assigned"> & {
+  expiresAt: number;
+};
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Error inesperado";
@@ -114,6 +118,8 @@ export default function AdminBooksPage() {
   const authorPhotoInputRef = useRef<HTMLInputElement>(null);
   const [filterTab, setFilterTab] = useState<"all" | "physical" | "no-epub">("all");
   const [stockLoading, setStockLoading] = useState<Set<string>>(new Set());
+  const stockWritesRef = useRef(new Set<string>());
+  const stockLocksRef = useRef(new Map<string, StockLock>());
   const [previewBook, setPreviewBook] = useState<Book | null>(null);
 
   const { data: books = [], isLoading } = useQuery({
@@ -122,7 +128,16 @@ export default function AdminBooksPage() {
       const res = await fetch("/api/admin/books-stock", { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error al cargar libros");
-      return json.books as Book[];
+      const now = Date.now();
+      return (json.books as Book[]).map((book) => {
+        const lock = stockLocksRef.current.get(book.id);
+        if (!lock) return book;
+        if (lock.expiresAt <= now) {
+          stockLocksRef.current.delete(book.id);
+          return book;
+        }
+        return { ...book, ...lock };
+      });
     },
     ...STOCK_QUERY_OPTIONS,
   });
@@ -141,28 +156,6 @@ export default function AdminBooksPage() {
     if (filterTab === "no-epub") return !b.epub_url;
     return true;
   });
-
-  useEffect(() => {
-    const supabase = createClientClient();
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-    const refreshBooks = () => {
-      if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => {
-        refreshStockQueries(queryClient);
-      }, 120);
-    };
-
-    const channel = supabase
-      .channel("admin-books-stock-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "books" }, refreshBooks)
-      .on("postgres_changes", { event: "*", schema: "public", table: "admin_stock" }, refreshBooks)
-      .subscribe();
-
-    return () => {
-      if (refreshTimer) clearTimeout(refreshTimer);
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
 
   useEffect(() => {
     if (editingBook.author_id) {
@@ -192,14 +185,13 @@ export default function AdminBooksPage() {
       return { previous };
     },
     onSuccess: () => {
-      refreshStockQueries(queryClient);
       toast.success("Estado del libro actualizado");
     },
     onError: (err: unknown, _variables, context) => {
       if (context?.previous) queryClient.setQueryData(["admin-books"], context.previous);
       toast.error(`Error: ${getErrorMessage(err)}`);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["admin-books"] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["admin-books"], refetchType: "inactive" }),
   });
 
   const adjustStockMutation = useMutation<StockMutationResult, Error, StockAdjustmentVariables, StockAdjustmentContext>({
@@ -216,23 +208,56 @@ export default function AdminBooksPage() {
     onMutate: async ({ id, stockDelta }) => {
       await queryClient.cancelQueries({ queryKey: ["admin-books"] });
       const previousBooks = queryClient.getQueryData<Book[]>(["admin-books"]);
+      const currentBook = previousBooks?.find((book) => book.id === id);
+      if (currentBook) {
+        const nextWarehouse = Math.max(0, currentBook.stock_warehouse + stockDelta);
+        const nextTotal = nextWarehouse + currentBook.stock_assigned;
+        stockLocksRef.current.set(id, {
+          stock_physical: nextTotal,
+          stock_total: nextTotal,
+          stock_warehouse: nextWarehouse,
+          stock_assigned: currentBook.stock_assigned,
+          expiresAt: Date.now() + 15_000,
+        });
+      }
       queryClient.setQueryData<Book[]>(["admin-books"], (old) => previewStockAdjustment(old, id, stockDelta));
       setStockLoading((prev) => new Set(prev).add(id));
       return { previousBooks };
     },
     onSuccess: (result) => {
+      // El snapshot de la RPC es la fuente confirmada; un refetch inmediato puede
+      // leer una réplica atrasada y devolver visualmente el stock al valor anterior.
+      const snapshot = getStockSnapshots(result)[0];
+      if (snapshot) {
+        stockLocksRef.current.set(snapshot.book_id, {
+          stock_physical: snapshot.total_physical,
+          stock_total: snapshot.total_physical,
+          stock_warehouse: snapshot.warehouse_quantity,
+          stock_assigned: snapshot.assigned_quantity,
+          expiresAt: Date.now() + 15_000,
+        });
+      }
       applyStockMutationResult(queryClient, result);
-      refreshStockQueries(queryClient);
     },
     onError: (err: unknown, vars, context) => {
+      stockLocksRef.current.delete(vars.id);
       if (context?.previousBooks) queryClient.setQueryData(["admin-books"], context.previousBooks);
       setStockLoading((prev) => { const next = new Set(prev); next.delete(vars.id); return next; });
       toast.error(getErrorMessage(err) || "Error al ajustar stock");
     },
     onSettled: (_result, _error, vars) => {
+      stockWritesRef.current.delete(vars.id);
       setStockLoading((prev) => { const next = new Set(prev); next.delete(vars.id); return next; });
     },
   });
+
+  const adjustStock = (book: Book, delta: number) => {
+    if (stockWritesRef.current.has(book.id)) return;
+    if (delta < 0 && book.stock_warehouse <= 0) return;
+
+    stockWritesRef.current.add(book.id);
+    adjustStockMutation.mutate({ id: book.id, stockDelta: delta });
+  };
 
   const openNew = () => {
     setEditingBook(EMPTY_FORM);
@@ -315,6 +340,7 @@ export default function AdminBooksPage() {
     try {
       const supabase = createClientClient();
       let stockResult: StockMutationResult | null = null;
+      let createdNewBook = false;
 
       // Crear nuevo autor si es necesario
       let authorId = editingBook.author_id;
@@ -377,6 +403,11 @@ export default function AdminBooksPage() {
         const stockJson = await stockRes.json();
         if (!stockRes.ok) throw new Error(stockJson.error || "No se pudo guardar el costo o el stock");
         if (stockDelta !== 0) stockResult = stockJson as StockMutationResult;
+        queryClient.setQueryData<Book[]>(["admin-books"], (old) => old?.map((book) =>
+          book.id === editingBook.id
+            ? { ...book, ...payload, acquisition_cost: editingBook.acquisition_cost } as Book
+            : book
+        ));
         toast.success("Libro actualizado con éxito");
       } else {
         const { data: createdBook, error } = await supabase.from("books").insert(payload).select("id").single();
@@ -396,11 +427,16 @@ export default function AdminBooksPage() {
           if (!stockRes.ok) throw new Error(stockJson.error || "No se pudo guardar el costo o el stock inicial");
           if (initialStock > 0) stockResult = stockJson as StockMutationResult;
         }
+        createdNewBook = true;
         toast.success("Libro creado con éxito");
       }
 
       applyStockMutationResult(queryClient, stockResult);
-      refreshStockQueries(queryClient);
+      if (createdNewBook) {
+        await queryClient.invalidateQueries({ queryKey: ["admin-books"] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["admin-books"], refetchType: "inactive" });
+      }
       setShowModal(false);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err));
@@ -410,7 +446,7 @@ export default function AdminBooksPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 pb-28 sm:p-6 sm:pb-28">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -453,7 +489,7 @@ export default function AdminBooksPage() {
         ))}
       </div>
 
-      {/* Table */}
+      {/* Tarjetas: priorizan stock y acciones sin columnas apretadas en móvil. */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-white/20" />
@@ -467,116 +503,107 @@ export default function AdminBooksPage() {
           </button>
         </div>
       ) : (
-        <div className="bg-white/5 border border-white/8 rounded-2xl overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/8">
-                <th className="text-left px-5 py-3.5 font-medium text-white/40">Libro</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden sm:table-cell">Categoría</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40">Contenido</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">EPUB</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40 hidden md:table-cell">Físico</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40">Estado</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40">Stock</th>
-                <th className="text-left px-5 py-3.5 font-medium text-white/40">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {filteredBooks.map((book) => (
-                <tr key={book.id} className="hover:bg-white/3 transition-colors">
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      {book.cover_url ? (
-                        <button onClick={() => setPreviewBook(book)} className="shrink-0 p-0 border-0 bg-transparent cursor-pointer">
-                          <AppImage src={book.cover_url} alt={book.title} className="w-8 h-11 object-contain rounded-md flex-shrink-0 bg-white/5 shadow-inner hover:ring-2 hover:ring-blue-500/50 transition-all" />
-                        </button>
-                      ) : (
-                        <div className="w-8 h-11 bg-white/10 rounded-md flex-shrink-0" />
-                      )}
-                      <div>
-                        <p className="font-medium text-white truncate max-w-[140px]">{book.title}</p>
-                        <p className="text-white/40 text-xs truncate">{book.author}</p>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {filteredBooks.map((book) => {
+            const updatingStock = stockLoading.has(book.id);
+            return (
+              <article key={book.id} className="rounded-2xl border border-white/8 bg-white/5 p-4 transition-colors hover:bg-white/[0.07]">
+                <div className="flex gap-3">
+                  <button onClick={() => setPreviewBook(book)} className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-white/5">
+                    {book.cover_url ? (
+                      <AppImage src={book.cover_url} alt={book.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <BookOpen className="m-auto h-full w-6 text-white/20" />
+                    )}
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h2 className="truncate font-semibold text-white">{book.title}</h2>
+                        <p className="truncate text-xs text-white/45">{book.author}</p>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-white/50 hidden sm:table-cell">
-                    {book.category ?? "—"}
-                  </td>
-                  <td className="px-5 py-4">
-                    {book.is_premium ? (
-                      <span className="text-blue-400 font-medium text-xs border border-blue-400/20 px-2 py-0.5 rounded-full bg-blue-400/5">PREMIUM</span>
-                    ) : (
-                      <span className="text-green-400 font-medium text-xs border border-green-400/20 px-2 py-0.5 rounded-full bg-green-400/5">GRATIS</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-4 hidden md:table-cell">
-                    {book.epub_url ? (
-                      <span className="text-green-400 font-medium text-xs">✓ EPUB</span>
-                    ) : (
-                      <span className="text-red-400/60 font-medium text-xs">—</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-4 text-white/70 hidden md:table-cell">${book.price_physical}</td>
-                  <td className="px-5 py-4">
-                    <button
-                      onClick={() => toggleActiveMutation.mutate({ id: book.id, isActive: !book.is_active })}
-                      title={book.is_active ? "Desactivar" : "Activar"}
-                    >
-                      {book.is_active ? (
-                        <ToggleRight className="w-6 h-6 text-green-400" />
-                      ) : (
-                        <ToggleLeft className="w-6 h-6 text-white/25" />
-                      )}
-                    </button>
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-1">
                       <button
-                        onClick={() => adjustStockMutation.mutate({ id: book.id, stockDelta: -1 })}
-                        disabled={stockLoading.has(book.id) || book.stock_warehouse <= 0}
-                        className="p-0.5 bg-white/5 hover:bg-red-500/20 rounded transition-colors disabled:opacity-30"
+                        onClick={() => toggleActiveMutation.mutate({ id: book.id, isActive: !book.is_active })}
+                        title={book.is_active ? "Desactivar libro" : "Activar libro"}
+                        className="shrink-0"
                       >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <div className="min-w-[6ch] text-center">
-                        <span className="text-white/70 text-sm font-medium tabular-nums">
-                          {stockLoading.has(book.id) ? <Loader2 className="w-3 h-3 animate-spin inline" /> : book.stock_physical}
-                        </span>
-                        {book.stock_assigned > 0 && (
-                          <p className="text-[9px] leading-none text-white/30">
-                            {book.stock_warehouse} alm. + {book.stock_assigned} vend.
-                          </p>
+                        {book.is_active ? (
+                          <ToggleRight className="h-7 w-7 text-green-400" />
+                        ) : (
+                          <ToggleLeft className="h-7 w-7 text-white/25" />
                         )}
-                      </div>
-                      <button
-                        onClick={() => adjustStockMutation.mutate({ id: book.id, stockDelta: 1 })}
-                        disabled={stockLoading.has(book.id)}
-                        className="p-0.5 bg-white/5 hover:bg-green-500/20 rounded transition-colors disabled:opacity-30"
-                      >
-                        <Plus className="w-3 h-3" />
                       </button>
                     </div>
-                  </td>
-                  <td className="px-5 py-4">
+                    <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase">
+                      <span className={book.is_premium ? "rounded-full bg-blue-400/10 px-2 py-1 text-blue-400" : "rounded-full bg-green-400/10 px-2 py-1 text-green-400"}>
+                        {book.is_premium ? "Premium" : "Gratis"}
+                      </span>
+                      <span className={book.epub_url ? "rounded-full bg-green-400/10 px-2 py-1 text-green-400" : "rounded-full bg-red-400/10 px-2 py-1 text-red-300"}>
+                        {book.epub_url ? "EPUB listo" : "Sin EPUB"}
+                      </span>
+                      <span className="rounded-full bg-white/5 px-2 py-1 text-white/45">
+                        ${book.price_physical}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-white/8 bg-black/15 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-white/50">Stock físico total</p>
+                      <p className="text-[10px] text-white/30">
+                        {book.stock_warehouse} en almacén
+                        {book.stock_assigned > 0 ? ` + ${book.stock_assigned} con vendedores` : ""}
+                      </p>
+                    </div>
+                    {updatingStock && (
+                      <span className="flex items-center gap-1 text-[10px] text-blue-300">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Guardando
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-[3rem_1fr_3rem] items-center gap-3">
                     <button
-                      onClick={() => openEdit(book)}
-                      className="flex items-center gap-1.5 text-white/40 hover:text-white transition-colors text-xs font-medium"
+                      onClick={() => adjustStock(book, -1)}
+                      disabled={updatingStock || book.stock_warehouse <= 0}
+                      aria-label={`Quitar una unidad de ${book.title}`}
+                      className="flex h-11 items-center justify-center rounded-xl border border-red-400/15 bg-red-500/10 text-red-300 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-30"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
-                      Editar
+                      <Minus className="h-5 w-5" />
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <strong className="text-center text-3xl font-black tabular-nums text-white">
+                      {book.stock_physical}
+                    </strong>
+                    <button
+                      onClick={() => adjustStock(book, 1)}
+                      disabled={updatingStock}
+                      aria-label={`Agregar una unidad de ${book.title}`}
+                      className="flex h-11 items-center justify-center rounded-xl border border-green-400/15 bg-green-500/10 text-green-300 transition-colors hover:bg-green-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      <Plus className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => openEdit(book)}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/5 py-2.5 text-xs font-medium text-white/65 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Editar datos y costo
+                </button>
+              </article>
+            );
+          })}
         </div>
       )}
 
       {/* Modal — Add / Edit Book */}
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1a1a1a] shadow-2xl">
+      {showModal && typeof document !== "undefined" && createPortal((
+        <div className="fixed inset-0 z-[200] flex items-stretch justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-[#1a1a1a] shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl sm:border sm:border-white/10">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
               <h2 className="font-bold text-lg">{editingBook.id ? "Editar Libro" : "Agregar Libro"}</h2>
@@ -851,17 +878,17 @@ export default function AdminBooksPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="relative z-10 flex shrink-0 items-center justify-end gap-3 border-t border-white/8 bg-[#1a1a1a] px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="relative z-10 grid shrink-0 grid-cols-2 gap-3 border-t border-white/8 bg-[#1a1a1a] px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex sm:justify-end sm:px-6">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2.5 text-sm font-medium text-white/50 hover:text-white transition-colors"
+                className="rounded-xl px-4 py-3 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
               >
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {editingBook.id ? "Guardar cambios" : "Crear libro"}
@@ -869,7 +896,7 @@ export default function AdminBooksPage() {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {previewBook && (
         <BookPreviewModal book={previewBook} onClose={() => setPreviewBook(null)} />
