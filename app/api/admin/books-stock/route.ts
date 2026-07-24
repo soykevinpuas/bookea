@@ -19,6 +19,7 @@ type StockPatchBody = {
   bookId?: string;
   delta?: number | string;
   totalStock?: number | string;
+  acquisitionCost?: number | string;
 };
 
 function errorMessage(error: unknown) {
@@ -69,7 +70,7 @@ export async function GET() {
     const adminDb = createAdminClient();
     const sellerIds = await getSellerIds(adminDb, adminId);
 
-    const [booksResult, adminStockResult, sellerStockResult] = await Promise.all([
+    const [booksResult, adminStockResult, sellerStockResult, costsResult] = await Promise.all([
       adminDb
         .from("books")
         .select("*")
@@ -84,14 +85,22 @@ export async function GET() {
             .select("book_id, quantity")
             .in("seller_id", sellerIds)
         : Promise.resolve({ data: [], error: null }),
+      adminDb
+        .from("admin_book_costs")
+        .select("book_id, acquisition_cost")
+        .eq("admin_id", adminId),
     ]);
 
     if (booksResult.error) throw booksResult.error;
     if (adminStockResult.error) throw adminStockResult.error;
     if (sellerStockResult.error) throw sellerStockResult.error;
+    if (costsResult.error) throw costsResult.error;
 
     const warehouseByBook = sumStock(adminStockResult.data as StockRow[]);
     const assignedByBook = sumStock(sellerStockResult.data as StockRow[]);
+    const costByBook = new Map(
+      (costsResult.data ?? []).map((row) => [row.book_id as string, Number(row.acquisition_cost)])
+    );
 
     const books = ((booksResult.data ?? []) as AdminBookRow[]).map((book) => {
       const stockWarehouse = warehouseByBook.get(book.id) ?? 0;
@@ -104,6 +113,7 @@ export async function GET() {
         stock_total: stockTotal,
         stock_warehouse: stockWarehouse,
         stock_assigned: stockAssigned,
+        acquisition_cost: costByBook.get(book.id) ?? 100,
       };
     });
 
@@ -124,18 +134,23 @@ export async function PATCH(request: NextRequest) {
     const bookId = String(body.bookId || "");
     const hasDelta = body.delta !== undefined && body.delta !== null;
     const hasTotalStock = body.totalStock !== undefined && body.totalStock !== null;
+    const hasAcquisitionCost = body.acquisitionCost !== undefined && body.acquisitionCost !== null;
 
     if (!bookId) {
       return NextResponse.json({ error: "Falta bookId" }, { status: 400 });
     }
-    if (!hasDelta && !hasTotalStock) {
-      return NextResponse.json({ error: "Falta delta o totalStock" }, { status: 400 });
+    if (!hasDelta && !hasTotalStock && !hasAcquisitionCost) {
+      return NextResponse.json({ error: "Falta un cambio de stock o costo" }, { status: 400 });
     }
 
     const rawDelta = hasDelta ? Number(body.delta) : null;
     const rawTotalStock = hasTotalStock ? Number(body.totalStock) : null;
+    const rawAcquisitionCost = hasAcquisitionCost ? Number(body.acquisitionCost) : null;
     if ((hasDelta && !Number.isFinite(rawDelta)) || (hasTotalStock && !Number.isFinite(rawTotalStock))) {
       return NextResponse.json({ error: "Cantidad de stock inválida" }, { status: 400 });
+    }
+    if (hasAcquisitionCost && (!Number.isFinite(rawAcquisitionCost) || (rawAcquisitionCost ?? -1) < 0)) {
+      return NextResponse.json({ error: "Costo de adquisición inválido" }, { status: 400 });
     }
 
     const adminDb = createAdminClient();
@@ -168,6 +183,20 @@ export async function PATCH(request: NextRequest) {
     }
     if (warehouseResult.error) throw warehouseResult.error;
     if (assignedResult.error) throw assignedResult.error;
+
+    if (rawAcquisitionCost !== null) {
+      const { error: costError } = await adminDb.from("admin_book_costs").upsert({
+        admin_id: adminId,
+        book_id: bookId,
+        acquisition_cost: rawAcquisitionCost,
+        updated_at: new Date().toISOString(),
+      });
+      if (costError) throw costError;
+    }
+
+    if (!hasDelta && !hasTotalStock) {
+      return NextResponse.json({ success: true });
+    }
 
     const assignedStock = ((assignedResult.data ?? []) as Pick<StockRow, "quantity">[])
       .reduce((sum, row) => sum + (row.quantity || 0), 0);

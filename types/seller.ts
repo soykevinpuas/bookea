@@ -15,6 +15,7 @@ export interface BookInventoryInfo {
   author: string;
   cover_url: string | null;
   price_physical: number;
+  acquisition_cost?: number;
 }
 
 // Venta reportada por vendedor y liquidable por admin.
@@ -24,6 +25,7 @@ export interface SellerSale {
   book_id: string;
   quantity: number;
   sale_price: number;
+  acquisition_cost: number;
   sold_at: string;
   paid_at: string | null;
   books?: BookInventoryInfo | null;

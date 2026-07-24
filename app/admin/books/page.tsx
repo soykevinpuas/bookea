@@ -34,6 +34,7 @@ interface Book {
   epub_url: string | null;
   price_digital: number;
   price_physical: number;
+  acquisition_cost: number;
   price_bundle: number | null;
   stock_physical: number;
   stock_total: number;
@@ -64,6 +65,7 @@ const EMPTY_FORM: FormData = {
   epub_url: "",
   price_digital: 0,
   price_physical: 199,
+  acquisition_cost: 100,
   price_bundle: null,
   stock_physical: 0,
   stock_total: 0,
@@ -363,30 +365,36 @@ export default function AdminBooksPage() {
       if (editingBook.id) {
         const { error } = await supabase.from("books").update(payload).eq("id", editingBook.id);
         if (error) throw error;
-        if (stockDelta !== 0) {
-          const stockRes = await fetch("/api/admin/books-stock", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ bookId: editingBook.id, totalStock: desiredStock }),
-          });
-          const stockJson = await stockRes.json();
-          if (!stockRes.ok) throw new Error(stockJson.error || "No se pudo ajustar el stock");
-          stockResult = stockJson as StockMutationResult;
-        }
+        const stockRes = await fetch("/api/admin/books-stock", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bookId: editingBook.id,
+            acquisitionCost: Math.max(0, Number(editingBook.acquisition_cost) || 0),
+            ...(stockDelta !== 0 ? { totalStock: desiredStock } : {}),
+          }),
+        });
+        const stockJson = await stockRes.json();
+        if (!stockRes.ok) throw new Error(stockJson.error || "No se pudo guardar el costo o el stock");
+        if (stockDelta !== 0) stockResult = stockJson as StockMutationResult;
         toast.success("Libro actualizado con éxito");
       } else {
         const { data: createdBook, error } = await supabase.from("books").insert(payload).select("id").single();
         if (error) throw error;
         const initialStock = desiredStock;
-        if (createdBook?.id && initialStock > 0) {
+        if (createdBook?.id) {
           const stockRes = await fetch("/api/admin/books-stock", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ bookId: createdBook.id, totalStock: initialStock }),
+            body: JSON.stringify({
+              bookId: createdBook.id,
+              acquisitionCost: Math.max(0, Number(editingBook.acquisition_cost) || 0),
+              ...(initialStock > 0 ? { totalStock: initialStock } : {}),
+            }),
           });
           const stockJson = await stockRes.json();
-          if (!stockRes.ok) throw new Error(stockJson.error || "No se pudo asignar stock inicial");
-          stockResult = stockJson as StockMutationResult;
+          if (!stockRes.ok) throw new Error(stockJson.error || "No se pudo guardar el costo o el stock inicial");
+          if (initialStock > 0) stockResult = stockJson as StockMutationResult;
         }
         toast.success("Libro creado con éxito");
       }
@@ -567,8 +575,8 @@ export default function AdminBooksPage() {
 
       {/* Modal — Add / Edit Book */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1a1a1a] shadow-2xl">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
               <h2 className="font-bold text-lg">{editingBook.id ? "Editar Libro" : "Agregar Libro"}</h2>
@@ -577,7 +585,7 @@ export default function AdminBooksPage() {
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-4">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 space-y-4">
               {/* Title / Author */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -691,7 +699,7 @@ export default function AdminBooksPage() {
               </div>
 
               {/* Prices */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div>
                   <label className="text-xs text-white/40 font-medium mb-1.5 block">Precio Digital (Ref)</label>
                   <input
@@ -712,6 +720,18 @@ export default function AdminBooksPage() {
                     onChange={(e) => setEditingBook((p) => ({ ...p, price_physical: Number(e.target.value) }))}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
                   />
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 font-medium mb-1.5 block">Costo compra</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editingBook.acquisition_cost}
+                    onChange={(e) => setEditingBook((p) => ({ ...p, acquisition_cost: Math.max(0, Number(e.target.value) || 0) }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+                  />
+                  <p className="text-[10px] text-white/25 mt-1">Predeterminado $100; acepta $0</p>
                 </div>
                 <div>
                   <label className="text-xs text-white/40 font-medium mb-1.5 block">Stock total</label>
@@ -831,7 +851,7 @@ export default function AdminBooksPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-5 border-t border-white/8">
+            <div className="relative z-10 flex shrink-0 items-center justify-end gap-3 border-t border-white/8 bg-[#1a1a1a] px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <button
                 onClick={() => setShowModal(false)}
                 className="px-4 py-2.5 text-sm font-medium text-white/50 hover:text-white transition-colors"

@@ -443,7 +443,6 @@ export default function VendedorDashboard() {
     ? requests
     : requests.filter((r) => r.status === solicitudFilter);
 
-  const effectiveCost = isAdmin ? ADMIN_COST_BOOK : COST_PER_BOOK;
   const chartData = useMemo<DailyChartData[]>(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
@@ -456,7 +455,9 @@ export default function VendedorDashboard() {
 
       const day = d.getDate();
       const existing = dayMap.get(day) || { venta: 0, ahorro: 0, ganancia: 0 };
-      const cost = isAdmin ? ADMIN_COST_BOOK : COST_PER_BOOK;
+      const cost = isAdmin
+        ? Number(sale.acquisition_cost ?? ADMIN_COST_BOOK)
+        : COST_PER_BOOK;
       existing.venta += sale.sale_price * sale.quantity;
       existing.ahorro += sale.quantity * cost;
       existing.ganancia += (sale.sale_price - cost) * sale.quantity;
@@ -670,6 +671,9 @@ export default function VendedorDashboard() {
       book_id: bookId,
       quantity: qty,
       sale_price: price,
+      acquisition_cost: isAdmin
+        ? Number(item.books?.acquisition_cost ?? ADMIN_COST_BOOK)
+        : COST_PER_BOOK,
       sold_at: new Date().toISOString(),
       books: item.books ?? null,
       paid_at: null,
@@ -891,6 +895,9 @@ export default function VendedorDashboard() {
                         const isSelling = selling === item.book_id;
                         const isExiting = exitingSoldBooks.has(item.book_id);
                         const saleControlsLocked = Boolean(selling);
+                        const itemCost = isAdmin
+                          ? Number(book?.acquisition_cost ?? ADMIN_COST_BOOK)
+                          : COST_PER_BOOK;
                         return (
                           <div
                             key={item.id}
@@ -910,7 +917,7 @@ export default function VendedorDashboard() {
                               )}
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-medium text-white/90 break-words">{book?.title || "Libro"}</p>
-                                <p className="text-[10px] text-white/30">Costo: ${effectiveCost.toLocaleString("es-MX")} · {item.quantity} uds.{isAdmin ? " (eres administrador)" : ""}</p>
+                                <p className="text-[10px] text-white/30">Costo: ${itemCost.toLocaleString("es-MX")} · {item.quantity} uds.{isAdmin ? " (eres administrador)" : ""}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap sm:shrink-0 ml-10 sm:ml-0">

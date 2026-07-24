@@ -2034,3 +2034,10 @@ Los temas Retro y Navy tenían overrides CSS demasiado agresivos que rompían la
 - El detalle reutiliza el libro presente en React Query y el prefetch de datos se activa también al tocar en dispositivos móviles.
 - `AppImage` usa una imagen local segura cuando una portada está vacía o falla; la biblioteca comparte el mismo fallback.
 - La barrera global deja de recargar automáticamente en bucle y ofrece una navegación explícita de regreso al catálogo.
+
+# 2026-07-23 - Costo de adquisición variable por libro
+
+- El costo de compra físico deja de depender de una constante para las métricas del admin.
+- El modal de libros permite configurar un costo desde $0, con $100 como valor predeterminado.
+- Cada venta conserva un snapshot del costo aplicado para que los cambios futuros no alteren su utilidad histórica.
+- El modal mantiene sus acciones visibles por encima de la navegación inferior y limita el scroll al contenido.

@@ -27,6 +27,23 @@ export async function GET() {
       role === 'admin' ? Promise.resolve(0) : getSellerPendingTotal(supabase, user.id),
     ]);
 
+    // El costo es privado por admin y solo se adjunta cuando el propio admin usa la vista vendedor.
+    if (role === 'admin' && inventory.length > 0) {
+      const { data: costs, error: costsError } = await supabase
+        .from('admin_book_costs')
+        .select('book_id, acquisition_cost')
+        .eq('admin_id', user.id)
+        .in('book_id', inventory.map((item) => item.book_id));
+      if (costsError) throw costsError;
+
+      const costByBook = new Map(
+        (costs ?? []).map((row) => [row.book_id, Number(row.acquisition_cost)])
+      );
+      for (const item of inventory) {
+        if (item.books) item.books.acquisition_cost = costByBook.get(item.book_id) ?? 100;
+      }
+    }
+
     return NextResponse.json({
       inventory,
       sales,

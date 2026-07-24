@@ -7,6 +7,7 @@ export interface StockBookInfo {
   author: string | null;
   cover_url: string | null;
   price_physical: number | null;
+  acquisition_cost?: number | null;
 }
 
 // Snapshot canonico devuelto por las RPCs de stock despues de cada mutacion.

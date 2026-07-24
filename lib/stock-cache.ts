@@ -142,6 +142,7 @@ function inventoryBook(snapshot: StockSnapshot, previous?: InventoryCacheItem | 
     author: snapshot.book.author ?? "",
     cover_url: snapshot.book.cover_url,
     price_physical: snapshot.book.price_physical ?? 0,
+    acquisition_cost: snapshot.book.acquisition_cost ?? 100,
   };
 }
 

@@ -35,8 +35,9 @@ Roles actuales: `free`, `subscriber`, `admin`, `vendedor`.
 - `cart_items`: carrito por usuario.
 - `orders_physical`: ordenes fisicas confirmadas por Stripe, con `quantity`, `stripe_payment_id` y `stock_decremented_at`.
 - `admin_stock`: stock fisico en almacen por admin/libro. Su suma sincroniza `books.stock_physical`.
+- `admin_book_costs`: costo de adquisición privado por admin/libro; acepta cero y usa $100 como valor predeterminado.
 - `seller_inventory`: stock activo asignado a vendedores. Para vistas operativas de admin, el stock total disponible es `admin_stock + seller_inventory` de sus vendedores.
-- `seller_sales`: ventas reportadas por vendedor, con `sale_price`, `paid_at` y `admin_id`.
+- `seller_sales`: ventas reportadas por vendedor, con `sale_price`, snapshot histórico `acquisition_cost`, `paid_at` y `admin_id`.
 - `stock_events`: bitacora/sync de movimientos de stock con `snapshot_after` para actualizar UI en tiempo real sin esperar refetch.
 - `stock_requests`: solicitudes de stock del vendedor.
 - `stock_request_items`: items de cada solicitud.
@@ -95,6 +96,7 @@ Reglas vigentes:
 - `065_stock_events_snapshots.sql`: agrega `stock_events` y snapshots transaccionales para stock instantaneo en UI.
 - `066_fix_delete_sale_restore_event_fk.sql`: elimina una venta y restaura stock sin conservar una FK al registro borrado en `stock_events`.
 - `067_reactive_data_and_deleted_sale_payload.sql`: publica ordenes, accesos y gamificacion en Realtime, y propaga la venta eliminada en el snapshot para retirar datos obsoletos de los dashboards.
+- `068_variable_book_acquisition_cost.sql`: configura costo físico por título y lo copia a cada venta para preservar el histórico.
 
 ## 5. Reglas para Cambios de Schema
 

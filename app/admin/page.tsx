@@ -86,6 +86,7 @@ interface AdminSale {
   book_id: string | null;
   quantity: number;
   sale_price: number;
+  acquisition_cost: number;
   sold_at: string;
   paid_at?: string | null;
   admin_id?: string | null;
@@ -650,10 +651,11 @@ export default function AdminDashboard() {
         const qty = sale.quantity || 0;
         const existing = dayMap.get(day) || { inversion: 0, ganancia: 0 };
         const isSelfSale = sale.seller_id === adminUserId;
-        existing.inversion += qty * ADMIN_COST_BOOK;
+        const acquisitionCost = Number(sale.acquisition_cost ?? ADMIN_COST_BOOK);
+        existing.inversion += qty * acquisitionCost;
         existing.ganancia += isSelfSale
-          ? qty * ((sale.sale_price || 0) - ADMIN_COST_BOOK)
-          : qty * (COST_PER_BOOK - ADMIN_COST_BOOK);
+          ? qty * ((sale.sale_price || 0) - acquisitionCost)
+          : qty * (COST_PER_BOOK - acquisitionCost);
         dayMap.set(day, existing);
       }
       return Array.from(dayMap.entries())
